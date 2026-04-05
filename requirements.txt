@@ -1,0 +1,8 @@
+fastapi==0.111.0
+uvicorn==0.30.1
+firebase-admin==6.5.0
+ortools==9.10.4021
+pandas==2.2.0
+python-multipart==0.0.9
+python-dotenv==1.0.1
+pydantic==1.10.21

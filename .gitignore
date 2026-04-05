@@ -1,0 +1,10 @@
+node_modules/
+__pycache__/
+*.pyc
+.env
+*.json
+!package.json
+!pnpm-workspace.yaml
+dist/
+.vite/
+packages/backend/.env

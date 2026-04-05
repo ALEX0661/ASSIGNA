@@ -1,0 +1,8 @@
+{
+  "name": "logos",
+  "private": true,
+  "scripts": {
+    "dev:backend": "cd packages/backend && uvicorn app.main:app --reload --workers 1 --port 8000",
+    "dev:frontend": "cd packages/frontend && pnpm dev"
+  }
+}
