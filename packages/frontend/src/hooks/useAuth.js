@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
-import { onAuthStateChanged } from 'firebase/auth'
+import { onAuthStateChanged, signOut } from 'firebase/auth'
 import { auth } from '../services/firebase'
 
 export function useAuth() {
-  const [user, setUser]   = useState(null)
-  const [role, setRole]   = useState(null)
+  const [user,    setUser]    = useState(null)
+  const [role,    setRole]    = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    return onAuthStateChanged(auth, async (u) => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
       if (u) {
         const token = await u.getIdTokenResult()
         setUser(u)
@@ -19,7 +19,10 @@ export function useAuth() {
       }
       setLoading(false)
     })
+    return unsub
   }, [])
 
-  return { user, role, loading }
+  const logout = () => signOut(auth)
+
+  return { user, role, loading, logout }
 }

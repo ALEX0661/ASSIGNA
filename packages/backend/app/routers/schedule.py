@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, BackgroundTasks
-from app.core.auth import admin_only
+from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
+from app.core.auth import admin_only, any_authenticated
 from app.core.firebase import db
 from app.core.globals import schedule_dict, progress_state
 from app.core.scheduler import generate_schedule
@@ -20,34 +20,44 @@ def get_status(process_id: str, user=Depends(admin_only)):
     if prog == -1:
         return {"status": "failed", "progress": 0}
     if prog == 100:
-        return {"status": "complete", "progress": 100}
+        # Values() used here is fine for len()
+        return {"status": "complete", "progress": 100, "event_count": len(schedule_dict.values())}
     return {"status": "in_progress", "progress": prog}
 
 @router.get("/result")
 def get_result(user=Depends(admin_only)):
-    return {"schedule": schedule_dict, "count": len(schedule_dict)}
+    # FIXED: Wrapped in list() to prevent FastAPI serialization errors
+    return {"schedule": list(schedule_dict.values()), "count": len(schedule_dict)}
 
 @router.post("/save")
 def save_schedule(data: dict, user=Depends(admin_only)):
     name = data.get("schedule_name", "unnamed")
     db.collection("final_schedules").document(name).set({
         "schedule_name": name,
-        "schedule": schedule_dict[:]
+        "schedule": list(schedule_dict.values()),
     })
     return {"saved": name}
 
 @router.get("/final")
-def list_saved(user=Depends(admin_only)):
+def list_saved(user=Depends(any_authenticated)):
     docs = db.collection("final_schedules").stream()
     return [d.id for d in docs]
 
 @router.get("/final/{name}")
-def load_saved(name: str):
+def load_saved(name: str, user=Depends(any_authenticated)):
     doc = db.collection("final_schedules").document(name).get()
     if not doc.exists:
-        from fastapi import HTTPException
-        raise HTTPException(404, "Not found")
+        raise HTTPException(404, "Schedule not found")
     data = doc.to_dict()
+    
     schedule_dict.clear()
-    schedule_dict.extend(data.get("schedule", []))
+    raw_list = data.get("schedule", [])
+    # Re-hydrates dictionary with IDs as keys for the engine
+    schedule_dict.update({str(ev.get('schedule_id')): ev for ev in raw_list})
+    
     return data
+
+@router.delete("/final/{name}")
+def delete_saved(name: str, user=Depends(admin_only)):
+    db.collection("final_schedules").document(name).delete()
+    return {"deleted": name}
