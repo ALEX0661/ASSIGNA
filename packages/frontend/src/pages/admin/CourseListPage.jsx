@@ -1,156 +1,519 @@
-import { useEffect, useState } from 'react'
-import { getCourses, addCourse, deleteCourse } from '../../services/api'
+import { useEffect, useState, useMemo } from 'react'
+import { getCourses, addCourse, deleteCourse, updateCourse } from '../../services/api'
 import ImportCoursesModal from '../../components/ImportCoursesModal'
 
-const empty = {
-  courseCode: '', title: '', program: '', yearLevel: 1,
-  blocks: 1, unitsLecture: 3, unitsLab: 0,
+const EMPTY = { courseCode: '', title: '', program: '', yearLevel: '1', blocks: 1, unitsLecture: 3, unitsLab: 0 }
+
+const YEAR_LABELS = { '1': '1st Year', '2': '2nd Year', '3': '3rd Year', '4': '4th Year' }
+const YEAR_SHORT  = { '1': '1st', '2': '2nd', '3': '3rd', '4': '4th' }
+
+const PROGRAMS = [
+  { value: 'BSCS',      full: 'BS in Computer Science' },
+  { value: 'BSIT',      full: 'BS in Information Technology' },
+  { value: 'BSEMC-GD',  full: 'BS in Entertainment and Multimedia Computing – Game Development' },
+  { value: 'BSEMC-DAT', full: 'BS in Entertainment and Multimedia Computing – Digital Animation Technology' },
+]
+
+/* ─── Styles ─────────────────────────────────────────────────────────────── */
+if (!document.getElementById('course-page-style')) {
+  const s = document.createElement('style')
+  s.id = 'course-page-style'
+  s.textContent = `
+    .cp-primary {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 8px 18px; border-radius: 10px; border: none;
+      font-family: 'Poppins', sans-serif; font-size: 12.5px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+      background: linear-gradient(135deg,#7C6FCD,#5a4fbf); color: #fff;
+      box-shadow: 0 3px 12px rgba(124,111,205,0.32);
+    }
+    .cp-primary:hover:not(:disabled) { background: linear-gradient(135deg,#8E82D9,#6A5FD2); box-shadow: 0 5px 18px rgba(124,111,205,0.42); transform: translateY(-1px); }
+    .cp-primary:active:not(:disabled) { transform: translateY(0); }
+    .cp-primary:disabled { opacity:.5; cursor:default; transform:none; box-shadow:none; }
+
+    .cp-ghost {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border-radius: 10px;
+      border: 1.5px solid #D8D3F5; font-family: 'Poppins', sans-serif;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      background: #fff; color: #7C6FCD; transition: all 0.13s;
+    }
+    .cp-ghost:hover { background: #F2EFFD; border-color: #C5BBEF; }
+
+    .cp-cancel {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: 10px;
+      border: 1.5px solid #E8E4F8; font-family: 'Poppins', sans-serif;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      background: #fff; color: #8883B0; transition: all 0.13s;
+    }
+    .cp-cancel:hover { background: #F5F4FB; border-color: #D8D3F5; }
+
+    .cp-delete {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 10px; border-radius: 8px;
+      border: 1.5px solid #FECACA; font-family: 'Poppins', sans-serif;
+      font-size: 11.5px; font-weight: 600; cursor: pointer;
+      background: #FFF5F5; color: #DC2626; transition: all 0.13s;
+    }
+    .cp-delete:hover { background: #FEE2E2; border-color: #FCA5A5; }
+
+    .cp-edit-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border-radius: 7px;
+      border: 1.5px solid #E8E4F8; cursor: pointer;
+      background: #fff; color: #B0ABCC; transition: all 0.13s; flex-shrink: 0;
+    }
+    .cp-edit-btn:hover { background: #EDE9FB; border-color: #C5BBEF; color: #7C6FCD; }
+
+    .cp-close-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 30px; height: 30px; border-radius: 8px;
+      border: 1.5px solid #E8E4F8; cursor: pointer;
+      background: #F5F4FB; color: #8883B0; transition: all 0.13s; flex-shrink: 0;
+    }
+    .cp-close-btn:hover { background: #FFE8E8; border-color: #FECACA; color: #DC2626; }
+
+    .cp-cb {
+      width: 17px; height: 17px; border-radius: 5px; flex-shrink: 0;
+      border: 1.5px solid #C5BBEF; background: #fff;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: all 0.15s; cursor: pointer; box-sizing: border-box;
+    }
+    .cp-cb.on { background: linear-gradient(135deg,#7C6FCD,#5a4fbf); border-color: #7C6FCD; }
+
+    .cp-pill {
+      padding: 4px 11px; border-radius: 99px; font-size: 11.5px;
+      border: 1.5px solid #E8E4F8; cursor: pointer;
+      background: #F5F4FB; color: #8883B0; transition: all 0.13s;
+      white-space: nowrap; font-family: 'Poppins',sans-serif; font-weight: 500;
+    }
+    .cp-pill.on {
+      background: linear-gradient(135deg,#7C6FCD,#5a4fbf); color: #fff;
+      border-color: transparent; font-weight: 600;
+      box-shadow: 0 2px 8px rgba(124,111,205,0.28);
+    }
+    .cp-pill:hover:not(.on) { background: #EEEAFB; border-color: #C5BBEF; color: #5a4fbf; }
+
+    .cp-overlay {
+      position: fixed; inset: 0; background: rgba(26,26,46,0.5);
+      backdrop-filter: blur(4px); z-index: 1000;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px; animation: cpFadeOv 0.18s ease;
+    }
+    @keyframes cpFadeOv { from{opacity:0} to{opacity:1} }
+
+    .cp-modal {
+      background: #fff; border-radius: 18px; width: 100%; max-width: 560px;
+      box-shadow: 0 24px 64px rgba(26,26,46,0.22),0 4px 16px rgba(124,111,205,0.12);
+      animation: cpSlideUp 0.22s cubic-bezier(0.34,1.4,0.64,1); overflow: hidden;
+    }
+    @keyframes cpSlideUp {
+      from{opacity:0;transform:translateY(22px) scale(0.97)}
+      to{opacity:1;transform:translateY(0) scale(1)}
+    }
+
+    .cp-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .cp-field { display: flex; flex-direction: column; gap: 5px; }
+    .cp-field.s2 { grid-column: span 2; }
+    .cp-label { font-size:10.5px; font-weight:700; color:#8883B0; text-transform:uppercase; letter-spacing:.7px; }
+    .cp-inp, .cp-sel {
+      padding: 8px 11px; border-radius: 9px;
+      border: 1.5px solid #E8E4F8; font-family: 'Poppins',sans-serif;
+      font-size: 12.5px; color: #1a1a2e; background: #fff; outline: none;
+      transition: border-color 0.15s,box-shadow 0.15s; width: 100%; box-sizing: border-box;
+    }
+    .cp-inp:focus,.cp-sel:focus { border-color:#A99BE8; box-shadow:0 0 0 3px rgba(169,155,232,0.13); }
+    .cp-sel {
+      appearance:none; cursor:pointer; padding-right:28px;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%238883B0' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat:no-repeat; background-position:right 10px center;
+    }
+
+    .prog-bscs     { background:#EDE9FB; color:#7C6FCD; }
+    .prog-bsit     { background:#E6FAF3; color:#059669; }
+    .prog-bsemcgd  { background:#FEF3CD; color:#D97706; }
+    .prog-bsemcdat { background:#FEE2E2; color:#DC2626; }
+
+    @keyframes cpSlideIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes cpSpin { to{transform:rotate(360deg)} }
+  `
+  document.head.appendChild(s)
 }
 
-export default function CourseListPage() {
-  const [courses,      setCourses]      = useState([])
-  const [search,       setSearch]       = useState('')
-  const [showForm,     setShowForm]     = useState(false)
-  const [showImport,   setShowImport]   = useState(false)
-  const [form,         setForm]         = useState(empty)
-  const [saving,       setSaving]       = useState(false)
-  const [error,        setError]        = useState('')
+function progClass(p = '') {
+  const v = p.toUpperCase()
+  if (v === 'BSCS') return 'prog-bscs'
+  if (v === 'BSIT') return 'prog-bsit'
+  if (v.includes('GD'))  return 'prog-bsemcgd'
+  if (v.includes('DAT')) return 'prog-bsemcdat'
+  return ''
+}
 
-  async function load() { setCourses(await getCourses()) }
+function Checkbox({ checked, indeterminate, onChange }) {
+  const cls = `cp-cb${(checked || indeterminate) ? ' on' : ''}`
+  return (
+    <span className={cls} onClick={onChange} role="checkbox" aria-checked={checked}>
+      {indeterminate && !checked && (
+        <svg width="8" height="2" viewBox="0 0 8 2"><rect width="8" height="2" rx="1" fill="white"/></svg>
+      )}
+      {checked && (
+        <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+          <polyline points="1,3.5 3.5,6 8,1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      )}
+    </span>
+  )
+}
+
+function Pill({ label, active, onClick }) {
+  return <button className={`cp-pill${active ? ' on' : ''}`} onClick={onClick}>{label}</button>
+}
+
+function Spin() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+      style={{ animation: 'cpSpin .8s linear infinite' }}>
+      <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+    </svg>
+  )
+}
+
+/* ─── Course Modal ────────────────────────────────────────────────────────── */
+function CourseModal({ mode, initial, onSave, onClose, saving, error }) {
+  const [form, setForm] = useState(initial || EMPTY)
+  const isEdit = mode === 'edit'
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const canSave = form.courseCode.trim() && form.title.trim() && form.program
+
+  function submit() {
+    onSave({ ...form, yearLevel: Number(form.yearLevel), blocks: Number(form.blocks), unitsLecture: Number(form.unitsLecture), unitsLab: Number(form.unitsLab) })
+  }
+
+  return (
+    <div className="cp-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="cp-modal">
+
+        {/* Head */}
+        <div style={{ display:'flex', alignItems:'center', gap:12, padding:'18px 22px 16px', borderBottom:'1px solid #F0EDF9' }}>
+          <div style={{ width:36, height:36, borderRadius:11, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background: isEdit ? '#FEF3CD' : '#EDE9FB' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isEdit ? '#D97706' : '#7C6FCD'} strokeWidth="2">
+              {isEdit
+                ? <><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></>
+                : <><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>}
+            </svg>
+          </div>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:14, fontWeight:700, color:'#1a1a2e' }}>{isEdit ? 'Edit Course' : 'Add New Course'}</div>
+            <div style={{ fontSize:11.5, color:'#8883B0', marginTop:1 }}>{isEdit ? `Editing ${initial?.courseCode}` : 'Fill in the course details below'}</div>
+          </div>
+          <button className="cp-close-btn" onClick={onClose}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding:'20px 22px', display:'flex', flexDirection:'column', gap:14 }}>
+          <div className="cp-form-grid">
+            <div className="cp-field">
+              <label className="cp-label">Course Code *</label>
+              <input className="cp-inp" value={form.courseCode}
+                onChange={e => !isEdit && set('courseCode', e.target.value)}
+                placeholder="e.g. CS 101" readOnly={isEdit}
+                style={isEdit ? { background:'#FAFAFE', color:'#A0ABC0' } : {}} />
+            </div>
+            <div className="cp-field">
+              <label className="cp-label">Program *</label>
+              <select className="cp-sel" value={form.program} onChange={e => set('program', e.target.value)}>
+                <option value="" disabled>Select program…</option>
+                {PROGRAMS.map(p => <option key={p.value} value={p.value}>{p.value} — {p.full}</option>)}
+              </select>
+            </div>
+            <div className="cp-field s2">
+              <label className="cp-label">Course Title *</label>
+              <input className="cp-inp" value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Introduction to Computing" />
+            </div>
+            <div className="cp-field">
+              <label className="cp-label">Year Level</label>
+              <select className="cp-sel" value={form.yearLevel} onChange={e => set('yearLevel', e.target.value)}>
+                {Object.entries(YEAR_LABELS).map(([v,l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+            </div>
+            <div className="cp-field">
+              <label className="cp-label">Sections / Blocks</label>
+              <input className="cp-inp" type="number" min={1} value={form.blocks} onChange={e => set('blocks', e.target.value)} />
+            </div>
+            <div className="cp-field">
+              <label className="cp-label">Lecture Units</label>
+              <input className="cp-inp" type="number" min={0} value={form.unitsLecture} onChange={e => set('unitsLecture', e.target.value)} />
+            </div>
+            <div className="cp-field">
+              <label className="cp-label">Lab Units</label>
+              <input className="cp-inp" type="number" min={0} value={form.unitsLab} onChange={e => set('unitsLab', e.target.value)} />
+            </div>
+          </div>
+
+          <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderRadius:9, background:'#FAFAFE', border:'1px solid #F0EDF9' }}>
+            <div style={{ width:6, height:6, borderRadius:'50%', background:'#A99BE8', flexShrink:0 }} />
+            <span style={{ fontSize:11.5, color:'#8883B0' }}>
+              Total units: <strong style={{ color:'#7C6FCD' }}>{Number(form.unitsLecture)+Number(form.unitsLab)}</strong>
+              {form.program && <span style={{ marginLeft:10 }}>Program: <strong style={{ color:'#5a4fbf' }}>{form.program}</strong></span>}
+            </span>
+          </div>
+
+          {error && (
+            <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderRadius:9, background:'#FFF5F5', border:'1px solid #FECACA', fontSize:12, color:'#DC2626' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              {error}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding:'14px 22px', borderTop:'1px solid #F0EDF9', display:'flex', alignItems:'center', justifyContent:'flex-end', gap:8 }}>
+          <button className="cp-cancel" onClick={onClose}>Cancel</button>
+          <button className="cp-primary" onClick={submit} disabled={saving || !canSave}>
+            {saving ? <><Spin /> Saving…</> : (
+              <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>{isEdit ? 'Save Changes' : 'Add Course'}</>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ─── Main Page ───────────────────────────────────────────────────────────── */
+export default function CourseListPage() {
+  const [courses,    setCourses]    = useState([])
+  const [search,     setSearch]     = useState('')
+  const [progFilter, setProgFilter] = useState([])
+  const [yearFilter, setYearFilter] = useState([])
+  const [showImport, setShowImport] = useState(false)
+  const [showAdd,    setShowAdd]    = useState(false)
+  const [editTarget, setEditTarget] = useState(null)
+  const [saving,     setSaving]     = useState(false)
+  const [error,      setError]      = useState('')
+  const [selected,   setSelected]   = useState(new Set())
+  const [deleting,   setDeleting]   = useState(false)
+
+  async function load() { setCourses(await getCourses()); setSelected(new Set()) }
   useEffect(() => { load() }, [])
 
-  async function handleAdd(e) {
-    e.preventDefault()
-    setSaving(true)
-    setError('')
-    try {
-      await addCourse({
-        ...form,
-        yearLevel:    Number(form.yearLevel),
-        blocks:       Number(form.blocks),
-        unitsLecture: Number(form.unitsLecture),
-        unitsLab:     Number(form.unitsLab),
-      })
-      setForm(empty)
-      setShowForm(false)
-      load()
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to add course.')
-    } finally {
-      setSaving(false) }
+  const programs = useMemo(() => Array.from(new Set(courses.map(c=>c.program).filter(Boolean))).sort(), [courses])
+  const YEAR_OPTS = ['1','2','3','4']
+
+  const filtered = useMemo(() => courses.filter(c => {
+    const q = search.toLowerCase()
+    return (!q || `${c.courseCode} ${c.title}`.toLowerCase().includes(q))
+      && (progFilter.length === 0 || progFilter.includes(c.program))
+      && (yearFilter.length === 0 || yearFilter.includes(String(c.yearLevel)))
+  }), [courses, search, progFilter, yearFilter])
+
+  const hasFilter   = search || progFilter.length > 0 || yearFilter.length > 0
+  const filteredIds = filtered.map(c => c.id)
+  const allSel      = filteredIds.length > 0 && filteredIds.every(id => selected.has(id))
+  const someSel     = filteredIds.some(id => selected.has(id)) && !allSel
+  const selCount    = [...selected].filter(id => filteredIds.includes(id)).length
+
+  const togProg = p => setProgFilter(v => v.includes(p) ? v.filter(x=>x!==p) : [...v,p])
+  const togYear = y => setYearFilter(v => v.includes(y) ? v.filter(x=>x!==y) : [...v,y])
+  const togAll  = () => allSel
+    ? setSelected(p => { const n=new Set(p); filteredIds.forEach(id=>n.delete(id)); return n })
+    : setSelected(p => { const n=new Set(p); filteredIds.forEach(id=>n.add(id)); return n })
+  const togOne  = id => setSelected(p => { const n=new Set(p); n.has(id)?n.delete(id):n.add(id); return n })
+
+  async function handleAdd(data) {
+    setSaving(true); setError('')
+    try { await addCourse(data); setShowAdd(false); load() }
+    catch(err) { setError(err.response?.data?.detail || 'Failed to add course.') }
+    finally { setSaving(false) }
+  }
+
+  async function handleEdit(data) {
+    setSaving(true); setError('')
+    try { await updateCourse(data.courseCode, data.program, data); setEditTarget(null); load() }
+    catch(err) { setError(err.response?.data?.detail || 'Failed to update course.') }
+    finally { setSaving(false) }
   }
 
   async function handleDelete(code, prog) {
     if (!confirm(`Delete ${code}?`)) return
-    await deleteCourse(code, prog)
-    load()
+    await deleteCourse(code, prog); load()
   }
 
-  const filtered = courses.filter(c =>
-    `${c.courseCode} ${c.title} ${c.program}`.toLowerCase().includes(search.toLowerCase())
-  )
+  async function handleBulkDelete() {
+    const tgts = filtered.filter(c => selected.has(c.id))
+    if (!tgts.length || !confirm(`Delete ${tgts.length} course${tgts.length!==1?'s':''}?`)) return
+    setDeleting(true)
+    try { await Promise.all(tgts.map(c => deleteCourse(c.courseCode, c.program))); load() }
+    finally { setDeleting(false) }
+  }
 
   return (
-    <div className="page">
-      {/* ── Header ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <p className="page-title" style={{ margin: 0 }}>
-          Courses
-          <span style={{ fontSize: 13, fontWeight: 400, color: '#888', marginLeft: 10 }}>
-            {courses.length} total
-          </span>
-        </p>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setShowImport(true)}>↑ Import Excel</button>
-          <button className="primary" onClick={() => setShowForm(!showForm)}>+ Add course</button>
+    <div className="page" style={{ fontFamily:"'Poppins',sans-serif" }}>
+
+      {/* Header */}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
+        <div>
+          <h1 style={{ fontSize:20, fontWeight:700, color:'#1a1a2e', letterSpacing:'-.3px', margin:0 }}>Courses</h1>
+          <p style={{ fontSize:12, color:'#8883B0', marginTop:3 }}>
+            {courses.length} total course{courses.length!==1?'s':''}
+            {hasFilter && filtered.length!==courses.length && <span style={{ marginLeft:6, color:'#7C6FCD', fontWeight:600 }}>· {filtered.length} shown</span>}
+          </p>
+        </div>
+        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          <button className="cp-ghost" onClick={() => setShowImport(true)}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            Import Courses
+          </button>
+          <button className="cp-primary" onClick={() => { setShowAdd(true); setError('') }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add Course
+          </button>
         </div>
       </div>
 
-      {/* ── Add form ── */}
-      {showForm && (
-        <form
-          onSubmit={handleAdd}
-          className="card"
-          style={{ marginBottom: 16, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}
-        >
-          <input placeholder="Course code *"
-            value={form.courseCode} onChange={e => setForm(f => ({...f, courseCode: e.target.value}))} required />
-          <input placeholder="Title *" style={{ gridColumn: 'span 2' }}
-            value={form.title}      onChange={e => setForm(f => ({...f, title:      e.target.value}))} required />
-          <input placeholder="Program *"
-            value={form.program}    onChange={e => setForm(f => ({...f, program:    e.target.value}))} required />
-          <input placeholder="Year level" type="number" min={1} max={4}
-            value={form.yearLevel}    onChange={e => setForm(f => ({...f, yearLevel:    e.target.value}))} />
-          <input placeholder="Sections"   type="number" min={1}
-            value={form.blocks}         onChange={e => setForm(f => ({...f, blocks:         e.target.value}))} />
-          <input placeholder="Lec units"  type="number" min={0}
-            value={form.unitsLecture}   onChange={e => setForm(f => ({...f, unitsLecture:   e.target.value}))} />
-          <input placeholder="Lab units"  type="number" min={0}
-            value={form.unitsLab}       onChange={e => setForm(f => ({...f, unitsLab:       e.target.value}))} />
-
-          {error && <p className="error-msg" style={{ gridColumn: 'span 4' }}>{error}</p>}
-
-          <div style={{ gridColumn: 'span 4', display: 'flex', gap: 8 }}>
-            <button className="primary" type="submit" disabled={saving}>
-              {saving ? 'Saving…' : 'Save'}
+      {/* Filter bar */}
+      <div style={{ background:'#fff', borderRadius:12, padding:'10px 16px', border:'1px solid #E8E4F8', boxShadow:'0 1px 6px rgba(124,111,205,0.06)', marginBottom:14, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+        <div style={{ position:'relative', flex:'0 0 220px' }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#B0ABCC" strokeWidth="2"
+            style={{ position:'absolute', left:9, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}>
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+          <input placeholder="Search code or title…" value={search} onChange={e=>setSearch(e.target.value)}
+            style={{ paddingLeft:28, width:'100%', fontSize:12, padding:'6px 10px 6px 28px', fontFamily:'Poppins,sans-serif', border:'1.5px solid #E8E4F8', borderRadius:9, outline:'none', color:'#1a1a2e', background:'#FAFAFE', boxSizing:'border-box' }} />
+        </div>
+        <div style={{ width:1, height:20, background:'#E8E4F8', flexShrink:0 }} />
+        <span style={{ fontSize:10.5, fontWeight:700, color:'#C0BBDC', textTransform:'uppercase', letterSpacing:'.8px', whiteSpace:'nowrap', flexShrink:0 }}>Program</span>
+        <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+          {programs.map(p => <Pill key={p} label={p} active={progFilter.includes(p)} onClick={()=>togProg(p)} />)}
+        </div>
+        <div style={{ width:1, height:20, background:'#E8E4F8', flexShrink:0 }} />
+        <span style={{ fontSize:10.5, fontWeight:700, color:'#C0BBDC', textTransform:'uppercase', letterSpacing:'.8px', whiteSpace:'nowrap', flexShrink:0 }}>Year</span>
+        <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+          {YEAR_OPTS.map(y => <Pill key={y} label={`${YEAR_SHORT[y]} Yr`} active={yearFilter.includes(y)} onClick={()=>togYear(y)} />)}
+        </div>
+        {hasFilter && (
+          <>
+            <div style={{ width:1, height:20, background:'#E8E4F8', flexShrink:0 }} />
+            <button onClick={()=>{setSearch('');setProgFilter([]);setYearFilter([])}}
+              style={{ fontSize:11.5, color:'#7C6FCD', background:'#EEEAFB', border:'none', padding:'4px 11px', borderRadius:99, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap', fontFamily:'Poppins,sans-serif' }}>
+              Clear all
             </button>
-            <button type="button" onClick={() => { setShowForm(false); setError('') }}>Cancel</button>
+          </>
+        )}
+      </div>
+
+      {/* Bulk bar */}
+      {selCount > 0 && (
+        <div style={{ background:'linear-gradient(135deg,#3D3580,#2E2660)', borderRadius:10, padding:'10px 16px', marginBottom:12, display:'flex', alignItems:'center', gap:12, boxShadow:'0 4px 16px rgba(61,53,128,0.22)', animation:'cpSlideIn 0.18s ease' }}>
+          <div style={{ width:28, height:28, borderRadius:8, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
-        </form>
+          <span style={{ fontSize:13, fontWeight:600, color:'#fff', flex:1 }}>{selCount} course{selCount!==1?'s':''} selected</span>
+          <button onClick={()=>setSelected(new Set())}
+            style={{ background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.18)', color:'rgba(255,255,255,0.85)', fontSize:12, fontWeight:500, padding:'5px 13px', borderRadius:8, cursor:'pointer', fontFamily:'Poppins,sans-serif' }}>
+            Deselect all
+          </button>
+          <button onClick={handleBulkDelete} disabled={deleting}
+            style={{ background:'#DC2626', border:'none', color:'#fff', fontSize:12, fontWeight:600, padding:'5px 14px', borderRadius:8, display:'flex', alignItems:'center', gap:5, cursor:'pointer', fontFamily:'Poppins,sans-serif' }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+            {deleting ? 'Deleting…' : `Delete ${selCount}`}
+          </button>
+        </div>
       )}
 
-      {/* ── Search ── */}
-      <input
-        placeholder="Search by code, title, or program…"
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        style={{ maxWidth: 340, marginBottom: 16 }}
-      />
-
-      {/* ── Table ── */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <table>
+      {/* Table */}
+      <div style={{ background:'#fff', borderRadius:14, border:'1px solid #E8E4F8', boxShadow:'0 2px 10px rgba(124,111,205,0.07)', overflow:'hidden' }}>
+        <table style={{ width:'100%', borderCollapse:'collapse' }}>
           <thead>
-            <tr>
-              <th>Code</th><th>Title</th><th>Program</th>
-              <th>Year</th><th>Sections</th><th>Lec</th><th>Lab</th><th></th>
+            <tr style={{ background:'#FAFAFE', borderBottom:'1px solid #F0EDF9' }}>
+              <th style={{ width:44, padding:'10px 8px 10px 16px' }}>
+                <Checkbox checked={allSel} indeterminate={someSel} onChange={togAll} />
+              </th>
+              {[['Code'],['Title'],['Program'],['Year','center'],['Sections','center'],['Lec','center'],['Lab','center'],['Total','center'],['']].map(([h,align],i)=>(
+                <th key={i} style={{ padding:'10px 12px', fontSize:10.5, fontWeight:700, color:'#A0ABC0', textTransform:'uppercase', letterSpacing:'.6px', textAlign:align||'left' }}>{h}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: 24, color: '#888' }}>
-                  {courses.length === 0 ? 'No courses yet — add one or import from Excel.' : 'No results for that search.'}
-                </td>
-              </tr>
-            )}
-            {filtered.map(c => (
-              <tr key={c.id}>
-                <td style={{ fontWeight: 500 }}>{c.courseCode}</td>
-                <td>{c.title}</td>
-                <td>{c.program}</td>
-                <td style={{ textAlign: 'center' }}>{c.yearLevel}</td>
-                <td style={{ textAlign: 'center' }}>{c.blocks}</td>
-                <td style={{ textAlign: 'center' }}>{c.unitsLecture}</td>
-                <td style={{ textAlign: 'center' }}>{c.unitsLab}</td>
-                <td>
-                  <button className="danger" onClick={() => handleDelete(c.courseCode, c.program)}>
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {filtered.length === 0 ? (
+              <tr><td colSpan={10} style={{ textAlign:'center', padding:'40px 0', color:'#B0ABCC' }}>
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
+                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#D8D3F5" strokeWidth="1.5">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                  </svg>
+                  <span style={{ fontSize:13 }}>{courses.length===0?'No courses yet — add one or import from Excel.':'No courses match the current filters.'}</span>
+                </div>
+              </td></tr>
+            ) : filtered.map(c => {
+              const total = (c.unitsLecture||0)+(c.unitsLab||0)
+              const isSel = selected.has(c.id)
+              return (
+                <tr key={c.id} style={{ background:isSel?'#F7F5FD':'transparent', borderBottom:'1px solid #F5F4FB', transition:'background 0.1s' }}>
+                  <td style={{ padding:'10px 8px 10px 16px' }} onClick={e=>e.stopPropagation()}>
+                    <Checkbox checked={isSel} onChange={()=>togOne(c.id)} />
+                  </td>
+                  <td style={{ padding:'10px 12px' }}>
+                    <span style={{ display:'inline-block', padding:'2px 9px', background:'#EEEAFB', color:'#7C6FCD', borderRadius:99, fontSize:11, fontWeight:700, letterSpacing:'.3px' }}>{c.courseCode}</span>
+                  </td>
+                  <td style={{ padding:'10px 12px', fontWeight:500, color:'#1a1a2e', fontSize:13 }}>{c.title}</td>
+                  <td style={{ padding:'10px 12px' }}>
+                    <span style={{ display:'inline-block', padding:'2px 9px', borderRadius:99, fontSize:11, fontWeight:600 }} className={progClass(c.program)}>{c.program}</span>
+                  </td>
+                  <td style={{ padding:'10px 12px', textAlign:'center' }}>
+                    <span style={{ fontSize:12, color:'#8883B0', fontWeight:500 }}>{YEAR_SHORT[c.yearLevel]??c.yearLevel}</span>
+                  </td>
+                  <td style={{ padding:'10px 12px', textAlign:'center', fontWeight:600, color:'#1a1a2e' }}>{c.blocks}</td>
+                  <td style={{ padding:'10px 12px', textAlign:'center', color:'#8883B0' }}>{c.unitsLecture}</td>
+                  <td style={{ padding:'10px 12px', textAlign:'center', color:'#8883B0' }}>{c.unitsLab}</td>
+                  <td style={{ padding:'10px 12px', textAlign:'center' }}>
+                    <span style={{ fontSize:12, fontWeight:700, color:'#7C6FCD' }}>{total}</span>
+                  </td>
+                  <td style={{ padding:'10px 14px 10px 8px' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                      <button className="cp-edit-btn" title="Edit course" onClick={()=>{setEditTarget(c);setError('')}}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </button>
+                      <button className="cp-delete" onClick={()=>handleDelete(c.courseCode,c.program)}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                          <path d="M10 11v6M14 11v6"/>
+                        </svg>
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
+        {filtered.length > 0 && (
+          <div style={{ padding:'10px 16px', borderTop:'1px solid #F5F4FB', display:'flex', alignItems:'center' }}>
+            <span style={{ fontSize:12, color:'#B0ABCC' }}>
+              Showing {filtered.length} of {courses.length} courses
+              {selCount>0 && <span style={{ marginLeft:8, color:'#7C6FCD', fontWeight:600 }}>· {selCount} selected</span>}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* ── Import modal ── */}
-      {showImport && (
-        <ImportCoursesModal
-          onClose={() => setShowImport(false)}
-          onImported={() => { load(); setShowImport(false) }}
-        />
-      )}
+      {showAdd && <CourseModal mode="add" onSave={handleAdd} onClose={()=>{setShowAdd(false);setError('')}} saving={saving} error={error} />}
+      {editTarget && <CourseModal mode="edit" initial={{...editTarget,yearLevel:String(editTarget.yearLevel)}} onSave={handleEdit} onClose={()=>{setEditTarget(null);setError('')}} saving={saving} error={error} />}
+      {showImport && <ImportCoursesModal onClose={()=>setShowImport(false)} onImported={()=>{load();setShowImport(false)}} />}
     </div>
   )
 }
