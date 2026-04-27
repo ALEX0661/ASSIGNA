@@ -21,10 +21,12 @@ def assignment_quality(user=Depends(admin_only)):
             "perFaculty": [],
         }
 
+    # schedule_dict is a dict keyed by schedule_id — iterate over .values()
+    events      = schedule_dict.values()
     total       = len(schedule_dict)
-    auto        = [e for e in schedule_dict if e.get("facultyAutoAssigned")]
-    tba         = [e for e in schedule_dict if e.get("faculty") == "TBA"]
-    scored      = [e for e in schedule_dict if e.get("assignmentScore") is not None]
+    auto        = [e for e in events if e.get("facultyAutoAssigned")]
+    tba         = [e for e in events if e.get("faculty") == "TBA"]
+    scored      = [e for e in events if e.get("assignmentScore") is not None]
     in_window   = [e for e in scored if e.get("assignmentScore", 0) >= 0.6]
     on_pref_day = [e for e in scored if e.get("assignmentScore", 0) >= 0.7]
 
@@ -35,7 +37,7 @@ def assignment_quality(user=Depends(admin_only)):
 
     # Per-faculty breakdown
     fac_map = {}
-    for e in schedule_dict:
+    for e in schedule_dict.values():
         name = e.get("faculty", "TBA")
         if name == "TBA":
             continue
@@ -100,7 +102,8 @@ def workload(user=Depends(admin_only)):
     """Faculty workload summary for the bar chart."""
     faculty_list = get_faculty()
     fac_units    = {}
-    for e in schedule_dict:
+    # schedule_dict is a dict keyed by schedule_id — iterate over .values()
+    for e in schedule_dict.values():
         name = e.get("faculty", "TBA")
         if name == "TBA":
             continue
