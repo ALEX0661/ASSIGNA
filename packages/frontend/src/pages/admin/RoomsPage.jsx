@@ -39,6 +39,7 @@ if (!document.getElementById('rooms-page-style')) {
       border: 1.5px solid #E8E4F8; cursor: pointer;
       background: #fff; color: #C0BBDC;
       transition: all 0.13s; opacity: 0.6;
+      padding: 0;
     }
     .room-del:hover { background: #FEE2E2; border-color: #FECACA; color: #DC2626; opacity: 1; }
 
@@ -90,8 +91,26 @@ if (!document.getElementById('rooms-page-style')) {
 
     @keyframes slideInR { from{opacity:0;transform:translateY(-3px)} to{opacity:1;transform:translateY(0)} }
     @keyframes spin-r { to{transform:rotate(360deg)} }
+
+    /* Skeleton Animations */
+    @keyframes rmShimmer {
+      0%   { background-position: -400px 0 }
+      100% { background-position:  400px 0 }
+    }
+    .rm-skeleton {
+      background: linear-gradient(90deg, #F0EDF9 25%, #E4DEFC 50%, #F0EDF9 75%);
+      background-size: 800px 100%;
+      animation: rmShimmer 1.4s ease-in-out infinite;
+      border-radius: 7px;
+    }
   `
   document.head.appendChild(s)
+}
+
+function Skel({ w = '100%', h = 14, r = 7, style = {} }) {
+  return (
+    <div className="rm-skeleton" style={{ width: w, height: h, borderRadius: r, flexShrink: 0, ...style }} />
+  )
 }
 
 function SaveBtn({ saving, saved, onClick }) {
@@ -117,7 +136,7 @@ function SaveBtn({ saving, saved, onClick }) {
   )
 }
 
-function RoomList({ rooms, setRooms, type }) {
+function RoomList({ rooms, setRooms, type, loading }) {
   const dragIdx = useRef(null)
   const [overIdx, setOverIdx] = useState(null)
 
@@ -136,6 +155,19 @@ function RoomList({ rooms, setRooms, type }) {
 
   const ac = type === 'lec' ? '#7C6FCD' : '#D97706'
   const bg = type === 'lec' ? '#EDE9FB' : '#FEF3CD'
+
+  if (loading) return (
+    <div className="rooms-list">
+      {[1, 2, 3].map(i => (
+        <div key={i} className="room-row" style={{ padding: '6px 10px' }}>
+          <Skel w={14} h={14} r={4} />
+          <Skel w={18} h={18} r={5} />
+          <Skel w={120} h={14} r={6} style={{ flex: 1, margin: '0 4px' }} />
+          <Skel w={22} h={22} r={6} />
+        </div>
+      ))}
+    </div>
+  )
 
   if (rooms.length === 0) return (
     <div className="empty-room-state">
@@ -181,8 +213,9 @@ function RoomList({ rooms, setRooms, type }) {
             title="Remove room"
             onClick={() => setRooms(rooms.filter(x => x !== r))}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
         </div>
@@ -191,25 +224,32 @@ function RoomList({ rooms, setRooms, type }) {
   )
 }
 
-function AddRow({ value, onChange, onAdd, placeholder }) {
+function AddRow({ value, onChange, onAdd, placeholder, loading }) {
   return (
     <div style={{ display:'flex', gap:6 }}>
-      <input
-        className="room-add-input" value={value} onChange={e => onChange(e.target.value)}
-        onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), onAdd())}
-        placeholder={placeholder}
-      />
-      <button className="rm-add-btn" onClick={onAdd}>
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-        Add
-      </button>
+      {loading ? (
+        <Skel w="100%" h={32} r={8} />
+      ) : (
+        <>
+          <input
+            className="room-add-input" value={value} onChange={e => onChange(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), onAdd())}
+            placeholder={placeholder}
+          />
+          <button className="rm-add-btn" onClick={onAdd}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add
+          </button>
+        </>
+      )}
     </div>
   )
 }
 
 export default function RoomsPage() {
+  const [loading, setLoading] = useState(true) // <-- Added loading state
   const [lecture, setLecture] = useState([])
   const [lab,     setLab]     = useState([])
   const [newLec,  setNewLec]  = useState('')
@@ -222,6 +262,7 @@ export default function RoomsPage() {
     getRooms()
       .then(r => { setLecture(r.lecture || []); setLab(r.lab || []) })
       .catch(() => setError('Failed to load rooms.'))
+      .finally(() => setLoading(false))
   }, [])
 
   function addLecture() {
@@ -242,25 +283,8 @@ export default function RoomsPage() {
     finally { setSaving(false) }
   }
 
-  const total = lecture.length + lab.length
-
   return (
     <div className="page">
-      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:16 }}>
-        <div>
-          <p className="page-title" style={{ marginBottom:4 }}>Rooms</p>
-          <p style={{ fontSize:12.5, color:'#8883B0' }}>
-            Drag rows to set solver priority — rooms listed first get assigned first.
-          </p>
-        </div>
-        {total > 0 && (
-          <div style={{ display:'flex', gap:6, flexShrink:0, marginTop:2 }}>
-            <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:'#EDE9FB', color:'#7C6FCD' }}>{lecture.length} lecture</span>
-            <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:'#FEF3CD', color:'#D97706' }}>{lab.length} lab</span>
-          </div>
-        )}
-      </div>
-
       {error && (
         <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12, padding:'8px 12px', borderRadius:9, background:'#FFF5F5', border:'1px solid #FECACA', fontSize:12, color:'#DC2626' }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -281,13 +305,15 @@ export default function RoomsPage() {
             </div>
             <div style={{ flex:1 }}>
               <div style={{ fontSize:12.5, fontWeight:700, color:'#1a1a2e' }}>Lecture Rooms</div>
-              <div style={{ fontSize:11, color:'#8883B0' }}>{lecture.length} room{lecture.length!==1?'s':''} configured</div>
+              <div style={{ fontSize:11, color:'#8883B0' }}>
+                {loading ? <Skel w={100} h={11} style={{ marginTop: 2 }} /> : `${lecture.length} room${lecture.length!==1?'s':''} configured`}
+              </div>
             </div>
-            <SaveBtn saving={saving} saved={saved} onClick={handleSave} />
+            {loading ? <Skel w={65} h={28} r={8} /> : <SaveBtn saving={saving} saved={saved} onClick={handleSave} />}
           </div>
           <div style={{ padding:'12px 14px' }}>
-            <RoomList rooms={lecture} setRooms={r => { setLecture(r); setSaved(false) }} type="lec" />
-            <AddRow value={newLec} onChange={setNewLec} onAdd={addLecture} placeholder="e.g. Room 101" />
+            <RoomList rooms={lecture} setRooms={r => { setLecture(r); setSaved(false) }} type="lec" loading={loading} />
+            <AddRow value={newLec} onChange={setNewLec} onAdd={addLecture} placeholder="e.g. Room 101" loading={loading} />
           </div>
         </div>
 
@@ -301,13 +327,15 @@ export default function RoomsPage() {
             </div>
             <div style={{ flex:1 }}>
               <div style={{ fontSize:12.5, fontWeight:700, color:'#1a1a2e' }}>Lab Rooms</div>
-              <div style={{ fontSize:11, color:'#8883B0' }}>{lab.length} room{lab.length!==1?'s':''} configured</div>
+              <div style={{ fontSize:11, color:'#8883B0' }}>
+                {loading ? <Skel w={100} h={11} style={{ marginTop: 2 }} /> : `${lab.length} room${lab.length!==1?'s':''} configured`}
+              </div>
             </div>
-            <SaveBtn saving={saving} saved={saved} onClick={handleSave} />
+            {loading ? <Skel w={65} h={28} r={8} /> : <SaveBtn saving={saving} saved={saved} onClick={handleSave} />}
           </div>
           <div style={{ padding:'12px 14px' }}>
-            <RoomList rooms={lab} setRooms={r => { setLab(r); setSaved(false) }} type="lab" />
-            <AddRow value={newLab} onChange={setNewLab} onAdd={addLab} placeholder="e.g. ICT Lab 1" />
+            <RoomList rooms={lab} setRooms={r => { setLab(r); setSaved(false) }} type="lab" loading={loading} />
+            <AddRow value={newLab} onChange={setNewLab} onAdd={addLab} placeholder="e.g. ICT Lab 1" loading={loading} />
           </div>
         </div>
 

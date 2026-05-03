@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { getAssignmentQuality, getWorkload, getFacultyPreview, listSaved, loadSaved } from '../../services/api'
+import { useScheduleStore } from '../../store/scheduleStore'
 
 /* ─────────────────────────────────────────────
    Styles
@@ -10,9 +11,7 @@ if (!document.getElementById('analytics-style')) {
   s.textContent = `
     @keyframes spin    { to { transform:rotate(360deg) } }
     @keyframes fadeUp  { from{opacity:0;transform:translateY(7px)} to{opacity:1;transform:translateY(0)} }
-    @keyframes shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
     @keyframes modalIn { from{opacity:0;transform:scale(.96) translateY(6px)} to{opacity:1;transform:scale(1) translateY(0)} }
-    @keyframes an-toast-in { from{opacity:0;transform:translateX(-50%) translateY(12px) scale(.96)} to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)} }
 
     .a-tab {
       padding:7px 16px; border-radius:8px; border:none;
@@ -39,10 +38,6 @@ if (!document.getElementById('analytics-style')) {
     .kcard:nth-child(4){animation-delay:.16s}
     .sec { animation:fadeUp 0.26s ease both; }
 
-    .skel {
-      background:linear-gradient(90deg,#F0EDF9 25%,#E8E4F8 50%,#F0EDF9 75%);
-      background-size:400px 100%; animation:shimmer 1.4s infinite linear; border-radius:8px;
-    }
     .xrow { transition:background 0.12s; cursor:pointer; }
     .xrow:hover { background:#FAFAFE; }
     .chip {
@@ -76,6 +71,7 @@ if (!document.getElementById('analytics-style')) {
       display:flex; align-items:center; justify-content:center;
       width:30px; height:30px; border-radius:8px; border:none;
       cursor:pointer; transition:all 0.15s; position:relative;
+      padding:0; background:#fff; color:#D97706;
     }
     .warn-icon-btn:hover { background:#FEF3CD; }
     .warn-dot {
@@ -107,12 +103,13 @@ if (!document.getElementById('analytics-style')) {
     .sort-col:hover { color:#7C6FCD; }
     .sort-col.active { color:#7C6FCD; }
 
-    /* Toast */
-    .an-toast-wrap { position:fixed; bottom:24px; left:50%; z-index:9999; display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none; transform:translateX(-50%); }
-    .an-toast { display:flex; align-items:center; gap:9px; padding:10px 16px; border-radius:12px; font-family:'Poppins',sans-serif; font-size:12.5px; font-weight:500; box-shadow:0 8px 28px rgba(26,26,46,0.18); animation:an-toast-in .22s cubic-bezier(.4,0,.2,1); white-space:nowrap; pointer-events:auto; }
-    .an-toast.success { background:#1a1a2e; color:#6EE7B7; }
-    .an-toast.error   { background:#1a1a2e; color:#FCA5A5; }
-    .an-toast.info    { background:#1a1a2e; color:#A99BE8; }
+    /* Toast Notifications - Lavender & White Theme (Fixed Animation) */
+    @keyframes an-toast-in { from{opacity:0;transform:scale(.96) translateY(12px)} to{opacity:1;transform:scale(1) translateY(0)} }
+    .an-toast-wrap { position:fixed; bottom:24px; left:50%; z-index:9999; display:flex; flex-direction:column; gap:10px; align-items:center; pointer-events:none; transform:translateX(-50%); }
+    .an-toast { display:flex; align-items:center; gap:10px; padding:12px 20px; border-radius:12px; font-family:'Poppins',sans-serif; font-size:13px; font-weight:600; animation:an-toast-in .22s cubic-bezier(.4,0,.2,1); white-space:nowrap; pointer-events:auto; }
+    .an-toast.success { background:linear-gradient(135deg,#7C6FCD,#5a4fbf); color:#fff; box-shadow:0 8px 24px rgba(124,111,205,0.3); border:1px solid #A99BE8; }
+    .an-toast.error   { background:#fff; color:#DC2626; border:1.5px solid #FECACA; box-shadow:0 8px 24px rgba(220,38,38,0.15); }
+    .an-toast.info    { background:#fff; color:#7C6FCD; border:1.5px solid #D8D3F5; box-shadow:0 8px 24px rgba(124,111,205,0.15); }
 
     /* Export button */
     .export-btn {
@@ -122,6 +119,18 @@ if (!document.getElementById('analytics-style')) {
       font-family:'Poppins',sans-serif; cursor:pointer; transition:all .15s;
     }
     .export-btn:hover { border-color:#D8D3F5; color:#3D3580; background:#F5F4FB; }
+
+    /* Skeleton Loading Keyframes & Styles */
+    @keyframes anShimmer {
+      0%   { background-position: -400px 0 }
+      100% { background-position:  400px 0 }
+    }
+    .an-skeleton {
+      background: linear-gradient(90deg, #F0EDF9 25%, #E4DEFC 50%, #F0EDF9 75%);
+      background-size: 800px 100%;
+      animation: anShimmer 1.4s ease-in-out infinite;
+      border-radius: 7px;
+    }
   `
   document.head.appendChild(s)
 }
@@ -168,9 +177,9 @@ function useToast() {
 
 function ToastContainer({ toasts }) {
   const icons = {
-    success: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>,
-    error:   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>,
-    info:    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/></svg>,
+    success: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>,
+    error:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>,
+    info:    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/></svg>,
   }
   return (
     <div className="an-toast-wrap">
@@ -199,8 +208,8 @@ function downloadCSV(filename, rows, headers) {
 /* ─────────────────────────────────────────────
    Skeleton
 ───────────────────────────────────────────── */
-function Sk({ w = '100%', h = 14, r = 8 }) {
-  return <div className="skel" style={{ width: w, height: h, borderRadius: r }} />
+function Skel({ w = '100%', h = 14, r = 7, style = {} }) {
+  return <div className="an-skeleton" style={{ width: w, height: h, borderRadius: r, flexShrink: 0, ...style }} />
 }
 
 function SkeletonPage() {
@@ -209,15 +218,15 @@ function SkeletonPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
         {[...Array(4)].map((_, i) => (
           <div key={i} style={{ background: '#fff', borderRadius: 16, padding: 20, border: '1px solid #E8E4F8', display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <Sk w={38} h={38} r={10} /><Sk w="55%" h={26} /><Sk w="70%" h={11} />
+            <Skel w={38} h={38} r={10} /><Skel w="55%" h={26} /><Skel w="70%" h={11} />
           </div>
         ))}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         {[...Array(2)].map((_, i) => (
           <div key={i} style={{ background: '#fff', borderRadius: 16, padding: '20px 22px', border: '1px solid #E8E4F8', display: 'flex', gap: 18, alignItems: 'center' }}>
-            <Sk w={80} h={80} r={99} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}><Sk w="60%" h={13} /><Sk w="80%" h={11} /></div>
+            <Skel w={80} h={80} r="50%" />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}><Skel w="60%" h={13} /><Skel w="80%" h={11} /></div>
           </div>
         ))}
       </div>
@@ -258,7 +267,7 @@ function AlertIconModal({ overloadCount, warnCount }) {
       </svg>
     ),
     title: `${warnCount} courses may lack eligible faculty`,
-    desc:  'PE, NSTP, MAT and GEC courses are excluded as they are managed by other departments.',
+    desc:  'PE, NSTP, MAT, PATHFIT and GEC courses are excluded — they are not part of the department scheduling logic and are managed externally.',
     color: '#D97706', bg: '#FEF3CD',
   })
 
@@ -322,21 +331,31 @@ function KpiCard({ label, value, sub, icon, color, bg }) {
   return (
     <div className="kcard" onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{
-        background: '#fff', borderRadius: 16, padding: '18px 20px',
+        background: '#fff', borderRadius: 14, padding: '16px 20px',
         border: `1px solid ${hov ? '#D8D3F5' : '#E8E4F8'}`,
-        boxShadow: hov ? `0 6px 22px ${color}1A` : '0 2px 8px rgba(124,111,205,0.06)',
+        boxShadow: hov ? `0 6px 20px rgba(124,111,205,0.08)` : '0 2px 8px rgba(124,111,205,0.04)',
         transform: hov ? 'translateY(-2px)' : 'none',
         transition: 'all 0.18s cubic-bezier(.4,0,.2,1)',
-        display: 'flex', flexDirection: 'column', gap: 12,
-        position: 'relative', overflow: 'hidden',
+        display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
       }}>
-      <div style={{ position: 'absolute', top: -20, right: -20, width: 68, height: 68, borderRadius: '50%', background: bg, opacity: 0.5, pointerEvents: 'none' }} />
-      <div style={{ width: 36, height: 36, borderRadius: 10, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color, flexShrink: 0 }}>{icon}</div>
-      <div>
-        <div style={{ fontSize: 26, fontWeight: 700, color: '#1a1a2e', lineHeight: 1, letterSpacing: '-0.5px' }}>{value ?? '—'}</div>
-        <div style={{ fontSize: 11.5, color: '#8883B0', marginTop: 4, fontWeight: 500 }}>{label}</div>
-        {sub && <div style={{ fontSize: 11, color: '#B0ABCC', marginTop: 2 }}>{sub}</div>}
+      
+      {/* Top row: Title and Icon */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: '#8883B0' }}>{label}</span>
+        <div style={{ 
+          width: 36, height: 36, borderRadius: 10, background: bg, color: color, 
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 
+        }}>
+          {icon}
+        </div>
       </div>
+
+      {/* Bottom row: Big Number and Subtext */}
+      <div>
+        <div style={{ fontSize: 28, fontWeight: 700, color: '#1a1a2e', lineHeight: 1, letterSpacing: '-0.5px' }}>{value ?? '—'}</div>
+        {sub && <div style={{ fontSize: 11.5, color: '#B0ABCC', marginTop: 6, fontWeight: 500 }}>{sub}</div>}
+      </div>
+      
     </div>
   )
 }
@@ -394,27 +413,61 @@ function ScoreBadge({ score }) {
 /* ─────────────────────────────────────────────
    Workload bar
 ───────────────────────────────────────────── */
-function WorkloadBar({ label, value, max, overloaded }) {
+function WorkloadBar({ label, value, max, overloaded, status, distinctCourses, tierLabel, partTimeExceeded }) {
   const pct    = max > 0 ? Math.min((value / max) * 100, 100) : 0
+  const isAmber = overloaded && partTimeExceeded   // part-time exceeded → amber
   const barCol = overloaded
-    ? 'linear-gradient(90deg,#E74C3C,#C0392B)'
-    : pct > 85 ? 'linear-gradient(90deg,#F59E0B,#D97706)'
-    : 'linear-gradient(90deg,#A99BE8,#7C6FCD)'
+    ? isAmber
+      ? 'linear-gradient(90deg,#F59E0B,#D97706)'
+      : 'linear-gradient(90deg,#E74C3C,#C0392B)'
+    : pct > 85
+      ? 'linear-gradient(90deg,#F59E0B,#D97706)'
+      : 'linear-gradient(90deg,#A99BE8,#7C6FCD)'
+
+  const avatarBg    = overloaded ? (isAmber ? '#FEF3CD' : '#FFE8E8') : '#EEEAFB'
+  const avatarColor = overloaded ? (isAmber ? '#D97706' : '#C0392B') : '#7C6FCD'
+  const countColor  = overloaded ? (isAmber ? '#D97706' : '#C0392B') : '#8883B0'
+
+  // Tiny status pill  FT / PT
+  const statusPill = status === 'part-time'
+    ? { label: 'PT', bg: '#F5F4FB', color: '#8883B0' }
+    : { label: 'FT', bg: '#E6FAF3', color: '#059669' }
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #F5F4FB' }}>
-      <div style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0, background: overloaded ? '#FFE8E8' : '#EEEAFB', color: overloaded ? '#C0392B' : '#7C6FCD', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700 }}>{mkIni(label)}</div>
+      <div style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0, background: avatarBg, color: avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700 }}>{mkIni(label)}</div>
+
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, alignItems: 'center' }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: '#1a1a2e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
-          <span style={{ fontSize: 11, color: overloaded ? '#C0392B' : '#8883B0', fontWeight: overloaded ? 700 : 400, flexShrink: 0, marginLeft: 8 }}>{value}/{max}</span>
+        {/* Name row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#1a1a2e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+            {/* FT / PT badge */}
+            <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 99, background: statusPill.bg, color: statusPill.color, flexShrink: 0 }}>{statusPill.label}</span>
+            {/* Distinct courses */}
+            {distinctCourses > 0 && (
+              <span style={{ fontSize: 9, color: '#B0ABCC', flexShrink: 0 }}>{distinctCourses} course{distinctCourses !== 1 ? 's' : ''}</span>
+            )}
+          </div>
+          <span style={{ fontSize: 11, color: countColor, fontWeight: overloaded ? 700 : 400, flexShrink: 0, marginLeft: 8 }}>{value}/{max}</span>
         </div>
-        <div style={{ height: 5, background: '#F0EDF9', borderRadius: 99, overflow: 'hidden' }}>
+
+        {/* Progress bar */}
+        <div style={{ height: 5, background: '#F0EDF9', borderRadius: 99, overflow: 'hidden', marginBottom: 2 }}>
           <div style={{ height: '100%', width: `${pct}%`, background: barCol, borderRadius: 99, transition: 'width 0.7s cubic-bezier(.4,0,.2,1)' }} />
         </div>
+
+        {/* Tier label */}
+        {tierLabel && (
+          <div style={{ fontSize: 9.5, color: '#C0BBDC', lineHeight: 1.3 }}>{tierLabel}</div>
+        )}
       </div>
+
+      {/* Right badge */}
       {overloaded
-        ? <span style={{ flexShrink: 0, background: '#FFE8E8', color: '#C0392B', fontSize: 9.5, fontWeight: 700, padding: '2px 7px', borderRadius: 99 }}>Over</span>
+        ? <span style={{ flexShrink: 0, background: isAmber ? '#FEF3CD' : '#FFE8E8', color: isAmber ? '#D97706' : '#C0392B', fontSize: 9.5, fontWeight: 700, padding: '2px 7px', borderRadius: 99 }}>
+            {isAmber ? 'PT Exc.' : 'Over'}
+          </span>
         : <span style={{ flexShrink: 0, fontSize: 10, color: '#C8CCCC', minWidth: 28, textAlign: 'right' }}>{Math.round(pct)}%</span>
       }
     </div>
@@ -499,13 +552,18 @@ function OverviewSection({ quality, onExport }) {
       icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
     },
     {
-      label: 'Avg quality score', value: quality.avgScore ?? '—', sub: 'target ≥ 0.70',
-      color: '#059669', bg: '#DCFCE7',
-      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+      label: 'Conflict rate',
+      value: quality.totalConflicts != null ? quality.totalConflicts : '—',
+      sub: quality.totalConflicts > 0 ? 'sessions with conflicts' : quality.totalConflicts === 0 ? 'no conflicts detected' : 'no schedule loaded',
+      color: quality.totalConflicts > 0 ? '#DC2626' : '#059669',
+      bg:    quality.totalConflicts > 0 ? '#FEE2E2' : '#DCFCE7',
+      icon: quality.totalConflicts > 0
+        ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
     },
     {
       label: 'TBA sessions', value: quality.tbaSessions,
-      sub: quality.tbaSessions > 0 ? 'need manual assignment' : 'all sessions covered',
+      sub: quality.tbaSessions > 0 ? 'dept courses · excl. GEC/MAT/NSTP/PE' : 'all dept sessions covered',
       color: quality.tbaSessions > 0 ? '#D97706' : '#059669',
       bg:    quality.tbaSessions > 0 ? '#FEF3CD' : '#DCFCE7',
       icon: quality.tbaSessions > 0
@@ -540,24 +598,10 @@ function OverviewSection({ quality, onExport }) {
         {KPIS.map(c => <KpiCard key={c.label} {...c} />)}
       </div>
 
-      {noSolverRun ? (
-        <div style={{ background: '#fff', borderRadius: 14, padding: '16px 20px', border: '1px solid #E8E4F8', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-          <div style={{ width: 32, height: 32, borderRadius: 9, background: '#EEEAFB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C6FCD" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          </div>
-          <div>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#1a1a2e', marginBottom: 3 }}>Preference compliance</p>
-            <p style={{ fontSize: 12, color: '#8883B0', lineHeight: 1.6 }}>
-              Time window and day-preference metrics are available after the scheduler has assigned faculty. Generate a schedule first.
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          <ComplianceRing label="Time window compliance"    value={quality.pctInWindow}        desc="Sessions placed within each faculty's preferred time window." color="#7C6FCD" />
-          <ComplianceRing label="Day preference compliance" value={quality.pctOnPreferredDays} desc="Sessions placed on each faculty's preferred teaching days."   color="#2563EB" />
-        </div>
-      )}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        <ComplianceRing label="Time window compliance"    value={quality.pctInWindow}        desc="Sessions placed within each faculty's preferred time window." color="#7C6FCD" />
+        <ComplianceRing label="Day preference compliance" value={quality.pctOnPreferredDays} desc="Sessions placed on each faculty's preferred teaching days."   color="#2563EB" />
+      </div>
 
       {quality.perFaculty.length > 0 ? (
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #E8E4F8', overflow: 'hidden' }}>
@@ -620,43 +664,92 @@ function OverviewSection({ quality, onExport }) {
    Section: Workload
 ───────────────────────────────────────────── */
 function WorkloadSection({ workload, onExport }) {
-  const [search, setSearch] = useState('')
-  const [sort,   setSort]   = useState('load')
+  const [search, setSearch]         = useState('')
+  const [sort,   setSort]           = useState('load')
+  const [filterType, setFilterType] = useState('all') // 'all' | 'full-time' | 'part-time'
 
   if (!workload?.workload?.length) {
     return <EmptyCard title="No workload data" desc="Run or load a schedule to see faculty workload distribution." />
   }
 
-  const list       = workload.workload
-  const overloaded = list.filter(f => f.overloaded).length
-  const nearCap    = list.filter(f => !f.overloaded && f.assigned / f.max_units >= 0.85).length
-  const unassigned = list.filter(f => f.assigned === 0).length
+  const list           = workload.workload
+  const overloaded     = list.filter(f => f.overloaded && !f.parttime_exceeded).length   // full-time over cap
+  const ptExceeded     = list.filter(f => f.parttime_exceeded).length                     // part-time over 15
+  const totalOverloaded = overloaded + ptExceeded
+  // nearCap uses the dynamic effective_max (backend returns it as max_units for compat)
+  const nearCap        = list.filter(f => !f.overloaded && f.max_units > 0 && f.assigned / f.max_units >= 0.85).length
+  const unassigned     = list.filter(f => f.assigned === 0).length
 
   const filtered = [...list]
-    .filter(f => f.name.toLowerCase().includes(search.toLowerCase()))
+    .filter(f => {
+      const nameMatch = f.name.toLowerCase().includes(search.toLowerCase())
+      const typeMatch = filterType === 'all' || f.status === filterType
+      return nameMatch && typeMatch
+    })
     .sort((a, b) =>
       sort === 'name'   ? a.name.localeCompare(b.name) :
-      sort === 'status' ? (b.overloaded ? 1 : 0) - (a.overloaded ? 1 : 0) :
+      sort === 'status' ? (a.status || '').localeCompare(b.status || '') :
+      sort === 'tier'   ? b.distinct_courses - a.distinct_courses :
       b.assigned - a.assigned
     )
 
+  const pills = [
+    { 
+      label: 'Total Faculty', val: list.length, bg: '#F5F4FB', c: '#7C6FCD',
+      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    },
+    { 
+      label: 'FT Overload', val: overloaded, bg: overloaded > 0 ? '#FFE8E8' : '#DCFCE7', c: overloaded > 0 ? '#C0392B' : '#166534',
+      icon: overloaded > 0 
+        ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+    },
+    { 
+      label: 'PT Exceeded', val: ptExceeded, bg: ptExceeded > 0 ? '#FEF3CD' : '#DCFCE7', c: ptExceeded > 0 ? '#D97706' : '#166534',
+      icon: ptExceeded > 0
+        ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+    },
+    { 
+      label: 'Near Cap', val: nearCap, bg: nearCap > 0 ? '#FEF3CD' : '#DCFCE7', c: nearCap > 0 ? '#D97706' : '#166534',
+      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    },
+    { 
+      label: 'Unassigned', val: unassigned, bg: unassigned > 0 ? '#F0EDF9' : '#DCFCE7', c: unassigned > 0 ? '#8883B0' : '#166534',
+      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+    },
+  ]
+
   return (
     <div className="sec" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        {[
-          { label: 'Total',      val: list.length, bg: '#EEEAFB', c: '#7C6FCD' },
-          { label: 'Overloaded', val: overloaded,  bg: overloaded > 0 ? '#FFE8E8' : '#DCFCE7', c: overloaded > 0 ? '#C0392B' : '#166534' },
-          { label: 'Near cap',   val: nearCap,     bg: nearCap > 0 ? '#FEF3CD' : '#DCFCE7',    c: nearCap > 0 ? '#8a5c00' : '#166534' },
-          { label: 'Unassigned', val: unassigned,  bg: unassigned > 0 ? '#F5F4FB' : '#DCFCE7', c: unassigned > 0 ? '#8883B0' : '#166534' },
-        ].map(p => (
-          <div key={p.label} style={{ background: p.bg, color: p.c, borderRadius: 12, padding: '9px 15px', minWidth: 84 }}>
-            <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{p.val}</div>
-            <div style={{ fontSize: 11, fontWeight: 500, opacity: 0.75, marginTop: 3 }}>{p.label}</div>
+
+      {/* Stat pills */}
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        {pills.map(p => (
+          <div key={p.label} className="kcard" style={{ 
+            flex: 1, minWidth: 120, 
+            background: '#fff', borderRadius: 14, 
+            padding: '14px 16px', border: '1px solid #E8E4F8', 
+            boxShadow: '0 2px 8px rgba(124,111,205,0.04)',
+            display: 'flex', alignItems: 'center', gap: 12
+          }}>
+            <div style={{ 
+              width: 40, height: 40, borderRadius: 10, 
+              background: p.bg, color: p.c, 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 
+            }}>
+              {p.icon}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 22, fontWeight: 700, color: p.c, lineHeight: 1 }}>{p.val}</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#8883B0', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.label}</div>
+            </div>
           </div>
         ))}
       </div>
 
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #E8E4F8', overflow: 'hidden' }}>
+        {/* Toolbar */}
         <div style={{ padding: '10px 16px', borderBottom: '1px solid #F0EDF9', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ position: 'relative', flex: 1, minWidth: 150 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#B0ABCC" strokeWidth="2"
@@ -665,13 +758,22 @@ function WorkloadSection({ workload, onExport }) {
             </svg>
             <input className="srch" type="text" placeholder="Search faculty…" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
+
+          {/* Type filter */}
+          <div style={{ display: 'flex', gap: 5 }}>
+            {[{ k: 'all', l: 'All' }, { k: 'full-time', l: 'Full-Time' }, { k: 'part-time', l: 'Part-Time' }].map(o => (
+              <button key={o.k} className={`filter-btn${filterType === o.k ? ' active' : ''}`} onClick={() => setFilterType(o.k)}>{o.l}</button>
+            ))}
+          </div>
+
+          {/* Sort */}
           <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
             <span style={{ fontSize: 11, color: '#C0ABCC', marginRight: 2 }}>Sort:</span>
-            {[{ k: 'load', l: 'Load' }, { k: 'name', l: 'Name' }, { k: 'status', l: 'Status' }].map(o => (
+            {[{ k: 'load', l: 'Load' }, { k: 'name', l: 'Name' }, { k: 'status', l: 'Status' }, { k: 'tier', l: 'Tier' }].map(o => (
               <button key={o.k} className={`sort-opt${sort === o.k ? ' active' : ''}`} onClick={() => setSort(o.k)}>{o.l}</button>
             ))}
           </div>
-          {/* NEW: Export */}
+
           <button className="export-btn" onClick={() => onExport('workload')}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -680,10 +782,23 @@ function WorkloadSection({ workload, onExport }) {
             Export CSV
           </button>
         </div>
+
         <div style={{ padding: '2px 16px 10px', maxHeight: 440, overflowY: 'auto' }}>
           {filtered.length === 0
             ? <p style={{ color: '#B0ABCC', fontSize: 12.5, padding: '18px 0', textAlign: 'center' }}>No results for "{search}"</p>
-            : filtered.map(f => <WorkloadBar key={f.name} label={f.name} value={f.assigned} max={f.max_units} overloaded={f.overloaded} />)
+            : filtered.map(f => (
+                <WorkloadBar
+                  key={f.name}
+                  label={f.name}
+                  value={f.assigned}
+                  max={f.max_units}
+                  overloaded={f.overloaded}
+                  status={f.status}
+                  distinctCourses={f.distinct_courses ?? 0}
+                  tierLabel={f.tier_label}
+                  partTimeExceeded={f.parttime_exceeded}
+                />
+              ))
           }
         </div>
       </div>
@@ -722,15 +837,7 @@ function EligibilitySection({ preview, onExport }) {
 
   return (
     <div className="sec" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div className="info-note">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7C6FCD" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}>
-          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        <span>
-          <strong>Estimates only.</strong> Specialisations are stored as <code style={{ background: 'rgba(124,111,205,0.12)', padding: '1px 5px', borderRadius: 4, fontSize: 11 }}>{'{courseCode, rating}'}</code> objects — pool sizes become fully accurate after the scheduler resolves assignments.
-          PE, NSTP, MAT and GEC courses are excluded from warnings as they are handled externally.
-        </span>
-      </div>
+    
 
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #E8E4F8', overflow: 'hidden' }}>
         <div style={{ padding: '10px 16px', borderBottom: '1px solid #F0EDF9', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -760,9 +867,13 @@ function EligibilitySection({ preview, onExport }) {
           </button>
         </div>
 
-        <div style={{ padding: '5px 16px 4px', borderBottom: '1px solid #F5F4FB', background: '#FAFAFE' }}>
+        <div style={{ padding: '5px 16px 8px', borderBottom: '1px solid #F5F4FB', background: '#FAFAFE', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
           <p style={{ fontSize: 11, color: '#C0C8CC' }}>
-            {filtered.length} of {myDept.length} courses · click to expand eligible faculty
+            {filtered.length} of {myDept.length} department courses · click to expand eligible faculty
+          </p>
+          <p style={{ fontSize: 10.5, color: '#B0ABCC', display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#C0ABCC" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            GEC · MAT · NSTP · PATHFIT excluded — managed externally
           </p>
         </div>
 
@@ -781,7 +892,7 @@ function EligibilitySection({ preview, onExport }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 12.5, fontWeight: 600, color: '#8883B0' }}>Externally managed courses</span>
               <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: '#EEEAFB', color: '#7C6FCD', fontWeight: 600 }}>{filteredOther.length || otherDept.length}</span>
-              <span style={{ fontSize: 11, color: '#B0ABCC' }}>PE · NSTP · MAT · GEC — assigned by other departments</span>
+              <span style={{ fontSize: 11, color: '#B0ABCC' }}>GEC · MAT · NSTP · PATHFIT — not part of department scheduling logic</span>
             </div>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#B0ABCC" strokeWidth="2"
               style={{ flexShrink: 0, transform: showOther ? 'rotate(180deg)' : 'none', transition: 'transform 0.18s' }}>
@@ -801,9 +912,6 @@ function EligibilitySection({ preview, onExport }) {
   )
 }
 
-/* ─────────────────────────────────────────────
-   Empty state (page-level) — IMPROVED: link to Scheduler
-───────────────────────────────────────────── */
 function EmptyState({ onNavigateToScheduler }) {
   return (
     <div style={{ background: '#fff', borderRadius: 16, padding: '56px 32px', border: '2px dashed #E8E4F8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
@@ -831,6 +939,8 @@ function EmptyState({ onNavigateToScheduler }) {
    Main
 ───────────────────────────────────────────── */
 export default function AnalyticsPage() {
+  const { scheduleName } = useScheduleStore()
+
   const [quality,      setQuality]      = useState(null)
   const [workload,     setWorkload]     = useState(null)
   const [preview,      setPreview]      = useState(null)
@@ -842,11 +952,8 @@ export default function AnalyticsPage() {
   const [switching,    setSwitching]    = useState(false)
   const [refreshing,   setRefreshing]   = useState(false)
   const [activeTab,    setActiveTab]    = useState('overview')
-  const [lastRefreshed, setLastRefreshed] = useState(null)   // NEW: last-refreshed timestamp
+  const [lastRefreshed, setLastRefreshed] = useState(null)  
   const { toasts, toast } = useToast()
-
-  // Optional: if you have useNavigate available (add import at top)
-  // const navigate = useNavigate()
 
   const fetchAll = async () => {
     const [q, w, p] = await Promise.all([getAssignmentQuality(), getWorkload(), getFacultyPreview()])
@@ -887,8 +994,7 @@ export default function AnalyticsPage() {
       await fetchAll()
       toast('Analytics refreshed', 'success')
     } catch {
-      setError('Refresh failed.')
-      toast('Refresh failed. Try again.', 'error')
+      setError('Refresh failed. Try again.', 'error')
     } finally {
       setRefreshing(false)
     }
@@ -907,8 +1013,17 @@ export default function AnalyticsPage() {
       } else if (section === 'workload' && workload?.workload?.length) {
         downloadCSV(
           `analytics-workload-${new Date().toISOString().slice(0,10)}.csv`,
-          workload.workload,
-          ['name', 'assigned', 'max_units', 'overloaded'],
+          workload.workload.map(f => ({
+            name:             f.name,
+            status:           f.status,
+            assigned:         f.assigned,
+            effective_max:    f.max_units,
+            distinct_courses: f.distinct_courses ?? 0,
+            tier_label:       f.tier_label ?? '',
+            overloaded:       f.overloaded ? 'Yes' : 'No',
+            parttime_exceeded: f.parttime_exceeded ? 'Yes' : 'No',
+          })),
+          ['name', 'status', 'assigned', 'effective_max', 'distinct_courses', 'tier_label', 'overloaded', 'parttime_exceeded'],
         )
         toast('Workload CSV downloaded', 'success')
       } else if (section === 'eligibility' && preview?.courses?.length) {
@@ -942,7 +1057,6 @@ export default function AnalyticsPage() {
     ? deduplicateCourses(preview.courses).filter(c => c.warning && !isOtherDept(c.courseCode)).length
     : 0
 
-  /* NEW: human-friendly "last refreshed" label */
   function fmtLastRefreshed(d) {
     if (!d) return null
     const now  = Date.now()
@@ -964,26 +1078,23 @@ export default function AnalyticsPage() {
     <div className="page" style={{ fontFamily: "'Poppins',sans-serif" }}>
 
       {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 12 }}>
+        
+        {/* Tabs (Moved to Header) */}
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: '#1a1a2e', letterSpacing: '-.3px', margin: 0 }}>Analytics</h1>
-          <p style={{ fontSize: 12, color: '#8883B0', marginTop: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
-            {hasData
-              ? `${quality.totalSessions} sessions · ${quality.autoAssignPct}% auto-assigned`
-              : 'Load a schedule to view metrics.'}
-            {/* NEW: last refreshed timestamp */}
-            {lastRefreshed && hasData && (
-              <>
-                <span style={{ color: '#D8D3F5' }}>·</span>
-                <span style={{ color: '#C0BBDC', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#C0BBDC" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                  Updated {fmtLastRefreshed(lastRefreshed)}
-                </span>
-              </>
-            )}
-          </p>
+          {hasData && (
+            <div style={{ display: 'flex', gap: 3, background: '#fff', padding: '5px', borderRadius: 11, border: '1px solid #E8E4F8', boxShadow: '0 2px 6px rgba(124,111,205,0.05)', width: 'fit-content' }}>
+              {TABS.map(tab => (
+                <button key={tab.key} className={`a-tab${activeTab === tab.key ? ' active' : ''}${tab.warn ? ' warn' : ''}`} onClick={() => setActiveTab(tab.key)}>
+                  {tab.label}
+                  {tab.count !== null && <span className="tbadge">{tab.count}</span>}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
+        {/* Right Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           {hasData && <AlertIconModal overloadCount={overloadCount} warnCount={rawWarnCount} />}
 
@@ -1009,7 +1120,9 @@ export default function AnalyticsPage() {
               backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%238883B0' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
               backgroundRepeat: 'no-repeat', backgroundPosition: 'right 9px center',
             }}>
-            <option value="__current__">Current (in memory)</option>
+            <option value="__current__">
+              {scheduleName ? `Current (${scheduleName})` : 'Current (in memory)'}
+            </option>
             {savedList.map(name => <option key={name} value={name}>{name}</option>)}
           </select>
 
@@ -1037,22 +1150,12 @@ export default function AnalyticsPage() {
       ) : !hasData ? (
         <EmptyState
           onNavigateToScheduler={() => {
-            // Replace with your router navigation if available
-            // navigate('/dashboard/scheduler')
-            window.location.href = '/dashboard/scheduler'
+            window.location.href = '/scheduler'
           }}
         />
       ) : (
         <>
-          {/* Tabs */}
-          <div style={{ display: 'flex', gap: 3, marginBottom: 18, background: '#fff', padding: '5px', borderRadius: 11, border: '1px solid #E8E4F8', boxShadow: '0 2px 6px rgba(124,111,205,0.05)', width: 'fit-content' }}>
-            {TABS.map(tab => (
-              <button key={tab.key} className={`a-tab${activeTab === tab.key ? ' active' : ''}${tab.warn ? ' warn' : ''}`} onClick={() => setActiveTab(tab.key)}>
-                {tab.label}
-                {tab.count !== null && <span className="tbadge">{tab.count}</span>}
-              </button>
-            ))}
-          </div>
+        
 
           {activeTab === 'overview'    && <OverviewSection    quality={quality}    onExport={handleExport} />}
           {activeTab === 'workload'    && <WorkloadSection    workload={workload}   onExport={handleExport} />}

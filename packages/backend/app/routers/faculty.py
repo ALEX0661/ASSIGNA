@@ -3,6 +3,10 @@ from firebase_admin import auth as firebase_auth
 from app.core.auth import admin_only, any_authenticated
 from app.core.firebase import db, refresh_faculty_cache
 from app.core.globals import schedule_dict
+from app.core.unit_balancing import ( 
+    compute_effective_max_units,
+    build_faculty_load_map,
+)
 from app.models.faculty import Faculty, FacultyUpdate
 import pandas as pd
 import io
@@ -77,13 +81,20 @@ def _parse_faculty_matrix(contents: bytes, sheet_names: list) -> list:
     return list(faculty_map.values())
 
 
+# ── FIX 1: Filter archived faculty from the list by default ──────────────────
+# Added `include_archived` query param (defaults False).
+# Admins can pass ?include_archived=true to see the full roster (e.g. for an
+# "Archived" management view). All other callers get only active faculty.
 @router.get("/")
-def get_all_faculty(user=Depends(any_authenticated)):
+def get_all_faculty(include_archived: bool = False, user=Depends(any_authenticated)):
     role = user.get("role")
 
     if role == "admin":
-        docs = db.collection("faculty").stream()
-        return [{**d.to_dict(), "id": d.id} for d in docs]
+        docs   = db.collection("faculty").stream()
+        result = [{**d.to_dict(), "id": d.id} for d in docs]
+        if not include_archived:
+            result = [f for f in result if not f.get("archived", False)]
+        return result
 
     uid = user.get("uid") or user.get("user_id")
     doc = db.collection("faculty").document(uid).get()
@@ -140,7 +151,18 @@ def add_faculty(data: dict, user=Depends(admin_only)):
         firebase_auth.delete_user(uid)
         raise HTTPException(500, f"Could not set role claim: {exc}")
 
+    # ── Derive initial max_units from status before any schedule exists ───────
+    status      = data.get("status", "full-time")
+    initial_max = compute_effective_max_units(status, 0)  # 0 courses assigned yet
+
     faculty_data = {k: v for k, v in data.items() if k != "initial_password"}
+    faculty_data["max_units"] = initial_max   # store the correct starting cap
+
+    # ── FIX 2: Guarantee archived is always stored on new documents ───────────
+    # The endpoint accepts a raw dict so callers may omit the field.
+    # setdefault leaves an explicit `archived: true` from the payload intact.
+    faculty_data.setdefault("archived", False)
+
     db.collection("faculty").document(uid).set(faculty_data)
     refresh_faculty_cache()
 
@@ -149,16 +171,30 @@ def add_faculty(data: dict, user=Depends(admin_only)):
         "message":       "Faculty added and Firebase Auth account created.",
         "temp_password": temp_password,
         "note":          "The faculty member must log out and back in if they already have a session.",
+        "max_units":     initial_max,
     }
 
 
 @router.put("/update/{faculty_id}")
 def update_faculty(faculty_id: str, data: FacultyUpdate, user=Depends(admin_only)):
     doc_ref = db.collection("faculty").document(faculty_id)
-    if not doc_ref.get().exists:
+    doc     = doc_ref.get()
+    if not doc.exists:
         raise HTTPException(404, "Faculty not found")
 
+    # `archived=False` is intentional (False is not None), so this filter is safe.
     update_data = {k: v for k, v in data.dict().items() if v is not None}
+
+    # If status is changing, recompute the effective max_units so it doesn't
+    # stay stale (the scheduler will fine-tune it further post-solve).
+    if "status" in update_data:
+        existing   = doc.to_dict() or {}
+        new_status = update_data["status"]
+        # Reuse the existing course count if the schedule is live; fall back to 0
+        load_map     = build_faculty_load_map(schedule_dict)
+        course_count = load_map.get(existing.get("name", ""), {}).get("course_count", 0)
+        update_data["max_units"] = compute_effective_max_units(new_status, course_count)
+
     doc_ref.update(update_data)
 
     if "name" in update_data:
@@ -208,7 +244,7 @@ def update_preferences(faculty_id: str, data: dict, user=Depends(any_authenticat
     if role != "admin" and caller_uid != faculty_id:
         raise HTTPException(403, "You can only update your own preferences.")
 
-    allowed     = {"preferredDays", "preferredTimeStart", "preferredTimeEnd", "maxConsecutiveHours"}
+    allowed     = {"preferredDays", "preferredTimeStart", "preferredTimeEnd"}
     update_data = {k: v for k, v in data.items() if k in allowed}
     if not update_data:
         raise HTTPException(400, "No valid preference fields provided")
@@ -236,12 +272,31 @@ def assign_faculty(data: dict, user=Depends(admin_only)):
 
 
 def _recalculate_units(faculty_name: str, faculty_id: str):
-    count = sum(
-        1 for e in schedule_dict.values()
-        if e.get("faculty") == faculty_name and e.get("session") == "Lecture"
-    )
+    """
+    Recount lecture units for *faculty_name* from the live schedule, derive the
+    effective max cap from their status + distinct-course count, and persist
+    both values to Firestore.
+    """
+    load_map = build_faculty_load_map(schedule_dict)
+    load     = load_map.get(faculty_name, {"assigned_units": 0, "course_count": 0})
+
+    assigned_units = load["assigned_units"]
+    course_count   = load["course_count"]
+
+    # Read current status from Firestore so we apply the right tier
     try:
-        db.collection("faculty").document(faculty_id).update({"units": float(count)})
+        doc    = db.collection("faculty").document(faculty_id).get()
+        status = doc.to_dict().get("status", "full-time") if doc.exists else "full-time"
+    except Exception:
+        status = "full-time"
+
+    effective_max = compute_effective_max_units(status, course_count)
+
+    try:
+        db.collection("faculty").document(faculty_id).update({
+            "units":     assigned_units,
+            "max_units": effective_max,
+        })
     except Exception:
         pass
 
@@ -341,7 +396,9 @@ def commit_faculty_upload(data: dict, user=Depends(admin_only)):
     batch  = db.batch()
 
     for f in faculty_list:
-        name = (f.get("name") or "").strip()
+        name   = (f.get("name") or "").strip()
+        status = f.get("status", "full-time")
+
         if not name:
             failed.append({"faculty": f, "reason": "Missing name"})
             continue
@@ -349,18 +406,26 @@ def commit_faculty_upload(data: dict, user=Depends(admin_only)):
         doc_id = re.sub(r"[^A-Z0-9]", "_", name.upper())[:120]
         ref    = db.collection("faculty").document(doc_id)
 
+        # Compute the correct starting cap (no courses assigned yet at upload time)
+        initial_max = compute_effective_max_units(status, 0)
+
+        # ── FIX 3: Include `archived` in every bulk-imported document ─────────
+        # Without this, batch-uploaded faculty had no archived field in Firestore,
+        # meaning they could never be filtered out by the GET / endpoint.
+        # `merge=True` means this will not overwrite a pre-existing archived=True
+        # on a subsequent re-import of the same faculty member.
         batch.set(
             ref,
             {
-                "name":                name,
-                "status":              f.get("status", "full-time"),
-                "specializations":     f.get("specializations", []),
-                "units":               0.0,
-                "max_units":           21.0,
-                "preferredDays":       [],
-                "preferredTimeStart":  7.0,
-                "preferredTimeEnd":    21.0,
-                "maxConsecutiveHours": 4.0,
+                "name":               name,
+                "status":             status,
+                "specializations":    f.get("specializations", []),
+                "units":              0.0,
+                "max_units":          initial_max,
+                "preferredDays":      [],
+                "preferredTimeStart": 7.0,
+                "preferredTimeEnd":   21.0,
+                "archived":           False,
             },
             merge=True,
         )
@@ -374,3 +439,93 @@ def commit_faculty_upload(data: dict, user=Depends(admin_only)):
 
     refresh_faculty_cache()
     return {"committed": saved, "failed": failed, "total": len(faculty_list)}
+
+
+@router.put("/credentials/{faculty_id}")
+def update_faculty_credentials(faculty_id: str, data: dict, user=Depends(admin_only)):
+    """
+    Set or update Firebase Auth credentials for a faculty member.
+
+    Two cases:
+      - Auth user already exists (faculty_id == Firebase UID) → update in place.
+      - No Auth user yet (bulk-imported, name-based doc ID) → create Auth account,
+        migrate Firestore doc to new UID, return migrated=True + new_id so the
+        frontend can redirect.
+    """
+    email    = (data.get("email")    or "").strip()
+    password = (data.get("password") or "").strip()
+
+    if not email and not password:
+        raise HTTPException(400, "Provide at least an email or a new password.")
+    if password and len(password) < 6:
+        raise HTTPException(400, "Password must be at least 6 characters.")
+
+    doc_ref = db.collection("faculty").document(faculty_id)
+    doc     = doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(404, "Faculty record not found.")
+
+    faculty_data = doc.to_dict() or {}
+
+    # ── Case 1: Firebase Auth account already exists with this UID ────────────
+    try:
+        firebase_auth.get_user(faculty_id)
+        update_kwargs = {}
+        if email:
+            update_kwargs["email"]          = email
+            update_kwargs["email_verified"] = False
+        if password:
+            update_kwargs["password"] = password
+        if update_kwargs:
+            firebase_auth.update_user(faculty_id, **update_kwargs)
+        if email and email != faculty_data.get("email"):
+            doc_ref.update({"email": email})
+        refresh_faculty_cache()
+        return {"updated": faculty_id, "migrated": False}
+
+    except firebase_auth.UserNotFoundError:
+        pass  # Fall through — bulk-imported faculty with no Auth account yet
+
+    # ── Case 2: No Auth account — bulk-imported faculty ───────────────────────
+    if not email:
+        raise HTTPException(
+            400,
+            "This faculty member has no login account yet. "
+            "An email address is required to create one."
+        )
+
+    # Use admin-supplied password or generate a safe default
+    auto_generated   = not password
+    display_password = password or _default_password(faculty_data.get("name", "Faculty"))
+
+    try:
+        auth_user = firebase_auth.create_user(
+            email=email,
+            password=display_password,
+            display_name=faculty_data.get("name", ""),
+        )
+        new_uid = auth_user.uid
+    except firebase_auth.EmailAlreadyExistsError:
+        raise HTTPException(400, f"A Firebase Auth account already exists for '{email}'.")
+    except Exception as exc:
+        raise HTTPException(400, f"Could not create Auth account: {exc}")
+
+    try:
+        firebase_auth.set_custom_user_claims(new_uid, {"role": "faculty"})
+    except Exception as exc:
+        firebase_auth.delete_user(new_uid)
+        raise HTTPException(500, f"Could not assign faculty role: {exc}")
+
+    # Migrate Firestore: copy old (name-keyed) doc → new (UID-keyed) doc, delete old
+    new_data = {**faculty_data, "email": email}
+    db.collection("faculty").document(new_uid).set(new_data)
+    doc_ref.delete()
+
+    refresh_faculty_cache()
+    return {
+        "updated":        new_uid,
+        "migrated":       True,
+        "old_id":         faculty_id,
+        "new_id":         new_uid,
+        "temp_password":  display_password if auto_generated else None,
+    }

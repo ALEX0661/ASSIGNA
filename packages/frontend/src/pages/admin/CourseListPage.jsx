@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { getCourses, addCourse, deleteCourse, updateCourse } from '../../services/api'
 import ImportCoursesModal from '../../components/ImportCoursesModal'
 
@@ -63,14 +63,16 @@ if (!document.getElementById('course-page-style')) {
       width: 28px; height: 28px; border-radius: 7px;
       border: 1.5px solid #E8E4F8; cursor: pointer;
       background: #fff; color: #B0ABCC; transition: all 0.13s; flex-shrink: 0;
+      padding: 0;
     }
     .cp-edit-btn:hover { background: #EDE9FB; border-color: #C5BBEF; color: #7C6FCD; }
 
     .cp-close-btn {
       display: inline-flex; align-items: center; justify-content: center;
-      width: 30px; height: 30px; border-radius: 8px;
+      width: 32px; height: 32px; border-radius: 8px;
       border: 1.5px solid #E8E4F8; cursor: pointer;
-      background: #F5F4FB; color: #8883B0; transition: all 0.13s; flex-shrink: 0;
+      background: #F5F4FB; color: #7C6FCD; transition: all 0.2s; flex-shrink: 0;
+      padding: 0;
     }
     .cp-close-btn:hover { background: #FFE8E8; border-color: #FECACA; color: #DC2626; }
 
@@ -137,8 +139,61 @@ if (!document.getElementById('course-page-style')) {
 
     @keyframes cpSlideIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
     @keyframes cpSpin { to{transform:rotate(360deg)} }
+
+    /* Skeleton Animations */
+    @keyframes cpShimmer {
+      0%   { background-position: -400px 0 }
+      100% { background-position:  400px 0 }
+    }
+    .cp-skeleton {
+      background: linear-gradient(90deg, #F0EDF9 25%, #E4DEFC 50%, #F0EDF9 75%);
+      background-size: 800px 100%;
+      animation: cpShimmer 1.4s ease-in-out infinite;
+      border-radius: 7px;
+    }
+
+    /* Toast Notifications - Lavender & White Theme */
+    @keyframes cpToastIn { from{opacity:0;transform:scale(.96) translateY(12px)} to{opacity:1;transform:scale(1) translateY(0)} }
+    .cp-toast-wrap { position:fixed; bottom:24px; left:50%; z-index:9999; display:flex; flex-direction:column; gap:10px; align-items:center; pointer-events:none; transform:translateX(-50%); }
+    .cp-toast { display:flex; align-items:center; gap:10px; padding:12px 20px; border-radius:12px; font-family:'Poppins',sans-serif; font-size:13px; font-weight:600; animation:cpToastIn .22s cubic-bezier(.4,0,.2,1); white-space:nowrap; pointer-events:auto; }
+    .cp-toast.success { background:linear-gradient(135deg,#7C6FCD,#5a4fbf); color:#fff; box-shadow:0 8px 24px rgba(124,111,205,0.3); border:1px solid #A99BE8; }
+    .cp-toast.error   { background:#fff; color:#DC2626; border:1.5px solid #FECACA; box-shadow:0 8px 24px rgba(220,38,38,0.15); }
+    .cp-toast.info    { background:#fff; color:#7C6FCD; border:1.5px solid #D8D3F5; box-shadow:0 8px 24px rgba(124,111,205,0.15); }
   `
   document.head.appendChild(s)
+}
+
+/* ─── Toast System ───────────────────────────────────────────────────────── */
+function useToast() {
+  const [toasts, setToasts] = useState([])
+  const toast = useCallback((message, type = 'info', duration = 3000) => {
+    const id = Date.now() + Math.random()
+    setToasts(prev => [...prev, { id, message, type }])
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), duration)
+  }, [])
+  return { toasts, toast }
+}
+
+function ToastContainer({ toasts }) {
+  const icons = {
+    success: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>,
+    error:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>,
+    info:    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/></svg>,
+  }
+  return (
+    <div className="cp-toast-wrap">
+      {toasts.map(t => (
+        <div key={t.id} className={`cp-toast ${t.type}`}>{icons[t.type]}{t.message}</div>
+      ))}
+    </div>
+  )
+}
+
+/* ─── Skeleton Helper ────────────────────────────────────────────────────── */
+function Skel({ w = '100%', h = 14, r = 7, style = {} }) {
+  return (
+    <div className="cp-skeleton" style={{ width: w, height: h, borderRadius: r, flexShrink: 0, ...style }} />
+  )
 }
 
 function progClass(p = '') {
@@ -179,6 +234,54 @@ function Spin() {
   )
 }
 
+/* ─── Delete Confirm Modal ───────────────────────────────────────────────── */
+function DeleteConfirmModal({ name, count, onConfirm, onCancel, deleting }) {
+  const isBulk   = count > 1
+  const title    = isBulk ? `Delete ${count} Courses?` : 'Delete Course?'
+  const btnLabel = deleting ? 'Deleting...' : 'Yes, Delete'
+  return (
+    <div className="cp-overlay" onClick={e => { if (e.target === e.currentTarget && !deleting) onCancel() }}>
+      <div style={{
+        background: '#fff', borderRadius: 18, padding: '28px 28px 24px',
+        maxWidth: 400, width: '100%',
+        boxShadow: '0 20px 60px rgba(26,26,46,0.22)', textAlign: 'center',
+        animation: 'cpSlideUp 0.22s cubic-bezier(0.34,1.4,0.64,1)',
+      }}>
+        <div style={{
+          width: 52, height: 52, borderRadius: '50%', background: '#FFE8E8',
+          margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="2">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            <path d="M10 11v6M14 11v6M9 6V4h6v2"/>
+          </svg>
+        </div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: '#1a1a2e', marginBottom: 8 }}>{title}</div>
+        <div style={{ fontSize: 13, color: '#8883B0', marginBottom: 24, lineHeight: 1.5 }}>
+          {isBulk
+            ? `This will permanently remove ${count} courses. This cannot be undone.`
+            : <>This will permanently remove <strong style={{ color: '#1a1a2e' }}>{name}</strong>. This cannot be undone.</>
+          }
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onCancel} disabled={deleting} style={{
+            flex: 1, padding: '10px', borderRadius: 9, border: '1.5px solid #E8E4F8',
+            background: '#fff', fontSize: 13, fontWeight: 600, color: '#8883B0',
+            cursor: deleting ? 'default' : 'pointer', fontFamily: "'Poppins',sans-serif",
+          }}>Cancel</button>
+          <button onClick={onConfirm} disabled={deleting} style={{
+            flex: 1, padding: '10px', borderRadius: 9, border: 'none',
+            background: '#C0392B', fontSize: 13, fontWeight: 700, color: '#fff',
+            cursor: deleting ? 'default' : 'pointer', fontFamily: "'Poppins',sans-serif",
+            opacity: deleting ? 0.7 : 1,
+          }}>{btnLabel}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ─── Course Modal ────────────────────────────────────────────────────────── */
 function CourseModal({ mode, initial, onSave, onClose, saving, error }) {
   const [form, setForm] = useState(initial || EMPTY)
@@ -208,8 +311,9 @@ function CourseModal({ mode, initial, onSave, onClose, saving, error }) {
             <div style={{ fontSize:11.5, color:'#8883B0', marginTop:1 }}>{isEdit ? `Editing ${initial?.courseCode}` : 'Fill in the course details below'}</div>
           </div>
           <button className="cp-close-btn" onClick={onClose}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
         </div>
@@ -287,19 +391,32 @@ function CourseModal({ mode, initial, onSave, onClose, saving, error }) {
 
 /* ─── Main Page ───────────────────────────────────────────────────────────── */
 export default function CourseListPage() {
-  const [courses,    setCourses]    = useState([])
-  const [search,     setSearch]     = useState('')
-  const [progFilter, setProgFilter] = useState([])
-  const [yearFilter, setYearFilter] = useState([])
-  const [showImport, setShowImport] = useState(false)
-  const [showAdd,    setShowAdd]    = useState(false)
-  const [editTarget, setEditTarget] = useState(null)
-  const [saving,     setSaving]     = useState(false)
-  const [error,      setError]      = useState('')
-  const [selected,   setSelected]   = useState(new Set())
-  const [deleting,   setDeleting]   = useState(false)
+  const { toasts, toast } = useToast()
 
-  async function load() { setCourses(await getCourses()); setSelected(new Set()) }
+  const [courses,       setCourses]       = useState([])
+  const [loading,       setLoading]       = useState(true) 
+  const [search,        setSearch]        = useState('')
+  const [progFilter,    setProgFilter]    = useState([])
+  const [yearFilter,    setYearFilter]    = useState([])
+  const [showImport,    setShowImport]    = useState(false)
+  const [showAdd,       setShowAdd]       = useState(false)
+  const [editTarget,    setEditTarget]    = useState(null)
+  const [saving,        setSaving]        = useState(false)
+  const [error,         setError]         = useState('')
+  const [selected,      setSelected]      = useState(new Set())
+  const [deleting,      setDeleting]      = useState(false)
+  const [pendingDelete, setPendingDelete] = useState(null)
+
+  async function load() { 
+    setLoading(true)
+    try {
+      setCourses(await getCourses())
+      setSelected(new Set())
+    } finally {
+      setLoading(false)
+    }
+  }
+  
   useEffect(() => { load() }, [])
 
   const programs = useMemo(() => Array.from(new Set(courses.map(c=>c.program).filter(Boolean))).sort(), [courses])
@@ -327,43 +444,76 @@ export default function CourseListPage() {
 
   async function handleAdd(data) {
     setSaving(true); setError('')
-    try { await addCourse(data); setShowAdd(false); load() }
+    try { 
+      await addCourse(data); 
+      setShowAdd(false); 
+      load(); 
+      toast('Course added successfully', 'success') 
+    }
     catch(err) { setError(err.response?.data?.detail || 'Failed to add course.') }
     finally { setSaving(false) }
   }
 
   async function handleEdit(data) {
     setSaving(true); setError('')
-    try { await updateCourse(data.courseCode, data.program, data); setEditTarget(null); load() }
+    try { 
+      await updateCourse(data.courseCode, data.program, data); 
+      setEditTarget(null); 
+      load(); 
+      toast('Course updated successfully', 'success') 
+    }
     catch(err) { setError(err.response?.data?.detail || 'Failed to update course.') }
     finally { setSaving(false) }
   }
 
-  async function handleDelete(code, prog) {
-    if (!confirm(`Delete ${code}?`)) return
-    await deleteCourse(code, prog); load()
+  function handleDelete(code, prog) {
+    setPendingDelete({ code, prog, name: code })
   }
 
-  async function handleBulkDelete() {
+  function handleBulkDelete() {
     const tgts = filtered.filter(c => selected.has(c.id))
-    if (!tgts.length || !confirm(`Delete ${tgts.length} course${tgts.length!==1?'s':''}?`)) return
+    if (!tgts.length) return
+    setPendingDelete({ bulk: true, count: tgts.length, targets: tgts })
+  }
+
+  async function handleConfirmDelete() {
     setDeleting(true)
-    try { await Promise.all(tgts.map(c => deleteCourse(c.courseCode, c.program))); load() }
-    finally { setDeleting(false) }
+    try {
+      if (pendingDelete.bulk) {
+        await Promise.all(pendingDelete.targets.map(c => deleteCourse(c.courseCode, c.program)))
+        toast(`${pendingDelete.count} courses deleted`, 'success')
+      } else {
+        await deleteCourse(pendingDelete.code, pendingDelete.prog)
+        toast(`Course ${pendingDelete.code} deleted`, 'success')
+      }
+      setPendingDelete(null)
+      load()
+    } catch (err) {
+      toast('Failed to delete course(s)', 'error')
+    } finally { setDeleting(false) }
   }
 
   return (
     <div className="page" style={{ fontFamily:"'Poppins',sans-serif" }}>
 
       {/* Header */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
-        <div>
-          <h1 style={{ fontSize:20, fontWeight:700, color:'#1a1a2e', letterSpacing:'-.3px', margin:0 }}>Courses</h1>
-          <p style={{ fontSize:12, color:'#8883B0', marginTop:3 }}>
-            {courses.length} total course{courses.length!==1?'s':''}
-            {hasFilter && filtered.length!==courses.length && <span style={{ marginLeft:6, color:'#7C6FCD', fontWeight:600 }}>· {filtered.length} shown</span>}
-          </p>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+        
+        {/* Course Count Badge */}
+        <div style={{ display: 'flex', alignItems: 'center', background: '#F5F4FB', padding: '6px 14px', borderRadius: 10, border: '1px solid #E8E4F8', fontSize: 12.5, color: '#8883B0' }}>
+          <span style={{ fontWeight: 700, color: '#7C6FCD', marginRight: 5, display: 'flex', alignItems: 'center' }}>
+            {loading ? <Skel w={16} h={14} r={4} /> : courses.length}
+          </span>
+          total course{!loading && courses.length !== 1 ? 's' : ''}
+          
+          {hasFilter && filtered.length !== courses.length && (
+            <span style={{ marginLeft: 8, paddingLeft: 8, borderLeft: '1.5px solid #D8D3F5', color: '#7C6FCD', fontWeight: 600 }}>
+              {filtered.length} shown
+            </span>
+          )}
         </div>
+
+        {/* Action Buttons */}
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           <button className="cp-ghost" onClick={() => setShowImport(true)}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -445,7 +595,27 @@ export default function CourseListPage() {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i} style={{ borderBottom:'1px solid #F5F4FB' }}>
+                  <td style={{ padding:'10px 8px 10px 16px' }}><Skel w={17} h={17} r={5} /></td>
+                  <td style={{ padding:'10px 12px' }}><Skel w={50} h={18} r={99} /></td>
+                  <td style={{ padding:'10px 12px' }}><Skel w={180} h={14} /></td>
+                  <td style={{ padding:'10px 12px' }}><Skel w={60} h={18} r={99} /></td>
+                  <td style={{ padding:'10px 12px', textAlign:'center' }}><Skel w={24} h={14} style={{ margin: '0 auto' }} /></td>
+                  <td style={{ padding:'10px 12px', textAlign:'center' }}><Skel w={16} h={14} style={{ margin: '0 auto' }} /></td>
+                  <td style={{ padding:'10px 12px', textAlign:'center' }}><Skel w={16} h={14} style={{ margin: '0 auto' }} /></td>
+                  <td style={{ padding:'10px 12px', textAlign:'center' }}><Skel w={16} h={14} style={{ margin: '0 auto' }} /></td>
+                  <td style={{ padding:'10px 12px', textAlign:'center' }}><Skel w={20} h={16} style={{ margin: '0 auto' }} /></td>
+                  <td style={{ padding:'10px 14px 10px 8px' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                      <Skel w={28} h={28} r={7} />
+                      <Skel w={65} h={24} r={8} />
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : filtered.length === 0 ? (
               <tr><td colSpan={10} style={{ textAlign:'center', padding:'40px 0', color:'#B0ABCC' }}>
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
                   <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#D8D3F5" strokeWidth="1.5">
@@ -501,7 +671,7 @@ export default function CourseListPage() {
             })}
           </tbody>
         </table>
-        {filtered.length > 0 && (
+        {!loading && filtered.length > 0 && (
           <div style={{ padding:'10px 16px', borderTop:'1px solid #F5F4FB', display:'flex', alignItems:'center' }}>
             <span style={{ fontSize:12, color:'#B0ABCC' }}>
               Showing {filtered.length} of {courses.length} courses
@@ -513,7 +683,30 @@ export default function CourseListPage() {
 
       {showAdd && <CourseModal mode="add" onSave={handleAdd} onClose={()=>{setShowAdd(false);setError('')}} saving={saving} error={error} />}
       {editTarget && <CourseModal mode="edit" initial={{...editTarget,yearLevel:String(editTarget.yearLevel)}} onSave={handleEdit} onClose={()=>{setEditTarget(null);setError('')}} saving={saving} error={error} />}
-      {showImport && <ImportCoursesModal onClose={()=>setShowImport(false)} onImported={()=>{load();setShowImport(false)}} />}
+      
+      {showImport && (
+        <ImportCoursesModal 
+          onClose={()=>setShowImport(false)} 
+          onImported={()=>{
+            load();
+            setShowImport(false);
+            toast('Courses imported successfully', 'success');
+          }} 
+        />
+      )}
+
+      {pendingDelete && (
+        <DeleteConfirmModal
+          name={pendingDelete.name}
+          count={pendingDelete.bulk ? pendingDelete.count : 1}
+          deleting={deleting}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => { if (!deleting) setPendingDelete(null) }}
+        />
+      )}
+
+      {/* Toast Notification Container */}
+      <ToastContainer toasts={toasts} />
     </div>
   )
 }

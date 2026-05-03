@@ -1,9 +1,57 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ImportFacultyModal from '../../components/ImportFacultyModal'
-import { getFaculty, deleteFaculty } from '../../services/api' 
+import { getFaculty, getArchivedFaculty, deleteFaculty, archiveFaculty, unarchiveFaculty } from '../../services/api'
 
-/* ── Checkbox — pure visual, no hidden input (avoids double-click ghost event) ── */
+/* ── Skeleton Helper ── */
+function Skel({ w = '100%', h = 14, r = 7, style = {} }) {
+  return (
+    <div className="fac-skeleton" style={{ width: w, height: h, borderRadius: r, flexShrink: 0, ...style }} />
+  )
+}
+
+/* ── Toast Styles ── */
+if (!document.getElementById('fac-toast-style')) {
+  const s = document.createElement('style')
+  s.id = 'fac-toast-style'
+  s.textContent = `
+    @keyframes facToastIn { from{opacity:0;transform:scale(.96) translateY(12px)} to{opacity:1;transform:scale(1) translateY(0)} }
+    .fac-toast-wrap { position:fixed; bottom:24px; left:50%; z-index:9999; display:flex; flex-direction:column; gap:10px; align-items:center; pointer-events:none; transform:translateX(-50%); }
+    .fac-toast { display:flex; align-items:center; gap:10px; padding:12px 20px; border-radius:12px; font-family:'Poppins',sans-serif; font-size:13px; font-weight:600; animation:facToastIn .22s cubic-bezier(.4,0,.2,1); white-space:nowrap; pointer-events:auto; }
+    .fac-toast.success { background:linear-gradient(135deg,#7C6FCD,#5a4fbf); color:#fff; box-shadow:0 8px 24px rgba(124,111,205,0.3); border:1px solid #A99BE8; }
+    .fac-toast.error   { background:#fff; color:#DC2626; border:1.5px solid #FECACA; box-shadow:0 8px 24px rgba(220,38,38,0.15); }
+    .fac-toast.info    { background:#fff; color:#7C6FCD; border:1.5px solid #D8D3F5; box-shadow:0 8px 24px rgba(124,111,205,0.15); }
+  `
+  document.head.appendChild(s)
+}
+
+/* ── Toast System ── */
+function useToast() {
+  const [toasts, setToasts] = useState([])
+  const toast = useCallback((message, type = 'info', duration = 3000) => {
+    const id = Date.now() + Math.random()
+    setToasts(prev => [...prev, { id, message, type }])
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), duration)
+  }, [])
+  return { toasts, toast }
+}
+
+function ToastContainer({ toasts }) {
+  const icons = {
+    success: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>,
+    error:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>,
+    info:    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/></svg>,
+  }
+  return (
+    <div className="fac-toast-wrap">
+      {toasts.map(t => (
+        <div key={t.id} className={`fac-toast ${t.type}`}>{icons[t.type]}{t.message}</div>
+      ))}
+    </div>
+  )
+}
+
+/* ── Checkbox — pure visual, no hidden input ── */
 function Checkbox({ checked, indeterminate }) {
   return (
     <span style={{
@@ -58,18 +106,96 @@ function RatingStars({ rating }) {
   )
 }
 
+/* ── Generic confirm modal — handles archive / unarchive / permanent delete ── */
+function ActionModal({ mode, name, count, onConfirm, onCancel, busy }) {
+  const isBulk = count > 1
+
+  const cfg = {
+    archive: {
+      iconBg:   '#FEF3CD',
+      iconStroke: '#D97706',
+      iconPath: <><path d="M21 8v13H3V8"/><path d="M23 3H1v5h22z"/><line x1="10" y1="12" x2="14" y2="12"/></>,
+      title:    isBulk ? `Archive ${count} Faculty Members?`  : 'Archive Faculty Member?',
+      body:     isBulk
+        ? `These ${count} members will be hidden from active scheduling but can be restored at any time.`
+        : `${name} will be hidden from active scheduling. You can restore them at any time.`,
+      btnBg:    'linear-gradient(135deg,#D97706,#B45309)',
+      btnLabel: busy ? 'Archiving…' : (isBulk ? `Archive ${count}` : 'Archive'),
+    },
+    unarchive: {
+      iconBg:   '#E6FAF3',
+      iconStroke: '#059669',
+      iconPath: <><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></>,
+      title:    isBulk ? `Restore ${count} Faculty Members?` : 'Restore Faculty Member?',
+      body:     isBulk
+        ? `These ${count} members will be moved back to the active roster.`
+        : `${name} will be moved back to the active roster and included in scheduling.`,
+      btnBg:    'linear-gradient(135deg,#059669,#047857)',
+      btnLabel: busy ? 'Restoring…' : (isBulk ? `Restore ${count}` : 'Restore'),
+    },
+    delete: {
+      iconBg:   '#FFE8E8',
+      iconStroke: '#C0392B',
+      iconPath: <><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></>,
+      title:    isBulk ? `Permanently Delete ${count} Faculty Members?` : 'Permanently Delete?',
+      body:     isBulk
+        ? `This cannot be undone. All ${count} members and their login accounts will be removed forever.`
+        : `This cannot be undone. ${name} and their login account will be removed forever.`,
+      btnBg:    '#C0392B',
+      btnLabel: busy ? 'Deleting…' : (isBulk ? `Delete ${count}` : 'Yes, Delete'),
+    },
+  }
+
+  const c = cfg[mode] || cfg.delete
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1100,
+      background: 'rgba(26,26,46,0.5)', backdropFilter: 'blur(4px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+    }}>
+      <div style={{
+        background: '#fff', borderRadius: 18, padding: '28px 28px 24px',
+        maxWidth: 400, width: '100%',
+        boxShadow: '0 20px 60px rgba(26,26,46,0.22)', textAlign: 'center',
+      }}>
+        <div style={{
+          width: 52, height: 52, borderRadius: '50%', background: c.iconBg,
+          margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.iconStroke} strokeWidth="2">
+            {c.iconPath}
+          </svg>
+        </div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: '#1a1a2e', marginBottom: 8 }}>{c.title}</div>
+        <div style={{ fontSize: 13, color: '#8883B0', marginBottom: 24, lineHeight: 1.5 }}>{c.body}</div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onCancel} disabled={busy} style={{
+            flex: 1, padding: '10px', borderRadius: 9, border: '1.5px solid #E8E4F8',
+            background: '#fff', fontSize: 13, fontWeight: 600, color: '#8883B0',
+            cursor: busy ? 'default' : 'pointer', fontFamily: "'Poppins',sans-serif",
+          }}>Cancel</button>
+          <button onClick={onConfirm} disabled={busy} style={{
+            flex: 1, padding: '10px', borderRadius: 9, border: 'none',
+            background: c.btnBg, fontSize: 13, fontWeight: 700, color: '#fff',
+            cursor: busy ? 'default' : 'pointer', fontFamily: "'Poppins',sans-serif",
+            opacity: busy ? 0.7 : 1,
+          }}>{c.btnLabel}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── Avatar ── */
 function Avatar({ name, size = 56 }) {
-  const safeName = name || '?';
+  const safeName = name || '?'
   const initials = safeName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-  
   const colors = [
     ['#7C6FCD', '#EEEAFB'], ['#2563EB', '#EBF0FF'], ['#059669', '#E6FAF3'],
     ['#D97706', '#FEF3CD'], ['#DC2626', '#FFE8E8'], ['#7C3AED', '#EDE9FE'],
   ]
-  
   const [fg, bg] = colors[safeName.charCodeAt(0) % colors.length]
-  
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%',
@@ -78,15 +204,17 @@ function Avatar({ name, size = 56 }) {
       fontSize: size * 0.33, fontWeight: 700, flexShrink: 0,
       border: `2.5px solid ${fg}30`,
       boxShadow: `0 4px 12px ${fg}25`,
+      opacity: 1,
     }}>{initials}</div>
   )
 }
 
 /* ── Faculty Card ── */
-function FacultyCard({ faculty, selected, onSelect, onClick, selectionMode }) {
+function FacultyCard({ faculty, selected, onSelect, onClick, onArchive, onUnarchive, onDelete, selectionMode, viewTab }) {
   const [hovered, setHovered] = useState(false)
   const isOverloaded = (faculty.units ?? 0) > (faculty.max_units ?? 21)
   const unitPct = Math.min(100, ((faculty.units ?? 0) / (faculty.max_units ?? 21)) * 100)
+  const isArchived = !!faculty.archived
 
   return (
     <div
@@ -94,12 +222,13 @@ function FacultyCard({ faculty, selected, onSelect, onClick, selectionMode }) {
       onMouseLeave={() => setHovered(false)}
       onClick={onClick}
       style={{
-        background: selected ? '#FDFCFF' : '#fff',
+        background: isArchived ? '#FAFAF8' : (selected ? '#FDFCFF' : '#fff'),
         borderRadius: 16,
-        border: `1.5px solid ${selected ? '#7C6FCD' : hovered ? '#C4BBF0' : '#E8E4F8'}`,
+        border: `1.5px solid ${selected ? '#7C6FCD' : isArchived ? '#E8E3D8' : hovered ? '#C4BBF0' : '#E8E4F8'}`,
         padding: '18px 18px 16px',
         cursor: 'pointer',
         position: 'relative',
+        opacity: isArchived ? 0.82 : 1,
         boxShadow: selected
           ? '0 0 0 3px rgba(124,111,205,0.18), 0 8px 24px rgba(124,111,205,0.14)'
           : hovered
@@ -109,7 +238,7 @@ function FacultyCard({ faculty, selected, onSelect, onClick, selectionMode }) {
         transition: 'all 0.18s ease',
       }}
     >
-      {/* Selection checkbox — always visible */}
+      {/* Selection checkbox */}
       <div
         onClick={e => { e.stopPropagation(); onSelect() }}
         style={{
@@ -135,7 +264,7 @@ function FacultyCard({ faculty, selected, onSelect, onClick, selectionMode }) {
         </div>
       </div>
 
-      {/* Status badge */}
+      {/* Status badges */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
         <span style={{
           padding: '2px 9px', borderRadius: 99, fontSize: 10.5, fontWeight: 700,
@@ -145,7 +274,14 @@ function FacultyCard({ faculty, selected, onSelect, onClick, selectionMode }) {
           textTransform: 'capitalize',
         }}>{faculty.status}</span>
 
-        {isOverloaded && (
+        {isArchived && (
+          <span style={{
+            padding: '2px 9px', borderRadius: 99, fontSize: 10.5, fontWeight: 700,
+            background: '#FEF3CD', color: '#B45309', border: '1px solid #FDE68A',
+          }}>Archived</span>
+        )}
+
+        {isOverloaded && !isArchived && (
           <span style={{
             padding: '2px 9px', borderRadius: 99, fontSize: 10.5, fontWeight: 700,
             background: '#FFE8E8', color: '#C0392B', border: '1px solid #FFCCCC',
@@ -158,11 +294,13 @@ function FacultyCard({ faculty, selected, onSelect, onClick, selectionMode }) {
         <div style={{ height: 4, background: '#F0EDF9', borderRadius: 99, overflow: 'hidden' }}>
           <div style={{
             height: '100%', width: `${unitPct}%`,
-            background: isOverloaded
-              ? 'linear-gradient(90deg,#E74C3C,#C0392B)'
-              : unitPct > 80
-                ? 'linear-gradient(90deg,#F39C12,#D97706)'
-                : 'linear-gradient(90deg,#7C6FCD,#5a4fbf)',
+            background: isArchived
+              ? 'linear-gradient(90deg,#D4C89A,#B8A870)'
+              : isOverloaded
+                ? 'linear-gradient(90deg,#E74C3C,#C0392B)'
+                : unitPct > 80
+                  ? 'linear-gradient(90deg,#F39C12,#D97706)'
+                  : 'linear-gradient(90deg,#7C6FCD,#5a4fbf)',
             borderRadius: 99,
             transition: 'width 0.3s ease',
           }} />
@@ -196,13 +334,14 @@ function FacultyCard({ faculty, selected, onSelect, onClick, selectionMode }) {
         )}
       </div>
 
-      {/* Hover edit hint */}
+      {/* Hover action bar */}
       {hovered && !selectionMode && (
         <div style={{
           position: 'absolute', bottom: 0, left: 0, right: 0,
           background: 'linear-gradient(to top, rgba(124,111,205,0.08), transparent)',
-          borderRadius: '0 0 14px 14px', height: 32,
-          display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: 6,
+          borderRadius: '0 0 14px 14px', height: 36,
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
+          paddingBottom: 7, paddingLeft: 12, paddingRight: 10,
         }}>
           <span style={{ fontSize: 10.5, color: '#7C6FCD', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#7C6FCD" strokeWidth="2.5">
@@ -211,6 +350,71 @@ function FacultyCard({ faculty, selected, onSelect, onClick, selectionMode }) {
             </svg>
             Click to edit
           </span>
+
+          <div style={{ display: 'flex', gap: 5 }}>
+            {/* Active tab: Archive button */}
+            {viewTab === 'active' && (
+              <button
+                onClick={e => { e.stopPropagation(); onArchive() }}
+                title="Archive faculty member"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 26, height: 26, borderRadius: 7,
+                  background: '#FEF3CD', border: '1px solid #FDE68A',
+                  color: '#B45309', cursor: 'pointer', flexShrink: 0,
+                  transition: 'all 0.15s', padding: 0,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#D97706'; e.currentTarget.style.color = '#fff' }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#FEF3CD'; e.currentTarget.style.color = '#B45309' }}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <path d="M21 8v13H3V8"/><path d="M23 3H1v5h22z"/><line x1="10" y1="12" x2="14" y2="12"/>
+                </svg>
+              </button>
+            )}
+
+            {/* Archived tab: Unarchive + Permanent Delete buttons */}
+            {viewTab === 'archived' && (
+              <>
+                <button
+                  onClick={e => { e.stopPropagation(); onUnarchive() }}
+                  title="Restore faculty member"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 26, height: 26, borderRadius: 7,
+                    background: '#E6FAF3', border: '1px solid #A7F3D0',
+                    color: '#059669', cursor: 'pointer', flexShrink: 0,
+                    transition: 'all 0.15s', padding: 0,
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#059669'; e.currentTarget.style.color = '#fff' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#E6FAF3'; e.currentTarget.style.color = '#059669' }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/>
+                  </svg>
+                </button>
+                <button
+                  onClick={e => { e.stopPropagation(); onDelete() }}
+                  title="Permanently delete"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 26, height: 26, borderRadius: 7,
+                    background: '#FFE8E8', border: '1px solid #FFCCCC',
+                    color: '#C0392B', cursor: 'pointer', flexShrink: 0,
+                    transition: 'all 0.15s', padding: 0,
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#C0392B'; e.currentTarget.style.color = '#fff' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#FFE8E8'; e.currentTarget.style.color = '#C0392B' }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                    <path d="M10 11v6M14 11v6M9 6V4h6v2"/>
+                  </svg>
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -219,28 +423,61 @@ function FacultyCard({ faculty, selected, onSelect, onClick, selectionMode }) {
 
 /* ── Main page ── */
 export default function FacultyListPage() {
-  const [faculty,       setFaculty]       = useState([])
+  const { toasts, toast } = useToast()
+
+  // ── FIX: Split into two independent state arrays ──────────────────────────
+  // Previously, one `faculty` array was fetched and then split client-side by
+  // the `archived` flag. But getFaculty() now only returns active faculty
+  // (include_archived=false), so archivedFaculty was always [].
+  //
+  // Now we maintain two separate arrays and fetch them independently.
+  // This also means switching tabs doesn't re-fetch — both lists are loaded
+  // on mount and after any mutation.
+  const [activeFaculty,   setActiveFaculty]   = useState([])
+  const [archivedFaculty, setArchivedFaculty] = useState([])
+
   const [search,        setSearch]        = useState('')
   const [statusFilter,  setStatusFilter]  = useState([])
+  const [viewTab,       setViewTab]       = useState('active')   // 'active' | 'archived'
   const [loading,       setLoading]       = useState(true)
   const [selected,      setSelected]      = useState(new Set())
-  const [deleting,      setDeleting]      = useState(false)
-  const [showImport,    setShowImport]    = useState(false) // Modal state
+  const [busy,          setBusy]          = useState(false)
+  const [showImport,    setShowImport]    = useState(false)
+  const [pendingAction, setPendingAction] = useState(null)
+  // pendingAction: { mode: 'archive'|'unarchive'|'delete', id?, name?, bulk?, count?, targets? } | null
   const navigate = useNavigate()
 
+  // ── FIX: Fetch active and archived lists in parallel ─────────────────────
+  // Both calls go out at the same time (Promise.all) so there's no extra
+  // round-trip penalty compared to the old single-fetch approach.
   async function load() {
     setLoading(true)
-    try { setFaculty(await getFaculty()) } finally { setLoading(false) }
+    try {
+      const [active, archived] = await Promise.all([
+        getFaculty(),           // GET /faculty/?include_archived=false
+        getArchivedFaculty(),   // GET /faculty/?include_archived=true  → filter on server
+      ])
+      // getArchivedFaculty returns ALL docs (include_archived=true).
+      // We filter client-side here so the active list is never polluted
+      // if the server ever changes behaviour, and to keep the contract clear.
+      setActiveFaculty(active)
+      setArchivedFaculty(archived.filter(f => f.archived))
+    } finally {
+      setLoading(false)
+    }
     setSelected(new Set())
   }
   useEffect(() => { load() }, [])
 
-  const filtered = useMemo(() => faculty.filter(f => {
+  // The tab drives which list we display — no useMemo split needed anymore.
+  const tabFaculty = viewTab === 'active' ? activeFaculty : archivedFaculty
+
+  const filtered = useMemo(() => tabFaculty.filter(f => {
     const q = search.toLowerCase()
     const matchSearch = !q || (f.name || '').toLowerCase().includes(q) || (f.AcademicRank || '').toLowerCase().includes(q)
     const matchStatus = statusFilter.length === 0 || statusFilter.includes(f.status)
     return matchSearch && matchStatus
-  }), [faculty, search, statusFilter])
+  }), [tabFaculty, search, statusFilter])
 
   const filteredIds   = filtered.map(f => f.id)
   const allSelected   = filteredIds.length > 0 && filteredIds.every(id => selected.has(id))
@@ -260,15 +497,70 @@ export default function FacultyListPage() {
     setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
 
-  async function handleBulkDelete() {
+  /* ── Single-item action triggers ── */
+  function handleCardArchive(id, name)   { setPendingAction({ mode: 'archive',   id, name }) }
+  function handleCardUnarchive(id, name) { setPendingAction({ mode: 'unarchive', id, name }) }
+  function handleCardDelete(id, name)    { setPendingAction({ mode: 'delete',    id, name }) }
+
+  /* ── Bulk action triggers ── */
+  function handleBulkArchive() {
     const targets = filtered.filter(f => selected.has(f.id))
     if (!targets.length) return
-    if (!confirm(`Permanently delete ${targets.length} faculty member${targets.length !== 1 ? 's' : ''}? This cannot be undone.`)) return
-    setDeleting(true)
+    setPendingAction({ mode: 'archive', bulk: true, count: targets.length, targets })
+  }
+  function handleBulkUnarchive() {
+    const targets = filtered.filter(f => selected.has(f.id))
+    if (!targets.length) return
+    setPendingAction({ mode: 'unarchive', bulk: true, count: targets.length, targets })
+  }
+  function handleBulkDelete() {
+    const targets = filtered.filter(f => selected.has(f.id))
+    if (!targets.length) return
+    setPendingAction({ mode: 'delete', bulk: true, count: targets.length, targets })
+  }
+
+  /* ── Confirm handler ── */
+  async function handleConfirm() {
+    if (!pendingAction) return
+    setBusy(true)
     try {
-      await Promise.all(targets.map(f => deleteFaculty(f.id)))
+      const { mode, bulk, targets, id } = pendingAction
+      
+      if (bulk) {
+        if (mode === 'archive') {
+          await Promise.all(targets.map(f => archiveFaculty(f.id)))
+          toast(`${targets.length} faculty members archived`, 'success')
+        }
+        if (mode === 'unarchive') {
+          await Promise.all(targets.map(f => unarchiveFaculty(f.id)))
+          toast(`${targets.length} faculty members restored`, 'success')
+        }
+        if (mode === 'delete') {
+          await Promise.all(targets.map(f => deleteFaculty(f.id)))
+          toast(`${targets.length} faculty members deleted`, 'success')
+        }
+      } else {
+        if (mode === 'archive') {
+          await archiveFaculty(id)
+          toast('Faculty member archived', 'success')
+        }
+        if (mode === 'unarchive') {
+          await unarchiveFaculty(id)
+          toast('Faculty member restored', 'success')
+        }
+        if (mode === 'delete') {
+          await deleteFaculty(id)
+          toast('Faculty member deleted', 'success')
+        }
+      }
+      setPendingAction(null)
+      setSelected(new Set())
       load()
-    } finally { setDeleting(false) }
+    } catch (err) {
+      toast(`Failed to ${pendingAction.mode} faculty`, 'error')
+    } finally { 
+      setBusy(false) 
+    }
   }
 
   const hasFilter = search || statusFilter.length > 0
@@ -279,23 +571,51 @@ export default function FacultyListPage() {
         @keyframes slideIn { from { opacity:0; transform:translateY(-8px) } to { opacity:1; transform:translateY(0) } }
         @keyframes spin     { to   { transform:rotate(360deg) } }
         @keyframes fadeIn   { from { opacity:0 } to { opacity:1 } }
+        
+        /* Skeleton Animations */
+        @keyframes facShimmer {
+          0%   { background-position: -400px 0 }
+          100% { background-position:  400px 0 }
+        }
+        .fac-skeleton {
+          background: linear-gradient(90deg, #F0EDF9 25%, #E4DEFC 50%, #F0EDF9 75%);
+          background-size: 800px 100%;
+          animation: facShimmer 1.4s ease-in-out infinite;
+          border-radius: 7px;
+        }
       `}</style>
 
       {/* ── Page header ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22 }}>
-        <div>
-          <h1 style={{ fontSize: 21, fontWeight: 700, color: '#1a1a2e', letterSpacing: '-.3px', margin: 0 }}>Faculty</h1>
-          <p style={{ fontSize: 12.5, color: '#8883B0', marginTop: 3 }}>
-            {faculty.length} member{faculty.length !== 1 ? 's' : ''}
-            {hasFilter && filtered.length !== faculty.length && (
-              <span style={{ marginLeft: 6, color: '#7C6FCD', fontWeight: 600 }}>· {filtered.length} shown</span>
-            )}
-          </p>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12 }}>
         
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {/* Import Button */}
-          <button 
+        {/* ── Active / Archived tab switcher ── */}
+        <div style={{
+          display: 'flex', gap: 3,
+          background: '#F5F4FB', borderRadius: 10, padding: 3,
+          border: '1px solid #E8E4F8', width: 260, flexShrink: 0
+        }}>
+          {[
+            { key: 'active',   label: loading ? <div style={{display:'flex', alignItems:'center', gap:5}}>Active <Skel w={20} h={12} r={4}/></div> : `Active (${activeFaculty.length})` },
+            { key: 'archived', label: loading ? <div style={{display:'flex', alignItems:'center', gap:5}}>Archived <Skel w={20} h={12} r={4}/></div> : `Archived (${archivedFaculty.length})` },
+          ].map(({ key, label }) => {
+            const active = viewTab === key
+            return (
+              <button key={key} onClick={() => { setViewTab(key); setSelected(new Set()) }} style={{
+                flex: 1, padding: '5px 12px', borderRadius: 7, fontSize: 12, fontWeight: active ? 700 : 500,
+                background: active ? '#fff' : 'transparent',
+                color: active ? 'rgb(124, 111, 205)' : '#8883B0',
+                border: active ? '1px solid #E8E4F8' : '1px solid transparent',
+                cursor: 'pointer', transition: 'all 0.15s',
+                boxShadow: active ? '0 1px 4px rgba(124,111,205,0.1)' : 'none',
+                fontFamily: "'Poppins',sans-serif", whiteSpace: 'nowrap',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>{label}</button>
+            )
+          })}
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+          <button
             onClick={() => setShowImport(true)}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 7,
@@ -304,8 +624,8 @@ export default function FacultyListPage() {
               cursor: 'pointer', transition: 'all 0.15s',
               background: '#fff', color: '#7C6FCD'
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#F2EFFD'; e.currentTarget.style.borderColor = '#C5BBEF'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#D8D3F5'; }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#F2EFFD'; e.currentTarget.style.borderColor = '#C5BBEF' }}
+            onMouseLeave={e => { e.currentTarget.style.background = '#fff';    e.currentTarget.style.borderColor = '#D8D3F5' }}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -314,7 +634,6 @@ export default function FacultyListPage() {
             Import Faculty
           </button>
 
-          {/* Add Faculty Button */}
           <button
             onClick={() => navigate('/dashboard/faculty/new')}
             style={{
@@ -416,35 +735,99 @@ export default function FacultyListPage() {
             style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.85)', fontSize: 12, padding: '5px 14px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Poppins',sans-serif" }}>
             Deselect all
           </button>
-          <button onClick={handleBulkDelete} disabled={deleting}
-            style={{ background: '#C0392B', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, padding: '5px 15px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontFamily: "'Poppins',sans-serif", opacity: deleting ? 0.7 : 1 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-            {deleting ? 'Deleting…' : `Delete ${selectedCount}`}
-          </button>
+
+          {/* Active tab: Archive */}
+          {viewTab === 'active' && (
+            <button onClick={handleBulkArchive} disabled={busy}
+              style={{ background: 'linear-gradient(135deg,#D97706,#B45309)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, padding: '5px 15px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontFamily: "'Poppins',sans-serif", opacity: busy ? 0.7 : 1 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M21 8v13H3V8"/><path d="M23 3H1v5h22z"/><line x1="10" y1="12" x2="14" y2="12"/>
+              </svg>
+              Archive {selectedCount}
+            </button>
+          )}
+
+          {/* Archived tab: Unarchive + Permanent Delete */}
+          {viewTab === 'archived' && (
+            <>
+              <button onClick={handleBulkUnarchive} disabled={busy}
+                style={{ background: 'linear-gradient(135deg,#059669,#047857)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, padding: '5px 15px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontFamily: "'Poppins',sans-serif", opacity: busy ? 0.7 : 1 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/>
+                </svg>
+                Restore {selectedCount}
+              </button>
+              <button onClick={handleBulkDelete} disabled={busy}
+                style={{ background: '#C0392B', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, padding: '5px 15px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontFamily: "'Poppins',sans-serif", opacity: busy ? 0.7 : 1 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>
+                </svg>
+                Delete {selectedCount}
+              </button>
+            </>
+          )}
         </div>
       )}
 
       {/* ── Content ── */}
       {loading ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#8883B0', fontSize: 13, padding: '40px 0' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A99BE8" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
-            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-          </svg>
-          Loading faculty…
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+          gap: 16,
+          animation: 'fadeIn 0.25s ease',
+        }}>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} style={{
+              background: '#fff', borderRadius: 16, border: '1.5px solid #E8E4F8',
+              padding: '18px 18px 16px', position: 'relative',
+              boxShadow: '0 2px 8px rgba(124,111,205,0.06)'
+            }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 14 }}>
+                <Skel w={44} h={44} r="50%" />
+                <div style={{ flex: 1, paddingTop: 4 }}>
+                  <Skel w="70%" h={14} style={{ marginBottom: 6 }} />
+                  <Skel w="40%" h={11} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+                <Skel w={65} h={18} r={99} />
+                <Skel w={55} h={18} r={99} />
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <Skel w="100%" h={4} r={99} />
+              </div>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <Skel w={45} h={18} r={99} />
+                <Skel w={60} h={18} r={99} />
+                <Skel w={50} h={18} r={99} />
+              </div>
+            </div>
+          ))}
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: '#B0ABCC', animation: 'fadeIn 0.3s' }}>
           <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#F5F4FB', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D8D3F5" strokeWidth="1.5">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
+            {viewTab === 'archived' ? (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D8D3F5" strokeWidth="1.5">
+                <path d="M21 8v13H3V8"/><path d="M23 3H1v5h22z"/><line x1="10" y1="12" x2="14" y2="12"/>
+              </svg>
+            ) : (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D8D3F5" strokeWidth="1.5">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            )}
           </div>
           <div style={{ fontSize: 14, fontWeight: 600, color: '#8883B0', marginBottom: 4 }}>
-            {faculty.length === 0 ? 'No faculty yet' : 'No faculty match your search'}
+            {viewTab === 'archived'
+              ? (archivedFaculty.length === 0 ? 'No archived faculty' : 'No matches')
+              : (activeFaculty.length === 0 ? 'No faculty yet' : 'No faculty match your search')}
           </div>
           <div style={{ fontSize: 12.5, color: '#C0BBDC' }}>
-            {faculty.length === 0 ? 'Add your first faculty member to get started.' : 'Try adjusting your search or filters.'}
+            {viewTab === 'archived'
+              ? (archivedFaculty.length === 0 ? 'Archived members will appear here.' : 'Try adjusting your search or filters.')
+              : (activeFaculty.length === 0 ? 'Add your first faculty member to get started.' : 'Try adjusting your search or filters.')}
           </div>
         </div>
       ) : (
@@ -460,7 +843,11 @@ export default function FacultyListPage() {
               faculty={f}
               selected={selected.has(f.id)}
               selectionMode={selectionMode}
+              viewTab={viewTab}
               onSelect={() => toggleOne(f.id)}
+              onArchive={() => handleCardArchive(f.id, f.name)}
+              onUnarchive={() => handleCardUnarchive(f.id, f.name)}
+              onDelete={() => handleCardDelete(f.id, f.name)}
               onClick={() => {
                 if (selectionMode) { toggleOne(f.id); return }
                 navigate(`/dashboard/faculty/${f.id}`)
@@ -473,21 +860,31 @@ export default function FacultyListPage() {
       {/* Footer count */}
       {!loading && filtered.length > 0 && (
         <div style={{ marginTop: 18, fontSize: 12, color: '#C0BBDC', textAlign: 'right' }}>
-          Showing {filtered.length} of {faculty.length} faculty
+          Showing {filtered.length} of {tabFaculty.length} {viewTab} faculty
           {selectedCount > 0 && <span style={{ marginLeft: 8, color: '#7C6FCD', fontWeight: 600 }}>· {selectedCount} selected</span>}
         </div>
       )}
 
-      {/* ── Modal Rendering ── */}
+      {/* ── Modals ── */}
       {showImport && (
-        <ImportFacultyModal 
-          onClose={() => setShowImport(false)} 
-          onImported={() => {
-            load(); 
-            setShowImport(false);
-          }} 
+        <ImportFacultyModal
+          onClose={() => setShowImport(false)}
+          onImported={() => { load(); setShowImport(false); toast('Faculty imported successfully', 'success') }}
         />
       )}
+      {pendingAction && (
+        <ActionModal
+          mode={pendingAction.mode}
+          name={pendingAction.name}
+          count={pendingAction.bulk ? pendingAction.count : 1}
+          busy={busy}
+          onConfirm={handleConfirm}
+          onCancel={() => { if (!busy) setPendingAction(null) }}
+        />
+      )}
+
+      {/* Toast Notification Container */}
+      <ToastContainer toasts={toasts} />
     </div>
   )
 }

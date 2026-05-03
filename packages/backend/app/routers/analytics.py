@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from app.core.auth import admin_only
 from app.core.globals import schedule_dict
 from app.core.firebase import get_faculty
+from app.core.unit_balancing import evaluate_workload
 
 router = APIRouter()
 
@@ -20,7 +21,6 @@ def _extract_course_codes(specializations) -> set[str]:
     codes: set[str] = set()
 
     if isinstance(specializations, str):
-        # "CS101, CS102" → {"CS101", "CS102"}
         codes = {s.strip() for s in specializations.split(",") if s.strip()}
 
     elif isinstance(specializations, list):
@@ -35,6 +35,65 @@ def _extract_course_codes(specializations) -> set[str]:
     return codes
 
 
+# ── FIX: Shared active-only faculty helper ────────────────────────────────────
+# Both /faculty-preview and /workload operate on the pool of schedulable faculty.
+# Archived faculty must never appear as eligible instructors or in workload reports.
+# Centralising the filter here means any future endpoint that calls get_faculty()
+# for scheduling/analytics purposes only needs one line.
+
+def _get_active_faculty() -> list:
+    """Return only non-archived faculty members."""
+    return [f for f in get_faculty() if not f.get("archived", False)]
+
+
+# ── FIX: Exclude externally-managed courses from unassigned/TBA counts ────────
+# GEC, MAT, NSTP, PATHFIT, and PE courses are handled by other departments.
+# They will always appear as TBA/unassigned in our schedule but that is expected
+# and correct — flagging them inflates the unassigned count and misleads admins.
+
+_OTHER_DEPT_PREFIXES = ("GEC", "MAT", "MATH", "NSTP", "PATHFIT", "PE")
+
+def _is_other_dept(course_code: str) -> bool:
+    upper = (course_code or "").strip().upper()
+    return any(upper.startswith(p) for p in _OTHER_DEPT_PREFIXES)
+
+
+def _count_conflicts(events: list) -> int:
+    """
+    Count sessions involved in a room or faculty double-booking.
+    A conflict = same room/faculty + same day + overlapping time slot.
+    Returns the number of affected session IDs (unique).
+    """
+    from collections import defaultdict
+    # Group by (day, timeslot, resource) — simple exact-slot collision
+    room_slots:    dict = defaultdict(list)
+    faculty_slots: dict = defaultdict(list)
+    conflict_ids:  set  = set()
+
+    for e in events:
+        eid  = e.get("id", "")
+        day  = e.get("day", "")
+        slot = e.get("timeSlot", "") or e.get("time", "")
+        room = e.get("room", "")
+        fac  = e.get("faculty", "")
+
+        if room and room != "TBA":
+            key = (day, slot, room)
+            room_slots[key].append(eid)
+        if fac and fac != "TBA":
+            key = (day, slot, fac)
+            faculty_slots[key].append(eid)
+
+    for ids in room_slots.values():
+        if len(ids) > 1:
+            conflict_ids.update(ids)
+    for ids in faculty_slots.values():
+        if len(ids) > 1:
+            conflict_ids.update(ids)
+
+    return len(conflict_ids)
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.get("/assignment-quality")
@@ -47,12 +106,18 @@ def assignment_quality(user=Depends(admin_only)):
             "tbaSessions":        0,
             "autoAssignPct":      0,
             "avgScore":           None,
+            "totalConflicts":     0,
             "pctInWindow":        None,
             "pctOnPreferredDays": None,
             "perFaculty":         [],
         }
 
-    events   = list(schedule_dict.values())
+    all_events = list(schedule_dict.values())
+
+    # ── FIX: GEC/MAT/NSTP/PATHFIT/PE sessions are externally managed —
+    # exclude them from all quality metrics so they do not inflate TBA counts
+    # or skew scores. They are intentionally unassigned by this department.
+    events   = [e for e in all_events if not _is_other_dept(e.get("courseCode", ""))]
     total    = len(events)
     auto     = [e for e in events if e.get("facultyAutoAssigned")]
     tba      = [e for e in events if e.get("faculty") == "TBA"]
@@ -65,7 +130,7 @@ def assignment_quality(user=Depends(admin_only)):
         if scored else None
     )
 
-    # Per-faculty breakdown
+    # Per-faculty breakdown — reads schedule_dict only, unaffected by archived
     fac_map: dict[str, dict] = {}
     for e in events:
         name = e.get("faculty", "TBA")
@@ -86,12 +151,17 @@ def assignment_quality(user=Depends(admin_only)):
         for name, info in fac_map.items()
     ]
 
+    # Conflict count operates on ALL events (incl. other-dept) because room
+    # double-bookings can involve any session regardless of who manages it.
+    total_conflicts = _count_conflicts(all_events)
+
     return {
         "totalSessions":      total,
         "autoAssigned":       len(auto),
         "tbaSessions":        len(tba),
         "autoAssignPct":      round(len(auto) / total * 100, 1) if total else 0,
         "avgScore":           avg_score,
+        "totalConflicts":     total_conflicts,
         "pctInWindow":        round(len(in_win) / len(scored) * 100, 1) if scored else None,
         "pctOnPreferredDays": round(len(on_day) / len(scored) * 100, 1) if scored else None,
         "perFaculty":         per_faculty,
@@ -103,15 +173,18 @@ def faculty_preview(user=Depends(admin_only)):
     """
     Pre-solve check: eligible faculty count per course.
 
-    Previously broken because the check used `code in specs` where specs is a
-    list of dicts {courseCode, rating} — a string is never `in` a list of dicts.
-    Now normalised via _extract_course_codes().
+    ── FIX: uses _get_active_faculty() instead of get_faculty() ──
+    Archived faculty were appearing in eligibleFaculty lists and inflating
+    poolSize counts, making courses look covered when their only eligible
+    instructor had been deactivated.
     """
     from app.core.firebase import get_courses
     courses = get_courses()
-    faculty = get_faculty()
 
-    # Pre-build {courseCode → [faculty names]} map for O(courses) instead of O(courses × faculty)
+    # ── CHANGED: was get_faculty(), now filters out archived ──────────────────
+    faculty = _get_active_faculty()
+
+    # Pre-build {courseCode → [faculty names]} map
     course_pool: dict[str, list[str]] = {}
     for f in faculty:
         f_name = f.get("name", "Unknown")
@@ -136,30 +209,24 @@ def faculty_preview(user=Depends(admin_only)):
 
 @router.get("/workload")
 def workload(user=Depends(admin_only)):
-    """Faculty workload summary — sessions assigned per faculty vs their max units."""
-    faculty_list = get_faculty()
+    """
+    Faculty workload summary — units assigned vs the *dynamic* cap.
 
-    # Count sessions per faculty name from the live schedule
-    fac_sessions: dict[str, int] = {}
-    for e in schedule_dict.values():
-        name = e.get("faculty", "TBA")
-        if name == "TBA":
-            continue
-        fac_sessions[name] = fac_sessions.get(name, 0) + 1
+    Cap rules (see app/core/unit_balancing.py):
+      Full-Time  1–2 distinct courses  → 24 units
+      Full-Time  3–4 distinct courses  → 21 units
+      Full-Time  5+ distinct courses   → 18 units
+      Part-Time  (any)                 → 15 units
 
-    result = []
-    for f in faculty_list:
-        name      = f.get("name", "")
-        max_units = f.get("max_units", 21)
-        assigned  = fac_sessions.get(name, 0)
-        result.append({
-            "name":       name,
-            "assigned":   assigned,
-            "max_units":  max_units,
-            "overloaded": assigned > max_units,
-        })
+    ── FIX: uses _get_active_faculty() instead of get_faculty() ──
+    Archived faculty were appearing in the workload report even after being
+    deactivated, cluttering the table and skewing aggregate load metrics.
+    """
 
-    # Sort: overloaded first, then by load descending
-    result.sort(key=lambda r: (-int(r["overloaded"]), -r["assigned"]))
+    # ── CHANGED: was get_faculty(), now filters out archived ──────────────────
+    faculty_list = _get_active_faculty()
 
-    return {"workload": result}
+    # evaluate_workload handles load counting + cap calculation + sort
+    rows = evaluate_workload(faculty_list, schedule_dict)
+
+    return {"workload": rows}

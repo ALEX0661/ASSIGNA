@@ -44,9 +44,10 @@ if (!document.getElementById('import-modal-style')) {
 
     .im-close {
       display: inline-flex; align-items: center; justify-content: center;
-      width: 30px; height: 30px; border-radius: 8px;
+      width: 32px; height: 32px; border-radius: 8px;
       border: 1.5px solid #E8E4F8; cursor: pointer;
-      background: #F5F4FB; color: #8883B0; transition: all 0.13s; flex-shrink: 0;
+      background: #F5F4FB; color: #7C6FCD; transition: all 0.2s; flex-shrink: 0;
+      padding: 0;
     }
     .im-close:hover { background: #FFE8E8; border-color: #FECACA; color: #DC2626; }
 
@@ -69,11 +70,13 @@ if (!document.getElementById('import-modal-style')) {
       background: #FFF5F5; color: #DC2626; display: inline-flex;
       align-items: center; justify-content: center;
       cursor: pointer; transition: all 0.12s; flex-shrink: 0;
+      padding: 0;
     }
     .im-row-remove:hover { background: #FEE2E2; border-color: #FCA5A5; }
 
     @keyframes imSpin { to{transform:rotate(360deg)} }
     @keyframes imFadeIn { from{opacity:0} to{opacity:1} }
+    @keyframes imPop    { 0%{transform:scale(.92);opacity:0} 100%{transform:scale(1);opacity:1} }
   `
   document.head.appendChild(s)
 }
@@ -369,7 +372,7 @@ function EditableRow({ course, invalid, onEdit, onRemove }) {
 }
 
 /* ─── Step 4: Review ────────────────────────────────────────────────────── */
-function ReviewStep({ courses, onBack, onCommit, onRemove, onEdit }) {
+function ReviewStep({ courses, onBack, onCommit, onRemove, onEdit, onImported }) {
   const [saving,  setSaving]  = useState(false)
   const [results, setResults] = useState(null)
 
@@ -385,33 +388,42 @@ function ReviewStep({ courses, onBack, onCommit, onRemove, onEdit }) {
   if (results) {
     const allGood = results.failed.length === 0
     return (
-      <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+      <div style={{ display:'flex', flexDirection:'column', gap:16, animation:'imPop .2s ease' }}>
         {allGood ? (
-          <div style={{ textAlign:'center', padding:'32px 0', display:'flex', flexDirection:'column', alignItems:'center', gap:12 }}>
-            <div style={{ width:56, height:56, borderRadius:'50%', background:'linear-gradient(135deg,#7C6FCD,#5a4fbf)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 6px 20px rgba(124,111,205,0.35)' }}>
-              <svg width="24" height="18" viewBox="0 0 24 18" fill="none"><polyline points="2,9 8,15 22,2" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <div style={{ textAlign:'center', padding:'36px 0', display:'flex', flexDirection:'column', alignItems:'center', gap:14 }}>
+            <div style={{ width:60, height:60, borderRadius:'50%', background:'linear-gradient(135deg,#7C6FCD,#5a4fbf)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 6px 20px rgba(124,111,205,.35)' }}>
+              <svg width="26" height="20" viewBox="0 0 26 20" fill="none"><polyline points="2,10 9,17 24,2" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
             <div>
-              <p style={{ fontWeight:700, fontSize:16, color:'#1a1a2e', marginBottom:4 }}>{results.saved} course{results.saved!==1?'s':''} imported!</p>
-              <p style={{ color:'#8883B0', fontSize:13 }}>You can now use these courses in the scheduler.</p>
+              <p style={{ fontWeight:700, fontSize:17, color:'#1a1a2e', marginBottom:5 }}>
+                {results.saved} course{results.saved!==1?'s':''} imported!
+              </p>
+              <p style={{ color:'#8883B0', fontSize:13, margin:0 }}>You can now use these courses in the scheduler.</p>
             </div>
           </div>
         ) : (
           <>
             <div style={{ background:'#FEF3CD', border:'1px solid #F0C040', borderRadius:10, padding:'12px 16px' }}>
               <p style={{ fontWeight:700, fontSize:13, color:'#1a1a2e', marginBottom:3 }}>{results.saved} saved · {results.failed.length} failed</p>
-              <p style={{ fontSize:12, color:'#8883B0' }}>These courses couldn't be saved — they may already exist or have invalid data.</p>
+              <p style={{ fontSize:12, color:'#8883B0', margin:0 }}>These courses couldn't be saved — they may already exist or have invalid data.</p>
             </div>
-            <div style={{ border:'1px solid #E8E4F8', borderRadius:10, overflow:'hidden' }}>
-              <table>
-                <thead><tr><th>Code</th><th>Title</th><th>Program</th><th>Reason</th></tr></thead>
+            <div style={{ maxHeight:200, overflowY:'auto', border:'1px solid #E8E4F8', borderRadius:10, overflow:'hidden' }}>
+              <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                <thead style={{ position:'sticky', top:0, background:'#FAFAFE', zIndex:1 }}>
+                  <tr>
+                    <th style={{ padding:'8px', fontSize:10.5, fontWeight:700, color:'#A0ABC0', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Code</th>
+                    <th style={{ padding:'8px', fontSize:10.5, fontWeight:700, color:'#A0ABC0', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Title</th>
+                    <th style={{ padding:'8px', fontSize:10.5, fontWeight:700, color:'#A0ABC0', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Program</th>
+                    <th style={{ padding:'8px', fontSize:10.5, fontWeight:700, color:'#A0ABC0', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Reason</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {results.failed.map((f,i) => (
-                    <tr key={i}>
-                      <td><span style={{ display:'inline-block', padding:'2px 8px', background:'#EEEAFB', color:'#7C6FCD', borderRadius:99, fontSize:11, fontWeight:700 }}>{f.course.courseCode}</span></td>
-                      <td style={{ fontWeight:500 }}>{f.course.title}</td>
-                      <td>{f.course.program}</td>
-                      <td style={{ color:'#DC2626', fontSize:12 }}>{f.reason}</td>
+                    <tr key={i} style={{ borderTop:'1px solid #F0EDF9' }}>
+                      <td style={{ padding:'8px' }}><span style={{ display:'inline-block', padding:'2px 8px', background:'#EEEAFB', color:'#7C6FCD', borderRadius:99, fontSize:11, fontWeight:700 }}>{f.course.courseCode}</span></td>
+                      <td style={{ padding:'8px', fontWeight:500, fontSize:12 }}>{f.course.title}</td>
+                      <td style={{ padding:'8px', fontSize:12 }}>{f.course.program}</td>
+                      <td style={{ padding:'8px', color:'#DC2626', fontSize:12 }}>{f.reason}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -419,6 +431,16 @@ function ReviewStep({ courses, onBack, onCommit, onRemove, onEdit }) {
             </div>
           </>
         )}
+
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
+          <button 
+            className="im-primary" 
+            onClick={onImported} 
+            style={{ padding: '10px 40px', fontSize: 13 }}
+          >
+            Done
+          </button>
+        </div>
       </div>
     )
   }
@@ -440,12 +462,12 @@ function ReviewStep({ courses, onBack, onCommit, onRemove, onEdit }) {
       </div>
 
       <div style={{ maxHeight:320, overflowY:'auto', border:'1px solid #E8E4F8', borderRadius:10, overflow:'hidden' }}>
-        <table style={{ width:'100%' }}>
+        <table style={{ width:'100%', borderCollapse:'collapse' }}>
           <thead style={{ position:'sticky', top:0, background:'#FAFAFE', zIndex:1 }}>
             <tr>
-              <th style={{ padding:'8px 8px', fontSize:10.5, fontWeight:700, color:'#A0ABC0', textTransform:'uppercase', letterSpacing:'.5px' }}>Code</th>
-              <th style={{ padding:'8px 8px', fontSize:10.5, fontWeight:700, color:'#A0ABC0', textTransform:'uppercase', letterSpacing:'.5px' }}>Title</th>
-              <th style={{ padding:'8px 8px', fontSize:10.5, fontWeight:700, color:'#A0ABC0', textTransform:'uppercase', letterSpacing:'.5px' }}>Program</th>
+              <th style={{ padding:'8px 8px', fontSize:10.5, fontWeight:700, color:'#A0ABC0', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Code</th>
+              <th style={{ padding:'8px 8px', fontSize:10.5, fontWeight:700, color:'#A0ABC0', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Title</th>
+              <th style={{ padding:'8px 8px', fontSize:10.5, fontWeight:700, color:'#A0ABC0', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Program</th>
               <th style={{ padding:'8px 8px', textAlign:'center', fontSize:10.5, fontWeight:700, color:'#A0ABC0', textTransform:'uppercase', letterSpacing:'.5px' }}>Yr</th>
               <th style={{ padding:'8px 8px', textAlign:'center', fontSize:10.5, fontWeight:700, color:'#A0ABC0', textTransform:'uppercase', letterSpacing:'.5px' }}>Lec</th>
               <th style={{ padding:'8px 8px', textAlign:'center', fontSize:10.5, fontWeight:700, color:'#A0ABC0', textTransform:'uppercase', letterSpacing:'.5px' }}>Lab</th>
@@ -510,7 +532,7 @@ export default function ImportCoursesModal({ onClose, onImported }) {
     const failed  = invalid.map(c => ({course:c,reason:'Missing required field(s)'}))
     try {
       const res = await commitCourses(valid)
-      onImported?.()
+      // Remove the immediate onImported() call here so the success screen can mount
       return { saved: res.committed??valid.length, failed }
     } catch(err) {
       const reason = err.response?.data?.detail || 'Server error'
@@ -548,9 +570,10 @@ export default function ImportCoursesModal({ onClose, onImported }) {
               Step {step} of 4 · Upload → Sheet → Sections → Review
             </p>
           </div>
-          <button className="im-close" onClick={onClose}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          <button className="im-close" onClick={onClose} aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
         </div>
@@ -560,7 +583,7 @@ export default function ImportCoursesModal({ onClose, onImported }) {
         {step===1 && <UploadStep onUploaded={handleUploaded} />}
         {step===2 && <SheetSelectionStep sheets={sheets} fileData={fileData} onParsed={handleParsed} onBack={()=>setStep(1)} />}
         {step===3 && <BlockConfigStep courses={parsed} onBack={()=>setStep(2)} onSubmit={handleBlockConfig} />}
-        {step===4 && <ReviewStep courses={courses} onBack={()=>setStep(3)} onCommit={handleCommit} onRemove={handleRemove} onEdit={handleEdit} />}
+        {step===4 && <ReviewStep courses={courses} onBack={()=>setStep(3)} onCommit={handleCommit} onRemove={handleRemove} onEdit={handleEdit} onImported={onImported} />}
       </div>
     </div>
   )

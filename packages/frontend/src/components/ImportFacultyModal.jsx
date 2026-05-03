@@ -32,10 +32,11 @@ if (!document.getElementById('ifm-style')) {
     .ifm-ghost:disabled { opacity:.45; cursor:default; }
 
     .ifm-close {
-      display:inline-flex; align-items:center; justify-content:center;
-      width:30px; height:30px; border-radius:8px;
-      border:1.5px solid #E8E4F8; cursor:pointer;
-      background:#F5F4FB; color:#8883B0; transition:all .13s; flex-shrink:0;
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px; border-radius: 8px;
+      border: 1.5px solid #E8E4F8; cursor: pointer;
+      background: #F5F4FB; color: #7C6FCD; transition: all 0.2s; flex-shrink: 0;
+      padding: 0;
     }
     .ifm-close:hover { background:#FFE8E8; border-color:#FECACA; color:#DC2626; }
 
@@ -63,6 +64,7 @@ if (!document.getElementById('ifm-style')) {
       border:1.5px solid #FECACA; background:#FFF5F5; color:#DC2626;
       display:inline-flex; align-items:center; justify-content:center;
       cursor:pointer; transition:all .12s; flex-shrink:0; margin-left:auto;
+      padding: 0;
     }
     .ifm-remove:hover { background:#FEE2E2; border-color:#FCA5A5; }
   `
@@ -219,13 +221,23 @@ function SheetStep({ sheets, fileData, onParsed, onBack }) {
       if (!res.preview?.length) { setError('No faculty data found in the selected sheet(s). Check the format.'); setLoading(false); return }
 
       // Split course codes like "ITC121/CSP121" into separate entries with the same rating
-      const splitPreview = res.preview.map(faculty => ({
-        ...faculty,
-        specializations: faculty.specializations.flatMap(spec => {
+      const splitPreview = res.preview.map(faculty => {
+        const expanded = faculty.specializations.flatMap(spec => {
           const codes = spec.courseCode.split('/').map(c => c.trim()).filter(Boolean)
           return codes.map(code => ({ ...spec, courseCode: code }))
         })
-      }))
+
+        // Deduplicate by courseCode — keep the highest rating when the same code appears more than once
+        const seen = new Map()
+        for (const spec of expanded) {
+          const key = spec.courseCode.toUpperCase()
+          if (!seen.has(key) || spec.rating > seen.get(key).rating) {
+            seen.set(key, spec)
+          }
+        }
+
+        return { ...faculty, specializations: [...seen.values()] }
+      })
 
       onParsed(splitPreview)
     } catch (err) {
@@ -374,7 +386,7 @@ function FacultyCard({ faculty, onRemove, animDelay }) {
   )
 }
 
-function ReviewStep({ faculty, setFaculty, onBack }) {
+function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
   const [saving,  setSaving]  = useState(false)
   const [results, setResults] = useState(null)
   const [error,   setError]   = useState('')
@@ -431,6 +443,16 @@ function ReviewStep({ faculty, setFaculty, onBack }) {
             </div>
           </>
         )}
+
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
+          <button 
+            className="ifm-primary" 
+            onClick={onImported} 
+            style={{ padding: '10px 40px', fontSize: 13 }}
+          >
+            Done
+          </button>
+        </div>
       </div>
     )
   }
@@ -537,8 +559,9 @@ export default function ImportFacultyModal({ onClose, onImported }) {
             </p>
           </div>
           <button className="ifm-close" onClick={onClose}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
         </div>
@@ -547,7 +570,7 @@ export default function ImportFacultyModal({ onClose, onImported }) {
 
         {step === 1 && <UploadStep onUploaded={handleUploaded} />}
         {step === 2 && <SheetStep sheets={sheets} fileData={fileData} onParsed={handleParsed} onBack={() => setStep(1)} />}
-        {step === 3 && <ReviewStep faculty={faculty} setFaculty={setFaculty} onBack={() => setStep(2)} />}
+        {step === 3 && <ReviewStep faculty={faculty} setFaculty={setFaculty} onBack={() => setStep(2)} onImported={onImported} />}
       </div>
     </div>
   )

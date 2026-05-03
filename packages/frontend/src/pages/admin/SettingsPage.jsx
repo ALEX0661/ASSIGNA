@@ -71,11 +71,29 @@ if (!document.getElementById('settings-page-style')) {
       to   { opacity:1; transform:translateY(0); }
     }
     @keyframes spin-stg { to { transform:rotate(360deg); } }
+
+    /* Skeleton Animations */
+    @keyframes stgShimmer {
+      0%   { background-position: -400px 0 }
+      100% { background-position:  400px 0 }
+    }
+    .stg-skeleton {
+      background: linear-gradient(90deg, #F0EDF9 25%, #E4DEFC 50%, #F0EDF9 75%);
+      background-size: 800px 100%;
+      animation: stgShimmer 1.4s ease-in-out infinite;
+      border-radius: 7px;
+    }
   `
   document.head.appendChild(s)
 }
 
 /* ─── helpers ─────────────────────────────────────────────────────────────── */
+function Skel({ w = '100%', h = 14, r = 7, style = {} }) {
+  return (
+    <div className="stg-skeleton" style={{ width: w, height: h, borderRadius: r, flexShrink: 0, ...style }} />
+  )
+}
+
 const ALL_DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
 
 function fmt12(h) {
@@ -178,8 +196,17 @@ export default function SettingsPage() {
   }, [])
 
   function toggleDay(day) {
-    setDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day])
-    setSavedDays(false)
+    setDays(prev => {
+      
+      const updatedDays = prev.includes(day) 
+        ? prev.filter(d => d !== day) 
+        : [...prev, day];
+        
+      
+      return updatedDays.sort((a, b) => ALL_DAYS.indexOf(a) - ALL_DAYS.indexOf(b));
+    });
+    
+    setSavedDays(false);
   }
 
   async function handleSaveDays() {
@@ -200,26 +227,10 @@ export default function SettingsPage() {
     finally { setSavingTime(false) }
   }
 
-  if (loading) return (
-    <div style={{ padding: 40, display: 'flex', alignItems: 'center', gap: 10, color: '#8883B0', fontSize: 13 }}>
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A99BE8" strokeWidth="2"
-        style={{ animation: 'spin-stg .8s linear infinite' }}>
-        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-      </svg>
-      Loading settings…
-    </div>
-  )
-
   const hourOptions = Array.from({ length: 24 }, (_, i) => i)
 
   return (
     <div className="page">
-      <div style={{ marginBottom: 22 }}>
-        <p className="page-title" style={{ marginBottom: 4 }}>Settings</p>
-        <p style={{ fontSize: 12.5, color: '#8883B0' }}>
-          Configure scheduling parameters — changes apply on the next solver run.
-        </p>
-      </div>
 
       {error && (
         <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14,
@@ -239,27 +250,37 @@ export default function SettingsPage() {
           iconBg="#E6FAF3" iconColor="#059669" title="Active Days"
           desc="Days when classes can be scheduled"
           iconPath={<><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>}
-          saveBtn={<SaveBtn saving={savingDays} saved={savedDays} onClick={handleSaveDays} label="Save Days" />}
+          saveBtn={
+            loading ? <Skel w={100} h={32} r={8} /> : 
+            <SaveBtn saving={savingDays} saved={savedDays} onClick={handleSaveDays} label="Save Days" />
+          }
         />
 
         <div className="stg-row" style={{ flexWrap: 'wrap', gap: 12 }}>
           <div>
             <div className="stg-lbl">School Days</div>
             <div className="stg-hint">
-              {days.length === 0
-                ? 'No days selected'
-                : `${days.length} day${days.length !== 1 ? 's' : ''} — ${days.join(', ')}`}
+              {loading ? (
+                <Skel w={180} h={12} style={{ marginTop: 4 }} />
+              ) : days.length === 0 ? (
+                'No days selected'
+              ) : (
+                `${days.length} day${days.length !== 1 ? 's' : ''} — ${days.join(', ')}`
+              )}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {ALL_DAYS.map(d => (
-              <button
-                key={d} className={`day-pill${days.includes(d) ? ' on' : ''}`}
-                onClick={() => toggleDay(d)}
-              >
-                {d.slice(0, 3)}
-              </button>
-            ))}
+            {loading 
+              ? Array.from({ length: 5 }).map((_, i) => <Skel key={i} w={46} h={28} r={8} />)
+              : ALL_DAYS.map(d => (
+                  <button
+                    key={d} className={`day-pill${days.includes(d) ? ' on' : ''}`}
+                    onClick={() => toggleDay(d)}
+                  >
+                    {d.slice(0, 3)}
+                  </button>
+                ))
+            }
           </div>
         </div>
       </div>
@@ -268,36 +289,51 @@ export default function SettingsPage() {
       <div className="stg-card">
         <SectionHead
           iconBg="#EDE9FB" iconColor="#7C6FCD" title="Time Window"
-          desc={`Classes scheduled between ${fmt12(startHour)} and ${fmt12(endHour)}`}
+          desc={loading ? <Skel w={220} h={12} style={{ marginTop: 4 }} /> : `Classes scheduled between ${fmt12(startHour)} and ${fmt12(endHour)}`}
           iconPath={<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>}
-          saveBtn={<SaveBtn saving={savingTime} saved={savedTime} onClick={handleSaveTime} label="Save Time" />}
+          saveBtn={
+            loading ? <Skel w={100} h={32} r={8} /> : 
+            <SaveBtn saving={savingTime} saved={savedTime} onClick={handleSaveTime} label="Save Time" />
+          }
         />
 
         <Row label="Start Time" hint="Earliest a class can begin">
-          <select className="hour-select" value={startHour}
-            onChange={e => { setStartHour(parseInt(e.target.value)); setSavedTime(false) }}>
-            {hourOptions.filter(h => h < endHour).map(h => (
-              <option key={h} value={h}>{fmt12(h)}</option>
-            ))}
-          </select>
+          {loading ? (
+            <Skel w={150} h={30} r={9} />
+          ) : (
+            <select className="hour-select" value={startHour}
+              onChange={e => { setStartHour(parseInt(e.target.value)); setSavedTime(false) }}>
+              {hourOptions.filter(h => h < endHour).map(h => (
+                <option key={h} value={h}>{fmt12(h)}</option>
+              ))}
+            </select>
+          )}
         </Row>
 
         <Row label="End Time" hint="Latest a class can end">
-          <select className="hour-select" value={endHour}
-            onChange={e => { setEndHour(parseInt(e.target.value)); setSavedTime(false) }}>
-            {hourOptions.filter(h => h > startHour).map(h => (
-              <option key={h} value={h}>{fmt12(h)}</option>
-            ))}
-          </select>
+          {loading ? (
+            <Skel w={150} h={30} r={9} />
+          ) : (
+            <select className="hour-select" value={endHour}
+              onChange={e => { setEndHour(parseInt(e.target.value)); setSavedTime(false) }}>
+              {hourOptions.filter(h => h > startHour).map(h => (
+                <option key={h} value={h}>{fmt12(h)}</option>
+              ))}
+            </select>
+          )}
         </Row>
 
         <div style={{ padding: '10px 20px', background: '#FAFAFE', borderTop: '1px solid #F5F4FB' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#A99BE8', flexShrink: 0 }} />
-            <span style={{ fontSize: 12, color: '#8883B0' }}>
-              {endHour - startHour} hour window ·{' '}
-              {(endHour - startHour) * 2} × 30-min slots available per day
-            </span>
+            {loading ? (
+              <Skel w={250} h={12} />
+            ) : (
+              <span style={{ fontSize: 12, color: '#8883B0' }}>
+                {endHour - startHour} hour window ·{' '}
+                {(endHour - startHour) * 2} × 30-min slots available per day
+              </span>
+            )}
           </div>
         </div>
       </div>

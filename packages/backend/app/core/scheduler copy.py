@@ -3,7 +3,6 @@ from collections import defaultdict
 from app.core.globals import schedule_dict, progress_state
 # Fixed: Imports now match the actual function names in firebase.py
 from app.core.firebase import get_courses, get_rooms, get_time, get_days, load_all_caches
-from app.core.faculty_assigner import FacultyAssigner
 import logging
 import math
 import random 
@@ -174,10 +173,11 @@ class HierarchicalScheduler:
             combined_schedule.extend(p_sched)
             self.update_progress(50 + int((i / total_p) * 45))
             
-        # NOTE: Internal tracking keys (_start_slot, _duration, _room_type,
-        # _room_idx) are intentionally kept here so that FacultyAssigner can
-        # use them for double-booking detection.  They are stripped in
-        # generate_schedule() after faculty assignment is complete.
+        # Clean up internal tracking keys before returning
+        for event in combined_schedule:
+            for k in ['_start_slot', '_duration', '_room_type', '_room_idx']:
+                if k in event: del event[k]
+                
         return combined_schedule
 
     def solve_phase_logic(self, phase_courses, phase, timeout):
@@ -614,10 +614,6 @@ class HierarchicalScheduler:
                 'title': s['title'], 'program': s['prog'], 'year': s['yr'], 
                 'session': 'Lecture' if s['type']=='lecture' else ('Practicum' if s['type']=='practicum' else 'Laboratory'), 
                 'block': s['blk'], 'day': self.days[dv], 'period': f"{fmt(st_f)} - {fmt(en_f)}", 'room': r_name, 
-                
-               
-                'units': dur * self.inc_hr, 
-                
                 '_start_slot': sv, '_duration': dur, '_room_type': r_type.lower() if r_idx != -1 else None, '_room_idx': r_idx
             })
         return sched
@@ -638,30 +634,7 @@ def generate_schedule(process_id=None):
         if res == "impossible": 
             logger.error("Schedule generation failed: Impossible Constraints")
             return "impossible"
-
-        # ── Faculty assignment ────────────────────────────────────────────────
-        # Run BEFORE stripping internal tracking keys; the assigner needs
-        # _start_slot and _duration for double-booking detection.
-        s.update_progress(97)
-        assigner = FacultyAssigner()
-        assigner.load_faculty()
-        res = assigner.assign(res)
-
-        # Log a quick load summary at DEBUG level
-        for row in assigner.load_summary():
-            logger.debug(
-                "Faculty load – %s (%s): %.1f / %.0f units | courses: %d%s",
-                row["name"], row["status"],
-                row["assigned_units"], row["effective_max"],
-                row["course_count"],
-                "  *** OVERLOADED ***" if row["overloaded"] else "",
-            )
-
-        # ── Strip internal tracking keys now that assignment is done ──────────
-        for event in res:
-            for k in ('_start_slot', '_duration', '_room_type', '_room_idx'):
-                event.pop(k, None)
-
+            
         # Ensure schedule_dict is cleared and updated properly
         schedule_dict.clear()
         # This part requires schedule_dict to be a DICTIONARY in globals.py

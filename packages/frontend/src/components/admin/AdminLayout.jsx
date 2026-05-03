@@ -1,5 +1,7 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import logoImg from '../../assets/logo.png'
 
 /* ── Google Fonts ── */
 if (!document.getElementById('poppins-font')) {
@@ -15,109 +17,212 @@ if (!document.getElementById('admin-global-style')) {
   s.id = 'admin-global-style'
   s.textContent = `
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Poppins', sans-serif; background: #F5F4FB; color: #1a1a2e; }
+    body { font-family: 'Poppins', sans-serif; background: #F0EEF9; color: #1a1a2e; }
     :root {
       --lavender-deep: #7C6FCD; --lavender-mid: #A99BE8;
       --lavender-light: #D8D3F5; --lavender-pale: #EEEAFB;
       --white: #FFFFFF; --text-muted: #8883B0;
       --border: #E8E4F8;
-      --shadow-sm: 0 2px 8px rgba(124,111,205,0.10);
+      --shadow-sm: 0 2px 8px rgba(61,53,128,0.08);
     }
 
-    /* Sidebar */
+    /* ── Sidebar ── */
+    .sidebar-logo-area {
+      padding: 18px 14px 16px;
+      display: flex; flex-direction: row; align-items: center; gap: 10px;
+      position: relative; overflow: hidden;
+      min-height: 68px;
+    }
+    .sidebar-logo-area::after {
+      content: '';
+      position: absolute; bottom: 0; left: 16px; right: 16px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+    }
+    .sidebar-logo-img {
+      width: 36px; height: 36px; object-fit: contain; flex-shrink: 0;
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,0.25));
+    }
+    .sidebar-logo-text {
+      display: flex; flex-direction: column; gap: 2px;
+      overflow: hidden; white-space: nowrap;
+      transition: opacity 0.2s, width 0.2s;
+    }
+    .sidebar-logo-name {
+      font-size: 14px; font-weight: 800; color: #fff;
+      letter-spacing: 2px; text-transform: uppercase; line-height: 1;
+    }
+    .sidebar-logo-sub {
+      font-size: 8px; font-weight: 500; color: rgba(255,255,255,0.45);
+      letter-spacing: 1.2px; text-transform: uppercase;
+    }
+
+    /* collapse toggle — centered on sidebar right border */
+    .sidebar-toggle {
+      position: absolute; top: 50%; right: -18px; transform: translateY(-50%) scale(0.8);
+      width: 36px; height: 36px; border-radius: 50%;
+      background: #3a2f7a;
+      border: 1.5px solid rgba(169,155,232,0.25);
+      padding: 0;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; z-index: 50;
+      box-shadow: 0 2px 10px rgba(26,21,64,0.5);
+      color: rgba(169,155,232,0.6);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s, color 0.2s;
+    }
+    aside:hover .sidebar-toggle {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(-50%) scale(1);
+    }
+    .sidebar-toggle:hover {
+      background: #4a3d9e;
+      color: #C4B8F5;
+      border-color: rgba(169,155,232,0.5);
+      box-shadow: 0 2px 14px rgba(26,21,64,0.6);
+    }
+
     .sidebar-link {
       display: flex; align-items: center; gap: 10px;
-      padding: 9px 20px; color: rgba(255,255,255,0.52);
+      padding: 9px 18px; color: rgba(255,255,255,0.48);
       font-size: 12.5px; font-weight: 500;
-      border-left: 3px solid transparent;
       text-decoration: none; transition: all 0.15s;
+      margin: 1px 8px; border-radius: 8px;
+      white-space: nowrap; overflow: hidden;
     }
-    .sidebar-link:hover { color:#fff; background:rgba(255,255,255,0.07); }
-    .sidebar-link.active { color:#fff; background:rgba(255,255,255,0.11); border-left:3px solid #A99BE8; }
-    .nav-icon { width:16px; height:16px; opacity:.7; flex-shrink:0; }
-    .sidebar-link.active .nav-icon, .sidebar-link:hover .nav-icon { opacity:1; }
+    .sidebar-link:hover { color: #fff; background: rgba(255,255,255,0.08); }
+    .sidebar-link.active {
+      color: #fff; background: rgba(169,155,232,0.18);
+      box-shadow: inset 3px 0 0 #A99BE8;
+    }
+    .nav-icon { width: 15px; height: 15px; opacity: .65; flex-shrink: 0; }
+    .sidebar-link.active .nav-icon, .sidebar-link:hover .nav-icon { opacity: 1; }
+    .sidebar-link-label { overflow: hidden; white-space: nowrap; }
+
     .nav-section-label {
-      padding: 14px 20px 5px;
-      font-size: 9.5px; font-weight: 700;
-      color: rgba(255,255,255,0.28);
-      letter-spacing: 1.8px; text-transform: uppercase;
+      padding: 10px 18px 4px;
+      font-size: 9px; font-weight: 700;
+      color: rgba(255,255,255,0.22);
+      letter-spacing: 2px; text-transform: uppercase;
+      white-space: nowrap; overflow: hidden;
+    }
+    .nav-section-label:first-child, .nav-section-label-first {
+      padding-top: 4px;
     }
 
-    /* Topbar */
+    /* ── Topbar ── */
     .topbar {
       height: 56px; background: #fff;
       border-bottom: 1px solid var(--border);
       display: flex; align-items: center;
       padding: 0 28px; gap: 12px;
       position: sticky; top: 0; z-index: 10;
-      box-shadow: var(--shadow-sm);
+      box-shadow: 0 1px 12px rgba(61,53,128,0.06);
     }
 
-    /* Page */
+    /* ── Page content ── */
     .page { padding: 28px 32px; }
     .page-title { font-size: 20px; font-weight: 700; color: #1a1a2e; margin-bottom: 22px; letter-spacing: -.3px; }
 
-    /* Cards */
-    .card { background:#fff; border-radius:14px; padding:20px 24px; box-shadow:var(--shadow-sm); border:1px solid var(--border); }
+    /* ── Cards ── */
+    .card {
+      background: #fff; border-radius: 14px;
+      padding: 20px 24px;
+      box-shadow: 0 2px 12px rgba(61,53,128,0.07);
+      border: 1px solid var(--border);
+    }
 
-    /* Badges */
-    .badge { display:inline-block; padding:2px 10px; border-radius:99px; font-size:11px; font-weight:600; }
-    .badge-red   { background:#FFE8E8; color:#C0392B; }
-    .badge-green { background:#E8F8EE; color:#27AE60; }
-    .badge-blue  { background:#E8F0FF; color:#2563EB; }
+    /* ── Badges ── */
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+    .badge-red   { background: #FFE8E8; color: #C0392B; }
+    .badge-green { background: #E8F8EE; color: #27AE60; }
+    .badge-blue  { background: #E8F0FF; color: #2563EB; }
 
-    /* Table */
-    table { width:100%; border-collapse:collapse; font-size:13px; }
-    th { text-align:left; padding:10px 14px; font-size:11px; font-weight:600; color:#8883B0; text-transform:uppercase; letter-spacing:.6px; border-bottom:1px solid #F0EDF9; background:#FAFAFE; }
-    td { padding:11px 14px; border-bottom:1px solid #F5F4FB; }
-    tr:last-child td { border-bottom:none; }
-    tr:hover td { background:#FAFAFE; }
+    /* ── Table ── */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 600; color: #8883B0; text-transform: uppercase; letter-spacing: .6px; border-bottom: 1px solid #F0EDF9; background: #FAFAFE; }
+    td { padding: 11px 14px; border-bottom: 1px solid #F5F4FB; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #FAFAFE; }
 
-    /* Inputs */
+    /* ── Inputs ── */
     input, select {
-      padding:8px 12px; border-radius:9px;
-      border:1px solid #E8E4F8; font-family:'Poppins',sans-serif;
-      font-size:13px; color:#1a1a2e; background:#fff;
-      outline:none; transition:border-color 0.15s;
+      padding: 8px 12px; border-radius: 9px;
+      border: 1px solid #E8E4F8; font-family: 'Poppins', sans-serif;
+      font-size: 13px; color: #1a1a2e; background: #FAFAFE;
+      outline: none; transition: border-color 0.15s, box-shadow 0.15s;
     }
-    input:focus, select:focus { border-color:#A99BE8; box-shadow:0 0 0 3px rgba(169,155,232,0.15); }
-    input::placeholder { color:#B0ABCC; }
+    input:focus, select:focus {
+      border-color: #A99BE8;
+      box-shadow: 0 0 0 3px rgba(169,155,232,0.15);
+      background: #fff;
+    }
+    input::placeholder { color: #C0BBDC; }
 
-    /* Buttons */
+    /* ── Buttons ── */
     button {
-      padding:8px 16px; border-radius:9px;
-      border:1px solid #E8E4F8; font-family:'Poppins',sans-serif;
-      font-size:13px; font-weight:500; cursor:pointer;
-      background:#fff; color:#3D3580; transition:all 0.15s;
+      padding: 8px 16px; border-radius: 9px;
+      border: 1px solid #E8E4F8; font-family: 'Poppins', sans-serif;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      background: #fff; color: #3D3580; transition: all 0.15s;
     }
-    button:hover { background:#F5F4FB; }
-    button.primary { background:linear-gradient(135deg,#7C6FCD,#5a4fbf); color:#fff; border-color:transparent; }
-    button.primary:hover { opacity:.9; }
-    button.danger { background:#FFF0F0; color:#C0392B; border-color:#FECACA; }
-    button.danger:hover { background:#FFE0E0; }
+    button:hover { background: #F5F4FB; }
+    button.primary { background: linear-gradient(135deg, #7C6FCD, #5a4fbf); color: #fff; border-color: transparent; box-shadow: 0 3px 12px rgba(92,79,191,0.3); }
+    button.primary:hover { opacity: .9; }
+    button.danger { background: #FFF0F0; color: #C0392B; border-color: #FECACA; }
+    button.danger:hover { background: #FFE0E0; }
 
-    .error-msg { color:#C0392B; font-size:12px; }
+    .error-msg { color: #C0392B; font-size: 12px; }
 
-    /* Scrollbar */
-    ::-webkit-scrollbar { width:5px; }
-    ::-webkit-scrollbar-track { background:transparent; }
-    ::-webkit-scrollbar-thumb { background:var(--lavender-light); border-radius:99px; }
+  
+
+    /* ── Logout modal ── */
+    .logout-modal-backdrop {
+      position: fixed; inset: 0; background: rgba(15, 10, 40, 0.45);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999; backdrop-filter: blur(4px);
+      animation: fadeIn 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .logout-modal-box {
+      background: #fff; border-radius: 18px; width: 340px;
+      padding: 28px; box-shadow: 0 24px 60px rgba(15,10,40,0.22);
+      border: 1px solid #E8E4F8;
+      animation: slideUp 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { transform: translateY(16px) scale(.97); opacity: 0; } to { transform: none; opacity: 1; } }
+
+    /* ── User row ── */
+    .sidebar-user {
+      padding: 12px 16px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      display: flex; align-items: center; gap: 10px;
+      margin: 4px 0 0;
+    }
+    .sidebar-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, #A99BE8, #7C6FCD);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(124,111,205,0.4);
+    }
+    .sidebar-user-info { flex: 1; min-width: 0; }
+    .sidebar-user-email {
+      font-size: 11px; font-weight: 600; color: #fff;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .sidebar-user-role { font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 1px; }
+    .sidebar-logout-btn {
+      background: none; border: none; cursor: pointer; padding: 5px;
+      border-radius: 7px; display: flex; align-items: center;
+      color: rgba(255,255,255,0.3); transition: all 0.15s;
+    }
+    .sidebar-logout-btn:hover { color: #fff; background: rgba(255,255,255,0.1); }
   `
   document.head.appendChild(s)
 }
-
-/* ── Icon helper ── */
-const Icon = ({ d, d2, circle, polyline, rect, line, path2 }) => (
-  <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    {d && <path d={d}/>}
-    {d2 && <path d={d2}/>}
-    {circle && <circle {...circle}/>}
-    {polyline && <polyline points={polyline}/>}
-    {rect && <rect {...rect}/>}
-    {line && line.map((l,i)=><line key={i} {...l}/>)}
-    {path2 && path2.map((p,i)=><path key={i} d={p}/>)}
-  </svg>
-)
 
 /* ── Nav sections ── */
 const NAV_SECTIONS = [
@@ -170,103 +275,235 @@ const NAV_SECTIONS = [
   },
 ]
 
+function LogoutModal({ onConfirm, onCancel }) {
+  return (
+    <div className="logout-modal-backdrop" onClick={onCancel}>
+      <div className="logout-modal-box" onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+          <div style={{
+            width: 42, height: 42, borderRadius: 12, background: '#FFF0F0',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+          </div>
+          <div>
+            <p style={{ fontSize: 14, fontWeight: 700, color: '#1a1a2e' }}>Confirm Logout</p>
+            <p style={{ fontSize: 12, color: '#9490BB', marginTop: 3 }}>Are you sure you want to exit?</p>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 9, justifyContent: 'flex-end' }}>
+          <button
+            onClick={onCancel}
+            style={{ padding: '8px 18px', borderRadius: 10, border: '1.5px solid #E8E4F8', background: '#FAFAFE', color: '#8883B0', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Poppins',sans-serif" }}>
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            style={{ padding: '8px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#EF4444,#C0392B)', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Poppins',sans-serif", boxShadow: '0 4px 14px rgba(192,57,43,0.3)' }}>
+            Logout
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminLayout() {
   const { logout, user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
-  async function handleLogout() { await logout(); navigate('/login') }
+  const allLinks = NAV_SECTIONS.flatMap(s => s.links)
+  const activeLink = allLinks.find(l =>
+    l.to === '/dashboard'
+      ? location.pathname === '/dashboard'
+      : location.pathname.startsWith(l.to)
+  )
+  const currentPageLabel = activeLink?.label ?? 'Dashboard'
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
+
+  async function handleLogout() {
+    await logout()
+    navigate('/login')
+  }
 
   const initials = user?.email ? user.email.slice(0, 2).toUpperCase() : 'AD'
+  const sidebarWidth = collapsed ? 64 : 224
+
+  const [now, setNow] = useState(new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const dateStr = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', fontFamily: "'Poppins', sans-serif" }}>
 
       {/* ── Sidebar ── */}
       <aside style={{
-        width: 220,
-        background: 'linear-gradient(170deg, #3D3580 0%, #2E2660 100%)',
+        width: sidebarWidth,
+        background: 'linear-gradient(170deg, #3D3580 0%, #2a2160 60%, #1a1540 100%)',
         display: 'flex', flexDirection: 'column', flexShrink: 0,
-        boxShadow: '4px 0 24px rgba(61,53,128,0.18)', zIndex: 20,
+        boxShadow: '4px 0 28px rgba(26,21,64,0.22)', zIndex: 20,
+        position: 'sticky', top: 0, height: '100vh', overflow: 'visible',
+        transition: 'width 0.25s cubic-bezier(0.4,0,0.2,1)',
       }}>
 
-        {/* Logo */}
-        <div style={{ padding: '22px 20px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 32, height: 32,
-            background: 'linear-gradient(135deg, #A99BE8, #7C6FCD)',
-            borderRadius: 9, display: 'flex', alignItems: 'center',
-            justifyContent: 'center', fontSize: 14, fontWeight: 800, color: '#fff',
-            boxShadow: '0 4px 12px rgba(169,155,232,0.4)',
-          }}>L</div>
-          <span style={{ fontSize: 15, fontWeight: 700, color: '#fff', letterSpacing: 1.5 }}>LOGOS</span>
-        </div>
+        {/* Sidebar background grid */}
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden',
+          backgroundImage: 'linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)',
+          backgroundSize: '32px 32px',
+        }} />
 
-        <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '0 16px 2px' }} />
+        {/* Collapse toggle — circle on sidebar right border, arrow visible on hover */}
+        <button
+          className="sidebar-toggle"
+          onClick={() => setCollapsed(c => !c)}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            {collapsed
+              ? <polyline points="9 18 15 12 9 6" />   /* → outward = expand */
+              : <polyline points="15 18 9 12 15 6" />  /* ← inward  = collapse */
+            }
+          </svg>
+        </button>
 
-        {/* Nav */}
-        <nav style={{ flex: 1, overflowY: 'auto', paddingBottom: 8 }}>
-          {NAV_SECTIONS.map(section => (
-            <div key={section.label}>
-              <div className="nav-section-label">{section.label}</div>
-              {section.links.map(({ to, label, icon }) => (
-                <NavLink
-                  key={to} to={to}
-                  end={to === '/dashboard'}
-                  className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
-                >
-                  {icon}{label}
-                </NavLink>
-              ))}
-            </div>
-          ))}
-        </nav>
+        {/* Content above grid */}
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
 
-        {/* User row */}
-        <div style={{ padding: '10px 14px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 9 }}>
-          <div style={{
-            width: 30, height: 30, borderRadius: '50%',
-            background: 'linear-gradient(135deg,#A99BE8,#7C6FCD)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 10, fontWeight: 700, color: '#fff', flexShrink: 0,
-          }}>{initials}</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {user?.email ?? 'Admin'}
-            </div>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>Administrator</div>
+          {/* Logo area */}
+          <div className="sidebar-logo-area" style={{ justifyContent: collapsed ? 'center' : 'flex-start' }}>
+            <img src={logoImg} alt="Logos" className="sidebar-logo-img" />
+            {!collapsed && (
+              <div className="sidebar-logo-text">
+                <span className="sidebar-logo-name">Logos</span>
+                <span className="sidebar-logo-sub">Smart Academic Scheduler</span>
+              </div>
+            )}
           </div>
-          <button
-            onClick={handleLogout} title="Log out"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.38)', padding: 4, borderRadius: 6, display: 'flex', alignItems: 'center', transition: 'color 0.15s' }}
-            onMouseEnter={e => e.currentTarget.style.color = '#fff'}
-            onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.38)'}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-              <polyline points="16 17 21 12 16 7"/>
-              <line x1="21" y1="12" x2="9" y2="12"/>
-            </svg>
-          </button>
+
+          {/* Nav */}
+          <nav style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingBottom: 8, paddingTop: 2 }}>
+            {NAV_SECTIONS.map(section => (
+              <div key={section.label}>
+                {!collapsed && <div className="nav-section-label">{section.label}</div>}
+                {collapsed && <div style={{ height: 12 }} />}
+                {section.links.map(({ to, label, icon }) => (
+                  <NavLink
+                    key={to} to={to}
+                    end={to === '/dashboard'}
+                    className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
+                    title={collapsed ? label : undefined}
+                    style={{ justifyContent: collapsed ? 'center' : 'flex-start', padding: collapsed ? '9px' : '9px 18px' }}
+                  >
+                    {icon}
+                    {!collapsed && <span className="sidebar-link-label">{label}</span>}
+                  </NavLink>
+                ))}
+              </div>
+            ))}
+          </nav>
+
+          {/* User row */}
+          <div className="sidebar-user" style={{ justifyContent: collapsed ? 'center' : 'flex-start', padding: collapsed ? '12px 0' : '12px 16px' }}>
+            <div className="sidebar-avatar">{initials}</div>
+            {!collapsed && (
+              <>
+                <div className="sidebar-user-info">
+                  <div className="sidebar-user-email">{user?.email ?? 'Admin'}</div>
+                  <div className="sidebar-user-role">Administrator</div>
+                </div>
+                <button
+                  className="sidebar-logout-btn"
+                  onClick={() => setShowLogoutModal(true)}
+                  title="Log out"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/>
+                    <line x1="21" y1="12" x2="9" y2="12"/>
+                  </svg>
+                </button>
+              </>
+            )}
+          </div>
+
         </div>
       </aside>
 
       {/* ── Right panel ── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#F5F4FB' }}>
+      {/* 💥 FIX: Added minWidth: 0 to force Flexbox to respect the window boundaries! */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#F0EEF9' }}>
+
         <header className="topbar">
+          {/* Page name — left */}
+          <span style={{ fontSize: 20, fontWeight: 700, color: '#1a1a2e', letterSpacing: '-.3px' }}>
+            {currentPageLabel}
+          </span>
+
           <div style={{ flex: 1 }} />
-          <div style={{
-            width: 32, height: 32, borderRadius: '50%',
-            background: 'linear-gradient(135deg,#A99BE8,#7C6FCD)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(124,111,205,0.3)',
-          }}>{initials}</div>
+
+          {/* Right side: date/time + logout */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            {/* Date & time — stacked, right-aligned */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, textAlign: 'right' }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#9490BB', letterSpacing: '-.2px', fontVariantNumeric: 'tabular-nums' }}>
+                {timeStr}
+              </span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#9490BB', letterSpacing: '-.2px' }}>
+                {dateStr}
+              </span>
+            </div>
+
+            {/* Logout button — only visible when sidebar is collapsed */}
+            {collapsed && (
+              <button
+                onClick={() => setShowLogoutModal(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 7,
+                  padding: '7px 14px', borderRadius: 9,
+                  border: '1.5px solid #E8E4F8',
+                  background: '#FAFAFE', color: '#8883B0',
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  fontFamily: "'Poppins', sans-serif",
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#FFF0F0'; e.currentTarget.style.color = '#C0392B'; e.currentTarget.style.borderColor = '#FECACA'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#FAFAFE'; e.currentTarget.style.color = '#8883B0'; e.currentTarget.style.borderColor = '#E8E4F8'; }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                  <polyline points="16 17 21 12 16 7"/>
+                  <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                Logout
+              </button>
+            )}
+          </div>
         </header>
 
-        <main style={{ flex: 1, overflowY: 'auto' }}>
+        {/* 💥 FIX: Added overflowX: 'hidden' here just to be absolutely certain nothing spills over */}
+        <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <Outlet />
         </main>
       </div>
+
+      {showLogoutModal && (
+        <LogoutModal
+          onConfirm={handleLogout}
+          onCancel={() => setShowLogoutModal(false)}
+        />
+      )}
     </div>
   )
 }
