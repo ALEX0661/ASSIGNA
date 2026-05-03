@@ -24,7 +24,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:4173",
-        "https://your-project-id.web.app",        
+        "https://logos-gc.web.app",        
         "https://logos-backend.up.railway.app",
     ],
     allow_credentials=True,
