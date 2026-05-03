@@ -3,11 +3,29 @@ from firebase_admin import credentials, firestore, auth as firebase_auth
 import os
 import json
 
-cred = credentials.Certificate(
-    json.loads(os.environ["FIREBASE_CREDENTIALS_JSON"])
-)
-firebase_admin.initialize_app(cred)
+def init_firebase():
+    cred_json = os.getenv("FIREBASE_CREDENTIALS_JSON")
+    
+    if not cred_json:
+        raise ValueError("FIREBASE_CREDENTIALS_JSON not set!")
+
+    cred_dict = json.loads(cred_json)
+    
+    # Fix the private key newlines (Railway can sometimes escape them)
+    cred_dict["private_key"] = cred_dict["private_key"].replace("\\n", "\n")
+
+    cred = credentials.Certificate(cred_dict)
+    
+    if not firebase_admin._apps:
+        firebase_admin.initialize_app(cred)
+
+init_firebase()
 db = firestore.client()
+#cred = credentials.Certificate(
+ #   json.loads(os.environ["FIREBASE_CREDENTIALS_JSON"])
+#)
+#firebase_admin.initialize_app(cred)
+
 
 # ── Module-level caches ───────────────────────────────────────────────────────
 # These are loaded once and refreshed explicitly after any mutation.

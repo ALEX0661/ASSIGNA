@@ -24,7 +24,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:4173",
-        # add your deployed frontend URL here, e.g. "https://logos.vercel.app"
+        "https://your-project-id.web.app",        
+        "https://logos-backend.up.railway.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
