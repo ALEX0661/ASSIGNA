@@ -494,19 +494,49 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
   const facultyUnitMap = useMemo(() => {
     const sibIds = new Set(siblingEvents.map(getEventId))
 
-    // Sum units across ALL sibling sessions — this is what will be added in a batch commit
-    const batchUnits = siblingEvents.reduce((sum, sib) => sum + (Number(sib.units) || 0), 0)
+    // ── Merge-aware batchUnits ────────────────────────────────────────────────
+    // Sibling events can include merged sections (same course, same slot, same
+    // room, different block). Summing their units naively would double-count the
+    // actual teaching load. Deduplicate by (day|room|timeSlot|courseCode) so
+    // that only one section per merged group contributes to batchUnits.
+    // TBA-roomed events are always counted individually (no real merge anchor).
+    const batchMergeKeys = new Set()
+    const batchUnits = siblingEvents.reduce((sum, sib) => {
+      const room     = (sib.room || '').trim()
+      const timeSlot = (sib.timeSlot || sib.time || '').trim()
+      if (room && room.toUpperCase() !== 'TBA') {
+        const key = `${sib.day}|${room}|${timeSlot}|${sib.courseCode}`
+        if (batchMergeKeys.has(key)) return sum   // merged sibling — skip
+        batchMergeKeys.add(key)
+      }
+      return sum + (Number(sib.units) || 0)
+    }, 0)
 
     const map = new Map()
     masterFacultyList.forEach(facObj => {
       let usedUnits = 0
-      const courseCodes = new Set()
+      const courseCodes   = new Set()
+      // ── Merge-aware existing-load sum ───────────────────────────────────────
+      // For each faculty member we iterate allEvents and deduplicate merged
+      // sections the same way: (faculty|day|room|timeSlot|courseCode) is the
+      // merge key. The course code is always recorded so distinct_courses —
+      // and therefore the tier cap — remain correct.
+      const seenMergeKeys = new Set()
       allEvents.forEach(ev => {
         if (ev.faculty !== facObj.name) return
         if (sibIds.has(getEventId(ev))) return        // exclude sessions we're about to reassign
-        const u = Number(ev.units) || 0
-        usedUnits += u
+
         if (ev.courseCode) courseCodes.add(ev.courseCode)
+
+        const room     = (ev.room || '').trim()
+        const timeSlot = (ev.timeSlot || ev.time || '').trim()
+        if (room && room.toUpperCase() !== 'TBA') {
+          const key = `${ev.day}|${room}|${timeSlot}|${ev.courseCode}`
+          if (seenMergeKeys.has(key)) return         // merged section — units already counted
+          seenMergeKeys.add(key)
+        }
+
+        usedUnits += Number(ev.units) || 0
       })
       const courseCount  = courseCodes.size
       const maxUnits     = getEffectiveMaxUnits(facObj.status, courseCount)

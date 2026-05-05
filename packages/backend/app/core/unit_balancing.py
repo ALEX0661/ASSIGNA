@@ -42,6 +42,21 @@ def compute_session_hours(session: str, raw_units: float) -> float:
 def build_faculty_load_map(schedule_dict: dict[str, Any]) -> dict[str, dict]:
     load: dict[str, dict] = {}
 
+    # ── Merged-class deduplication ────────────────────────────────────────────
+    # When two sections are merged (same faculty, day, room, timeSlot, and
+    # courseCode but different blocks), the faculty physically teaches only ONE
+    # session. Without deduplication, each section's units would be summed
+    # separately, doubling (or tripling) the actual teaching load.
+    #
+    # Key: (faculty_name, day, room, time_slot, course_code)
+    # If an event hashes to an already-seen key its units are NOT added again —
+    # its course code is still recorded so distinct_courses stays accurate.
+    #
+    # Guard: we skip deduplication when room is blank/TBA because two
+    # TBA-roomed events that happen to share the same slot are not necessarily
+    # the same physical class.
+    counted_merge_keys: set[tuple] = set()
+
     for event_key, event in schedule_dict.items():
         name = event.get("faculty", "TBA")
         if name == "TBA":
@@ -54,12 +69,24 @@ def build_faculty_load_map(schedule_dict: dict[str, Any]) -> dict[str, dict]:
 
         code = event.get("courseCode", "")
         if code:
+            # Always record the course so distinct_courses is correct even for
+            # the "skipped" half of a merged pair.
             entry["distinct_courses"].add(code)
 
         session   = event.get("session", "")
-        
-        # This will now correctly pull the hours we injected in scheduler.py
         raw_units = event.get("units", 0)
+        day       = event.get("day", "")
+        room      = (event.get("room", "") or "").strip()
+        timeslot  = (event.get("timeSlot", "") or event.get("time", "") or "").strip()
+
+        # Build merge key — only deduplicate when room is real (not TBA/blank)
+        if room and room.upper() != "TBA":
+            merge_key = (name, day, room, timeslot, code)
+            if merge_key in counted_merge_keys:
+                # This event is the second (or third…) section of a merged
+                # class — skip adding its units to avoid double-counting.
+                continue
+            counted_merge_keys.add(merge_key)
 
         hours = compute_session_hours(session, float(raw_units))
         entry["assigned_units"] += hours

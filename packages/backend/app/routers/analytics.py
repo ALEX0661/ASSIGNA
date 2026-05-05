@@ -58,39 +58,138 @@ def _is_other_dept(course_code: str) -> bool:
     return any(upper.startswith(p) for p in _OTHER_DEPT_PREFIXES)
 
 
+def _parse_time(raw: str):
+    """
+    Convert a time string to minutes since midnight.
+    Handles:  "7:00", "7:00 AM", "19:00", "7:30 PM"
+    Returns None if the string cannot be parsed.
+    """
+    import re
+    if not raw:
+        return None
+    raw = raw.strip()
+    m = re.match(r'^(\d{1,2}):(\d{2})\s*(AM|PM)?$', raw, re.IGNORECASE)
+    if not m:
+        return None
+    h, mn, meridiem = int(m.group(1)), int(m.group(2)), (m.group(3) or "").upper()
+    if meridiem == "PM" and h != 12:
+        h += 12
+    elif meridiem == "AM" and h == 12:
+        h = 0
+    return h * 60 + mn
+
+
+def _parse_slot(slot: str):
+    """
+    Convert a time-range string to (start_min, end_min).
+    Handles:  "7:00-8:30", "7:00 AM - 10:00 AM", "7:00AM-10:00PM"
+    Returns None if the slot cannot be parsed as a time range.
+    """
+    import re
+    if not slot:
+        return None
+    # Split on a dash that is surrounded by optional whitespace,
+    # but only when preceded by a digit or AM/PM (avoids splitting on negative).
+    parts = re.split(r'(?<=[\dMmPpAa])\s*[-–]\s*(?=\d)', slot.strip(), maxsplit=1)
+    if len(parts) != 2:
+        return None
+    start = _parse_time(parts[0])
+    end   = _parse_time(parts[1])
+    if start is None or end is None:
+        return None
+    # Guard: end should be after start (handles overnight edge case)
+    if end <= start:
+        end += 24 * 60
+    return (start, end)
+
+
+def _slots_overlap(a, b) -> bool:
+    """True if two (start, end) pairs overlap (exclusive endpoint)."""
+    if a is None or b is None:
+        return False
+    return a[0] < b[1] and b[0] < a[1]
+
+
+def _are_merge_partners(ea: dict, eb: dict) -> bool:
+    """
+    Mirror of the frontend areMergePartners() in svHelpers.js.
+    Merge partners share room+time by design and must never be flagged as conflicts.
+    Primary rule: same courseCode+program+year+room+day+period, different block.
+    Legacy fallback: schedule_ids share numeric base with -Letter suffix (e.g. "123-A"/"123-B").
+    """
+    if not ea or not eb:
+        return False
+    # Positional rule
+    if (ea.get("courseCode") and ea.get("courseCode") == eb.get("courseCode") and
+            ea.get("program") and ea.get("program") == eb.get("program") and
+            str(ea.get("year", "")) == str(eb.get("year", "")) and
+            ea.get("block") != eb.get("block") and
+            ea.get("room") and ea.get("room") != "TBA" and ea.get("room") == eb.get("room") and
+            ea.get("day") and ea.get("day") == eb.get("day") and
+            ea.get("period") and ea.get("period") == eb.get("period")):
+        return True
+    # Legacy suffix rule
+    import re as _re
+    def _base(s): return _re.sub(r'-[A-Z]$', '', str(s or ''))
+    def _has(s):  return bool(_re.search(r'-[A-Z]$', str(s or '')))
+    sa, sb = str(ea.get("schedule_id") or ""), str(eb.get("schedule_id") or "")
+    if _has(sa) and _has(sb) and _base(sa) == _base(sb):
+        return True
+    return False
+
+
 def _count_conflicts(events: list) -> int:
     """
     Count sessions involved in a room or faculty double-booking.
-    A conflict = same room/faculty + same day + overlapping time slot.
-    Returns the number of affected session IDs (unique).
+    Skips merge partners (two blocks sharing room+time by design).
+    Uses real time-range overlap on 'period' field ("10:00 AM - 11:30 AM").
+    Falls back to exact-string match for opaque slot indices.
+    Returns the count of unique session IDs involved.
     """
     from collections import defaultdict
-    # Group by (day, timeslot, resource) — simple exact-slot collision
-    room_slots:    dict = defaultdict(list)
-    faculty_slots: dict = defaultdict(list)
-    conflict_ids:  set  = set()
+    room_sessions:    dict = defaultdict(list)
+    faculty_sessions: dict = defaultdict(list)
+    conflict_ids:     set  = set()
 
     for e in events:
-        eid  = e.get("id", "")
-        day  = e.get("day", "")
-        slot = e.get("timeSlot", "") or e.get("time", "")
-        room = e.get("room", "")
-        fac  = e.get("faculty", "")
+        eid = str(
+            e.get("schedule_id") or e.get("id") or
+            f"{e.get('courseCode','')}-{e.get('block','')}-{e.get('session','')}-{e.get('day','')}"
+        ).strip("-")
+        if not eid:
+            continue
+        day  = (e.get("day",    "") or "").strip()
+        slot = (e.get("period", "") or e.get("timeSlot", "") or e.get("time", "") or "").strip()
+        room = (e.get("room",   "") or "").strip()
+        fac  = (e.get("faculty","") or "").strip()
+        parsed = _parse_slot(slot)
+        if room and room.upper() != "TBA":
+            room_sessions[(day, room)].append((parsed, slot, eid, e))
+        if fac and fac.upper() != "TBA":
+            faculty_sessions[(day, fac)].append((parsed, slot, eid, e))
 
-        if room and room != "TBA":
-            key = (day, slot, room)
-            room_slots[key].append(eid)
-        if fac and fac != "TBA":
-            key = (day, slot, fac)
-            faculty_slots[key].append(eid)
+    def _mark_conflicts(sessions_map: dict) -> None:
+        for sessions in sessions_map.values():
+            n = len(sessions)
+            for i in range(n):
+                parsed_i, slot_i, eid_i, ev_i = sessions[i]
+                for j in range(i + 1, n):
+                    parsed_j, slot_j, eid_j, ev_j = sessions[j]
+                    if eid_i == eid_j:
+                        continue
+                    if _are_merge_partners(ev_i, ev_j):
+                        continue
+                    if parsed_i is not None and parsed_j is not None:
+                        if _slots_overlap(parsed_i, parsed_j):
+                            conflict_ids.add(eid_i)
+                            conflict_ids.add(eid_j)
+                    else:
+                        if slot_i and slot_i == slot_j:
+                            conflict_ids.add(eid_i)
+                            conflict_ids.add(eid_j)
 
-    for ids in room_slots.values():
-        if len(ids) > 1:
-            conflict_ids.update(ids)
-    for ids in faculty_slots.values():
-        if len(ids) > 1:
-            conflict_ids.update(ids)
-
+    _mark_conflicts(room_sessions)
+    _mark_conflicts(faculty_sessions)
     return len(conflict_ids)
 
 
@@ -117,8 +216,10 @@ def assignment_quality(user=Depends(admin_only)):
     # ── FIX: GEC/MAT/NSTP/PATHFIT/PE sessions are externally managed —
     # exclude them from all quality metrics so they do not inflate TBA counts
     # or skew scores. They are intentionally unassigned by this department.
+    # All sessions are counted in totalSessions regardless of dept
+    total    = len(all_events)
+    # Quality metrics (scores, TBA) still exclude externally-managed courses
     events   = [e for e in all_events if not _is_other_dept(e.get("courseCode", ""))]
-    total    = len(events)
     auto     = [e for e in events if e.get("facultyAutoAssigned")]
     tba      = [e for e in events if e.get("faculty") == "TBA"]
     scored   = [e for e in events if e.get("assignmentScore") is not None]
@@ -157,9 +258,12 @@ def assignment_quality(user=Depends(admin_only)):
 
     return {
         "totalSessions":      total,
+        "majorSessions":      len(events),   # excludes GEC/MAT/NSTP/PE — used for autoAssignPct
         "autoAssigned":       len(auto),
         "tbaSessions":        len(tba),
-        "autoAssignPct":      round(len(auto) / total * 100, 1) if total else 0,
+        # Denominator is major subjects only — GEC/MAT/NSTP/PE are externally
+        # managed and never go through auto-assignment, so they must not dilute the rate.
+        "autoAssignPct":      round(len(auto) / len(events) * 100, 1) if events else 0,
         "avgScore":           avg_score,
         "totalConflicts":     total_conflicts,
         "pctInWindow":        round(len(in_win) / len(scored) * 100, 1) if scored else None,

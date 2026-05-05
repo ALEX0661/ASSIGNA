@@ -9,3 +9,5 @@ dist/
 .vite/
 packages/backend/.env
 *.md
+firebase.json
+.firebaserc

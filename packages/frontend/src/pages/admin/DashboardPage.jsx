@@ -169,7 +169,7 @@ const QUICK_ACTIONS = [
 ]
 
 export default function DashboardPage() {
-  const { scheduleName } = useScheduleStore()
+  const { scheduleName, setName, clearSchedule } = useScheduleStore()
   const navigate = useNavigate()
 
   const [stats,          setStats]          = useState(null)          // null = not yet loaded
@@ -267,13 +267,19 @@ export default function DashboardPage() {
                     value={scheduleSource || '__current__'}
                     onChange={async (e) => {
                       const newSchedule = e.target.value;
-                      setScheduleSource(newSchedule === '__current__' ? null : newSchedule);
+                      const isPinned = newSchedule !== '__current__';
+                      setScheduleSource(isPinned ? newSchedule : null);
                       setWorkloadLoading(true);
                       try {
-                        if (newSchedule !== '__current__') {
+                        if (isPinned) {
                           await loadSaved(newSchedule);
+                          // Sync global store so Analytics and ScheduleView
+                          // know what the backend currently has in memory
+                          setName(newSchedule);
+                        } else {
+                          // Switching back to current — clear the pinned name
+                          clearSchedule();
                         }
-                        // Re-fetch workload after loading the new schedule (or fetching current)
                         const wl = await getWorkload();
                         setOverloaded(wl.workload.filter(f => f.overloaded));
                       } catch (error) {

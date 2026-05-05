@@ -322,7 +322,7 @@ class HierarchicalScheduler:
 
         # Handle Lecture Sessions
         if lec_u > 0:
-            should_merge = (yr == 1 or yr == 2) or is_nstp
+            should_merge = is_nstp or is_gec or is_pe
             processed_indices = set()
             total_slots = int(lec_u * 2)
             

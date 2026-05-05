@@ -755,8 +755,35 @@ function ScheduleSection({ facultyName, onUnitsLoaded, onAssignmentsLoaded }) {
     return 0
   }
 
-  const totalUnits = useMemo(function() {
-    return allEvents.map(computeUnits).filter(function(u) { return typeof u === 'number' }).reduce(function(s, u) { return s + u }, 0)
+  // ── Merge-aware deduplication ─────────────────────────────────────────────
+  // allEvents is already filtered to this faculty only, so the merge key is
+  // (day | room | timeSlot | courseCode). When two sections share that key
+  // (e.g. BCS2A + BCS2B merged into the same slot/room) the faculty teaches
+  // exactly ONE session — only the first occurrence contributes to totalUnits
+  // and physicalClassCount. The course code is still recorded for every event
+  // so distinctCourseCount (and therefore the tier cap) stays correct.
+  // TBA-roomed events are never deduplicated — no real merge anchor exists.
+  const { totalUnits, physicalClassCount } = useMemo(function() {
+    const seenMergeKeys = new Set()
+    let units = 0
+    let count = 0
+    allEvents.forEach(function(ev) {
+      const room     = (ev.room || '').trim()
+      const timeSlot = (ev.timeSlot || ev.time || ev.period || '').trim()
+      const code     = (ev.courseCode || ev.course_code || ev.subject || ev.course || '').trim()
+      const day      = (ev.day || '').trim()
+
+      if (room && room.toUpperCase() !== 'TBA') {
+        const key = day + '|' + room + '|' + timeSlot + '|' + code
+        if (seenMergeKeys.has(key)) return   // merged sibling — skip
+        seenMergeKeys.add(key)
+      }
+
+      const u = computeUnits(ev)
+      if (typeof u === 'number') units += u
+      count += 1
+    })
+    return { totalUnits: units, physicalClassCount: count }
   }, [allEvents])
 
   // Distinct assigned courses — used by parent for the correct unit cap tier
@@ -779,8 +806,7 @@ function ScheduleSection({ facultyName, onUnitsLoaded, onAssignmentsLoaded }) {
   }, [distinctCourseCount])
 
   const loading    = listLoading || eventsLoading
-  const classCount = allEvents.length
-  const classLbl   = classCount === 1 ? '1 class' : classCount + ' classes'
+  const classLbl   = physicalClassCount === 1 ? '1 class' : physicalClassCount + ' classes'
   const loadLbl    = listLoading ? 'Loading schedules...' : 'Loading events...'
 
   return (
