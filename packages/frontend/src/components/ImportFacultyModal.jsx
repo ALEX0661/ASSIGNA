@@ -189,8 +189,8 @@ function UploadStep({ onUploaded }) {
       <input ref={inputRef} type="file" accept=".xlsx,.xls" style={{ display:'none' }} onChange={e => { processFile(e.target.files[0]); e.target.value = null }} />
       <ErrBox msg={error} />
       <HintBox>
-        <strong style={{ color:'#7C6FCD' }}>Expected format:</strong> Columns = faculty names · Rows = course codes · Cells = rating (0–5)
-        <br />Each sheet is treated as one employment group (e.g. "Full Time", "Part Time").
+        <strong style={{ color:'#7C6FCD' }}>Expected format:</strong> Columns = faculty names · Rows = course codes · Cells = rating (1–5)
+        <br />Ratings of 0 or blank are ignored. Each sheet = one employment group (e.g. "Full Time", "Part Time").
       </HintBox>
     </div>
   )

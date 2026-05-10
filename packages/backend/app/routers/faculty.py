@@ -23,7 +23,23 @@ def _default_password(name: str) -> str:
     return f"{last_name}GC2026"
 
 
+
+# Words that indicate a cell is still a template placeholder, not real data.
+_PLACEHOLDER_TOKENS = frozenset({
+    "last name", "lastname", "last_name",
+    "first name", "firstname", "first_name", "firs name",
+    "faculty name", "name", "surname", "given name",
+    "faculty", "professor", "instructor",
+})
+
+def _is_placeholder(value: str) -> bool:
+    """Return True if the value looks like unfilled template text."""
+    cleaned = value.strip().lower()
+    return not cleaned or cleaned == "nan" or cleaned in _PLACEHOLDER_TOKENS
+
+
 def _parse_faculty_matrix(contents: bytes, sheet_names: list) -> list:
+    import math
     faculty_map = {}
 
     for sheet_name in sheet_names:
@@ -45,7 +61,8 @@ def _parse_faculty_matrix(contents: bytes, sheet_names: list) -> list:
             raw_last  = re.sub(r'\.\d+$', '', str(col)).rstrip(',').strip()
             raw_first = str(first_names_row[col]).strip()
 
-            if raw_first.lower() in ('nan', ''):
+            # ── Skip unfilled placeholder columns ──────────────────────────
+            if _is_placeholder(raw_last) or _is_placeholder(raw_first):
                 continue
 
             full_name = f"{raw_last}, {raw_first}"
@@ -64,7 +81,6 @@ def _parse_faculty_matrix(contents: bytes, sheet_names: list) -> list:
                     continue
 
                 try:
-                    import math
                     cell = row[col]
                     if isinstance(cell, float) and math.isnan(cell):
                         continue
@@ -72,11 +88,14 @@ def _parse_faculty_matrix(contents: bytes, sheet_names: list) -> list:
                 except (ValueError, TypeError):
                     continue
 
-                if rating > 0:
-                    faculty_map[full_name]["specializations"].append({
-                        "courseCode": course_code,
-                        "rating":     rating,
-                    })
+                # ── Strict 1–5 enforcement: skip 0 and anything out of range ──
+                if rating < 1 or rating > 5:
+                    continue
+
+                faculty_map[full_name]["specializations"].append({
+                    "courseCode": course_code,
+                    "rating":     rating,
+                })
 
     return list(faculty_map.values())
 
