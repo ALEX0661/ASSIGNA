@@ -22,7 +22,15 @@ COLUMN_ALIASES = {
                      "lecture_units", "LecUnits", "units", "Units"],
     "unitsLab":     ["unitsLab", "Units Lab", "Lab Units", "lab", "Lab",
                      "lab_units", "LabUnits"],
+    "semester":     ["semester", "Semester", "Sem", "sem", "Term", "term"],
 }
+
+# ─── Template enforcement ─────────────────────────────────────────────────────
+
+# Only files using the official CCS Course List template are accepted.
+# The template has exactly these three sheets (any subset is also valid).
+TEMPLATE_SHEETS = ["First Semester", "Second Semester", "Midyear"]
+TEMPLATE_SHEETS_SET = set(TEMPLATE_SHEETS)
 
 def _find_col(df: pd.DataFrame, candidates: list):
     """Case-insensitive column lookup."""
@@ -50,13 +58,49 @@ def _safe_str(value, default="") -> str:
     except (TypeError, ValueError):
         return default
 
+def _detect_template_format(contents: bytes, sheet_name: str) -> bool:
+    """
+    Return True when the file uses the new 4-row template header layout.
+    Detection: peek at row 0 cell 0 — if it matches a known column-header
+    alias the file is plain/legacy (headers at row 0).  Otherwise it is the
+    new template whose real headers sit at row 2 (0-indexed).
+    """
+    all_aliases_lower = {
+        alias.lower()
+        for aliases in COLUMN_ALIASES.values()
+        for alias in aliases
+    }
+    try:
+        peek = pd.read_excel(
+            io.BytesIO(contents), sheet_name=sheet_name,
+            header=None, nrows=1,
+        )
+        first_cell = str(peek.iloc[0, 0]).strip().lower()
+        return first_cell not in all_aliases_lower
+    except Exception:
+        return False
+
+
 def _parse_excel(contents: bytes, sheet_name: str) -> list[dict]:
     """
-    Parse an Excel file and return a list of course dicts from a specific sheet.
-    Raises HTTPException on unreadable files.
+    Parse a sheet accepting both formats:
+
+    New template layout (4-row header, auto-detected):
+      Row 1 – title banner, Row 2 – instructions,
+      Row 3 – column headers, Row 4 – hint row (skipped), Row 5+ – data
+
+    Plain / legacy layout:
+      Row 1 – column headers, Row 2+ – data
     """
+    is_template = _detect_template_format(contents, sheet_name)
     try:
-        df = pd.read_excel(io.BytesIO(contents), sheet_name=sheet_name)
+        if is_template:
+            df = pd.read_excel(
+                io.BytesIO(contents), sheet_name=sheet_name,
+                skiprows=[0, 1, 3], header=0,
+            )
+        else:
+            df = pd.read_excel(io.BytesIO(contents), sheet_name=sheet_name)
     except Exception:
         raise HTTPException(400, f"Could not read the sheet named '{sheet_name}'. Ensure the file is not corrupted.")
 
@@ -91,9 +135,12 @@ def _parse_excel(contents: bytes, sheet_name: str) -> list[dict]:
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
 @router.get("/")
-def get_all_courses(user=Depends(admin_only)):
+def get_all_courses(semester: str = None, user=Depends(admin_only)):
     docs = db.collection("courses").stream()
-    return [{**d.to_dict(), "id": d.id} for d in docs]
+    courses = [{**d.to_dict(), "id": d.id} for d in docs]
+    if semester:
+        courses = [c for c in courses if c.get("semester", "1st Semester") == semester]
+    return courses
 
 
 @router.post("/add")
@@ -138,23 +185,45 @@ def delete_course(course_code: str, program: str, user=Depends(admin_only)):
 @router.post("/upload")
 async def upload_courses_excel(file: UploadFile = File(...), user=Depends(admin_only)):
     """
-    Accepts an Excel file, reads the available sheet names, and returns them
-    along with a base64 encoded string of the file to maintain a stateless flow.
+    Accepts the official CCS Course List template (.xlsx).
+    Validates that every sheet in the file belongs to the known template sheets,
+    then returns the valid sheet list and a base64-encoded copy of the file.
     """
     if not file.filename.lower().endswith((".xlsx", ".xls")):
         raise HTTPException(400, "Please upload an .xlsx or .xls file.")
 
     contents = await file.read()
-    
+
     try:
         xl = pd.ExcelFile(io.BytesIO(contents))
         sheets = xl.sheet_names
     except Exception:
         raise HTTPException(400, "Invalid Excel file format or corrupted file.")
 
+    # ── Template enforcement ──────────────────────────────────────────────────
+    # Reject any file whose sheets don't match the official CCS Course List
+    # template.  Every sheet present must be one of the three template sheets;
+    # stray sheets (e.g. from a generic spreadsheet) are not allowed.
+    unrecognised = [s for s in sheets if s not in TEMPLATE_SHEETS_SET]
+    if unrecognised:
+        raise HTTPException(
+            400,
+            f"Wrong template — unrecognised sheet(s): {', '.join(repr(s) for s in unrecognised)}. "
+            "Please download and use the official CCS Course List template "
+            f"(expected sheets: {', '.join(TEMPLATE_SHEETS)}).",
+        )
+
+    valid_sheets = [s for s in TEMPLATE_SHEETS if s in sheets]
+    if not valid_sheets:
+        raise HTTPException(
+            400,
+            "No valid template sheets found. "
+            f"Expected at least one of: {', '.join(TEMPLATE_SHEETS)}.",
+        )
+
     return {
-        "sheets": sheets, 
-        "fileData": base64.b64encode(contents).decode('utf-8')
+        "sheets": valid_sheets,                                   # canonical order
+        "fileData": base64.b64encode(contents).decode("utf-8"),
     }
 
 
@@ -165,10 +234,17 @@ def extract_selected_sheet(data: dict, user=Depends(admin_only)):
     then parses the courses from that specific sheet.
     """
     sheet_name = data.get("sheetName")
-    file_data = data.get("fileData")
-    
+    file_data  = data.get("fileData")
+
     if not sheet_name or not file_data:
         raise HTTPException(400, "Missing sheet selection or file data.")
+
+    if sheet_name not in TEMPLATE_SHEETS_SET:
+        raise HTTPException(
+            400,
+            f"'{sheet_name}' is not a valid template sheet. "
+            f"Expected one of: {', '.join(TEMPLATE_SHEETS)}.",
+        )
 
     try:
         contents = base64.b64decode(file_data)
@@ -211,6 +287,7 @@ def commit_uploaded_courses(data: dict, user=Depends(admin_only)):
             "blocks":       _safe_int(c.get("blocks"),       1),
             "unitsLecture": _safe_int(c.get("unitsLecture"), 0),
             "unitsLab":     _safe_int(c.get("unitsLab"),     0),
+            "semester":     _safe_str(c.get("semester"), "1st Semester"),
         })
         saved += 1
 

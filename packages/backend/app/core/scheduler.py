@@ -59,13 +59,19 @@ class HierarchicalScheduler:
         if self.process_id:
             progress_state[self.process_id] = value
 
-    def load_data(self):
+    def load_data(self, semester_filter=None):
         self.update_progress(5)
         # Ensure caches are fresh
         load_all_caches()
         
         # Fixed: Using the correct getter names from firebase.py
         courses = get_courses()
+        
+        # Filter by semester if specified
+        if semester_filter:
+            courses = [c for c in courses if c.get('semester', '1st Semester') == semester_filter]
+            logger.info(f"Filtered to {len(courses)} courses for semester: {semester_filter}")
+        
         self.all_courses = self.prioritize_and_partition_courses(courses)
         
         self.update_progress(15)
@@ -630,10 +636,10 @@ class HierarchicalScheduler:
             if e['_room_type'] and e['_room_idx'] != -1:
                 self.occupied_slots[(e['_room_type'], e['_room_idx'])].update(slots)
 
-def generate_schedule(process_id=None):
+def generate_schedule(process_id=None, semester=None):
     try:
         s = HierarchicalScheduler(process_id)
-        s.load_data()
+        s.load_data(semester_filter=semester)
         res = s.solve()
         if res == "impossible": 
             logger.error("Schedule generation failed: Impossible Constraints")

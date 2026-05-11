@@ -1,7 +1,14 @@
 import { useState, useRef } from 'react'
 import { uploadCourses, extractSheet, commitCourses } from '../services/api'
+import courseListTemplate from '../assets/templates/CCS_COURSE_LIST_Template.xlsx';
 
 const PROGRAMS = ['BSCS', 'BSIT', 'BSEMC-GD', 'BSEMC-DAT']
+const SEMESTERS = ['1st Semester', '2nd Semester', 'Midyear']
+
+// Sheets that must be present in the official CCS Course List template.
+// Any file whose sheets don't exactly match this set is rejected.
+const TEMPLATE_SHEETS     = ['First Semester', 'Second Semester', 'Midyear']
+const TEMPLATE_SHEETS_SET = new Set(TEMPLATE_SHEETS)
 
 const PROGRAM_FULL = {
   'BSCS':      'BS in Computer Science',
@@ -77,8 +84,65 @@ if (!document.getElementById('import-modal-style')) {
     @keyframes imSpin { to{transform:rotate(360deg)} }
     @keyframes imFadeIn { from{opacity:0} to{opacity:1} }
     @keyframes imPop    { 0%{transform:scale(.92);opacity:0} 100%{transform:scale(1);opacity:1} }
+
+    /* ── Block Config Stepper ── */
+    .im-stepper {
+      display: inline-flex; align-items: center;
+      background: #F8F7FD; border: 1.5px solid #E8E4F8;
+      border-radius: 10px; overflow: hidden;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .im-stepper:focus-within { border-color: #7C6FCD; box-shadow: 0 0 0 3px rgba(124,111,205,0.1); }
+    .im-stepper-btn {
+      width: 32px; height: 32px; background: transparent;
+      border: none; color: #7C6FCD; font-size: 16px; font-weight: 500;
+      cursor: pointer; transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .im-stepper-btn:hover:not(:disabled) { background: #EEEAFB; }
+    .im-stepper-btn:active:not(:disabled) { background: #E2DDF5; }
+    .im-stepper-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .im-stepper-input {
+      width: 36px; text-align: center; border: none; background: transparent;
+      font-weight: 600; font-size: 14px; color: #1a1a2e;
+      font-family: 'Poppins', sans-serif; outline: none; -moz-appearance: textfield;
+    }
+    .im-stepper-input::-webkit-outer-spin-button,
+    .im-stepper-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+    /* ── Block Config Group Card ── */
+    .im-group-card {
+      border: 1.5px solid #F0EDF9; border-radius: 14px; background: #ffffff;
+      padding: 14px 16px; display: flex; align-items: center;
+      justify-content: space-between; gap: 16px; transition: all 0.2s ease;
+    }
+    .im-group-card:hover {
+      border-color: #D8D3F5;
+      box-shadow: 0 4px 20px rgba(124,111,205,0.06);
+      transform: translateY(-1px);
+    }
+    .im-download {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:7px 14px; border-radius:9px;
+      border:1.5px solid #D8D3F5; font-family:'Poppins',sans-serif;
+      font-size:11.5px; font-weight:600; cursor:pointer;
+      background:#F7F5FD; color:#7C6FCD; transition:all .13s;
+    }
+    .im-download:hover { background:#EEEAFB; border-color:#A99BE8; color:#5a4fbf; transform:translateY(-1px); box-shadow:0 3px 10px rgba(124,111,205,.15); }
+    .im-download:active { transform:translateY(0); box-shadow:none; }
   `
   document.head.appendChild(s)
+}
+
+
+// ─── Template download (frontend-side, no backend needed) ─────────────────────
+function downloadTemplate() {
+    const a = document.createElement('a');
+    a.href = courseListTemplate; 
+    a.download = 'CCS_COURSE_LIST_Template.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
 }
 
 /* ─── Step indicator ────────────────────────────────────────────────────── */
@@ -148,6 +212,23 @@ function UploadStep({ onUploaded }) {
     try {
       const res = await uploadCourses(file)
       if (!res.sheets || res.sheets.length === 0) { setError('No sheets found in the file.'); return }
+
+      // ── Template enforcement (client-side fast-fail) ──────────────────
+      const badSheets = res.sheets.filter(s => !TEMPLATE_SHEETS_SET.has(s))
+      if (badSheets.length > 0) {
+        setError(
+          `Wrong template — unexpected sheet(s): "${badSheets.join('", "')}". ` +
+          `Please download and use the official CCS Course List template ` +
+          `(expected sheets: ${TEMPLATE_SHEETS.join(', ')}).`
+        )
+        return
+      }
+      if (!res.sheets.some(s => TEMPLATE_SHEETS_SET.has(s))) {
+        setError(`No valid template sheets found. Expected: ${TEMPLATE_SHEETS.join(', ')}.`)
+        return
+      }
+      // ─────────────────────────────────────────────────────────────────
+
       onUploaded(res.sheets, res.fileData)
     } catch(err) {
       setError(err.response?.data?.detail || 'Could not parse the file. Check the format and try again.')
@@ -188,13 +269,51 @@ function UploadStep({ onUploaded }) {
       </div>
       <input ref={inputRef} type="file" accept=".xlsx,.xls" style={{ display:'none' }} onChange={e=>{processFile(e.target.files[0]);e.target.value=null}} />
       <ErrBox msg={error} />
-      <HintBox>
-        <strong style={{ color:'#7C6FCD' }}>Expected columns (case-insensitive):</strong>{' '}
-        Course Code · Title · Program · Year Level · Units Lecture · Units Lab
-        <br />Sections/blocks are configured in the next step — no column needed.
-      </HintBox>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
+        <p style={{ fontSize:11.5, color:'#B0ABCC', margin:0, lineHeight:1.5 }}>
+          Official CCS Course List template only · Semester read from sheet name
+        </p>
+        <button
+          onClick={e => { e.stopPropagation(); downloadTemplate() }}
+          style={{
+            background:'none', border:'none', padding:0, cursor:'pointer',
+            display:'inline-flex', alignItems:'center', gap:4,
+            fontSize:11.5, color:'#A99BE8', fontFamily:"'Poppins',sans-serif",
+            fontWeight:500, flexShrink:0, transition:'color .13s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.color='#7C6FCD'}
+          onMouseLeave={e => e.currentTarget.style.color='#A99BE8'}
+          title="Download the blank Course List template"
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Download template
+        </button>
+      </div>
     </div>
   )
+}
+
+/* ─── Semester detection from sheet name ─────────────────────────────────── */
+const SEM_DETECT_MAP = [
+  { patterns: ['1st sem', '1st semester', 'first sem', 'sem 1', 'semester 1'], value: '1st Semester' },
+  { patterns: ['2nd sem', '2nd semester', 'second sem', 'sem 2', 'semester 2'], value: '2nd Semester' },
+  { patterns: ['midyear', 'mid year', 'mid-year', 'summer'], value: 'Midyear' },
+]
+const SEM_BADGE = {
+  '1st Semester': { bg:'#EDE9FB', color:'#7C6FCD', border:'#D8D3F5', short:'1st Sem' },
+  '2nd Semester': { bg:'#E6FAF3', color:'#059669', border:'#A7F3D0', short:'2nd Sem' },
+  'Midyear':      { bg:'#FEF3CD', color:'#D97706', border:'#FCD34D', short:'Midyear' },
+}
+function detectSemester(sheetName) {
+  const lower = sheetName.toLowerCase().trim()
+  for (const { patterns, value } of SEM_DETECT_MAP) {
+    if (patterns.some(p => lower.includes(p))) return value
+  }
+  return null
 }
 
 /* ─── Step 2: Sheet Selection ───────────────────────────────────────────── */
@@ -203,7 +322,11 @@ function SheetSelectionStep({ sheets, fileData, onParsed, onBack }) {
   const [active,  setActive]  = useState(null)
   const [error,   setError]   = useState('')
 
+  const sheetSemesters = sheets.map(name => ({ name, semester: detectSemester(name) }))
+  const allDetected = sheetSemesters.every(s => s.semester !== null)
+
   async function handleSelect(sheetName) {
+    const sem = detectSemester(sheetName) || '1st Semester'
     setLoading(true); setActive(sheetName); setError('')
     try {
       const res = await extractSheet({ sheetName, fileData })
@@ -211,36 +334,98 @@ function SheetSelectionStep({ sheets, fileData, onParsed, onBack }) {
         setError(`No valid courses found in sheet "${sheetName}". Check column headers.`)
         setLoading(false); setActive(null); return
       }
-      onParsed(res.preview)
+      onParsed(res.preview.map(c => ({ ...c, semester: sem })))
     } catch(err) {
       setError(err.response?.data?.detail || 'Error extracting data from this sheet.')
       setLoading(false); setActive(null)
     }
   }
 
+  async function handleImportAll() {
+    setLoading(true); setActive('__all__'); setError('')
+    try {
+      let allCourses = []
+      for (const { name, semester } of sheetSemesters) {
+        const sem = semester || '1st Semester'
+        const res = await extractSheet({ sheetName: name, fileData })
+        if (res.preview && res.preview.length > 0) {
+          allCourses = allCourses.concat(res.preview.map(c => ({ ...c, semester: sem })))
+        }
+      }
+      if (allCourses.length === 0) {
+        setError('No valid courses found in any sheet. Check column headers.')
+        setLoading(false); setActive(null); return
+      }
+      onParsed(allCourses)
+    } catch(err) {
+      setError(err.response?.data?.detail || 'Error extracting data.')
+      setLoading(false); setActive(null)
+    }
+  }
+
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-      <p style={{ fontSize:13, color:'#8883B0', margin:0 }}>Multiple sheets found. Select the one that contains course data.</p>
-      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-        {sheets.map(name => (
-          <button key={name} onClick={()=>handleSelect(name)} disabled={loading}
-            style={{ textAlign:'left', padding:'13px 16px', background:active===name?'#F7F5FD':'#FAFAFE', border:`1.5px solid ${active===name?'#A99BE8':'#E8E4F8'}`, borderRadius:10, cursor:loading?'wait':'pointer', fontSize:13, fontWeight:600, color:'#1a1a2e', display:'flex', justifyContent:'space-between', alignItems:'center', transition:'all 0.15s', fontFamily:'Poppins,sans-serif' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <div style={{ width:30, height:30, borderRadius:8, background:'#EEEAFB', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C6FCD" strokeWidth="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                  <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-                  <polyline points="10 9 9 9 8 9"/>
-                </svg>
-              </div>
-              {name}
+      <p style={{ fontSize:13, color:'#8883B0', margin:0 }}>
+        {sheets.length} sheet{sheets.length !== 1 ? 's' : ''} found. Semester is auto-detected from sheet names.
+      </p>
+
+      {/* Import All button */}
+      {sheets.length > 1 && (
+        <button onClick={handleImportAll} disabled={loading}
+          style={{
+            textAlign:'left', padding:'14px 16px', background:'linear-gradient(135deg,#7C6FCD,#5a4fbf)',
+            border:'none', borderRadius:11, cursor:loading?'wait':'pointer', fontSize:13, fontWeight:700,
+            color:'#fff', display:'flex', justifyContent:'space-between', alignItems:'center',
+            transition:'all 0.15s', fontFamily:'Poppins,sans-serif',
+            boxShadow:'0 4px 14px rgba(124,111,205,0.3)',
+          }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <div style={{ width:30, height:30, borderRadius:8, background:'rgba(255,255,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
             </div>
-            {active===name && loading
-              ? <div style={{ width:16, height:16, border:'2px solid #E8E4F8', borderTopColor:'#7C6FCD', borderRadius:'50%', animation:'imSpin 0.8s linear infinite' }} />
-              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C0BBDC" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>}
-          </button>
-        ))}
+            Import All Sheets
+          </div>
+          {active==='__all__' && loading
+            ? <div style={{ width:16, height:16, border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'#fff', borderRadius:'50%', animation:'imSpin 0.8s linear infinite' }} />
+            : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>}
+        </button>
+      )}
+
+      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        {sheetSemesters.map(({ name, semester }) => {
+          const badge = semester ? SEM_BADGE[semester] : null
+          return (
+            <button key={name} onClick={()=>handleSelect(name)} disabled={loading}
+              style={{ textAlign:'left', padding:'13px 16px', background:active===name?'#F7F5FD':'#FAFAFE', border:`1.5px solid ${active===name?'#A99BE8':'#E8E4F8'}`, borderRadius:10, cursor:loading?'wait':'pointer', fontSize:13, fontWeight:600, color:'#1a1a2e', display:'flex', justifyContent:'space-between', alignItems:'center', transition:'all 0.15s', fontFamily:'Poppins,sans-serif' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <div style={{ width:30, height:30, borderRadius:8, background:'#EEEAFB', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C6FCD" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                  </svg>
+                </div>
+                <span>{name}</span>
+                {badge && (
+                  <span style={{ fontSize:10.5, fontWeight:600, padding:'2px 8px', borderRadius:99, background:badge.bg, color:badge.color, border:`1px solid ${badge.border}` }}>
+                    {badge.short}
+                  </span>
+                )}
+                {!badge && (
+                  <span style={{ fontSize:10.5, fontWeight:600, padding:'2px 8px', borderRadius:99, background:'#FFF5F5', color:'#DC2626', border:'1px solid #FECACA' }}>
+                    Unknown
+                  </span>
+                )}
+              </div>
+              {active===name && loading
+                ? <div style={{ width:16, height:16, border:'2px solid #E8E4F8', borderTopColor:'#7C6FCD', borderRadius:'50%', animation:'imSpin 0.8s linear infinite' }} />
+                : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C0BBDC" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>}
+            </button>
+          )
+        })}
       </div>
       <ErrBox msg={error} />
       <button className="im-back" onClick={onBack} disabled={loading}>
@@ -251,49 +436,181 @@ function SheetSelectionStep({ sheets, fileData, onParsed, onBack }) {
   )
 }
 
+/* ─── Block config helpers ──────────────────────────────────────────────── */
+const ICM_PROG_META = {
+  'BSCS':      { color: '#7C6FCD', bg: '#F4F2FA' },
+  'BSIT':      { color: '#059669', bg: '#E6FAF3' },
+  'BSEMC-GD':  { color: '#D97706', bg: '#FEF3CD' },
+  'BSEMC-DAT': { color: '#DC2626', bg: '#FFF5F5' },
+}
+const ICM_PROG_META_DEFAULT = { color: '#7C6FCD', bg: '#F4F2FA' }
+
+function BlockStepper({ value, onChange }) {
+  const num = value === '' ? '' : Number(value)
+  return (
+    <div className="im-stepper">
+      <button
+        type="button"
+        className="im-stepper-btn"
+        disabled={num <= 1 || num === ''}
+        onClick={() => onChange(Math.max(1, num - 1))}
+      >−</button>
+      <input
+        className="im-stepper-input"
+        type="number" min={1} max={20} value={value}
+        onChange={e => onChange(e.target.value === '' ? '' : Number(e.target.value))}
+        placeholder="—"
+      />
+      <button
+        type="button"
+        className="im-stepper-btn"
+        disabled={num >= 20}
+        onClick={() => onChange(num === '' ? 1 : Math.min(20, num + 1))}
+      >+</button>
+    </div>
+  )
+}
+
 /* ─── Step 3: Block config ──────────────────────────────────────────────── */
 function BlockConfigStep({ courses, onBack, onSubmit }) {
-  const groups = []
-  const seen   = new Set()
-  courses.forEach(c => {
-    const key = `${c.program}_${c.yearLevel}`
-    if (!seen.has(key)) { seen.add(key); groups.push({ key, program: c.program, yearLevel: Number(c.yearLevel) }) }
-  })
-  groups.sort((a,b) => a.program.localeCompare(b.program) || a.yearLevel-b.yearLevel)
+  // Detect all semesters present
+  const semesters = [...new Set(courses.map(c => c.semester || '1st Semester'))]
+  const [activeSem, setActiveSem] = useState(semesters[0])
 
-  const [blocks, setBlocks] = useState(() => { const init={}; groups.forEach(g=>{init[g.key]=''}); return init })
-  const [error,  setError]  = useState('')
+  const allGroups = []
+  const seen = new Set()
+  courses.forEach(c => {
+    const sem = c.semester || '1st Semester'
+    const key = `${c.program}_${c.yearLevel}_${sem}`
+    if (!seen.has(key)) {
+      seen.add(key)
+      const count = courses.filter(x => x.program === c.program && x.yearLevel === c.yearLevel && (x.semester || '1st Semester') === sem).length
+      allGroups.push({ key, program: c.program, yearLevel: Number(c.yearLevel), semester: sem, count })
+    }
+  })
+  allGroups.sort((a, b) => a.program.localeCompare(b.program) || a.yearLevel - b.yearLevel)
+
+  const filteredGroups = allGroups.filter(g => g.semester === activeSem)
+  const activePrograms  = [...new Set(filteredGroups.map(g => g.program))]
+
+  const [blocks, setBlocks] = useState(() => {
+    const init = {}
+    allGroups.forEach(g => { init[g.key] = '' })
+    return init
+  })
+  const [error, setError] = useState('')
+
+  function setVal(key, value) {
+    setBlocks(prev => ({ ...prev, [key]: value === '' ? '' : Number(value) }))
+    setError('')
+  }
 
   function handleSubmit(e) {
     e.preventDefault()
-    const missing = groups.filter(g => !blocks[g.key] || Number(blocks[g.key]) < 1)
-    if (missing.length > 0) { setError(`Please enter at least 1 block for: ${missing.map(g=>`${g.program} Y${g.yearLevel}`).join(', ')}`); return }
+    const missing = allGroups.filter(g => !blocks[g.key] || Number(blocks[g.key]) < 1)
+    if (missing.length > 0) {
+      setError(`Set at least 1 section for: ${missing.map(g => `${g.program} Y${g.yearLevel}`).join(', ')}`)
+      return
+    }
     onSubmit(blocks)
   }
 
+  const semBadge = {
+    '1st Semester': { bg:'#EDE9FB', color:'#7C6FCD', short:'1st Sem' },
+    '2nd Semester': { bg:'#E6FAF3', color:'#059669', short:'2nd Sem' },
+    'Midyear':      { bg:'#FEF3CD', color:'#D97706', short:'Midyear' },
+  }
+
   return (
-    <form onSubmit={handleSubmit} style={{ display:'flex', flexDirection:'column', gap:14 }}>
-      <p style={{ fontSize:13, color:'#8883B0', margin:0 }}>Set how many sections (blocks) exist for each program-year group found in the file.</p>
-      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-        {groups.map(g => (
-          <div key={g.key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', background:'#FAFAFE', border:'1.5px solid #E8E4F8', borderRadius:10 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <span style={{ background:'#EEEAFB', color:'#7C6FCD', fontSize:11, fontWeight:700, padding:'2px 10px', borderRadius:99 }}>{g.program}</span>
-              <span style={{ fontSize:13, fontWeight:600, color:'#1a1a2e' }}>{ORDINAL(g.yearLevel)} Year</span>
+    <form onSubmit={handleSubmit} style={{ display:'flex', flexDirection:'column', gap:16 }}>
+      <p style={{ fontSize:13, color:'#8883B0', margin:0 }}>
+        Set how many sections (blocks) exist for each program-year group.
+      </p>
+
+      {/* Semester tabs — only shown when multiple semesters are present */}
+      {semesters.length > 1 && (
+        <div style={{ display:'flex', gap:3, background:'#F5F4FB', padding:4, borderRadius:10, border:'1px solid #E8E4F8' }}>
+          {semesters.map(sem => {
+            const badge = semBadge[sem] || { bg:'#F5F4FB', color:'#8883B0', short: sem }
+            const count = allGroups.filter(g => g.semester === sem).length
+            return (
+              <button key={sem} type="button" onClick={() => setActiveSem(sem)}
+                style={{
+                  display:'inline-flex', alignItems:'center', gap:5, padding:'6px 14px', borderRadius:8,
+                  border:'none', fontFamily:'Poppins,sans-serif', fontSize:12, fontWeight:600, cursor:'pointer',
+                  transition:'all 0.15s',
+                  background: activeSem === sem ? 'linear-gradient(135deg,#7C6FCD,#5a4fbf)' : 'transparent',
+                  color: activeSem === sem ? '#fff' : '#8883B0',
+                  boxShadow: activeSem === sem ? '0 2px 8px rgba(124,111,205,0.25)' : 'none',
+                }}>
+                {badge.short}
+                <span style={{
+                  fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:99,
+                  background: activeSem === sem ? 'rgba(255,255,255,0.2)' : '#E8E4F8',
+                  color: activeSem === sem ? '#fff' : '#8883B0',
+                }}>{count}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Program-grouped cards */}
+      <div style={{ display:'flex', flexDirection:'column', gap:20, background:'#FAFAFC', borderRadius:12, padding:16, border:'1px solid #F0EDF9' }}>
+        {activePrograms.map(prog => {
+          const meta      = ICM_PROG_META[prog] || ICM_PROG_META_DEFAULT
+          const progGroups = filteredGroups.filter(g => g.program === prog)
+          return (
+            <div key={prog}>
+              {/* Program header row */}
+              <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
+                <span style={{
+                  fontSize:12, fontWeight:600, padding:'4px 12px', borderRadius:8,
+                  background: meta.bg, color: meta.color,
+                  border: `1px solid ${meta.color}20`,
+                }}>
+                  {prog}
+                </span>
+                <div style={{ flex:1, height:1, background:'#E8E4F8' }} />
+                <span style={{ fontSize:12, color:'#9CA3AF', fontWeight:500 }}>
+                  {progGroups.reduce((s, g) => s + g.count, 0)} courses
+                </span>
+              </div>
+
+              {/* Cards grid */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:10 }}>
+                {progGroups.map(g => (
+                  <div key={g.key} className="im-group-card">
+                    <div style={{ display:'flex', gap:12, alignItems:'center' }}>
+                      <div style={{ width:4, height:32, borderRadius:4, background: meta.color, flexShrink:0 }} />
+                      <div>
+                        <div style={{ fontSize:14, fontWeight:600, color:'#1E1B4B', marginBottom:2 }}>
+                          {ORDINAL(g.yearLevel)} Year
+                        </div>
+                        <div style={{ fontSize:12, color:'#6B7280' }}>
+                          {g.count} course{g.count !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                    </div>
+                    <BlockStepper
+                      value={blocks[g.key] ?? ''}
+                      onChange={v => setVal(g.key, v)}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
-            <div style={{ display:'flex', alignItems:'center', gap:9 }}>
-              <span style={{ fontSize:11.5, color:'#B0ABCC', fontWeight:500 }}>Sections</span>
-              <input type="number" min={1} max={20} value={blocks[g.key]}
-                onChange={e=>setBlocks(p=>({...p,[g.key]:e.target.value}))}
-                placeholder="e.g. 3" required
-                style={{ width:72, textAlign:'center', fontWeight:600, fontSize:14, padding:'6px', borderRadius:8, border:'1.5px solid #E8E4F8', fontFamily:'Poppins,sans-serif', outline:'none' }} />
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
+
       <ErrBox msg={error} />
+
       <div style={{ display:'flex', gap:8 }}>
-        <button type="submit" className="im-primary">Continue to Review</button>
+        <button type="submit" className="im-primary">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          Continue to Review
+        </button>
         <button type="button" className="im-back" onClick={onBack}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
           Back
@@ -376,6 +693,12 @@ function ReviewStep({ courses, onBack, onCommit, onRemove, onEdit, onImported })
   const [saving,  setSaving]  = useState(false)
   const [results, setResults] = useState(null)
 
+  const semesters = [...new Set(courses.map(c => c.semester || '1st Semester'))]
+  const [activeSem, setActiveSem] = useState(semesters[0])
+  const semBadge = { '1st Semester':{ short:'1st Sem' }, '2nd Semester':{ short:'2nd Sem' }, 'Midyear':{ short:'Midyear' } }
+
+  const displayed = semesters.length > 1 ? courses.filter(c => (c.semester || '1st Semester') === activeSem) : courses
+
   async function handleSave() {
     setSaving(true)
     try { const res = await onCommit(courses); setResults(res) }
@@ -407,8 +730,8 @@ function ReviewStep({ courses, onBack, onCommit, onRemove, onEdit, onImported })
               <p style={{ fontWeight:700, fontSize:13, color:'#1a1a2e', marginBottom:3 }}>{results.saved} saved · {results.failed.length} failed</p>
               <p style={{ fontSize:12, color:'#8883B0', margin:0 }}>These courses couldn't be saved — they may already exist or have invalid data.</p>
             </div>
-            <div style={{ maxHeight:200, overflowY:'auto', border:'1px solid #E8E4F8', borderRadius:10, overflow:'hidden' }}>
-              <table style={{ width:'100%', borderCollapse:'collapse' }}>
+            <div style={{ maxHeight:320, overflowY:'auto', overflowX:'auto', border:'1px solid #E8E4F8', borderRadius:10 }}>
+               <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead style={{ position:'sticky', top:0, background:'#FAFAFE', zIndex:1 }}>
                   <tr>
                     <th style={{ padding:'8px', fontSize:10.5, fontWeight:700, color:'#A0ABC0', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Code</th>
@@ -433,13 +756,7 @@ function ReviewStep({ courses, onBack, onCommit, onRemove, onEdit, onImported })
         )}
 
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
-          <button 
-            className="im-primary" 
-            onClick={onImported} 
-            style={{ padding: '10px 40px', fontSize: 13 }}
-          >
-            Done
-          </button>
+          <button className="im-primary" onClick={onImported} style={{ padding: '10px 40px', fontSize: 13 }}>Done</button>
         </div>
       </div>
     )
@@ -461,8 +778,35 @@ function ReviewStep({ courses, onBack, onCommit, onRemove, onEdit, onImported })
         <span style={{ fontSize:11, color:'#B0ABCC' }}>Click a row to edit</span>
       </div>
 
-      <div style={{ maxHeight:320, overflowY:'auto', border:'1px solid #E8E4F8', borderRadius:10, overflow:'hidden' }}>
-        <table style={{ width:'100%', borderCollapse:'collapse' }}>
+      {/* Semester tabs if multiple */}
+      {semesters.length > 1 && (
+        <div style={{ display:'flex', gap:3, background:'#F5F4FB', padding:4, borderRadius:10, border:'1px solid #E8E4F8' }}>
+          {semesters.map(sem => {
+            const count = courses.filter(c => (c.semester || '1st Semester') === sem).length
+            return (
+              <button key={sem} type="button" onClick={() => setActiveSem(sem)}
+                style={{
+                  display:'inline-flex', alignItems:'center', gap:5, padding:'6px 14px', borderRadius:8,
+                  border:'none', fontFamily:'Poppins,sans-serif', fontSize:12, fontWeight:600, cursor:'pointer',
+                  transition:'all 0.15s',
+                  background: activeSem === sem ? 'linear-gradient(135deg,#7C6FCD,#5a4fbf)' : 'transparent',
+                  color: activeSem === sem ? '#fff' : '#8883B0',
+                  boxShadow: activeSem === sem ? '0 2px 8px rgba(124,111,205,0.25)' : 'none',
+                }}>
+                {(semBadge[sem] || { short: sem }).short}
+                <span style={{
+                  fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:99,
+                  background: activeSem === sem ? 'rgba(255,255,255,0.2)' : '#E8E4F8',
+                  color: activeSem === sem ? '#fff' : '#8883B0',
+                }}>{count}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      <div style={{ maxHeight:200, overflowY:'auto', overflowX:'auto', border:'1px solid #E8E4F8', borderRadius:10 }}>
+  <table style={{ width:'100%', borderCollapse:'collapse' }}>
           <thead style={{ position:'sticky', top:0, background:'#FAFAFE', zIndex:1 }}>
             <tr>
               <th style={{ padding:'8px 8px', fontSize:10.5, fontWeight:700, color:'#A0ABC0', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Code</th>
@@ -476,8 +820,8 @@ function ReviewStep({ courses, onBack, onCommit, onRemove, onEdit, onImported })
             </tr>
           </thead>
           <tbody>
-            {courses.map((c,i) => (
-              <EditableRow key={`${c.courseCode}_${i}`} course={c} invalid={!isValid(c)} onEdit={u=>onEdit(c,u)} onRemove={()=>onRemove(c)} />
+            {displayed.map((c,i) => (
+              <EditableRow key={`${c.courseCode}_${c.semester}_${i}`} course={c} invalid={!isValid(c)} onEdit={u=>onEdit(c,u)} onRemove={()=>onRemove(c)} />
             ))}
           </tbody>
         </table>
@@ -517,7 +861,7 @@ export default function ImportCoursesModal({ onClose, onImported }) {
   function handleUploaded(s, b) { setSheets(s); setFileData(b); setStep(2) }
   function handleParsed(p)      { setParsed(p); setStep(3) }
   function handleBlockConfig(blocksMap) {
-    setCourses(parsed.map(c => { const key=`${c.program}_${c.yearLevel}`; return {...c,blocks:Number(blocksMap[key])||0} }))
+    setCourses(parsed.map(c => { const sem=c.semester||'1st Semester'; const key=`${c.program}_${c.yearLevel}_${sem}`; return {...c,blocks:Number(blocksMap[key])||0} }))
     setStep(4)
   }
   function handleEdit(original, updated) {
@@ -532,7 +876,6 @@ export default function ImportCoursesModal({ onClose, onImported }) {
     const failed  = invalid.map(c => ({course:c,reason:'Missing required field(s)'}))
     try {
       const res = await commitCourses(valid)
-      // Remove the immediate onImported() call here so the success screen can mount
       return { saved: res.committed??valid.length, failed }
     } catch(err) {
       const reason = err.response?.data?.detail || 'Server error'
@@ -549,10 +892,10 @@ export default function ImportCoursesModal({ onClose, onImported }) {
     >
       <div style={{
         background:'#fff', borderRadius:18, padding:'26px 28px',
-        width:step===4?720:540, maxWidth:'95vw', maxHeight:'90vh',
+        width: step === 4 ? 760 : step === 3 ? 700 : 540, maxWidth:'95vw', maxHeight:'90vh',
         overflowY:'auto', fontFamily:"'Poppins',sans-serif",
         boxShadow:'0 24px 64px rgba(26,22,60,0.24),0 4px 16px rgba(124,111,205,0.12)',
-        transition:'width 0.2s ease',
+        transition:'width 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
       }}>
         {/* Header */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:22 }}>

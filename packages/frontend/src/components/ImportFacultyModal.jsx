@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react'
+import * as XLSX from 'xlsx'
 import { uploadFaculty, extractFacultySheets, commitFaculty } from '../services/api'
+import facultyTemplate from '../assets/templates/CCS-Faculty-Specialization-Matrix-Template.xlsx';
 
 if (!document.getElementById('ifm-style')) {
   const s = document.createElement('style')
@@ -30,6 +32,16 @@ if (!document.getElementById('ifm-style')) {
     }
     .ifm-ghost:hover:not(:disabled) { background:#F5F4FB; border-color:#C5BBEF; color:#5a4fbf; }
     .ifm-ghost:disabled { opacity:.45; cursor:default; }
+
+    .ifm-download {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:7px 14px; border-radius:9px;
+      border:1.5px solid #D8D3F5; font-family:'Poppins',sans-serif;
+      font-size:11.5px; font-weight:600; cursor:pointer;
+      background:#F7F5FD; color:#7C6FCD; transition:all .13s;
+    }
+    .ifm-download:hover { background:#EEEAFB; border-color:#A99BE8; color:#5a4fbf; transform:translateY(-1px); box-shadow:0 3px 10px rgba(124,111,205,.15); }
+    .ifm-download:active { transform:translateY(0); box-shadow:none; }
 
     .ifm-close {
       display: inline-flex; align-items: center; justify-content: center;
@@ -67,8 +79,161 @@ if (!document.getElementById('ifm-style')) {
       padding: 0;
     }
     .ifm-remove:hover { background:#FEE2E2; border-color:#FCA5A5; }
+
+    .ifm-warn-box {
+      background:#FFFBEB; border:1.5px solid #FCD34D; border-radius:10px;
+      padding:11px 14px; font-size:12px; color:#92400E; line-height:1.6;
+      display:flex; gap:9px; align-items:flex-start;
+    }
   `
   document.head.appendChild(s)
+}
+
+// ─── Template download ─────────────────────────────────────────────────────────
+function downloadTemplate() {
+  const a = document.createElement('a')
+  a.href = facultyTemplate
+  a.download = 'CCS-Faculty-Specialization-Matrix_Template.xlsx'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+}
+
+// ─── Template validation ───────────────────────────────────────────────────────
+// Reads the file client-side with SheetJS and checks that at least one sheet
+// matches the Faculty Specialization Matrix layout.
+//
+// The template has an Instructions row at the very top, so headers can appear
+// anywhere in rows 1–5. We scan until we find the header row, then check:
+//   headerRow  → col A: "COURSES CODE"  col B: "COURSES NAME"
+//   headerRow+1 → col B: contains "FACULTY" / "FULL" / "PART"
+//   col C/D in headerRow → must NOT be Course List indicators
+//
+// Returns { valid: true } or { valid: false, reason: string }
+function validateFacultyMatrixFile(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result)
+        // Only read the first 5 rows — enough to check structure without loading everything
+        const wb = XLSX.read(data, { type: 'array', sheetRows: 5 })
+
+        if (!wb.SheetNames.length) {
+          resolve({ valid: false, reason: 'The file contains no sheets.' })
+          return
+        }
+
+        // Helpers
+        const cell = (ws, col, row) =>
+          (ws[`${col}${row}`]?.v ?? '').toString().trim().toUpperCase()
+
+        // Patterns that indicate a WRONG template
+        const COURSE_LIST_INDICATORS = ['PROGRAM', 'YEAR LEVEL', 'UNITS LECTURE', 'UNITS LAB', 'COURSE TITLE']
+
+        let validSheetFound = false
+        const diagLines = []
+
+        for (const sheetName of wb.SheetNames) {
+          const ws = wb.Sheets[sheetName]
+
+          // Scan rows 1–5 to find the real header row.
+          // The template has an Instructions row at the top, so headers may not be in row 1.
+          let headerRow = null
+          for (let r = 1; r <= 5; r++) {
+            const a = cell(ws, 'A', r)
+            if (a.includes('COURSE') && a.includes('CODE')) {
+              headerRow = r
+              break
+            }
+          }
+
+          if (headerRow === null) {
+            diagLines.push(`"${sheetName}" — no "COURSES CODE" header found in rows 1–5`)
+            continue
+          }
+
+          const labelRow = headerRow + 1
+
+          const aH = cell(ws, 'A', headerRow)
+          const bH = cell(ws, 'B', headerRow)
+          const cH = cell(ws, 'C', headerRow)
+          const dH = cell(ws, 'D', headerRow)
+          const bL = cell(ws, 'B', labelRow)
+
+          // Check for Course List structure (wrong file)
+          const hasCourseListHeaders =
+            COURSE_LIST_INDICATORS.some(ind => cH.includes(ind) || dH.includes(ind))
+
+          if (hasCourseListHeaders) {
+            diagLines.push(`"${sheetName}" looks like a Course List (found "${cH || dH}" in headers)`)
+            continue
+          }
+
+          // Check for Faculty Matrix structure
+          const hasCoursesCode = aH.includes('COURSE') && aH.includes('CODE')
+          const hasCoursesName = bH.includes('COURSE') && (bH.includes('NAME') || bH.includes('TITLE'))
+
+          // Layout A (template): next row has "↳ FULL-TIME / PART-TIME FACULTY" label in col B
+          const hasTemplateFacultyRow = bL.includes('FACULTY') || bL.includes('FULL') || bL.includes('PART')
+
+          // Layout B (actual filled file): last-names row sits ABOVE the header row.
+          // e.g. row N-1: "COURSES" | "" | "LUY" | "BAUTISTA," | …
+          //      row N  : "COURSES CODE" | "COURSES NAME" | "RONNIE" | … (headerRow)
+          //      row N+1: actual course data (no faculty label)
+          const prevRow  = headerRow - 1
+          const cPrev    = prevRow >= 1 ? cell(ws, 'C', prevRow) : ''
+          const hasActualFileFacultyRow = (
+            prevRow >= 1 &&
+            cPrev.length > 0 &&
+            !COURSE_LIST_INDICATORS.some(ind => cPrev.includes(ind)) &&
+            !cPrev.includes('INSTRUCTION') &&
+            !cPrev.includes('COURSE')
+          )
+
+          const hasFacultyRow = hasTemplateFacultyRow || hasActualFileFacultyRow
+
+          if (hasCoursesCode && hasCoursesName && hasFacultyRow) {
+            validSheetFound = true
+            break
+          }
+
+          diagLines.push(
+            `"${sheetName}" — A${headerRow}: "${aH}", B${headerRow}: "${bH}", B${labelRow}: "${bL}"`
+          )
+        }
+
+        if (validSheetFound) {
+          resolve({ valid: true })
+        } else {
+          // Build a helpful message
+          const isCourseList = diagLines.some(l => l.includes('Course List'))
+          if (isCourseList) {
+            resolve({
+              valid: false,
+              reason:
+                'This looks like the Course List template, not the Faculty Specialization Matrix. ' +
+                'Please upload the correct file (columns = faculty names, rows = course codes, cells = ratings 1–5).',
+            })
+          } else {
+            resolve({
+              valid: false,
+              reason:
+                'This file does not match the Faculty Specialization Matrix template. ' +
+                'Expected a header row with "COURSES CODE" / "COURSES NAME" / faculty names, ' +
+                'followed by a row with "↳ FULL-TIME FACULTY" or "↳ PART-TIME FACULTY". ' +
+                'Make sure you are using the correct template.',
+            })
+          }
+        }
+      } catch (err) {
+        resolve({ valid: false, reason: 'Could not read the file. It may be corrupted or password-protected.' })
+      }
+    }
+    reader.onerror = () =>
+      resolve({ valid: false, reason: 'File could not be read. Please try again.' })
+    reader.readAsArrayBuffer(file)
+  })
 }
 
 const Spin = () => (
@@ -76,8 +241,8 @@ const Spin = () => (
 )
 
 const ErrBox = ({ msg }) => !msg ? null : (
-  <div style={{ background:'#FFF5F5', border:'1px solid #FECACA', borderRadius:9, padding:'9px 13px', fontSize:12, color:'#DC2626', display:'flex', alignItems:'center', gap:7 }}>
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+  <div style={{ background:'#FFF5F5', border:'1px solid #FECACA', borderRadius:9, padding:'9px 13px', fontSize:12, color:'#DC2626', display:'flex', alignItems:'flex-start', gap:7 }}>
+    <svg style={{ flexShrink:0, marginTop:1 }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
     {msg}
   </div>
 )
@@ -135,43 +300,73 @@ function Steps({ current }) {
   )
 }
 
+/* ─── Step 1: Upload ─────────────────────────────────────────────────────── */
 function UploadStep({ onUploaded }) {
-  const [dragging, setDragging] = useState(false)
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState('')
+  const [dragging,   setDragging]   = useState(false)
+  const [loading,    setLoading]    = useState(false)
+  const [validating, setValidating] = useState(false)
+  const [error,      setError]      = useState('')
   const inputRef = useRef()
 
   async function processFile(file) {
     if (!file) return
-    if (!file.name.match(/\.(xlsx|xls)$/i)) { setError('Please upload an .xlsx or .xls file.'); return }
-    setLoading(true); setError('')
+    if (!file.name.match(/\.(xlsx|xls)$/i)) {
+      setError('Please upload an .xlsx or .xls file.')
+      return
+    }
+
+    // ── Step 1: Client-side template validation ──────────────────────────────
+    setValidating(true)
+    setError('')
+
+    const validation = await validateFacultyMatrixFile(file)
+
+    if (!validation.valid) {
+      setError(validation.reason)
+      setValidating(false)
+      return
+    }
+
+    // ── Step 2: Upload to server ─────────────────────────────────────────────
+    setValidating(false)
+    setLoading(true)
     try {
       const res = await uploadFaculty(file)
-      if (!res.sheets?.length) { setError('No sheets found in the file.'); return }
+      if (!res.sheets?.length) {
+        setError('No sheets found in the file.')
+        return
+      }
       onUploaded(res.sheets, res.fileData)
     } catch (err) {
       setError(err.response?.data?.detail || 'Could not read the file. Check the format and try again.')
-    } finally { setLoading(false) }
+    } finally {
+      setLoading(false)
+    }
   }
+
+  const isBusy = loading || validating
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+      {/* Drop zone */}
       <div
         onDragOver={e => { e.preventDefault(); setDragging(true) }}
         onDragLeave={() => setDragging(false)}
         onDrop={e => { e.preventDefault(); setDragging(false); processFile(e.dataTransfer.files[0]) }}
-        onClick={() => !loading && inputRef.current?.click()}
+        onClick={() => !isBusy && inputRef.current?.click()}
         style={{
           border:`2px dashed ${dragging ? '#7C6FCD' : '#D8D3F5'}`, borderRadius:14,
           padding:'44px 24px', textAlign:'center',
           background: dragging ? '#F7F5FD' : '#FAFAFE',
-          cursor: loading ? 'wait' : 'pointer', transition:'all .15s',
+          cursor: isBusy ? 'wait' : 'pointer', transition:'all .15s',
         }}
       >
-        {loading ? (
+        {isBusy ? (
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
             <div style={{ width:40, height:40, borderRadius:'50%', border:'3px solid #E8E4F8', borderTopColor:'#7C6FCD', animation:'ifmSpin .8s linear infinite' }} />
-            <p style={{ fontSize:13, color:'#8883B0', fontWeight:500, margin:0 }}>Reading file…</p>
+            <p style={{ fontSize:13, color:'#8883B0', fontWeight:500, margin:0 }}>
+              {validating ? 'Checking template…' : 'Reading file…'}
+            </p>
           </div>
         ) : (
           <>
@@ -181,21 +376,67 @@ function UploadStep({ onUploaded }) {
                 <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
             </div>
-            <p style={{ fontWeight:700, fontSize:14, color:'#1a1a2e', marginBottom:4 }}>{dragging ? 'Drop it here!' : 'Drop your Faculty Matrix Excel file'}</p>
-            <p style={{ fontSize:12, color:'#B0ABCC', margin:0 }}>or <span style={{ color:'#7C6FCD', fontWeight:600 }}>click to browse</span> · .xlsx or .xls</p>
+            <p style={{ fontWeight:700, fontSize:14, color:'#1a1a2e', marginBottom:4 }}>
+              {dragging ? 'Drop it here!' : 'Drop your Faculty Matrix Excel file'}
+            </p>
+            <p style={{ fontSize:12, color:'#B0ABCC', margin:0 }}>
+              or <span style={{ color:'#7C6FCD', fontWeight:600 }}>click to browse</span> · .xlsx or .xls
+            </p>
           </>
         )}
       </div>
-      <input ref={inputRef} type="file" accept=".xlsx,.xls" style={{ display:'none' }} onChange={e => { processFile(e.target.files[0]); e.target.value = null }} />
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".xlsx,.xls"
+        style={{ display:'none' }}
+        onChange={e => { processFile(e.target.files[0]); e.target.value = null }}
+      />
+
       <ErrBox msg={error} />
-      <HintBox>
-        <strong style={{ color:'#7C6FCD' }}>Expected format:</strong> Columns = faculty names · Rows = course codes · Cells = rating (1–5)
-        <br />Ratings of 0 or blank are ignored. Each sheet = one employment group (e.g. "Full Time", "Part Time").
-      </HintBox>
+
+      {/* Wrong-template notice */}
+      {error && error.toLowerCase().includes('course list') && (
+        <div className="ifm-warn-box">
+          <svg style={{ flexShrink:0, marginTop:1 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span>
+            <strong>Wrong template!</strong> The Course List file is used elsewhere in the system.
+            For faculty import, please use the <strong>Faculty Specialization Matrix</strong> template
+            (columns = faculty names, rows = course codes, cells = ratings 1–5).
+          </span>
+        </div>
+      )}
+
+      {/* Hint + template download */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
+        <p style={{ fontSize:11.5, color:'#B0ABCC', margin:0, lineHeight:1.5 }}>
+          Columns = faculty names · Rows = course codes · Cells = rating (1–5)
+        </p>
+        <button
+          onClick={e => { e.stopPropagation(); downloadTemplate() }}
+          style={{
+            background:'none', border:'none', padding:0, cursor:'pointer',
+            display:'inline-flex', alignItems:'center', gap:4,
+            fontSize:11.5, color:'#A99BE8', fontFamily:"'Poppins',sans-serif",
+            fontWeight:500, flexShrink:0, transition:'color .13s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.color='#7C6FCD'}
+          onMouseLeave={e => e.currentTarget.style.color='#A99BE8'}
+          title="Download the blank Faculty Specialization Matrix template"
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Download template
+        </button>
+      </div>
     </div>
   )
 }
 
+/* ─── Step 2: Sheet selection ────────────────────────────────────────────── */
 function SheetStep({ sheets, fileData, onParsed, onBack }) {
   const [selected, setSelected] = useState(new Set())
   const [loading,  setLoading]  = useState(false)
@@ -218,7 +459,11 @@ function SheetStep({ sheets, fileData, onParsed, onBack }) {
     setLoading(true); setError('')
     try {
       const res = await extractFacultySheets({ fileData, sheetNames: [...selected] })
-      if (!res.preview?.length) { setError('No faculty data found in the selected sheet(s). Check the format.'); setLoading(false); return }
+      if (!res.preview?.length) {
+        setError('No faculty data found in the selected sheet(s). Check the format.')
+        setLoading(false)
+        return
+      }
 
       // Split course codes like "ITC121/CSP121" into separate entries with the same rating
       const splitPreview = res.preview.map(faculty => {
@@ -311,6 +556,7 @@ function SheetStep({ sheets, fileData, onParsed, onBack }) {
   )
 }
 
+/* ─── Faculty card ───────────────────────────────────────────────────────── */
 function FacultyCard({ faculty, onRemove, animDelay }) {
   const [expanded, setExpanded] = useState(false)
   const specs     = faculty.specializations || []
@@ -386,6 +632,7 @@ function FacultyCard({ faculty, onRemove, animDelay }) {
   )
 }
 
+/* ─── Step 3: Review & Import ────────────────────────────────────────────── */
 function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
   const [saving,  setSaving]  = useState(false)
   const [results, setResults] = useState(null)
@@ -445,9 +692,9 @@ function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
         )}
 
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
-          <button 
-            className="ifm-primary" 
-            onClick={onImported} 
+          <button
+            className="ifm-primary"
+            onClick={onImported}
             style={{ padding: '10px 40px', fontSize: 13 }}
           >
             Done
@@ -518,6 +765,7 @@ function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
   )
 }
 
+/* ─── Main Modal ─────────────────────────────────────────────────────────── */
 export default function ImportFacultyModal({ onClose, onImported }) {
   const [step,     setStep]     = useState(1)
   const [sheets,   setSheets]   = useState([])
@@ -541,6 +789,7 @@ export default function ImportFacultyModal({ onClose, onImported }) {
         boxShadow:'0 24px 64px rgba(26,22,60,0.24),0 4px 16px rgba(124,111,205,0.12)',
         transition:'width .2s ease',
       }}>
+        {/* Header */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:22 }}>
           <div>
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4 }}>

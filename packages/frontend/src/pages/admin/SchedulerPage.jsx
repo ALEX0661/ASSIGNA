@@ -19,6 +19,8 @@ const PHASES = [
   { label: 'PE / PATHFIT', short: 'PE'   },
 ]
 
+const SEMESTER_OPTIONS = ['1st Semester', '2nd Semester', 'Midyear']
+
 const RATING_LABELS = { 5: 'Expert', 4: 'Highly Proficient', 3: 'Competent', 2: 'Developing', 1: 'Beginner' }
 const RATING_COLORS = { 5: '#059669', 4: '#2563EB', 3: '#7C6FCD', 2: '#D97706', 1: '#C0392B' }
 const RATING_BG     = { 5: '#E6FAF3', 4: '#EBF0FF', 3: '#EEEAFB', 2: '#FEF3CD', 1: '#FFE8E8' }
@@ -192,6 +194,109 @@ if (!document.getElementById('scheduler-page-style')) {
 function Skel({ w = '100%', h = 14, r = 7, style = {} }) {
   return (
     <div className="sch-skeleton" style={{ width: w, height: h, borderRadius: r, flexShrink: 0, ...style }} />
+  )
+}
+
+/* ─────────────────────────── error helpers ─────────────────────────── */
+
+async function parseError(err, action) {
+  let title   = `Failed to ${action}`
+  let message = 'An unexpected error occurred. Please try again.'
+  let code    = null
+
+  if (err instanceof Response || err?.status) {
+    code = err.status ?? null
+    const causeMap = {
+      400: `Failed to ${action} — invalid request`,
+      401: `Failed to ${action} — not authenticated`,
+      403: `Failed to ${action} — access denied`,
+      404: `Failed to ${action} — endpoint not found`,
+      408: `Failed to ${action} — request timed out`,
+      409: `Failed to ${action} — data conflict`,
+      422: `Failed to ${action} — validation error`,
+      429: `Failed to ${action} — too many requests`,
+      500: `Failed to ${action} — backend error`,
+      502: `Failed to ${action} — bad gateway`,
+      503: `Failed to ${action} — server unavailable`,
+      504: `Failed to ${action} — gateway timeout`,
+    }
+    title = causeMap[code] ?? `Failed to ${action} — server error (${code})`
+    const detailMap = {
+      400: 'The request was rejected as invalid. Check your inputs and try again.',
+      401: 'Your session may have expired. Please refresh the page and log in again.',
+      403: 'You don\'t have the required permissions to perform this action.',
+      404: 'The server endpoint could not be found. The API may have changed.',
+      408: 'The server took too long to respond. Check your connection and retry.',
+      409: 'This change conflicts with existing data on the server.',
+      422: 'The server rejected the submitted values. Check for invalid configurations.',
+      429: 'You\'ve sent too many requests. Wait a moment, then try again.',
+      500: 'An internal server error occurred on the backend. Try again shortly.',
+      502: 'The server returned an invalid response. The service may be restarting.',
+      503: 'The server is temporarily unavailable. Try again in a few moments.',
+      504: 'The gateway did not receive a timely response from the backend.',
+    }
+    message = detailMap[code] ?? `The server responded with an unexpected status (${code}).`
+    // Prefer the server's own message if present
+    try {
+      const body = await (err.json?.() ?? Promise.resolve(err?.response?.data ?? null))
+      if (body?.detail)                                       message = body.detail
+      else if (body?.message)                                 message = body.message
+      else if (typeof body === 'string' && body.length < 200) message = body
+    } catch { /* ignore */ }
+    // Also check the axios-style response shape
+    if (err?.response?.data?.detail) message = err.response.data.detail
+  } else if (err instanceof TypeError && err.message.includes('fetch')) {
+    title   = `Failed to ${action} — no connection`
+    message = 'Could not reach the server. Check your internet connection and try again.'
+  } else if (err instanceof Error && err.message) {
+    title   = `Failed to ${action} — unexpected error`
+    message = err.message
+  }
+
+  return { title, message, code }
+}
+
+/** Inline banner used for check-readiness and solve errors (not toasts) */
+function ErrorBanner({ error, onDismiss }) {
+  if (!error) return null
+  return (
+    <div className="fadein" style={{
+      display: 'flex', alignItems: 'flex-start', gap: 10,
+      padding: '11px 14px', borderRadius: 10,
+      background: '#FFF5F5', border: '1px solid #FECACA',
+    }}>
+      <div style={{
+        width: 28, height: 28, borderRadius: 8, background: '#FEE2E2',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1,
+      }}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3 }}>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: '#B91C1C' }}>{error.title}</span>
+          {error.code && (
+            <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 20, background: '#FEE2E2', color: '#DC2626', border: '1px solid #FECACA' }}>
+              {error.code}
+            </span>
+          )}
+        </div>
+        <div style={{ fontSize: 12, color: '#C0392B', lineHeight: 1.5 }}>{error.message}</div>
+      </div>
+      {onDismiss && (
+        <button onClick={onDismiss} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF9999', padding: 2, lineHeight: 0, borderRadius: 4, flexShrink: 0 }}
+          onMouseEnter={e => e.currentTarget.style.color = '#DC2626'}
+          onMouseLeave={e => e.currentTarget.style.color = '#EF9999'}
+          title="Dismiss"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      )}
+    </div>
   )
 }
 
@@ -568,7 +673,7 @@ export default function SchedulerPage() {
   const [readiness,    setReadiness]    = useState(null)
   const [workload,     setWorkload]     = useState(null)
   const [checkLoading, setCheckLoading] = useState(false)
-  const [checkError,   setCheckError]   = useState('')
+  const [checkError,   setCheckError]   = useState(null)
   const [filterTab,    setFilterTab]    = useState('all')
   const [showWorkload, setShowWorkload] = useState(false)
   const [showOtherDept, setShowOtherDept] = useState(false)
@@ -578,9 +683,20 @@ export default function SchedulerPage() {
   // Solver / Setup states
   const [scheduleNamePreset, setScheduleNamePreset] = useState(PRESET_NAMES[0])
   const [scheduleNameCustom, setScheduleNameCustom] = useState('')
-  const [solveError,   setSolveError]   = useState('')
+  const [customSemester,     setCustomSemester]     = useState('1st Semester')
+  const [solveError,   setSolveError]   = useState(null)
   const [saved,        setSaved]        = useState(false)
   const [saveLoading,  setSaveLoading]  = useState(false)
+
+  // Derive the active semester from the preset — no separate dropdown needed
+  function semesterFromPreset(preset) {
+    if (preset.includes('2nd')) return '2nd Semester'
+    if (preset.includes('Midyear')) return 'Midyear'
+    return '1st Semester'
+  }
+  const targetSemester = scheduleNamePreset === 'Custom...'
+    ? customSemester
+    : semesterFromPreset(scheduleNamePreset)
 
   // Aside states
   const [savedList,    setSavedList]    = useState([])
@@ -612,10 +728,12 @@ export default function SchedulerPage() {
           setStatus('failed')
           toast('Solver failed — check eligibility and room settings.', 'error', 5000)
         }
-      } catch {
+      } catch (err) {
         clearInterval(pollRef.current)
         setStatus('failed')
-        toast('Lost connection to solver. Please try again.', 'error', 5000)
+        const parsed = await parseError(err, 'poll solver status')
+        setSolveError(parsed)
+        toast(`${parsed.title} — ${parsed.message}`, 'error', 5000)
       }
     }, 1200)
     return () => clearInterval(pollRef.current)
@@ -627,13 +745,13 @@ export default function SchedulerPage() {
     setCheckLoading(true)
     setCheckError('')
     try {
-      const [facultyList, courseList] = await Promise.all([getFaculty(), getCourses()])
+      const [facultyList, courseList] = await Promise.all([getFaculty(), getCourses(targetSemester)])
       setReadiness(buildReadinessReport(courseList, facultyList))
       setWorkload(buildWorkloadReport(facultyList))
       setFilterTab('all')
       setCourseSearch('')
-    } catch {
-      setCheckError('Failed to load data. Check your connection and try again.')
+    } catch (err) {
+      setCheckError(await parseError(err, 'load readiness data'))
     } finally {
       setCheckLoading(false)
     }
@@ -649,13 +767,13 @@ export default function SchedulerPage() {
     reset()
     setStatus('running')
     try {
-      const res = await triggerSolve()
+      const res = await triggerSolve(targetSemester)
       setProcessId(res.process_id)
     } catch (err) {
       setStatus('failed')
-      const msg = err?.response?.data?.detail || 'Could not start the solver. Try again.'
-      setSolveError(msg)
-      toast(msg, 'error', 5000)
+      const parsed = await parseError(err, 'start the solver')
+      setSolveError(parsed)
+      toast(parsed.title, 'error', 5000)
     }
   }
 
@@ -671,8 +789,8 @@ export default function SchedulerPage() {
       const data = await listSaved()
       setSavedList(Array.isArray(data) ? data : (data?.schedules ?? []))
     } catch (err) {
-      const msg = err?.response?.data?.detail || 'Failed to save schedule. Try again.'
-      toast(msg, 'error')
+      const parsed = await parseError(err, 'save schedule')
+      toast(`${parsed.title} — ${parsed.message}`, 'error')
     } finally {
       setSaveLoading(false)
     }
@@ -685,8 +803,9 @@ export default function SchedulerPage() {
       setEvents(data.schedule)
       setName(name)
       navigate(`/dashboard/schedule/${encodeURIComponent(name)}`)
-    } catch {
-      toast(`Failed to load "${name}". Try again.`, 'error')
+    } catch (err) {
+      const parsed = await parseError(err, `load "${name}"`)
+      toast(`${parsed.title} — ${parsed.message}`, 'error')
     } finally {
       setLoadingItem(null)
     }
@@ -703,8 +822,9 @@ async function confirmDelete() {
     await deleteSaved(name)
     setSavedList(l => l.filter(x => x !== name))
     toast(`"${name}" deleted.`, 'info')
-  } catch {
-    toast(`Failed to delete "${name}". Try again.`, 'error')
+  } catch (err) {
+    const parsed = await parseError(err, `delete "${name}"`)
+    toast(`${parsed.title} — ${parsed.message}`, 'error')
   }
 }
 
@@ -765,26 +885,60 @@ async function confirmDelete() {
         <div style={{ width: 1, height: 32, background: '#E8E4F8', margin: '0 8px' }} />
         
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#C0BBDC', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Target Term</span>
-          <select 
-            className="sch-select"
-            value={scheduleNamePreset}
-            onChange={e => { setScheduleNamePreset(e.target.value); setSaved(false); }}
-            disabled={status === 'running'}
-            style={{ minWidth: 240 }}
-          >
-            {PRESET_NAMES.map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
 
-          {scheduleNamePreset === 'Custom...' && (
-            <input 
-              className="sch-input fadein" 
-              placeholder="Enter custom schedule name..." 
-              value={scheduleNameCustom}
-              onChange={e => { setScheduleNameCustom(e.target.value); setSaved(false); }}
-              disabled={status === 'running'}
-            />
-          )}
+          {/* ── Academic Term picker ─────────────────────────────────────── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#C0BBDC', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+              Academic Term
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <select
+                className="sch-select"
+                value={scheduleNamePreset}
+                onChange={e => { setScheduleNamePreset(e.target.value); setReadiness(null); setWorkload(null); setSaved(false) }}
+                disabled={status === 'running'}
+                style={{ minWidth: 260 }}
+              >
+                {PRESET_NAMES.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+
+              {/* Custom name input */}
+              {scheduleNamePreset === 'Custom...' && (
+                <input
+                  className="sch-input fadein"
+                  placeholder="Schedule name…"
+                  value={scheduleNameCustom}
+                  onChange={e => { setScheduleNameCustom(e.target.value); setSaved(false) }}
+                  disabled={status === 'running'}
+                  style={{ minWidth: 200 }}
+                />
+              )}
+
+              {/* Semester selector — only shown for Custom */}
+              {scheduleNamePreset === 'Custom...' && (
+                <select
+                  className="sch-select fadein"
+                  value={customSemester}
+                  onChange={e => { setCustomSemester(e.target.value); setReadiness(null); setWorkload(null) }}
+                  disabled={status === 'running'}
+                  style={{ minWidth: 160 }}
+                >
+                  {SEMESTER_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              )}
+            </div>
+
+            {/* Hint line — makes it clear what the term drives */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
+              <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#A99BE8', flexShrink: 0 }} />
+              <span style={{ fontSize: 10.5, color: '#A99BE8' }}>
+                Loads&nbsp;<strong style={{ color: '#7C6FCD' }}>{targetSemester}</strong>&nbsp;courses
+                {effectiveScheduleName.trim() && (
+                  <> · saves as&nbsp;<strong style={{ color: '#7C6FCD' }}>"{effectiveScheduleName.trim()}"</strong></>
+                )}
+              </span>
+            </div>
+          </div>
         </div>
         
         <div style={{ flex: 1 }} />
@@ -818,9 +972,15 @@ async function confirmDelete() {
           )}
           
           {status === 'failed' && (
-            <div className="status-strip failed fadein" style={{ marginTop:20 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
-              {solveError || 'Could not find a feasible schedule. Check the Readiness Check below for conflicts.'}
+            <div className="fadein" style={{ marginTop: 20 }}>
+              {solveError ? (
+                <ErrorBanner error={solveError} onDismiss={() => setSolveError(null)} />
+              ) : (
+                <div className="status-strip failed">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
+                  Could not find a feasible schedule. Check the Readiness panel below for conflicts.
+                </div>
+              )}
             </div>
           )}
 
@@ -880,10 +1040,14 @@ async function confirmDelete() {
 
           <div className="panel-body">
             {checkError && (
-              <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 16px', borderRadius:10, background:'#FFF0F0', border:'1px solid #FECACA', fontSize:13, color:'#C0392B', marginBottom:16 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
-                {checkError}
-                <button onClick={handleCheck} style={{ marginLeft:'auto', background:'none', border:'none', cursor:'pointer', color:'#C0392B', fontSize:13, fontWeight:700, fontFamily:"'Poppins',sans-serif", padding:0 }}>Retry →</button>
+              <div style={{ marginBottom: 16 }}>
+                <ErrorBanner
+                  error={checkError}
+                  onDismiss={() => setCheckError(null)}
+                />
+                <button onClick={handleCheck} style={{ marginTop: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#7C6FCD', fontSize: 12.5, fontWeight: 700, fontFamily: "'Poppins',sans-serif", padding: 0 }}>
+                  Retry check →
+                </button>
               </div>
             )}
 

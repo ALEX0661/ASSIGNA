@@ -1,11 +1,20 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { getCourses, addCourse, deleteCourse, updateCourse } from '../../services/api'
 import ImportCoursesModal from '../../components/ImportCoursesModal'
+import BlockConfigModal from '../../components/BlockConfigModal'
 
-const EMPTY = { courseCode: '', title: '', program: '', yearLevel: '1', blocks: 1, unitsLecture: 3, unitsLab: 0 }
+const EMPTY = { courseCode: '', title: '', program: '', yearLevel: '1', blocks: 1, unitsLecture: 3, unitsLab: 0, semester: '1st Semester' }
 
 const YEAR_LABELS = { '1': '1st Year', '2': '2nd Year', '3': '3rd Year', '4': '4th Year' }
 const YEAR_SHORT  = { '1': '1st', '2': '2nd', '3': '3rd', '4': '4th' }
+
+const SEMESTERS = ['1st Semester', '2nd Semester', 'Midyear']
+const SEM_SHORT = { '1st Semester': '1st Sem', '2nd Semester': '2nd Sem', 'Midyear': 'Midyear' }
+const SEM_COLORS = {
+  '1st Semester': { bg: '#EDE9FB', color: '#7C6FCD', border: '#D8D3F5' },
+  '2nd Semester': { bg: '#E6FAF3', color: '#059669', border: '#A7F3D0' },
+  'Midyear':      { bg: '#FEF3CD', color: '#D97706', border: '#FCD34D' },
+}
 
 const PROGRAMS = [
   { value: 'BSCS',      full: 'BS in Computer Science' },
@@ -159,6 +168,29 @@ if (!document.getElementById('course-page-style')) {
     .cp-toast.success { background:linear-gradient(135deg,#7C6FCD,#5a4fbf); color:#fff; box-shadow:0 8px 24px rgba(124,111,205,0.3); border:1px solid #A99BE8; }
     .cp-toast.error   { background:#fff; color:#DC2626; border:1.5px solid #FECACA; box-shadow:0 8px 24px rgba(220,38,38,0.15); }
     .cp-toast.info    { background:#fff; color:#7C6FCD; border:1.5px solid #D8D3F5; box-shadow:0 8px 24px rgba(124,111,205,0.15); }
+    .cp-sem-tab-bar {
+      display: flex; gap: 3px; background: #F5F4FB; padding: 4px; border-radius: 12px;
+      border: 1px solid #E8E4F8;
+    }
+    .cp-sem-tab {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 16px; border-radius: 9px; border: none;
+      font-family: 'Poppins', sans-serif; font-size: 12.5px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s; background: transparent;
+      color: #8883B0; white-space: nowrap;
+    }
+    .cp-sem-tab.active {
+      background: linear-gradient(135deg,#7C6FCD,#5a4fbf); color: #fff;
+      box-shadow: 0 3px 10px rgba(124,111,205,0.28);
+    }
+    .cp-sem-tab:hover:not(.active) { background: #EEEAFB; color: #5a4fbf; }
+    .cp-sem-tab .cp-sem-count {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 20px; height: 18px; padding: 0 5px; border-radius: 99px;
+      font-size: 10.5px; font-weight: 700; line-height: 1;
+    }
+    .cp-sem-tab.active .cp-sem-count { background: rgba(255,255,255,0.2); color: #fff; }
+    .cp-sem-tab:not(.active) .cp-sem-count { background: #E8E4F8; color: #8883B0; }
   `
   document.head.appendChild(s)
 }
@@ -290,7 +322,7 @@ function CourseModal({ mode, initial, onSave, onClose, saving, error }) {
   const canSave = form.courseCode.trim() && form.title.trim() && form.program
 
   function submit() {
-    onSave({ ...form, yearLevel: Number(form.yearLevel), blocks: Number(form.blocks), unitsLecture: Number(form.unitsLecture), unitsLab: Number(form.unitsLab) })
+    onSave({ ...form, yearLevel: Number(form.yearLevel), blocks: Number(form.blocks), unitsLecture: Number(form.unitsLecture), unitsLab: Number(form.unitsLab), semester: form.semester })
   }
 
   return (
@@ -357,6 +389,12 @@ function CourseModal({ mode, initial, onSave, onClose, saving, error }) {
               <label className="cp-label">Lab Units</label>
               <input className="cp-inp" type="number" min={0} value={form.unitsLab} onChange={e => set('unitsLab', e.target.value)} />
             </div>
+            <div className="cp-field s2">
+              <label className="cp-label">Semester</label>
+              <select className="cp-sel" value={form.semester} onChange={e => set('semester', e.target.value)}>
+                {SEMESTERS.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
           </div>
 
           <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderRadius:9, background:'#FAFAFE', border:'1px solid #F0EDF9' }}>
@@ -398,8 +436,10 @@ export default function CourseListPage() {
   const [search,        setSearch]        = useState('')
   const [progFilter,    setProgFilter]    = useState([])
   const [yearFilter,    setYearFilter]    = useState([])
+  const [semesterTab,   setSemesterTab]   = useState('1st Semester')
   const [showImport,    setShowImport]    = useState(false)
   const [showAdd,       setShowAdd]       = useState(false)
+  const [showBlockCfg,  setShowBlockCfg]  = useState(false)
   const [editTarget,    setEditTarget]    = useState(null)
   const [saving,        setSaving]        = useState(false)
   const [error,         setError]         = useState('')
@@ -424,10 +464,18 @@ export default function CourseListPage() {
 
   const filtered = useMemo(() => courses.filter(c => {
     const q = search.toLowerCase()
-    return (!q || `${c.courseCode} ${c.title}`.toLowerCase().includes(q))
+    const matchSem = c.semester === semesterTab || (semesterTab === 'all')
+    return matchSem
+      && (!q || `${c.courseCode} ${c.title}`.toLowerCase().includes(q))
       && (progFilter.length === 0 || progFilter.includes(c.program))
       && (yearFilter.length === 0 || yearFilter.includes(String(c.yearLevel)))
-  }), [courses, search, progFilter, yearFilter])
+  }), [courses, search, progFilter, yearFilter, semesterTab])
+
+  const semesterCounts = useMemo(() => {
+    const counts = {}
+    SEMESTERS.forEach(s => { counts[s] = courses.filter(c => (c.semester || '1st Semester') === s).length })
+    return counts
+  }, [courses])
 
   const hasFilter   = search || progFilter.length > 0 || yearFilter.length > 0
   const filteredIds = filtered.map(c => c.id)
@@ -496,25 +544,47 @@ export default function CourseListPage() {
   return (
     <div className="page" style={{ fontFamily:"'Poppins',sans-serif" }}>
 
-      {/* Header */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+      {/* Semester Tabs */}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14, gap: 12, flexWrap: 'wrap' }}>
+        <div className="cp-sem-tab-bar">
+          {SEMESTERS.map(sem => (
+            <button
+              key={sem}
+              className={`cp-sem-tab${semesterTab === sem ? ' active' : ''}`}
+              onClick={() => { setSemesterTab(sem); setSelected(new Set()) }}
+            >
+              {SEM_SHORT[sem]}
+              <span className="cp-sem-count">{loading ? '…' : semesterCounts[sem] || 0}</span>
+            </button>
+          ))}
+        </div>
         
-        {/* Course Count Badge */}
+         {/* Header - Course Count */}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
         <div style={{ display: 'flex', alignItems: 'center', background: '#F5F4FB', padding: '6px 14px', borderRadius: 10, border: '1px solid #E8E4F8', fontSize: 12.5, color: '#8883B0' }}>
           <span style={{ fontWeight: 700, color: '#7C6FCD', marginRight: 5, display: 'flex', alignItems: 'center' }}>
-            {loading ? <Skel w={16} h={14} r={4} /> : courses.length}
+            {loading ? <Skel w={16} h={14} r={4} /> : filtered.length}
           </span>
-          total course{!loading && courses.length !== 1 ? 's' : ''}
+          course{!loading && filtered.length !== 1 ? 's' : ''} in {SEM_SHORT[semesterTab]}
           
-          {hasFilter && filtered.length !== courses.length && (
+          {hasFilter && filtered.length !== courses.filter(c => c.semester === semesterTab).length && (
             <span style={{ marginLeft: 8, paddingLeft: 8, borderLeft: '1.5px solid #D8D3F5', color: '#7C6FCD', fontWeight: 600 }}>
               {filtered.length} shown
             </span>
           )}
         </div>
+      </div>
+        
 
         {/* Action Buttons */}
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          <button className="cp-ghost" onClick={() => setShowBlockCfg(true)} title="Configure blocks per program-year">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+            </svg>
+            Block Config
+          </button>
           <button className="cp-ghost" onClick={() => setShowImport(true)}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -530,6 +600,8 @@ export default function CourseListPage() {
           </button>
         </div>
       </div>
+
+     
 
       {/* Filter bar */}
       <div style={{ background:'#fff', borderRadius:12, padding:'10px 16px', border:'1px solid #E8E4F8', boxShadow:'0 1px 6px rgba(124,111,205,0.06)', marginBottom:14, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
@@ -589,7 +661,7 @@ export default function CourseListPage() {
               <th style={{ width:44, padding:'10px 8px 10px 16px' }}>
                 <Checkbox checked={allSel} indeterminate={someSel} onChange={togAll} />
               </th>
-              {[['Code'],['Title'],['Program'],['Year','center'],['Sections','center'],['Lec','center'],['Lab','center'],['Total','center'],['']].map(([h,align],i)=>(
+              {[['Code'],['Title'],['Program'],['Semester','center'],['Year','center'],['Sections','center'],['Lec','center'],['Lab','center'],['Total','center'],['']].map(([h,align],i)=>(
                 <th key={i} style={{ padding:'10px 12px', fontSize:10.5, fontWeight:700, color:'#A0ABC0', textTransform:'uppercase', letterSpacing:'.6px', textAlign:align||'left' }}>{h}</th>
               ))}
             </tr>
@@ -616,7 +688,7 @@ export default function CourseListPage() {
                 </tr>
               ))
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={10} style={{ textAlign:'center', padding:'40px 0', color:'#B0ABCC' }}>
+              <tr><td colSpan={11} style={{ textAlign:'center', padding:'40px 0', color:'#B0ABCC' }}>
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
                   <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#D8D3F5" strokeWidth="1.5">
                     <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
@@ -638,6 +710,13 @@ export default function CourseListPage() {
                   <td style={{ padding:'10px 12px', fontWeight:500, color:'#1a1a2e', fontSize:13 }}>{c.title}</td>
                   <td style={{ padding:'10px 12px' }}>
                     <span style={{ display:'inline-block', padding:'2px 9px', borderRadius:99, fontSize:11, fontWeight:600 }} className={progClass(c.program)}>{c.program}</span>
+                  </td>
+                  <td style={{ padding:'10px 12px', textAlign:'center' }}>
+                    {(() => { const sc = SEM_COLORS[c.semester] || SEM_COLORS['1st Semester']; return (
+                      <span style={{ display:'inline-block', padding:'2px 9px', borderRadius:99, fontSize:10.5, fontWeight:600, background:sc.bg, color:sc.color, border:`1px solid ${sc.border}` }}>
+                        {SEM_SHORT[c.semester] || c.semester}
+                      </span>
+                    ) })()}
                   </td>
                   <td style={{ padding:'10px 12px', textAlign:'center' }}>
                     <span style={{ fontSize:12, color:'#8883B0', fontWeight:500 }}>{YEAR_SHORT[c.yearLevel]??c.yearLevel}</span>
@@ -681,8 +760,8 @@ export default function CourseListPage() {
         )}
       </div>
 
-      {showAdd && <CourseModal mode="add" onSave={handleAdd} onClose={()=>{setShowAdd(false);setError('')}} saving={saving} error={error} />}
-      {editTarget && <CourseModal mode="edit" initial={{...editTarget,yearLevel:String(editTarget.yearLevel)}} onSave={handleEdit} onClose={()=>{setEditTarget(null);setError('')}} saving={saving} error={error} />}
+      {showAdd && <CourseModal mode="add" initial={{...EMPTY, semester: semesterTab}} onSave={handleAdd} onClose={()=>{setShowAdd(false);setError('')}} saving={saving} error={error} />}
+      {editTarget && <CourseModal mode="edit" initial={{...editTarget,yearLevel:String(editTarget.yearLevel), semester:editTarget.semester||'1st Semester'}} onSave={handleEdit} onClose={()=>{setEditTarget(null);setError('')}} saving={saving} error={error} />}
       
       {showImport && (
         <ImportCoursesModal 
@@ -692,6 +771,14 @@ export default function CourseListPage() {
             setShowImport(false);
             toast('Courses imported successfully', 'success');
           }} 
+        />
+      )}
+
+      {showBlockCfg && (
+        <BlockConfigModal
+          semester={semesterTab}
+          onClose={() => setShowBlockCfg(false)}
+          onApplied={() => load()}
         />
       )}
 

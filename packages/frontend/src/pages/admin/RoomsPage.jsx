@@ -113,6 +113,117 @@ function Skel({ w = '100%', h = 14, r = 7, style = {} }) {
   )
 }
 
+/** Extract a structured error object from any thrown value.
+ *  `action` = short verb phrase, e.g. "save rooms" or "load rooms"
+ */
+async function parseError(err, action) {
+  let title   = `Failed to ${action}`
+  let message = 'An unexpected error occurred. Please try again.'
+  let code    = null
+
+  if (err instanceof Response || err?.status) {
+    code = err.status ?? null
+
+    const causeMap = {
+      400: `Failed to ${action} — invalid data sent`,
+      401: `Failed to ${action} — not authenticated`,
+      403: `Failed to ${action} — access denied`,
+      404: `Failed to ${action} — endpoint not found`,
+      408: `Failed to ${action} — request timed out`,
+      409: `Failed to ${action} — data conflict`,
+      422: `Failed to ${action} — validation rejected`,
+      429: `Failed to ${action} — too many requests`,
+      500: `Failed to ${action} — backend error`,
+      502: `Failed to ${action} — bad gateway`,
+      503: `Failed to ${action} — server unavailable`,
+      504: `Failed to ${action} — gateway timeout`,
+    }
+    title = causeMap[code] ?? `Failed to ${action} — server error (${code})`
+
+    const detailMap = {
+      400: 'The data submitted was rejected as invalid. Check your inputs and try again.',
+      401: 'Your session may have expired. Please refresh the page and log in again.',
+      403: 'You don\'t have the required permissions to perform this action.',
+      404: 'The server endpoint could not be found. The API may have changed.',
+      408: 'The server took too long to respond. Check your connection and retry.',
+      409: 'This change conflicts with existing data on the server.',
+      422: 'The server could not process the submitted values. Check for invalid fields.',
+      429: 'You\'ve sent too many requests. Wait a moment, then try again.',
+      500: 'An internal server error occurred on the backend. Try again shortly.',
+      502: 'The server returned an invalid response. The service may be restarting.',
+      503: 'The server is temporarily unavailable. Try again in a few moments.',
+      504: 'The gateway did not receive a timely response from the backend.',
+    }
+    message = detailMap[code] ?? `The server responded with an unexpected status (${code}).`
+
+    try {
+      const body = await (err.json?.() ?? Promise.resolve(null))
+      if (body?.detail)                                    message = body.detail
+      else if (body?.message)                              message = body.message
+      else if (typeof body === 'string' && body.length < 200) message = body
+    } catch { /* ignore parse errors */ }
+
+  } else if (err instanceof TypeError && err.message.includes('fetch')) {
+    title   = `Failed to ${action} — no connection`
+    message = 'Could not reach the server. Check your internet connection and try again.'
+  } else if (err instanceof Error && err.message) {
+    title   = `Failed to ${action} — unexpected error`
+    message = err.message
+  }
+
+  return { title, message, code }
+}
+
+function ErrorBanner({ error, onDismiss }) {
+  if (!error) return null
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12,
+      padding: '11px 14px', borderRadius: 10,
+      background: '#FFF5F5', border: '1px solid #FECACA',
+    }}>
+      <div style={{
+        width: 28, height: 28, borderRadius: 8, background: '#FEE2E2',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1,
+      }}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3 }}>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: '#B91C1C' }}>{error.title}</span>
+          {error.code && (
+            <span style={{
+              fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 20,
+              background: '#FEE2E2', color: '#DC2626', border: '1px solid #FECACA',
+            }}>
+              {error.code}
+            </span>
+          )}
+        </div>
+        <div style={{ fontSize: 12, color: '#C0392B', lineHeight: 1.5 }}>{error.message}</div>
+      </div>
+      {onDismiss && (
+        <button onClick={onDismiss} style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: '#EF9999', padding: 2, flexShrink: 0, lineHeight: 0,
+          borderRadius: 4, transition: 'color 0.13s',
+        }}
+          onMouseEnter={e => e.currentTarget.style.color = '#DC2626'}
+          onMouseLeave={e => e.currentTarget.style.color = '#EF9999'}
+          title="Dismiss"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      )}
+    </div>
+  )
+}
+
 function SaveBtn({ saving, saved, onClick }) {
   return (
     <button className={`rm-save${saved?' saved':''}`} onClick={onClick} disabled={saving}>
@@ -261,35 +372,32 @@ export default function RoomsPage() {
   useEffect(() => {
     getRooms()
       .then(r => { setLecture(r.lecture || []); setLab(r.lab || []) })
-      .catch(() => setError('Failed to load rooms.'))
+      .catch(async (err) => setError(await parseError(err, 'load rooms')))
       .finally(() => setLoading(false))
   }, [])
 
   function addLecture() {
     const v = newLec.trim(); if (!v) return
-    if (lecture.includes(v)) { setError(`"${v}" already exists.`); return }
+    if (lecture.includes(v)) { setError({ title: 'Duplicate Room', message: `"${v}" already exists in Lecture Rooms.` }); return }
     setLecture(l => [...l, v]); setNewLec(''); setError(null); setSaved(false)
   }
   function addLab() {
     const v = newLab.trim(); if (!v) return
-    if (lab.includes(v)) { setError(`"${v}" already exists.`); return }
+    if (lab.includes(v)) { setError({ title: 'Duplicate Room', message: `"${v}" already exists in Lab Rooms.` }); return }
     setLab(l => [...l, v]); setNewLab(''); setError(null); setSaved(false)
   }
 
   async function handleSave() {
     setSaving(true); setError(null)
     try { await saveRooms({ lecture, lab }); setSaved(true); setTimeout(() => setSaved(false), 2500) }
-    catch { setError('Save failed. Please try again.') }
+    catch (err) { setError(await parseError(err, 'save rooms')) }
     finally { setSaving(false) }
   }
 
   return (
     <div className="page">
       {error && (
-        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12, padding:'8px 12px', borderRadius:9, background:'#FFF5F5', border:'1px solid #FECACA', fontSize:12, color:'#DC2626' }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          {error}
-        </div>
+        <ErrorBanner error={error} onDismiss={() => setError(null)} />
       )}
 
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, alignItems:'start' }}>

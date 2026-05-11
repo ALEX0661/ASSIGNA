@@ -42,30 +42,95 @@ def _parse_faculty_matrix(contents: bytes, sheet_names: list) -> list:
     import math
     faculty_map = {}
 
+    def _is_name_cell(val) -> bool:
+        """True if the cell looks like a real faculty name (not NaN, not a placeholder)."""
+        s = str(val).strip().upper()
+        return (
+            bool(s)
+            and s != "NAN"
+            and "COURSE" not in s
+            and "INSTRUCTION" not in s
+            and "LAST NAME" not in s
+            and "FIRST NAME" not in s
+        )
+
     for sheet_name in sheet_names:
         status = "part-time" if "part" in sheet_name.lower() else "full-time"
 
+        # ── Read without any header so we can detect structure ourselves ──────
         try:
-            df = pd.read_excel(io.BytesIO(contents), sheet_name=sheet_name, header=0)
+            df_raw = pd.read_excel(io.BytesIO(contents), sheet_name=sheet_name, header=None)
         except Exception:
             continue
 
-        if df.shape[0] < 2 or df.shape[1] < 3:
+        if df_raw.shape[0] < 2 or df_raw.shape[1] < 3:
             continue
 
-        first_names_row = df.iloc[0]
-        faculty_cols    = list(df.columns[2:])
-        course_rows     = df.iloc[1:]
+        # ── Find the row where col A says "COURSES CODE" (or similar) ─────────
+        header_row_idx = None
+        for i in range(min(6, len(df_raw))):
+            val = str(df_raw.iloc[i, 0]).strip().upper()
+            if "COURSE" in val and "CODE" in val:
+                header_row_idx = i
+                break
 
-        for col in faculty_cols:
-            raw_last  = re.sub(r'\.\d+$', '', str(col)).rstrip(',').strip()
-            raw_first = str(first_names_row[col]).strip()
+        if header_row_idx is None:
+            continue
 
-            # ── Skip unfilled placeholder columns ──────────────────────────
-            if _is_placeholder(raw_last) or _is_placeholder(raw_first):
+        # ── Detect which of the two known layouts this sheet uses ─────────────
+        #
+        # Layout A  (actual filled file)
+        #   row header_row_idx - 1 : last names in cols 2+
+        #   row header_row_idx     : "COURSES CODE" | "COURSES NAME" | first names in cols 2+
+        #   row header_row_idx + 1+: course data
+        #
+        # Layout B  (template-style file)
+        #   row header_row_idx     : "COURSES CODE" | "COURSES NAME" | last names in cols 2+
+        #   row header_row_idx + 1 : NaN | "↳ FULL-TIME FACULTY" | first names in cols 2+
+        #   row header_row_idx + 2+: course data
+
+        layout_a = (
+            header_row_idx > 0
+            and df_raw.shape[1] > 2
+            and _is_name_cell(df_raw.iloc[header_row_idx - 1, 2])
+        )
+
+        if layout_a:
+            last_names_series  = df_raw.iloc[header_row_idx - 1]
+            first_names_series = df_raw.iloc[header_row_idx]
+            course_start       = header_row_idx + 1
+        else:
+            # Layout B: check if the row after the header is the first-names label row
+            last_names_series = df_raw.iloc[header_row_idx]
+            if header_row_idx + 1 < len(df_raw):
+                next_b = str(df_raw.iloc[header_row_idx + 1, 1]).strip().upper()
+                has_faculty_label = (
+                    "FACULTY" in next_b or "FULL" in next_b or "PART" in next_b
+                )
+            else:
+                has_faculty_label = False
+
+            if has_faculty_label:
+                first_names_series = df_raw.iloc[header_row_idx + 1]
+                course_start       = header_row_idx + 2
+            else:
+                first_names_series = None
+                course_start       = header_row_idx + 1
+
+        # ── Iterate over faculty columns (index 2 onward) ─────────────────────
+        for col_idx in range(2, df_raw.shape[1]):
+            raw_last = re.sub(r"\.\d+$", "", str(last_names_series.iloc[col_idx])).rstrip(",").strip().upper()
+
+            if _is_placeholder(raw_last) or raw_last == "NAN":
                 continue
 
-            full_name = f"{raw_last}, {raw_first}"
+            if first_names_series is not None:
+                raw_first = str(first_names_series.iloc[col_idx]).strip().upper()
+                if _is_placeholder(raw_first) or raw_first == "NAN":
+                    continue
+                full_name = f"{raw_last}, {raw_first}"
+            else:
+                full_name = raw_last
 
             if full_name not in faculty_map:
                 faculty_map[full_name] = {
@@ -74,21 +139,22 @@ def _parse_faculty_matrix(contents: bytes, sheet_names: list) -> list:
                     "specializations": [],
                 }
 
-            for _, row in course_rows.iterrows():
-                raw_code    = row.iloc[0]
+            # ── Collect course ratings ─────────────────────────────────────
+            for row_idx in range(course_start, len(df_raw)):
+                raw_code    = df_raw.iloc[row_idx, 0]
                 course_code = str(raw_code).strip() if raw_code is not None else ""
                 if not course_code or course_code.lower() == "nan":
                     continue
 
                 try:
-                    cell = row[col]
-                    if isinstance(cell, float) and math.isnan(cell):
+                    cell_val = df_raw.iloc[row_idx, col_idx]
+                    if isinstance(cell_val, float) and math.isnan(cell_val):
                         continue
-                    rating = int(float(cell))
+                    rating = int(float(cell_val))
                 except (ValueError, TypeError):
                     continue
 
-                # ── Strict 1–5 enforcement: skip 0 and anything out of range ──
+                # ── Strict 1–5 enforcement: skip 0 and out-of-range ───────
                 if rating < 1 or rating > 5:
                     continue
 
@@ -203,6 +269,21 @@ def update_faculty(faculty_id: str, data: FacultyUpdate, user=Depends(admin_only
 
     # `archived=False` is intentional (False is not None), so this filter is safe.
     update_data = {k: v for k, v in data.dict().items() if v is not None}
+
+    # ── Auto-derive composite `name` from firstName / lastName ────────────────
+    # When either name part is updated, re-compose the canonical display name
+    # as "LASTNAME, FIRSTNAME" (uppercase). If only one part is sent, read the
+    # other from the existing Firestore document so we never lose half the name.
+    if "firstName" in update_data or "lastName" in update_data:
+        existing   = doc.to_dict() or {}
+        first_name = update_data.get("firstName", existing.get("firstName", "")).strip().upper()
+        last_name  = update_data.get("lastName",  existing.get("lastName",  "")).strip().upper()
+        if first_name and last_name:
+            update_data["name"] = f"{last_name}, {first_name}"
+        elif last_name:
+            update_data["name"] = last_name
+        elif first_name:
+            update_data["name"] = first_name
 
     # If status is changing, recompute the effective max_units so it doesn't
     # stay stale (the scheduler will fine-tune it further post-solve).

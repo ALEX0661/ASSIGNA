@@ -2,9 +2,9 @@ import axios from 'axios'
 import { auth } from './firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 
-const BASE = import.meta.env.VITE_API_URL || 'https://logos-backend.up.railway.app'
+//const BASE = import.meta.env.VITE_API_URL || 'https://logos-backend.up.railway.app'//
 
- // const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+  const BASE = 'http://localhost:8000'
 
 async function getToken() {
   if (auth.currentUser) {
@@ -62,7 +62,7 @@ export const commitFaculty = async (faculty) =>
   axios.post(`${BASE}/faculty/upload/commit`, { faculty }, { headers: await authHeaders() }).then(r => r.data)
 
 // ── Courses ───────────────────────────────────────────────────────────────────
-export const getCourses    = async ()              => axios.get(`${BASE}/courses/`,                         { headers: await authHeaders() }).then(r => r.data)
+export const getCourses    = async (semester)       => axios.get(`${BASE}/courses/`,                         { headers: await authHeaders(), params: semester ? { semester } : {} }).then(r => r.data)
 export const addCourse     = async (d)             => axios.post(`${BASE}/courses/add`, d,                  { headers: await authHeaders() }).then(r => r.data)
 export const updateCourse  = async (code, prog, d) => axios.put(`${BASE}/courses/update/${code}/${prog}`, d, { headers: await authHeaders() }).then(r => r.data)
 export const deleteCourse  = async (code, prog)    => axios.delete(`${BASE}/courses/delete/${code}/${prog}`, { headers: await authHeaders() }).then(r => r.data)
@@ -88,7 +88,7 @@ export const getTime   = async ()  => axios.get(`${BASE}/settings/time`,   { hea
 export const saveTime  = async (d) => axios.post(`${BASE}/settings/time`,  d, { headers: await authHeaders() }).then(r => r.data)
 
 // ── Schedule ──────────────────────────────────────────────────────────────────
-export const triggerSolve   = async ()     => axios.get(`${BASE}/schedule/generate`,                    { headers: await authHeaders() }).then(r => r.data)
+export const triggerSolve   = async (semester) => axios.get(`${BASE}/schedule/generate`,                    { headers: await authHeaders(), params: semester ? { semester } : {} }).then(r => r.data)
 export const getSolveStatus = async (pid)  => axios.get(`${BASE}/schedule/status/${pid}`,               { headers: await authHeaders() }).then(r => r.data)
 export const getResult      = async ()     => axios.get(`${BASE}/schedule/result`,                      { headers: await authHeaders() }).then(r => r.data)
 export const saveSchedule   = async (name) => axios.post(`${BASE}/schedule/save`, { schedule_name: name }, { headers: await authHeaders() }).then(r => r.data)
@@ -124,6 +124,10 @@ export const getAssignmentQuality = async () => axios.get(`${BASE}/analytics/ass
 export const getFacultyPreview    = async () => axios.get(`${BASE}/analytics/faculty-preview`,    { headers: await authHeaders() }).then(r => r.data)
 export const getWorkload          = async () => axios.get(`${BASE}/analytics/workload`,           { headers: await authHeaders() }).then(r => r.data)
 
-// ── Credentials ───────────────────────────────────────────────────────────────
 export const updateCredentials = async (id, d) =>
   axios.put(`${BASE}/faculty/credentials/${id}`, d, { headers: await authHeaders() }).then(r => r.data)
+
+// ── Block Config ──────────────────────────────────────────────────────────────
+export const getBlockConfigs   = async (semester) => axios.get(`${BASE}/block-config/`,    { headers: await authHeaders(), params: semester ? { semester } : {} }).then(r => r.data)
+export const saveBlockConfigs  = async (configs)  => axios.post(`${BASE}/block-config/`,   { configs }, { headers: await authHeaders() }).then(r => r.data)
+export const applyBlockConfigs = async (semester) => axios.post(`${BASE}/block-config/apply`, { semester }, { headers: await authHeaders() }).then(r => r.data)

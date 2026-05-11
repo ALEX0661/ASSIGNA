@@ -8,10 +8,10 @@ import uuid
 router = APIRouter()
 
 @router.get("/generate")
-def trigger_solve(background_tasks: BackgroundTasks, user=Depends(admin_only)):
+def trigger_solve(background_tasks: BackgroundTasks, semester: str = None, user=Depends(admin_only)):
     process_id = str(uuid.uuid4())
     progress_state[process_id] = 0
-    background_tasks.add_task(generate_schedule, process_id)
+    background_tasks.add_task(generate_schedule, process_id, semester)
     return {"process_id": process_id, "status": "started"}
 
 @router.get("/status/{process_id}")

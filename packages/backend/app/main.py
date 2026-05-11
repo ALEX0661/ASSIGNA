@@ -15,6 +15,7 @@ from app.routers import (
     settings,
     overrides,
     analytics,
+    block_config,
 )
 
 app = FastAPI(title="LOGOS API", version="1.0.0")
@@ -38,10 +39,11 @@ def on_startup():
     load_all_caches()
 
 
-app.include_router(health.router,    tags=["Health"])
-app.include_router(faculty.router,   prefix="/faculty",   tags=["Faculty"])
-app.include_router(courses.router,   prefix="/courses",   tags=["Courses"])
-app.include_router(schedule.router,  prefix="/schedule",  tags=["Schedule"])
-app.include_router(settings.router,  prefix="/settings",  tags=["Settings"])
-app.include_router(overrides.router, prefix="/overrides", tags=["Overrides"])
-app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
+app.include_router(health.router,       tags=["Health"])
+app.include_router(faculty.router,      prefix="/faculty",       tags=["Faculty"])
+app.include_router(courses.router,      prefix="/courses",       tags=["Courses"])
+app.include_router(schedule.router,     prefix="/schedule",      tags=["Schedule"])
+app.include_router(settings.router,     prefix="/settings",      tags=["Settings"])
+app.include_router(overrides.router,    prefix="/overrides",     tags=["Overrides"])
+app.include_router(analytics.router,    prefix="/analytics",     tags=["Analytics"])
+app.include_router(block_config.router, prefix="/block-config",  tags=["Block Config"])
