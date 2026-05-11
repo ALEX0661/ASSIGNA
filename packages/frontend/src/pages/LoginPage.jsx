@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '../services/firebase'
 import { useNavigate } from 'react-router-dom'
-import logoImg from '../assets/logo.png'
+import logoImg  from '../assets/ASSIGNAV2.png'   // full logo WITH baked-in name + description
+import icon1Img from '../assets/ASSIGNAV1.png'  // icon mark only, no text
 
 /* ─── inject login styles once ─────────────────────────────────────────────── */
 if (!document.getElementById('login-page-style')) {
@@ -19,155 +20,172 @@ if (!document.getElementById('login-page-style')) {
       font-family: 'Poppins', sans-serif;
     }
 
-    /* ── Left panel ── */
+    /* ══════════════════════════════════
+       LEFT PANEL
+    ══════════════════════════════════ */
     .login-panel {
-      width: 440px; flex-shrink: 0;
-      background: linear-gradient(155deg, #4a3d9e 0%, #2d2468 50%, #1a1540 100%);
+      width: 420px; flex-shrink: 0;
+      background: linear-gradient(160deg, #4a3d9e 0%, #2d2468 45%, #1a1540 100%);
       display: flex; flex-direction: column;
-      padding: 0;
       position: relative; overflow: hidden;
     }
     @media (max-width: 800px) { .login-panel { display: none; } }
 
-    /* mesh overlay */
+    /* radial glow blobs */
     .login-panel::before {
       content: '';
       position: absolute; inset: 0; z-index: 0;
       background:
-        radial-gradient(ellipse 60% 50% at 10% 10%, rgba(160,140,240,0.22) 0%, transparent 70%),
-        radial-gradient(ellipse 50% 60% at 90% 90%, rgba(100,80,200,0.18) 0%, transparent 70%),
-        radial-gradient(ellipse 40% 40% at 50% 50%, rgba(130,110,220,0.08) 0%, transparent 70%);
+        radial-gradient(ellipse 70% 45% at 15% 8%,  rgba(160,140,240,0.25) 0%, transparent 65%),
+        radial-gradient(ellipse 55% 55% at 85% 88%, rgba(100,80,200,0.20) 0%, transparent 65%),
+        radial-gradient(ellipse 45% 35% at 50% 50%, rgba(130,110,220,0.08) 0%, transparent 65%);
     }
-
-    /* subtle grid pattern */
+    /* grid texture */
     .login-panel::after {
       content: '';
       position: absolute; inset: 0; z-index: 0;
       background-image:
-        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-      background-size: 40px 40px;
+        linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px);
+      background-size: 38px 38px;
     }
 
+    /* 3-section layout: brand / hero / chips — no space-between, tight gaps */
     .login-panel-inner {
       position: relative; z-index: 1;
       display: flex; flex-direction: column;
-      height: 100%; padding: 48px 44px;
-      justify-content: space-between;
+      height: 100%;
+      padding: 30px 36px 28px;
+      justify-content: flex-start;
+      gap: 0;
+      overflow: hidden;   /* never scroll — everything must fit */
     }
 
-    /* top brand row */
+    /* ── TOP: Brand row ── */
     .panel-brand {
-      display: flex; align-items: center; gap: 14px;
+      display: flex; align-items: center; gap: 11px;
+      margin-bottom: 0;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.09);
+      flex-shrink: 0;
     }
     .panel-brand img {
-      width: 48px; height: 48px; object-fit: contain;
-      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));
+      width: 36px; height: 36px; object-fit: contain; flex-shrink: 0;
+      filter: drop-shadow(0 3px 10px rgba(0,0,0,0.4));
     }
     .panel-brand-text { display: flex; flex-direction: column; gap: 2px; }
     .panel-brand-name {
-      font-size: 18px; font-weight: 800;
-      color: #fff;
-      letter-spacing: 2px; text-transform: uppercase;
-      line-height: 1;
+      font-size: 15px; font-weight: 800; color: #fff;
+      letter-spacing: 2.5px; text-transform: uppercase; line-height: 1;
     }
     .panel-brand-sub {
-      font-size: 9.5px; font-weight: 500;
-      color: rgba(255,255,255,0.5);
-      letter-spacing: 1.5px; text-transform: uppercase;
+      font-size: 8.5px; font-weight: 600;
+      color: rgba(255,255,255,0.68);
+      letter-spacing: 1.8px; text-transform: uppercase;
     }
 
-    /* hero text block */
-    .panel-hero { display: flex; align-items: flex-start; }
-    .panel-hero-inner {}
+    /* ── MIDDLE: Hero copy — grows to fill all leftover space ── */
+    .panel-hero {
+      display: flex; flex-direction: column;
+      flex: 1;                   /* ★ take up ALL remaining height */
+      justify-content: center;   /* ★ centre content in that space */
+      padding: 8px 0;
+    }
     .panel-hero-eyebrow {
       display: inline-flex; align-items: center; gap: 7px;
-      padding: 5px 12px; border-radius: 99px;
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.12);
-      font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7);
-      letter-spacing: .5px; margin-bottom: 20px;
+      padding: 6px 14px; border-radius: 99px;
+      background: rgba(255,255,255,0.09);
+      border: 1px solid rgba(255,255,255,0.15);
+      font-size: 10.5px; font-weight: 600; color: rgba(255,255,255,0.92);
+      letter-spacing: .6px; margin-bottom: 20px;
+      width: fit-content;
     }
     .panel-hero-dot {
       width: 6px; height: 6px; border-radius: 50%;
-      background: #A99BE8; flex-shrink: 0;
+      background: #C4B8F5; flex-shrink: 0;
     }
     .panel-hero h2 {
-      font-size: 32px; font-weight: 800; color: #fff;
-      line-height: 1.2; letter-spacing: -.6px; margin-bottom: 16px;
+      font-size: 34px; font-weight: 800; color: #fff;
+      line-height: 1.18; letter-spacing: -.6px; margin-bottom: 16px;
     }
     .panel-hero h2 span { color: #C4B8F5; }
     .panel-hero p {
-      font-size: 13.5px; color: rgba(255,255,255,0.48);
-      line-height: 1.7; max-width: 300px;
+      font-size: 13px; color: rgba(255,255,255,0.84);
+      line-height: 1.75; max-width: 320px;
     }
 
-    /* chips */
-    .panel-chips { display: flex; flex-direction: column; gap: 8px; }
+    /* ── BOTTOM: Feature chips ── */
+    .panel-chips { display: flex; flex-direction: column; gap: 7px; flex-shrink: 0; }
+    .panel-chips-label {
+      font-size: 8.5px; font-weight: 700;
+      color: rgba(255,255,255,0.52);
+      letter-spacing: 2px; text-transform: uppercase;
+      margin-bottom: 6px;
+    }
     .panel-chip {
-      display: flex; align-items: center; gap: 10px;
-      padding: 11px 15px; border-radius: 12px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.08);
-      backdrop-filter: blur(4px);
-      transition: background 0.15s;
+      display: flex; align-items: center; gap: 11px;
+      padding: 10px 14px; border-radius: 10px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.10);
+      backdrop-filter: blur(6px);
     }
-    .panel-chip-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: linear-gradient(135deg, #A99BE8, #7C6FCD);
-      flex-shrink: 0;
+    .panel-chip-icon {
+      width: 30px; height: 30px; border-radius: 8px;
+      background: rgba(169,155,232,0.18);
+      border: 1px solid rgba(169,155,232,0.28);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; color: #C4B8F5;
     }
-    .panel-chip span {
-      font-size: 12.5px; color: rgba(255,255,255,0.6);
-      font-weight: 500;
+    .panel-chip-text { display: flex; flex-direction: column; gap: 2px; }
+    .panel-chip-title {
+      font-size: 12px; color: rgba(255,255,255,0.95);
+      font-weight: 600; line-height: 1;
+    }
+    .panel-chip-sub {
+      font-size: 10px; color: rgba(255,255,255,0.60);
+      font-weight: 400;
     }
 
-    /* ── Right side ── */
+    /* ══════════════════════════════════
+       RIGHT FORM SIDE
+    ══════════════════════════════════ */
     .login-form-side {
       flex: 1; display: flex; align-items: center; justify-content: center;
       padding: 40px 32px;
       background: #F0EEF9;
       background-image:
-        radial-gradient(ellipse 80% 60% at 0% 0%, rgba(169,155,232,0.12) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 60% at 100% 100%, rgba(124,111,205,0.08) 0%, transparent 60%);
+        radial-gradient(ellipse 80% 60% at 0% 0%,    rgba(169,155,232,0.13) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 60% at 100% 100%, rgba(124,111,205,0.09) 0%, transparent 60%);
       position: relative;
     }
-
-    /* dot pattern on right side */
     .login-form-side::before {
       content: '';
       position: absolute; inset: 0; z-index: 0;
-      background-image: radial-gradient(circle, rgba(124,111,205,0.12) 1px, transparent 1px);
+      background-image: radial-gradient(circle, rgba(124,111,205,0.13) 1px, transparent 1px);
       background-size: 24px 24px;
     }
 
-    /* the white form card */
+    /* White card */
     .login-card {
       position: relative; z-index: 1;
-      width: 100%; max-width: 380px;
+      width: 100%; max-width: 390px;
       background: #fff;
-      border-radius: 18px;
-      padding: 28px 30px;
+      border-radius: 20px;
+      padding: 30px 32px;
       box-shadow:
         0 4px 6px rgba(61,53,128,0.04),
-        0 12px 40px rgba(61,53,128,0.10),
+        0 14px 44px rgba(61,53,128,0.11),
         0 0 0 1px rgba(61,53,128,0.06);
       animation: fadeUp .3s ease both;
     }
 
+    /* Logo — full image with baked-in name + subtitle, no separate text */
     .card-logo-wrap {
-      display: flex; flex-direction: column; align-items: center; gap: 5px; margin-bottom: 16px;
+      display: flex; justify-content: center; align-items: center;
+      margin-bottom: 14px;
     }
     .card-logo-wrap img {
-      width: 54px; height: 54px; object-fit: contain;
-    }
-    .card-logo-name {
-      font-size: 14px; font-weight: 800; color: #1a1a2e;
-      letter-spacing: 2px; text-transform: uppercase; line-height: 1;
-    }
-    .card-logo-sub {
-      font-size: 8.5px; font-weight: 500; color: #9490BB;
-      letter-spacing: 1.5px; text-transform: uppercase;
+      width: 130px; height: auto; object-fit: contain;
     }
 
     .card-heading { margin-bottom: 16px; }
@@ -175,24 +193,19 @@ if (!document.getElementById('login-page-style')) {
       font-size: 19px; font-weight: 800; color: #1a1a2e;
       letter-spacing: -.4px; margin-bottom: 4px;
     }
-    .card-heading p { font-size: 12px; color: #9490BB; }
+    .card-heading p { font-size: 12px; color: #6D67A8; font-weight: 500; }
 
-    /* divider line */
-    .card-divider {
-      height: 1px; background: #F0EDF9; margin-bottom: 16px;
-    }
+    .card-divider { height: 1px; background: #EDE9F9; margin-bottom: 16px; }
 
-    /* input label */
     .login-label {
-      font-size: 12px; font-weight: 600; color: #3D3580;
+      font-size: 11.5px; font-weight: 600; color: #3D3580;
       display: block; margin-bottom: 7px; letter-spacing: .2px;
     }
 
-    /* input field */
     .login-field { position: relative; }
     .login-field-icon {
       position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
-      color: #C0BBDC; pointer-events: none; display: flex; align-items: center;
+      color: #9490BB; pointer-events: none; display: flex; align-items: center;
       transition: color 0.15s;
     }
     .login-input {
@@ -209,18 +222,16 @@ if (!document.getElementById('login-page-style')) {
       background: #fff;
     }
     .login-field:focus-within .login-field-icon { color: #7C6FCD; }
-    .login-input::placeholder { color: #C8C4E0; }
+    .login-input::placeholder { color: #B0ABCE; }
 
-    /* password toggle */
     .pw-toggle {
       position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
       background: none; border: none; cursor: pointer;
-      color: #C0BBDC; display: flex; align-items: center; padding: 3px;
-      transition: color 0.15s; border-radius: 5px;
+      color: #9490BB; display: flex; align-items: center; padding: 3px;
+      transition: color 0.15s;
     }
     .pw-toggle:hover { color: #7C6FCD; }
 
-    /* submit button */
     .login-btn {
       width: 100%; padding: 12px;
       border-radius: 11px; border: none;
@@ -233,14 +244,13 @@ if (!document.getElementById('login-page-style')) {
       letter-spacing: .2px;
     }
     .login-btn:hover:not(:disabled) {
-    background: linear-gradient(135deg, #6a6492 0%, #4d4877 100%);
-      opacity: .93; transform: translateY(-1px);
+      background: linear-gradient(135deg, #6a5cbf 0%, #4d4299 100%);
+      transform: translateY(-1px);
       box-shadow: 0 6px 24px rgba(92,79,191,0.5);
     }
     .login-btn:active:not(:disabled) { transform: translateY(0); }
     .login-btn:disabled { opacity: .6; cursor: default; box-shadow: none; }
 
-    /* error banner */
     .login-error {
       display: flex; align-items: center; gap: 9px;
       padding: 10px 13px; border-radius: 10px;
@@ -262,6 +272,41 @@ if (!document.getElementById('login-page-style')) {
   `
   document.head.appendChild(s)
 }
+
+const FEATURES = [
+  {
+    title: 'Conflict-Free Schedule Generation',
+    sub: 'Constraint-based engine builds gap-free timetables automatically',
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+    ),
+  },
+  {
+    title: 'Smart Conflict Detection',
+    sub: 'Instantly flags overlaps in rooms, faculty, and time slots',
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    ),
+  },
+  {
+    title: 'Course & Faculty Management',
+    sub: 'Manage workloads, assignments, and availability in one place',
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+    ),
+  },
+]
 
 export default function LoginPage() {
   const [email,    setEmail]    = useState('')
@@ -292,33 +337,42 @@ export default function LoginPage() {
   return (
     <div className="login-root">
 
-      {/* ── Left decorative panel ── */}
+      {/* ══ LEFT PANEL — 3 sections: brand / hero / chips ══ */}
       <div className="login-panel">
         <div className="login-panel-inner">
 
-          {/* Hero text */}
-          <div className="panel-hero">
-            <div className="panel-hero-inner">
-              <div className="panel-hero-eyebrow">
-                <div className="panel-hero-dot" />
-                Academic Scheduling System
-              </div>
-              <h2>
-                Smarter<br /><span>scheduling</span><br />starts here.
-              </h2>
-              <p>
-                Automatically assign faculty workloads, resolve conflicts,
-                and publish schedules — all in one place.
-              </p>
+          {/* TOP — icon1 (no built-in text) + manual name/subtitle */}
+          <div className="panel-brand">
+            <img src={icon1Img} alt="Assigna" />
+            <div className="panel-brand-text">
+              <span className="panel-brand-name">Assigna</span>
+              <span className="panel-brand-sub">Smart Academic Scheduler</span>
             </div>
           </div>
 
-          {/* Feature chips */}
+          {/* MIDDLE — hero text */}
+          <div className="panel-hero">
+            <div className="panel-hero-eyebrow">
+              <div className="panel-hero-dot" />
+              Academic Scheduling System
+            </div>
+            <h2>Smarter<br /><span>scheduling</span><br />starts here.</h2>
+            <p>
+              Automatically assign faculty workloads, resolve conflicts,
+              and publish schedules — all in one place.
+            </p>
+          </div>
+
+          {/* BOTTOM — feature chips */}
           <div className="panel-chips">
-            {['Constraint-based solver', 'Workload analytics', 'Room & lab management'].map(text => (
-              <div key={text} className="panel-chip">
-                <div className="panel-chip-dot" />
-                <span>{text}</span>
+            <div className="panel-chips-label">Key Features</div>
+            {FEATURES.map(({ title, sub, icon }) => (
+              <div key={title} className="panel-chip">
+                <div className="panel-chip-icon">{icon}</div>
+                <div className="panel-chip-text">
+                  <span className="panel-chip-title">{title}</span>
+                  <span className="panel-chip-sub">{sub}</span>
+                </div>
               </div>
             ))}
           </div>
@@ -326,17 +380,15 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* ── Right form side ── */}
+      {/* ══ RIGHT FORM SIDE ══ */}
       <div className="login-form-side">
         <div className="login-card">
 
-          {/* Logo */}
+          {/* Full logo image — name + description are baked in, no extra text */}
           <div className="card-logo-wrap">
-            <img src={logoImg} alt="Logos" />
-            <span className="card-logo-sub">Smart Academic Scheduler</span>
+            <img src={logoImg} alt="Assigna" />
           </div>
 
-          {/* Heading */}
           <div className="card-heading">
             <h1>Welcome back</h1>
             <p>Sign in to manage schedules and faculty workloads.</p>
@@ -346,7 +398,6 @@ export default function LoginPage() {
 
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-            {/* Email */}
             <div>
               <label className="login-label">Email address</label>
               <div className="login-field">
@@ -362,7 +413,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Password */}
             <div>
               <label className="login-label">Password</label>
               <div className="login-field">
@@ -393,7 +443,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Error */}
             {error && (
               <div className="login-error">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -405,7 +454,6 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Submit */}
             <button type="submit" className="login-btn" disabled={loading} style={{ marginTop: 4 }}>
               {loading ? (
                 <>
@@ -427,8 +475,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Footer */}
-          <p style={{ marginTop: 14, fontSize: 11, color: '#C0BBDC', textAlign: 'center', lineHeight: 1.6 }}>
+          <p style={{ marginTop: 14, fontSize: 11, color: '#8883B0', textAlign: 'center', lineHeight: 1.6, fontWeight: 500 }}>
             Access is restricted to registered faculty and administrators.
           </p>
         </div>
