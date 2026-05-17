@@ -32,9 +32,6 @@ export const checkHealth = () =>
   axios.get(`${BASE}/health`).then(r => r.data)
 
 // ── Faculty ───────────────────────────────────────────────────────────────────
-// getFaculty() returns only ACTIVE (non-archived) faculty by default.
-// The backend GET /faculty/ now accepts ?include_archived=true for admin views
-// that need to display the full roster (e.g. an "Archived Members" panel).
 export const getFaculty         = async ()        => axios.get(`${BASE}/faculty/`,                  { headers: await authHeaders(), params: { include_archived: false } }).then(r => r.data)
 export const getArchivedFaculty = async ()        => axios.get(`${BASE}/faculty/`,                  { headers: await authHeaders(), params: { include_archived: true  } }).then(r => r.data)
 export const addFaculty         = async (d)       => axios.post(`${BASE}/faculty/add`, d,           { headers: await authHeaders() }).then(r => r.data)
@@ -43,9 +40,6 @@ export const deleteFaculty      = async (id)      => axios.delete(`${BASE}/facul
 export const updatePreferences  = async (id, d)   => axios.put(`${BASE}/faculty/preferences/${id}`, d, { headers: await authHeaders() }).then(r => r.data)
 
 // ── Archive / soft-delete ─────────────────────────────────────────────────────
-// Thin wrappers around updateFaculty — no new backend endpoints needed.
-// archiveFaculty sets archived=true  → faculty disappears from getFaculty()
-// unarchiveFaculty sets archived=false → faculty reappears in getFaculty()
 export const archiveFaculty   = async (id) => updateFaculty(id, { archived: true  })
 export const unarchiveFaculty = async (id) => updateFaculty(id, { archived: false })
 
@@ -78,6 +72,30 @@ export const extractSheet  = async (data) =>
 
 export const commitCourses = async (courses) =>
   axios.post(`${BASE}/courses/upload/commit`, { courses }, { headers: await authHeaders() }).then(r => r.data)
+
+// ── Course Room Assignment ────────────────────────────────────────────────────
+// Pins a course to a specific room by name (e.g. "Room 407").
+// Pass null or "" to clear the assignment and let the scheduler decide.
+export const setCoursePreferredRoom = async (courseCode, program, roomName) =>
+  updateCourse(courseCode, program, { preferredRoom: roomName || null })
+
+// Bulk-save a map of { "CODE_PROG": "Room 407" | "" | null } entries.
+// Returns { committed, failed } so the caller can surface partial errors.
+export const bulkSetPreferredRooms = async (assignmentMap) => {
+  const entries = Object.entries(assignmentMap)
+  const results = await Promise.allSettled(
+    entries.map(([key, roomName]) => {
+      const [code, ...progParts] = key.split('_')
+      const prog = progParts.join('_')   // handles programs that contain underscores
+      return setCoursePreferredRoom(code, prog, roomName)
+    })
+  )
+  const committed = results.filter(r => r.status === 'fulfilled').length
+  const failed    = results
+    .map((r, i) => r.status === 'rejected' ? { key: entries[i][0], reason: r.reason?.message } : null)
+    .filter(Boolean)
+  return { committed, failed }
+}
 
 // ── Settings ──────────────────────────────────────────────────────────────────
 export const getRooms  = async ()  => axios.get(`${BASE}/settings/rooms`,  { headers: await authHeaders() }).then(r => r.data)
@@ -120,9 +138,10 @@ export const unmergeSession = async (scheduleId) =>
   axios.post(`${BASE}/merges/unmerge`, { schedule_id: scheduleId }, { headers: await authHeaders() }).then(r => r.data)
 
 // ── Analytics ─────────────────────────────────────────────────────────────────
-export const getAssignmentQuality = async () => axios.get(`${BASE}/analytics/assignment-quality`, { headers: await authHeaders() }).then(r => r.data)
-export const getFacultyPreview    = async () => axios.get(`${BASE}/analytics/faculty-preview`,    { headers: await authHeaders() }).then(r => r.data)
-export const getWorkload          = async () => axios.get(`${BASE}/analytics/workload`,           { headers: await authHeaders() }).then(r => r.data)
+export const getAssignmentQuality    = async () => axios.get(`${BASE}/analytics/assignment-quality`,    { headers: await authHeaders() }).then(r => r.data)
+export const getFacultyPreview       = async () => axios.get(`${BASE}/analytics/faculty-preview`,       { headers: await authHeaders() }).then(r => r.data)
+export const getWorkload             = async () => axios.get(`${BASE}/analytics/workload`,              { headers: await authHeaders() }).then(r => r.data)
+export const getScheduleDistribution = async () => axios.get(`${BASE}/analytics/schedule-distribution`, { headers: await authHeaders() }).then(r => r.data)
 
 export const updateCredentials = async (id, d) =>
   axios.put(`${BASE}/faculty/credentials/${id}`, d, { headers: await authHeaders() }).then(r => r.data)
