@@ -18,14 +18,14 @@ from app.routers import (
     block_config,
 )
 
-app = FastAPI(title="LOGOS API", version="1.0.0")
+app = FastAPI(title="ASSIGNA API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:4173",
-        "https://logos-gc.web.app",        
+        "https://gcassigna.web.app",        
         "https://logos-backend.up.railway.app",
     ],
     allow_credentials=True,
