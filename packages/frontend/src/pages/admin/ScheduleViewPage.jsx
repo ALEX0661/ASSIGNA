@@ -2,11 +2,13 @@ import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useScheduleStore } from '../../store/scheduleStore'
 import { getSchedules, getRooms, getFaculty, saveSchedule } from '../../services/api'
 import { buildConflictMap, DAYS, getEventId, getMergedIds } from '../../components/ScheduleView/svHelpers'
-import { TV, ConflictSummaryBar, Toast, FilterButton, FilterRow, PendingChangesBar, ModalOverlay, ModalHeader } from '../../components/ScheduleView/svPrimitives'
+import { TV, ConflictSummaryBar, Toast, FilterButton, FilterRow, PendingChangesBar, ProgramLegend, ModalOverlay, ModalHeader } from '../../components/ScheduleView/svPrimitives'
 import { useFilters, useDragDrop } from '../../components/ScheduleView/svHooks'
 import { FilterModal, FacultyFilterModal, RoomFilterModal, OverrideConfirmModal } from '../../components/ScheduleView/FilterModals'
 import TimeGrid from '../../components/ScheduleView/TimeGrid'
 import SessionModal from '../../components/ScheduleView/SessionModal'
+import { exportScheduleToExcel } from '../../utils/exportScheduleToExcel'
+
 
 /* ── Page-scoped styles ────────────────────────────────────────────────────── */
 if (!document.getElementById('sv-page-style')) {
@@ -239,6 +241,25 @@ function SaveButton({ state, onClick }) {
   )
 }
 
+/* ── Export button ───────────────────────────────────────────────────────── */
+function ExportButton({ onClick, disabled }) {
+  return (
+    <button
+      className="sv-save-btn"
+      onClick={onClick}
+      disabled={disabled}
+      title="Export schedule to Excel"
+    >
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Export
+    </button>
+  )
+}
+
 /* ── Other-dept course filter ───────────────────────────────────────────────────────────────────────────── */
 // GEC, MAT, NSTP, PATHFIT, PE sessions are managed by other departments and
 // will always be TBA — exclude them from unassigned counts to avoid false alarms.
@@ -322,9 +343,11 @@ export default function ScheduleViewPage() {
     setIsEditingName(false)
   }
 
-  useEffect(() => {
-    if (storeEvents.length > 0 && localEvents.length === 0) setLocalEvents(storeEvents)
-  }, [storeEvents])
+  /* ── Export to Excel ──────────────────────────────────────────────────────── */
+    async function handleExport() {
+    if (!allEvents.length) return
+    await exportScheduleToExcel(allEvents, activeName)
+  }
 
   /* ── Undo / Redo ────────────────────────────────────────────────────────── */
   const syncLocalEvents = useCallback(updated => {
@@ -467,6 +490,7 @@ export default function ScheduleViewPage() {
               <ScheduleDropdown names={savedNames} activeName={activeName} loading={loading} initLoading={initLoading} onChange={loadSchedule} />
             )}
             {activeName && <SaveButton state={saveState} onClick={handleSave} />}
+            {allEvents.length > 0 && <ExportButton onClick={handleExport} />}
           </div>
         )}
       </div>
@@ -476,15 +500,20 @@ export default function ScheduleViewPage() {
 
       {/* ── Pending changes bar ───────────────────────────────────────────── */}
       {/* Appears below stats, above day selector — amber, prominent */}
-      <PendingChangesBar
-        pendingOverrides={dd.pendingOverrides}
-        onSave={dd.saveAllOverrides}
-        onRevertAll={dd.revertAllOverrides}
-        saving={dd.saving}
-      />
+    <PendingChangesBar
+  pendingOverrides={dd.pendingOverrides}
+  onSave={dd.saveAllOverrides}
+  onRevertAll={dd.revertAllOverrides}
+  saving={dd.saving}
+  autoSaveIn={dd.autoSaveIn}
+/>
+ 
 
-      
-
+       {/* ── Program color legend ─────────────────────────────────────────── */}
+      {allEvents.length > 0 && (
+        <ProgramLegend events={allEvents} />
+      )}
+ 
       {/* ── Filters bar ──────────────────────────────────────────────────── */}
       {allEvents.length > 0 && (
         <div style={{ background:'#fff', border:`1px solid ${TV.border}`, borderRadius:12, padding:'11px 14px', marginBottom:14, display:'flex', flexDirection:'column', gap:10 }}>

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { overrideSession } from '../../services/api'
 import { parsePeriodRange, minutesToTimeLabel, getEventId, timeOverlaps, buildConflictMap, areMergePartners } from './svHelpers'
 
@@ -107,11 +107,42 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
 
   // ── Confirmation state — set when a conflicting drop needs approval ────────
   const [pendingDrop, setPendingDrop] = useState(null)
-  // Shape: { draggedEvent, targetRoom, newPeriod, day, conflicts: [...] }
 
-  // ── Stack confirmation state — set when a card is dropped onto another card ─
+  // ── Stack confirmation state ───────────────────────────────────────────────
   const [pendingStack, setPendingStack] = useState(null)
-  // Shape: { draggedEvent, targetEvent }
+
+  // ── Auto-save state & refs ─────────────────────────────────────────────────
+  const [autoSaveIn,         setAutoSaveIn]        = useState(null)   // countdown seconds (null = idle)
+  const autoSaveTimerRef    = useRef(null)
+  const autoSaveIntervalRef = useRef(null)
+  // Always points to the latest saveAllOverrides — updated each render below
+  const saveRef             = useRef(null)
+  // Stable ref for scheduleAutoSave so applyMove can reference it
+  const scheduleAutoSaveRef = useRef(null)
+
+  // ── Clean up timers on unmount ─────────────────────────────────────────────
+  useEffect(() => () => {
+    if (autoSaveTimerRef.current)    clearTimeout(autoSaveTimerRef.current)
+    if (autoSaveIntervalRef.current) clearInterval(autoSaveIntervalRef.current)
+  }, [])
+
+  // ── Global drag-end safety net ─────────────────────────────────────────────
+  // Clears "stuck" drag state when dragend fires anywhere on the document
+  // (handles the case where the mouse is released outside the browser window
+  //  or over a non-drop-zone and the component's onDragEnd prop is not called).
+  useEffect(() => {
+    const forceClean = () => {
+      setDraggedEvent(null)
+      setHoveredCell(null)
+    }
+    document.addEventListener('dragend', forceClean)
+    // mouseup as an additional safety net for rapid re-drags
+    document.addEventListener('mouseup', forceClean)
+    return () => {
+      document.removeEventListener('dragend', forceClean)
+      document.removeEventListener('mouseup', forceClean)
+    }
+  }, [])
 
   // ── Drag handlers ─────────────────────────────────────────────────────────
   const handleDragStart = useCallback((e, event) => {
@@ -120,7 +151,13 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     e.dataTransfer.setData('text/plain', getEventId(event))
   }, [])
 
-  const handleDragEnd = useCallback(() => { setDraggedEvent(null); setHoveredCell(null) }, [])
+  const handleDragEnd = useCallback(() => {
+    // Small delay so the drop handler (if any) runs first without a flicker
+    setTimeout(() => {
+      setDraggedEvent(null)
+      setHoveredCell(null)
+    }, 30)
+  }, [])
 
   const handleDragOver = useCallback((e, room, slot) => {
     e.preventDefault(); e.dataTransfer.dropEffect = 'move'
@@ -131,9 +168,7 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     if (!e.currentTarget.contains(e.relatedTarget)) setHoveredCell(null)
   }, [])
 
-  // ── Ambient conflict IDs — always-on red glow while dragging ──────────────
-  // All events on this day sharing section OR faculty with the dragged event.
-  // Does NOT depend on hover position — cards glow as soon as drag begins.
+  // ── Ambient conflict IDs ───────────────────────────────────────────────────
   const ambientConflictIds = useMemo(() => {
     if (!draggedEvent) return new Set()
     const ids = new Set()
@@ -152,9 +187,7 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     return ids
   }, [draggedEvent, events, activeDay])
 
-  // ── Ambient merge IDs — always-on blue glow while dragging ────────────────
-  // All events on this day that share courseCode+program+year but different block
-  // with the dragged event — indicating they COULD be merged.
+  // ── Ambient merge IDs ──────────────────────────────────────────────────────
   const ambientMergeIds = useMemo(() => {
     if (!draggedEvent?.courseCode) return new Set()
     const ids = new Set()
@@ -172,7 +205,7 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     return ids
   }, [draggedEvent, events, activeDay])
 
-  // ── Conflict IDs at the hovered target (powers card red-glow) ─────────────
+  // ── Conflict IDs at the hovered target ────────────────────────────────────
   const conflictingDragIds = useMemo(() => {
     if (!draggedEvent || !hoveredCell) return new Set()
     const [hRoom, hSlot] = hoveredCell.split('|')
@@ -189,15 +222,13 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
       const r = parsePeriodRange(ev.period)
       if (!r || !timeOverlaps(proposed, r)) continue
 
-      // Would this candidate be a merge partner of the dragged event at the target?
-      // (same courseCode+program+year+different block, landing in same room)
       const wouldMerge = draggedEvent.courseCode &&
         ev.courseCode === draggedEvent.courseCode &&
         ev.program    === draggedEvent.program &&
         String(ev.year) === String(draggedEvent.year) &&
         ev.block !== draggedEvent.block &&
         ev.room === hRoom && hRoom !== 'TBA'
-      if (wouldMerge) continue  // merge partners are not conflict targets
+      if (wouldMerge) continue
 
       const roomC    = ev.room === hRoom && hRoom !== 'TBA'
       const sectionC = draggedEvent.program && draggedEvent.year && draggedEvent.block
@@ -254,6 +285,36 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     return bands
   }, [draggedEvent, hoveredCell, events, activeDay])
 
+  // ── Auto-save: 5-second countdown then save ────────────────────────────────
+  // Called after every successful applyMove.
+  // Resets the timer if another move happens before the 5 seconds elapse.
+  const scheduleAutoSave = useCallback(() => {
+    if (autoSaveTimerRef.current)    clearTimeout(autoSaveTimerRef.current)
+    if (autoSaveIntervalRef.current) clearInterval(autoSaveIntervalRef.current)
+
+    let secs = 5
+    setAutoSaveIn(secs)
+
+    autoSaveIntervalRef.current = setInterval(() => {
+      secs -= 1
+      if (secs <= 0) {
+        clearInterval(autoSaveIntervalRef.current)
+        setAutoSaveIn(null)
+      } else {
+        setAutoSaveIn(secs)
+      }
+    }, 1000)
+
+    autoSaveTimerRef.current = setTimeout(() => {
+      clearInterval(autoSaveIntervalRef.current)
+      setAutoSaveIn(null)
+      saveRef.current?.()
+    }, 5000)
+  }, [])
+
+  // Keep ref always pointing to the latest scheduleAutoSave (stable after mount)
+  scheduleAutoSaveRef.current = scheduleAutoSave
+
   // ── Apply a move to local state + enqueue as pending override ─────────────
   const applyMove = useCallback((event, targetRoom, newPeriod, day) => {
     const dragId = getEventId(event)
@@ -281,6 +342,9 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
       })
       return next
     })
+
+    // Kick off (or reset) the auto-save countdown
+    scheduleAutoSaveRef.current?.()
   }, [events, setLocalEvents, setEvents])
 
   // ── Drop handler — allows conflicting drops via confirmation ──────────────
@@ -297,22 +361,19 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     const dragId   = getEventId(draggedEvent)
     const proposed = { start: newStart, end: newEnd }
 
-    // ── Detect current merge partner (before the move) ────────────────────
     const prevPartner = events.find(ev => {
       if (getEventId(ev) === dragId || ev.day !== activeDay) return false
       return areMergePartners(draggedEvent, ev)
     }) ?? null
 
-    // ── Classify candidates at the target cell ───────────────────────────
-    const wouldMergeWith = []  // compatible events that would become merge partners
-    const conflicting    = []  // genuine conflicts
+    const wouldMergeWith = []
+    const conflicting    = []
 
     for (const ev of events) {
       if (getEventId(ev) === dragId || ev.day !== activeDay) continue
       const r = parsePeriodRange(ev.period)
       if (!r || !timeOverlaps(proposed, r)) continue
 
-      // Would this become a merge partner at the target position?
       const isMergeCandidate = draggedEvent.courseCode &&
         ev.courseCode === draggedEvent.courseCode &&
         ev.program    === draggedEvent.program    &&
@@ -325,7 +386,6 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
         continue
       }
 
-      // Genuine conflict check
       const types = []
       const roomC    = ev.room === targetRoom && targetRoom !== 'TBA'
       const sectionC = draggedEvent.program && draggedEvent.year && draggedEvent.block
@@ -348,7 +408,6 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
 
     applyMove(draggedEvent, targetRoom, newPeriod, activeDay)
 
-    // ── Post-move toast: merge / unmerge ─────────────────────────────────
     if (wouldMergeWith.length > 0) {
       const partner = wouldMergeWith[0]
       setToast({
@@ -388,27 +447,22 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
 
   const cancelDrop = useCallback(() => setPendingDrop(null), [])
 
-  // ── Stack-drop handler — fires when a card is dropped directly on another ──
-  // We capture the dragged event from state (it's set at drag-start) and the
-  // target event is passed by SessionCard → RoomColumn → TimeGrid → here.
+  // ── Stack-drop handler ────────────────────────────────────────────────────
   const handleDropOnCard = useCallback((e, targetEvent) => {
     e.preventDefault()
     e.stopPropagation()
     if (!draggedEvent) return
     const dragId   = getEventId(draggedEvent)
     const targetId = getEventId(targetEvent)
-    // Don't stack a card with itself
     if (dragId === targetId) return
     setDraggedEvent(null)
     setHoveredCell(null)
     setPendingStack({ draggedEvent, targetEvent })
   }, [draggedEvent])
 
-  // ── Stack confirmation callbacks ──────────────────────────────────────────
   const confirmStack = useCallback(() => {
     if (!pendingStack) return
     const { draggedEvent: ev, targetEvent } = pendingStack
-    // Move the dragged card into the target's room and period
     applyMove(ev, targetEvent.room, targetEvent.period, activeDay)
     setPendingStack(null)
     setToast({
@@ -426,6 +480,12 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
   const saveAllOverrides = useCallback(async () => {
     const overrides = [...pendingOverrides.values()]
     if (overrides.length === 0) return { succeeded: 0, failed: [] }
+
+    // Cancel any pending auto-save timer since we're saving now
+    if (autoSaveTimerRef.current)    clearTimeout(autoSaveTimerRef.current)
+    if (autoSaveIntervalRef.current) clearInterval(autoSaveIntervalRef.current)
+    setAutoSaveIn(null)
+
     setSaving(true)
     const results = await Promise.allSettled(
       overrides.map(o => overrideSession({
@@ -457,6 +517,9 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     return { succeeded, failed }
   }, [pendingOverrides])
 
+  // Keep ref always pointing to the latest saveAllOverrides (for the auto-save timer)
+  saveRef.current = saveAllOverrides
+
   // ── Revert a single pending override ──────────────────────────────────────
   const revertOverride = useCallback((id) => {
     const override = pendingOverrides.get(id)
@@ -477,6 +540,11 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
 
   // ── Revert ALL pending overrides ──────────────────────────────────────────
   const revertAllOverrides = useCallback(() => {
+    // Cancel auto-save
+    if (autoSaveTimerRef.current)    clearTimeout(autoSaveTimerRef.current)
+    if (autoSaveIntervalRef.current) clearInterval(autoSaveIntervalRef.current)
+    setAutoSaveIn(null)
+
     setLocalEvents(storeEvents)
     setEvents(storeEvents)
     setPendingOverrides(new Map())
@@ -530,5 +598,7 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     revertOverride,
     revertAllOverrides,
     saving,
+    // Auto-save countdown (null = idle, number = seconds remaining)
+    autoSaveIn,
   }
 }

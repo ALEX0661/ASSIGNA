@@ -11,18 +11,113 @@ export const SLOT_MINUTES   = 30
 export const DAY_START_HOUR = 7
 export const DAY_END_HOUR   = 21
 
+// ── Base program colors (used as fallback when no block is known) ─────────────
 export const PROGRAM_COLORS = {
-  BSCS:  { bg: '#EDE9FB', text: '#5b21b6', border: '#C4B8F5' },
-  BSIT:  { bg: '#fef3c7', text: '#92400e', border: '#f59e0b' },
-  BSIE:  { bg: '#d1fae5', text: '#065f46', border: '#34d399' },
-  BSECE: { bg: '#fce7f3', text: '#9d174d', border: '#f472b6' },
-  BSIS:  { bg: '#fff7ed', text: '#9a3412', border: '#fb923c' },
-  BSBA:  { bg: '#ecfdf5', text: '#166534', border: '#86efac' },
-  BSA:   { bg: '#eff6ff', text: '#1e40af', border: '#93c5fd' },
+  BSCS:        { bg: '#EDE9FB', text: '#5b21b6', border: '#C4B8F5' },
+  BSIT:        { bg: '#FEF3C7', text: '#92400e', border: '#F59E0B' },
+  BSIE:        { bg: '#D1FAE5', text: '#065f46', border: '#34D399' },
+  BSECE:       { bg: '#FCE7F3', text: '#9d174d', border: '#F472B6' },
+  BSIS:        { bg: '#FFEDD5', text: '#9a3412', border: '#FB923C' },
+  BSBA:        { bg: '#DCFCE7', text: '#166534', border: '#86EFAC' },
+  BSA:         { bg: '#DBEAFE', text: '#1e40af', border: '#93C5FD' },
+  'BSEMC-DAT': { bg: '#E0F2FE', text: '#0369a1', border: '#7DD3FC' },
+  'BSEMC-GD':  { bg: '#CCFBF1', text: '#0f766e', border: '#5EEAD4' },
+}
+
+// ── Per-section shade palettes — 6 shades (A → F), light → slightly deeper ───
+// bg stays readable; border/accent varies to give each block a distinct identity.
+export const PROGRAM_SHADE_PALETTE = {
+  BSCS: [
+    { bg: '#EDE9FB', text: '#5b21b6', border: '#C4B8F5' }, // A — lightest
+    { bg: '#E3DAFA', text: '#4c1d95', border: '#B09EF0' }, // B
+    { bg: '#D8CFF8', text: '#3730a3', border: '#9C84EB' }, // C
+    { bg: '#CEC3F6', text: '#312e81', border: '#8870E6' }, // D
+    { bg: '#C3B8F3', text: '#1e1b4b', border: '#745CE1' }, // E
+    { bg: '#B8ACF1', text: '#1e1b4b', border: '#6048DC' }, // F — deepest accent
+  ],
+  BSIT: [
+    { bg: '#FFFBEB', text: '#92400e', border: '#FDE68A' }, // A
+    { bg: '#FEF3C7', text: '#92400e', border: '#F9C954' }, // B
+    { bg: '#FDE68A', text: '#78350f', border: '#F59E0B' }, // C
+    { bg: '#FCD34D', text: '#78350f', border: '#D97706' }, // D
+    { bg: '#FBC838', text: '#6d2503', border: '#B45309' }, // E
+    { bg: '#FABD22', text: '#451a03', border: '#92400E' }, // F
+  ],
+  BSIE: [
+    { bg: '#F0FDF4', text: '#065f46', border: '#BBF7D0' }, // A
+    { bg: '#D1FAE5', text: '#065f46', border: '#6EE7B7' }, // B
+    { bg: '#BFF5D7', text: '#064e3b', border: '#34D399' }, // C
+    { bg: '#ADECCA', text: '#064e3b', border: '#10B981' }, // D
+    { bg: '#9BE4BC', text: '#022c22', border: '#059669' }, // E
+    { bg: '#89DBAF', text: '#022c22', border: '#047857' }, // F
+  ],
+  BSECE: [
+    { bg: '#FDF2F8', text: '#9d174d', border: '#F9A8D4' }, // A
+    { bg: '#FCE7F3', text: '#9d174b', border: '#F472B6' }, // B
+    { bg: '#FAD8EA', text: '#831843', border: '#EC4899' }, // C
+    { bg: '#F8C9E1', text: '#831843', border: '#DB2777' }, // D
+    { bg: '#F6BAD8', text: '#500724', border: '#BE185D' }, // E
+    { bg: '#F4ABCF', text: '#500724', border: '#9D174D' }, // F
+  ],
+  BSIS: [
+    { bg: '#FFF7ED', text: '#9a3412', border: '#FED7AA' }, // A
+    { bg: '#FFEDD5', text: '#9a3412', border: '#FDBA74' }, // B
+    { bg: '#FDDFC0', text: '#7c2d12', border: '#FB923C' }, // C
+    { bg: '#FBD1AB', text: '#7c2d12', border: '#F97316' }, // D
+    { bg: '#FAC396', text: '#431407', border: '#EA580C' }, // E
+    { bg: '#F8B581', text: '#431407', border: '#C2410C' }, // F
+  ],
+  BSBA: [
+    { bg: '#F0FDF4', text: '#166534', border: '#BBF7D0' }, // A
+    { bg: '#DCFCE7', text: '#166534', border: '#86EFAC' }, // B
+    { bg: '#C8F9D9', text: '#14532D', border: '#4ADE80' }, // C
+    { bg: '#B4F5CB', text: '#14532D', border: '#22C55E' }, // D
+    { bg: '#A0F2BD', text: '#052e16', border: '#16A34A' }, // E
+    { bg: '#8CEEAF', text: '#052e16', border: '#15803D' }, // F
+  ],
+  BSA: [
+    { bg: '#EFF6FF', text: '#1e40af', border: '#BFDBFE' }, // A
+    { bg: '#DBEAFE', text: '#1e40af', border: '#93C5FD' }, // B
+    { bg: '#C9DDFF', text: '#1e3a8a', border: '#60A5FA' }, // C
+    { bg: '#B8D0FF', text: '#1e3a8a', border: '#3B82F6' }, // D
+    { bg: '#A7C3FF', text: '#1e3a8a', border: '#2563EB' }, // E
+    { bg: '#96B6FF', text: '#1e3a8a', border: '#1D4ED8' }, // F
+  ],
+  'BSEMC-DAT': [
+    { bg: '#F0F9FF', text: '#0369a1', border: '#BAE6FD' }, // A
+    { bg: '#E0F2FE', text: '#0369a1', border: '#7DD3FC' }, // B
+    { bg: '#CDE9FD', text: '#075985', border: '#38BDF8' }, // C
+    { bg: '#BAE0FB', text: '#075985', border: '#0EA5E9' }, // D
+    { bg: '#A8D7FA', text: '#0C4A6E', border: '#0284C7' }, // E
+    { bg: '#95CDF8', text: '#0C4A6E', border: '#0369A1' }, // F
+  ],
+  'BSEMC-GD': [
+    { bg: '#F0FDF9', text: '#0f766e', border: '#99F6E4' }, // A
+    { bg: '#CCFBF1', text: '#0f766e', border: '#5EEAD4' }, // B
+    { bg: '#B9F7E9', text: '#0d6c65', border: '#2DD4BF' }, // C
+    { bg: '#A6F3E2', text: '#0d6c65', border: '#14B8A6' }, // D
+    { bg: '#93EFDA', text: '#134E4A', border: '#0D9488' }, // E
+    { bg: '#80EBD3', text: '#134E4A', border: '#0F766E' }, // F
+  ],
+}
+
+/**
+ * Returns the color palette entry for a specific program + block combination.
+ * Block 'A' → shade 0 (lightest), 'B' → shade 1, etc., cycling if > 6 blocks.
+ * Falls back to the flat programColor() when no palette exists for the program.
+ */
+export function sectionColor(program, block) {
+  const key     = program?.toUpperCase()
+  const palette = PROGRAM_SHADE_PALETTE[key]
+  if (!palette) return programColor(program)
+  const letter = (block || 'A').toString().toUpperCase()
+  const idx    = Math.max(0, letter.charCodeAt(0) - 65) % palette.length
+  return palette[idx]
 }
 
 export function programColor(program) {
-  return PROGRAM_COLORS[program?.toUpperCase()] ?? { bg: '#f3f4f6', text: '#374151', border: '#9ca3af' }
+  const key = program?.toUpperCase()
+  return PROGRAM_COLORS[key] ?? { bg: '#f3f4f6', text: '#374151', border: '#9ca3af' }
 }
 
 // ── Time helpers ──────────────────────────────────────────────────────────────
@@ -74,14 +169,6 @@ export function getEventStyle(period, slotH = SLOT_HEIGHT) {
 }
 
 // ── Merged helpers ────────────────────────────────────────────────────────────
-//
-// Merge detection is now purely positional: two events are "merged" when they
-// share the same courseCode + program + year + room + day + period but belong
-// to different blocks.  No special schedule_id suffix is required.
-//
-// Legacy -A/-B suffixes (from the old router) are still recognised as a
-// fallback so existing saved schedules continue to display correctly.
-
 /** @deprecated legacy — use areMergePartners / findMergePartner instead */
 export function isMergedEvent(event) {
   if (!event?.schedule_id) return false
@@ -99,21 +186,10 @@ export function getMergeSuffix(scheduleId) {
   return m ? m[1] : null
 }
 
-/**
- * Returns true when two events are merge partners — i.e. they represent the
- * same class meeting shared across two different blocks.
- *
- * Primary (positional) rule:
- *   same courseCode + program + year + room + day + period, different block.
- *
- * Legacy fallback:
- *   both have -letter suffixes and share the same numeric base id.
- */
 export function areMergePartners(ea, eb) {
   if (!ea || !eb) return false
   if (getEventId(ea) === getEventId(eb)) return false
 
-  // Positional rule — the primary, drag-and-drop-based detection
   if (
     ea.courseCode && eb.courseCode === ea.courseCode &&
     ea.program    && ea.program    === eb.program    &&
@@ -124,7 +200,6 @@ export function areMergePartners(ea, eb) {
     ea.period && ea.period === eb.period
   ) return true
 
-  // Legacy schedule_id suffix rule
   if (isMergedEvent(ea) && isMergedEvent(eb) &&
       getBaseMergedId(ea.schedule_id) === getBaseMergedId(eb.schedule_id))
     return true
@@ -132,23 +207,15 @@ export function areMergePartners(ea, eb) {
   return false
 }
 
-/**
- * Returns the first event in `allEvents` that is a merge partner of `event`,
- * or null if none exists.
- */
 export function findMergePartner(event, allEvents) {
   if (!event || !allEvents) return null
   return allEvents.find(ev => areMergePartners(event, ev)) ?? null
 }
 
-/**
- * Returns a Set of event IDs that currently have a merge partner.
- * Used to drive the "Merged" filter and badge efficiently.
- */
 export function getMergedIds(allEvents) {
   const ids = new Set()
   for (let i = 0; i < allEvents.length; i++) {
-    if (ids.has(getEventId(allEvents[i]))) continue          // already confirmed
+    if (ids.has(getEventId(allEvents[i]))) continue
     for (let j = i + 1; j < allEvents.length; j++) {
       if (areMergePartners(allEvents[i], allEvents[j])) {
         ids.add(getEventId(allEvents[i]))
@@ -190,7 +257,6 @@ export function buildConflictMap(events) {
       if (ea.day !== eb.day) continue
       const ra = parsePeriodRange(ea.period), rb = parsePeriodRange(eb.period)
       if (!ra || !rb || !timeOverlaps(ra, rb)) continue
-      // Skip merge partners — they share room/time by design and must never conflict
       if (areMergePartners(ea, eb)) continue
       const types = getConflictTypes(ea, eb)
       if (types.length === 0) continue
@@ -215,16 +281,10 @@ export function findConflicts(allEvents, { evId, day, startMin, endMin, room, fa
   const proposed  = { start: startMin, end: endMin }
   const results   = []
 
-  // Build a temporary stub so areMergePartners can compare positionally
-  const stub = { schedule_id: evId, courseCode: null, program, year, block, room, day, period: null }
-
   for (const ev of allEvents) {
     const candidateId = getEventId(ev)
-
     if (candidateId === evId) continue
     if (ev.day !== day)      continue
-
-    // Skip merge partners — they intentionally share room/time with this event
     if (areMergePartners({ schedule_id: evId, program, year, block, room, day }, ev)) continue
 
     const r = parsePeriodRange(ev.period)

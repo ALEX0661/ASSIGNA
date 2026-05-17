@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { programColor, getEventStyle, SLOT_HEIGHT } from './svHelpers'
+import { sectionColor, getEventStyle, SLOT_HEIGHT } from './svHelpers'
 import { TV } from './svPrimitives'
 
 export default function SessionCard({
@@ -8,33 +8,27 @@ export default function SessionCard({
   spreadOffset = 0,
   isInHoveredGroup = false,
   onHoverChange,
-  // true when this event currently has a merge partner (same room/day/period)
   isMerged = false,
-  // true when the currently-dragged card would conflict with this card at the hovered drop target
   isConflictTarget = false,
-  // true when ANY drag is in progress and this card shares section/faculty → ambient red pre-glow
   isPotentialConflict = false,
-  // true when ANY drag is in progress and this card could be merged → ambient blue pre-glow
   isPotentialMerge = false,
-  // called when another card is dropped directly onto this card (stack gesture)
   onDropOnCard,
 }) {
   const [isHovered,     setIsHovered]     = useState(false)
-  // visual state: another card is being dragged over THIS card (stack target)
   const [isStackTarget, setIsStackTarget] = useState(false)
 
-  const clr    = programColor(event.program)
+  // ── Use section-aware color — block A = shade 0, B = shade 1, etc. ─────────
+  const clr    = sectionColor(event.program, event.block)
   const { top, height } = getEventStyle(event.period, slotH)
   const merged = isMerged
 
-  // ── Unassigned faculty detection ────────────────────────────────────────────
+  // ── Unassigned faculty detection ─────────────────────────────────────────
   const isUnassigned = !event.faculty || event.faculty === 'TBA'
 
-  // ── THEME ──────────────────────────────────────────────────────────────────
+  // ── THEME ─────────────────────────────────────────────────────────────────
   let accentColor, bgGradient, borderColor, badgeBg, textColor, glowColor
 
   if (isStackTarget) {
-    // Being targeted for a stack-drop — vivid emerald ring
     accentColor = '#059669'
     bgGradient  = 'linear-gradient(160deg,#f0fdf4 0%,#fff 100%)'
     borderColor = '#6ee7b7'
@@ -49,7 +43,6 @@ export default function SessionCard({
     textColor   = '#b91c1c'
     glowColor   = 'rgba(239,68,68,.45)'
   } else if (isPotentialMerge && !isDragging) {
-    // Ambient blue: could be merged with the dragged card
     accentColor = '#2563eb'
     bgGradient  = 'linear-gradient(160deg,#eff6ff 0%,#fff 100%)'
     borderColor = '#93c5fd'
@@ -57,7 +50,6 @@ export default function SessionCard({
     textColor   = '#1d4ed8'
     glowColor   = 'rgba(59,130,246,.40)'
   } else if (isPotentialConflict && !isDragging) {
-    // Ambient red: shares section/faculty with the dragged card
     accentColor = '#dc2626'
     bgGradient  = 'linear-gradient(160deg,#fff8f8 0%,#fff 100%)'
     borderColor = '#fca5a5'
@@ -73,8 +65,12 @@ export default function SessionCard({
     borderColor = TV.mid;  badgeBg    = `rgba(124,111,205,.10)`; textColor = TV.deep
     glowColor   = 'rgba(124,111,205,.35)'
   } else {
-    accentColor = clr.border; bgGradient = `linear-gradient(160deg,${clr.bg} 0%,#fff 100%)`
-    borderColor = clr.border; badgeBg    = `rgba(0,0,0,.04)`; textColor = clr.text
+    // Normal state — use the section-aware color for the gradient
+    accentColor = clr.border
+    bgGradient  = `linear-gradient(160deg,${clr.bg} 0%,#fff 100%)`
+    borderColor = clr.border
+    badgeBg     = `rgba(0,0,0,.04)`
+    textColor   = clr.text
     glowColor   = 'rgba(0,0,0,.18)'
   }
 
@@ -108,7 +104,6 @@ export default function SessionCard({
   const handleEnter = () => { setIsHovered(true);  onHoverChange?.(true)  }
   const handleLeave = () => { setIsHovered(false); onHoverChange?.(false) }
 
-  // Stack-drop handlers — fire only when a drag is in progress over this card
   const handleDragOverCard = e => {
     if (!onDropOnCard) return
     e.preventDefault()
@@ -126,7 +121,6 @@ export default function SessionCard({
 
   const zIndex = isDragging ? 2000 : isHovered ? 1200 : isConflictTarget ? 1100 : isStackTarget ? 1150 : isInHoveredGroup ? 900 : 10 + overlapIndex
 
-  // ── Box shadows — visibly pumped up for all states ──────────────────────────
   const baseShadow   = `0 1px 4px rgba(0,0,0,.08), 0 0 0 0.5px ${borderColor}66`
   const hoverShadow  = `0 14px 42px ${glowColor}, 0 3px 12px rgba(0,0,0,.10), 0 0 0 2px ${accentColor}55`
   const groupShadow  = `0 5px 16px ${glowColor}, 0 0 0 1.5px ${borderColor}99`
@@ -145,8 +139,6 @@ export default function SessionCard({
     return baseShadow
   }
 
-  // ── UNASSIGNED BADGE icon (amber) ───────────────────────────────────────────
-  // Shown in both compact and normal modes; visible even on tiny cards
   const UnassignedDot = () => (
     <span
       title="Faculty unassigned"
@@ -159,7 +151,6 @@ export default function SessionCard({
         flexShrink: 0,
       }}
     >
-      {/* person-question-mark icon */}
       <svg
         width={compact ? 6 : 7} height={compact ? 6 : 7}
         viewBox="0 0 24 24" fill="none"
@@ -173,9 +164,8 @@ export default function SessionCard({
     </span>
   )
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // ── COMPACT MODE ─────────────────────────────────────────────────────────────
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // ── COMPACT MODE ──────────────────────────────────────────────────────────
   if (compact) {
     const compactCardH = Math.max(height - vOffset - 2, 22)
     return (
@@ -209,7 +199,6 @@ export default function SessionCard({
           zIndex,
         }}
       >
-        {/* Stack target overlay stripe */}
         {isStackTarget && (
           <div style={{
             position: 'absolute', inset: 0, borderRadius: 5,
@@ -254,9 +243,8 @@ export default function SessionCard({
     )
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // ── NORMAL / MAXIMIZE MODE ───────────────────────────────────────────────────
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // ── NORMAL / MAXIMIZE MODE ────────────────────────────────────────────────
   return (
     <div
       draggable
@@ -355,7 +343,6 @@ export default function SessionCard({
             {sessionType}
           </span>
           <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-            {/* ── Unassigned faculty icon ── */}
             {isUnassigned && <UnassignedDot />}
 
             {merged && (
@@ -413,7 +400,6 @@ export default function SessionCard({
           </span>
         </div>
 
-        {/* Faculty row — amber label if unassigned */}
         {height > 45 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 3, minWidth: 0, overflow: 'hidden' }}>
             {isUnassigned ? (

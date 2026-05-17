@@ -1,4 +1,5 @@
-import { programColor } from './svHelpers'
+import { useState, useMemo } from 'react'
+import { programColor, sectionColor, PROGRAM_SHADE_PALETTE } from './svHelpers'
 
 // ── Lavender theme tokens (mirrors AdminLayout CSS vars) ──────────────────────
 export const TV = {
@@ -12,6 +13,7 @@ export const TV = {
 }
 
 // ── Modal overlay ─────────────────────────────────────────────────────────────
+// z-index 9999 — safely above all session cards (max ~2000) and overlays (200)
 export function ModalOverlay({ onClose, children }) {
   return (
     <div
@@ -21,7 +23,7 @@ export function ModalOverlay({ onClose, children }) {
         background: 'rgba(30,24,60,.55)',
         backdropFilter: 'blur(3px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 999,
+        zIndex: 9999,
       }}
     >
       {children}
@@ -166,7 +168,6 @@ export function ConflictSummaryBar({ conflictMap, compact = false }) {
   const sectionCount = vals.filter(v => v.label.includes('Section')).length
   const facultyCount = vals.filter(v => v.label.includes('Faculty')).length
 
-  // ── Compact/inline variant for the maximize top bar ───────────────────────
   if (compact) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
@@ -224,6 +225,148 @@ export function Legend() {
       <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{ fontSize: 9, color: TV.muted }}>· Drag cards to reschedule</span>
       </span>
+    </div>
+  )
+}
+
+// ── Program Color Legend ──────────────────────────────────────────────────────
+// Shows each program's section shades so users can quickly read the grid.
+// Pass `events` (the full event list) so it only renders programs actually present.
+export function ProgramLegend({ events = [] }) {
+  const [expanded, setExpanded] = useState(false)
+
+  // Collect unique programs + their blocks actually present in the schedule
+  const programBlocks = useMemo(() => {
+    const map = {}
+    events.forEach(e => {
+      if (!e.program) return
+      const prog = e.program.toUpperCase()
+      if (!map[prog]) map[prog] = new Set()
+      if (e.block) map[prog].add(e.block.toUpperCase())
+    })
+    return map
+  }, [events])
+
+  const programs = Object.keys(programBlocks).sort()
+  if (programs.length === 0) return null
+
+  return (
+    <div style={{
+      background: '#fff', border: `1px solid ${TV.border}`,
+      borderRadius: 10, overflow: 'hidden',
+      marginBottom: 10, fontFamily: 'Poppins, sans-serif',
+    }}>
+      {/* Header toggle */}
+      <button
+        onClick={() => setExpanded(v => !v)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '8px 14px', background: 'transparent', border: 'none',
+          cursor: 'pointer', gap: 8,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Palette icon */}
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={TV.deep} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 2a10 10 0 0 1 0 20c-1.7 0-3-1.3-3-3 0-.8.3-1.5.8-2l1.2-1.2A2 2 0 0 0 12 14a2 2 0 0 0-2-2H6a4 4 0 0 1 0-8"/>
+          </svg>
+          <span style={{ fontSize: 11.5, fontWeight: 700, color: TV.text }}>Program Color Legend</span>
+          <span style={{ fontSize: 10, color: TV.muted, fontWeight: 400 }}>
+            — {programs.length} program{programs.length !== 1 ? 's' : ''}, darker shade = later block
+          </span>
+        </div>
+        <svg
+          width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={TV.muted}
+          strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform .2s' }}
+        >
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+
+      {/* Expanded content */}
+      {expanded && (
+        <div style={{
+          padding: '4px 14px 14px',
+          borderTop: `1px solid ${TV.border}`,
+          display: 'flex', flexWrap: 'wrap', gap: 12,
+        }}>
+          {programs.map(prog => {
+            const blocks  = [...programBlocks[prog]].sort()
+            const palette = PROGRAM_SHADE_PALETTE[prog]
+            const base    = programColor(prog)
+
+            return (
+              <div key={prog} style={{
+                display: 'flex', flexDirection: 'column', gap: 5,
+                background: '#FAFAFE', borderRadius: 8,
+                border: `1px solid ${TV.border}`,
+                padding: '8px 10px', minWidth: 110,
+              }}>
+                {/* Program name pill */}
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center',
+                  background: base.bg, border: `1.5px solid ${base.border}`,
+                  borderRadius: 20, padding: '2px 8px', alignSelf: 'flex-start',
+                }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: base.text, letterSpacing: '-.2px' }}>
+                    {prog}
+                  </span>
+                </div>
+
+                {/* Block swatches */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {blocks.map(block => {
+                    const clr = sectionColor(prog, block)
+                    return (
+                      <div
+                        key={block}
+                        title={`${prog} Block ${block}`}
+                        style={{
+                          width: 26, height: 26, borderRadius: 5,
+                          background: clr.bg,
+                          border: `2px solid ${clr.border}`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <span style={{ fontSize: 9, fontWeight: 800, color: clr.text }}>
+                          {block}
+                        </span>
+                      </div>
+                    )
+                  })}
+                  {/* If program has a palette, show up to 6 shades even for unlisted blocks */}
+                  {!blocks.length && palette && palette.slice(0, 3).map((clr, i) => (
+                    <div key={i} style={{
+                      width: 26, height: 26, borderRadius: 5,
+                      background: clr.bg, border: `2px solid ${clr.border}`,
+                    }} />
+                  ))}
+                </div>
+
+                {/* Shade gradient hint */}
+                {palette && blocks.length > 1 && (
+                  <div style={{ display: 'flex', gap: 1, borderRadius: 3, overflow: 'hidden', height: 4 }}>
+                    {palette.map((clr, i) => (
+                      <div key={i} style={{ flex: 1, background: clr.border, opacity: 0.7 }} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+
+          <div style={{
+            alignSelf: 'flex-end', fontSize: 10, color: TV.muted,
+            paddingBottom: 2, lineHeight: 1.5,
+          }}>
+            <div>■ Block A → lightest shade</div>
+            <div>■ Block F → deepest accent</div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -334,13 +477,18 @@ export function RoomChip({ room, selected, hasRoomConflict, hasMergePreview = fa
 }
 
 // ── Pending Changes Bar ───────────────────────────────────────────────────────
-// Render this above the TimeGrid when pendingOverrides.size > 0.
-// Wires up to saveAllOverrides / revertAllOverrides from useDragDrop.
-export function PendingChangesBar({ pendingOverrides, onSave, onRevertAll, saving }) {
+// Shows unsaved drag-drop moves with an auto-save countdown.
+// autoSaveIn = number (seconds remaining) | null (no countdown active)
+export function PendingChangesBar({ pendingOverrides, onSave, onRevertAll, saving, autoSaveIn }) {
   const count = pendingOverrides.size
   if (count === 0) return null
 
   const labels = [...pendingOverrides.values()].map(o => o.label)
+
+  // Countdown ring — simple progress arc drawn in SVG
+  const pct   = autoSaveIn != null ? autoSaveIn / 5 : 0   // 5-second window
+  const r     = 7, circ = 2 * Math.PI * r
+  const dash  = circ * pct
 
   return (
     <div style={{
@@ -368,21 +516,42 @@ export function PendingChangesBar({ pendingOverrides, onSave, onRevertAll, savin
         </span>
       </div>
 
+      {/* Auto-save countdown */}
+      {autoSaveIn != null && !saving && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+          {/* Countdown ring */}
+          <svg width="18" height="18" viewBox="0 0 18 18" style={{ transform: 'rotate(-90deg)' }}>
+            <circle cx="9" cy="9" r={r} fill="none" stroke="#fde68a" strokeWidth="2.5"/>
+            <circle cx="9" cy="9" r={r} fill="none" stroke="#d97706" strokeWidth="2.5"
+              strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
+              style={{ transition: 'stroke-dasharray .9s linear' }}
+            />
+          </svg>
+          <span style={{ fontSize: 10.5, fontWeight: 600, color: '#92400e', whiteSpace: 'nowrap' }}>
+            Auto-saving in {autoSaveIn}s
+          </span>
+        </div>
+      )}
+
       {/* Actions */}
       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
         <button
           onClick={onRevertAll}
           disabled={saving}
+          title="Undo all pending moves"
           style={{
             padding: '5px 13px', fontSize: 11.5, fontWeight: 600,
             background: '#fff', color: '#92400e',
             border: '1.5px solid #fcd34d', borderRadius: 7,
             cursor: saving ? 'not-allowed' : 'pointer',
             fontFamily: 'Poppins, sans-serif', opacity: saving ? .5 : 1,
-            transition: 'all .15s',
+            transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 4,
           }}
         >
-          Revert All
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
+          </svg>
+          Undo All
         </button>
         <button
           onClick={onSave}
@@ -414,7 +583,7 @@ export function PendingChangesBar({ pendingOverrides, onSave, onRevertAll, savin
                 <polyline points="17 21 17 13 7 13 7 21"/>
                 <polyline points="7 3 7 8 15 8"/>
               </svg>
-              Save Changes
+              Save Now
             </>
           )}
         </button>
