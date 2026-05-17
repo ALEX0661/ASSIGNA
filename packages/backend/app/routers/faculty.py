@@ -146,6 +146,10 @@ def _parse_faculty_matrix(contents: bytes, sheet_names: list) -> list:
                 if not course_code or course_code.lower() == "nan":
                     continue
 
+                # Col 1 holds the course title/name when present
+                raw_title   = df_raw.iloc[row_idx, 1] if df_raw.shape[1] > 1 else None
+                course_title = str(raw_title).strip() if raw_title is not None and str(raw_title).strip().lower() not in ("", "nan") else None
+
                 try:
                     cell_val = df_raw.iloc[row_idx, col_idx]
                     if isinstance(cell_val, float) and math.isnan(cell_val):
@@ -158,10 +162,11 @@ def _parse_faculty_matrix(contents: bytes, sheet_names: list) -> list:
                 if rating < 1 or rating > 5:
                     continue
 
-                faculty_map[full_name]["specializations"].append({
-                    "courseCode": course_code,
-                    "rating":     rating,
-                })
+                spec_entry = {"courseCode": course_code, "rating": rating}
+                if course_title:
+                    spec_entry["title"] = course_title
+
+                faculty_map[full_name]["specializations"].append(spec_entry)
 
     return list(faculty_map.values())
 
@@ -519,7 +524,7 @@ def commit_faculty_upload(data: dict, user=Depends(admin_only)):
             {
                 "name":               name,
                 "status":             status,
-                "specializations":    f.get("specializations", []),
+                "specializations":    f.get("specializations", []),   # each entry may include {courseCode, title, rating}
                 "units":              0.0,
                 "max_units":          initial_max,
                 "preferredDays":      [],

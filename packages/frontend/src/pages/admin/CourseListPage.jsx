@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react'
 import { getCourses, addCourse, deleteCourse, updateCourse } from '../../services/api'
 import ImportCoursesModal from '../../components/ImportCoursesModal'
 import BlockConfigModal from '../../components/BlockConfigModal'
+import * as XLSX from 'xlsx'
 
 const EMPTY = { courseCode: '', title: '', program: '', yearLevel: '1', blocks: 1, unitsLecture: 3, unitsLab: 0, semester: '1st Semester' }
 
@@ -10,6 +11,11 @@ const YEAR_SHORT  = { '1': '1st', '2': '2nd', '3': '3rd', '4': '4th' }
 
 const SEMESTERS = ['1st Semester', '2nd Semester', 'Midyear']
 const SEM_SHORT = { '1st Semester': '1st Sem', '2nd Semester': '2nd Sem', 'Midyear': 'Midyear' }
+const SEM_SHEET = {
+  '1st Semester': 'First Semester',
+  '2nd Semester': 'Second Semester',
+  'Midyear':      'Midyear',
+}
 const SEM_COLORS = {
   '1st Semester': { bg: '#EDE9FB', color: '#7C6FCD', border: '#D8D3F5' },
   '2nd Semester': { bg: '#E6FAF3', color: '#059669', border: '#A7F3D0' },
@@ -541,6 +547,43 @@ export default function CourseListPage() {
     } finally { setDeleting(false) }
   }
 
+  function handleExport() {
+    if (!courses.length) return
+
+    const headers = ['Course Code', 'Title', 'Program', 'Semester', 'Year Level', 'Sections', 'Lecture Units', 'Lab Units', 'Total Units']
+    const colWidths = [
+      { wch: 16 }, { wch: 38 }, { wch: 14 }, { wch: 16 },
+      { wch: 12 }, { wch: 10 }, { wch: 11 }, { wch: 10 }, { wch: 12 },
+    ]
+
+    const wb = XLSX.utils.book_new()
+
+    SEMESTERS.forEach(sem => {
+      const semCourses = courses.filter(c => (c.semester || '1st Semester') === sem)
+      if (!semCourses.length) return
+
+      const rows = semCourses.map(c => [
+        c.courseCode,
+        c.title,
+        c.program,
+        c.semester || '1st Semester',
+        c.yearLevel,
+        c.blocks,
+        c.unitsLecture,
+        c.unitsLab,
+        (c.unitsLecture || 0) + (c.unitsLab || 0),
+      ])
+
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
+      ws['!cols'] = colWidths
+      XLSX.utils.book_append_sheet(wb, ws, SEM_SHEET[sem] || sem)
+    })
+
+    const date = new Date().toISOString().slice(0, 10)
+    XLSX.writeFile(wb, `Courses-All-Semesters-${date}.xlsx`)
+    toast('All semesters exported successfully', 'success')
+  }
+
   return (
     <div className="page" style={{ fontFamily:"'Poppins',sans-serif" }}>
 
@@ -585,10 +628,34 @@ export default function CourseListPage() {
             </svg>
             Block Config
           </button>
+
+          {/* Export — icon only */}
+          <button
+            onClick={handleExport}
+            disabled={!courses.length}
+            title="Export all semesters to Excel"
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: 34, height: 34, borderRadius: 9,
+              border: '1.5px solid #D8D3F5',
+              background: '#fff', color: '#7C6FCD',
+              cursor: courses.length ? 'pointer' : 'not-allowed',
+              opacity: courses.length ? 1 : 0.45,
+              transition: 'all 0.15s', flexShrink: 0, padding: 0,
+            }}
+            onMouseEnter={e => { if (courses.length) { e.currentTarget.style.background = '#F2EFFD'; e.currentTarget.style.borderColor = '#B8B0E8' } }}
+            onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#D8D3F5' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path d="M12 19V5"/><polyline points="5 12 12 5 19 12"/>
+              <line x1="4" y1="20" x2="20" y2="20"/>
+            </svg>
+          </button>
+
           <button className="cp-ghost" onClick={() => setShowImport(true)}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+              <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
             Import Courses
           </button>

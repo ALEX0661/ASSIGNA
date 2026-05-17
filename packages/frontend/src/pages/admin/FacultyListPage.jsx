@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import * as XLSX from 'xlsx'
 import ImportFacultyModal from '../../components/ImportFacultyModal'
 import { getFaculty, getArchivedFaculty, deleteFaculty, archiveFaculty, unarchiveFaculty } from '../../services/api'
 
@@ -51,24 +52,28 @@ function ToastContainer({ toasts }) {
   )
 }
 
-/* ── Checkbox — pure visual, no hidden input ── */
-function Checkbox({ checked, indeterminate }) {
+/* ── Checkbox — supports an inverse mode for dark backgrounds ── */
+function Checkbox({ checked, indeterminate, inverse = false }) {
+  const borderColor = checked || indeterminate ? (inverse ? '#fff' : '#7C6FCD') : (inverse ? 'rgba(255,255,255,0.5)' : '#D8D3F5')
+  const bgColor = checked || indeterminate ? (inverse ? '#fff' : 'linear-gradient(135deg,#7C6FCD,#5a4fbf)') : 'transparent'
+  const checkColor = inverse ? '#7C6FCD' : '#fff'
+
   return (
     <span style={{
       width: 16, height: 16, borderRadius: 4, flexShrink: 0,
-      border: `1.5px solid ${checked || indeterminate ? '#7C6FCD' : '#D8D3F5'}`,
-      background: checked || indeterminate ? 'linear-gradient(135deg,#7C6FCD,#5a4fbf)' : '#fff',
+      border: `1.5px solid ${borderColor}`,
+      background: bgColor,
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       transition: 'all 0.15s',
-      boxShadow: checked || indeterminate ? '0 2px 6px rgba(124,111,205,0.35)' : 'none',
+      boxShadow: checked || indeterminate ? (inverse ? '0 2px 6px rgba(0,0,0,0.15)' : '0 2px 6px rgba(124,111,205,0.35)') : 'none',
       pointerEvents: 'none',
     }}>
       {indeterminate && !checked && (
-        <svg width="8" height="2" viewBox="0 0 8 2" fill="none"><rect width="8" height="2" rx="1" fill="white"/></svg>
+        <svg width="8" height="2" viewBox="0 0 8 2" fill="none"><rect width="8" height="2" rx="1" fill={checkColor}/></svg>
       )}
       {checked && (
         <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-          <polyline points="1,3.5 3.5,6 8,1" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+          <polyline points="1,3.5 3.5,6 8,1" stroke={checkColor} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       )}
     </span>
@@ -106,7 +111,7 @@ function RatingStars({ rating }) {
   )
 }
 
-/* ── Generic confirm modal — handles archive / unarchive / permanent delete ── */
+/* ── Generic confirm modal ── */
 function ActionModal({ mode, name, count, onConfirm, onCancel, busy }) {
   const isBulk = count > 1
 
@@ -201,10 +206,7 @@ function Avatar({ name, size = 56 }) {
       width: size, height: size, borderRadius: '50%',
       background: `linear-gradient(135deg, ${bg}, ${bg}cc)`,
       color: fg, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size * 0.33, fontWeight: 700, flexShrink: 0,
-      border: `2.5px solid ${fg}30`,
-      boxShadow: `0 4px 12px ${fg}25`,
-      opacity: 1,
+      fontSize: size * 0.35, fontWeight: 700, flexShrink: 0,
     }}>{initials}</div>
   )
 }
@@ -212,9 +214,16 @@ function Avatar({ name, size = 56 }) {
 /* ── Faculty Card ── */
 function FacultyCard({ faculty, selected, onSelect, onClick, onArchive, onUnarchive, onDelete, selectionMode, viewTab }) {
   const [hovered, setHovered] = useState(false)
-  const isOverloaded = (faculty.units ?? 0) > (faculty.max_units ?? 21)
-  const unitPct = Math.min(100, ((faculty.units ?? 0) / (faculty.max_units ?? 21)) * 100)
   const isArchived = !!faculty.archived
+  const isFullTime = faculty.status === 'full-time'
+
+  const statusColor   = isArchived ? '#918CAF' : isFullTime ? '#059669' : '#7C6FCD'
+  const statusBg      = isArchived ? '#F0EEF8' : isFullTime ? '#E6FAF3' : '#F2EFFD'
+  const statusBorder  = isArchived ? '#D8D3F5' : isFullTime ? '#B3EDD6' : '#DDD8F5'
+  const statusLabel   = isArchived ? 'Archived'  : isFullTime ? 'Full-time' : 'Part-time'
+  const headerGrad    = isArchived
+    ? 'linear-gradient(160deg,#B0ABCA 0%,#7E7A9C 100%)'
+    : 'linear-gradient(160deg,#9C91E4 0%,#5E52C0 100%)'
 
   return (
     <div
@@ -222,147 +231,169 @@ function FacultyCard({ faculty, selected, onSelect, onClick, onArchive, onUnarch
       onMouseLeave={() => setHovered(false)}
       onClick={onClick}
       style={{
-        background: isArchived ? '#FAFAF8' : (selected ? '#FDFCFF' : '#fff'),
-        borderRadius: 16,
-        border: `1.5px solid ${selected ? '#7C6FCD' : isArchived ? '#E8E3D8' : hovered ? '#C4BBF0' : '#E8E4F8'}`,
-        padding: '18px 18px 16px',
+        background: '#fff',
+        borderRadius: 14,
+        border: `1.5px solid ${selected ? '#7C6FCD' : hovered ? '#C4BBF0' : '#EEEBF9'}`,
         cursor: 'pointer',
         position: 'relative',
-        opacity: isArchived ? 0.82 : 1,
+        opacity: isArchived ? 0.85 : 1,
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'row',
         boxShadow: selected
-          ? '0 0 0 3px rgba(124,111,205,0.18), 0 8px 24px rgba(124,111,205,0.14)'
+          ? '0 0 0 3px rgba(124,111,205,0.2), 0 4px 16px rgba(124,111,205,0.14)'
           : hovered
-            ? '0 8px 24px rgba(124,111,205,0.13)'
-            : '0 2px 8px rgba(124,111,205,0.06)',
+            ? '0 4px 18px rgba(124,111,205,0.13)'
+            : '0 1px 4px rgba(124,111,205,0.07)',
         transform: hovered && !selected ? 'translateY(-2px)' : 'none',
-        transition: 'all 0.18s ease',
+        transition: 'all 0.17s ease',
       }}
     >
-      {/* Selection checkbox */}
-      <div
-        onClick={e => { e.stopPropagation(); onSelect() }}
-        style={{
-          position: 'absolute', top: 12, right: 12,
-          opacity: selected ? 1 : hovered || selectionMode ? 0.85 : 0.3,
-          transition: 'opacity 0.15s',
-          zIndex: 2,
-        }}
-      >
-        <Checkbox checked={selected} onChange={() => {}} />
+      {/* ── Left gradient strip ── */}
+      <div style={{
+        width: 74,
+        flexShrink: 0,
+        background: headerGrad,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        {/* Decorative background circles */}
+        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} viewBox="0 0 74 90" preserveAspectRatio="xMidYMid slice">
+          <circle cx="66" cy="10" r="28" fill="rgba(255,255,255,0.07)" />
+          <circle cx="12" cy="78" r="22" fill="rgba(255,255,255,0.06)" />
+          <circle cx="37" cy="45" r="32" fill="rgba(255,255,255,0.04)" />
+        </svg>
+
+        {/* Avatar ring */}
+        <div style={{
+          width: 48, height: 48, borderRadius: '50%',
+          background: 'rgba(255,255,255,0.22)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.3)',
+          position: 'relative', zIndex: 1,
+        }}>
+          <Avatar name={faculty.name} size={40} />
+        </div>
       </div>
 
-      {/* Header: avatar + name + rank */}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 14 }}>
-        <Avatar name={faculty.name} size={44} />
-        <div style={{ flex: 1, minWidth: 0, paddingRight: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1a2e', lineHeight: 1.2, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {faculty.name}
-          </div>
-          <div style={{ fontSize: 11, color: '#8883B0', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      {/* ── Right content panel ── */}
+      <div style={{
+        flex: 1,
+        minWidth: 0,
+        padding: '13px 14px 13px 15px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        gap: 5,
+        position: 'relative',
+      }}>
+        {/* Checkbox */}
+        <div
+          onClick={e => { e.stopPropagation(); onSelect() }}
+          style={{
+            position: 'absolute', top: 9, right: 9,
+            opacity: selected ? 1 : hovered || selectionMode ? 0.7 : 0.2,
+            transition: 'opacity 0.15s', zIndex: 2,
+          }}
+        >
+          <Checkbox checked={selected} />
+        </div>
+
+        {/* Name */}
+        <div style={{
+          fontSize: 12.5, fontWeight: 700, color: '#1C1A3A',
+          lineHeight: 1.35, wordBreak: 'break-word',
+          paddingRight: selected || hovered || selectionMode ? 20 : 4,
+        }}>
+          {faculty.name}
+        </div>
+
+        {/* Rank row */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 4,
+          fontSize: 11, color: '#9B96C4', fontWeight: 500,
+        }}>
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>
+          </svg>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {faculty.AcademicRank || 'No rank set'}
-          </div>
+          </span>
         </div>
-      </div>
 
-      {/* Status badges */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-        <span style={{
-          padding: '2px 9px', borderRadius: 99, fontSize: 10.5, fontWeight: 700,
-          background: faculty.status === 'full-time' ? '#E6FAF3' : '#F5F4FB',
-          color: faculty.status === 'full-time' ? '#059669' : '#8883B0',
-          border: `1px solid ${faculty.status === 'full-time' ? '#B8F0DC' : '#E8E4F8'}`,
-          textTransform: 'capitalize',
-        }}>{faculty.status}</span>
-
-        {isArchived && (
+        {/* Status pill */}
+        <div style={{ marginTop: 2 }}>
           <span style={{
-            padding: '2px 9px', borderRadius: 99, fontSize: 10.5, fontWeight: 700,
-            background: '#FEF3CD', color: '#B45309', border: '1px solid #FDE68A',
-          }}>Archived</span>
-        )}
-
-        {isOverloaded && !isArchived && (
-          <span style={{
-            padding: '2px 9px', borderRadius: 99, fontSize: 10.5, fontWeight: 700,
-            background: '#FFE8E8', color: '#C0392B', border: '1px solid #FFCCCC',
-          }}>Overloaded</span>
-        )}
-      </div>
-
-      {/* Unit load bar */}
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ height: 4, background: '#F0EDF9', borderRadius: 99, overflow: 'hidden' }}>
-          <div style={{
-            height: '100%', width: `${unitPct}%`,
-            background: isArchived
-              ? 'linear-gradient(90deg,#D4C89A,#B8A870)'
-              : isOverloaded
-                ? 'linear-gradient(90deg,#E74C3C,#C0392B)'
-                : unitPct > 80
-                  ? 'linear-gradient(90deg,#F39C12,#D97706)'
-                  : 'linear-gradient(90deg,#7C6FCD,#5a4fbf)',
-            borderRadius: 99,
-            transition: 'width 0.3s ease',
-          }} />
-        </div>
-      </div>
-
-      {/* Specializations */}
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', minHeight: 24 }}>
-        {(faculty.specializations || []).length === 0 ? (
-          <span style={{ fontSize: 11, color: '#C0BBDC', fontStyle: 'italic' }}>No specializations</span>
-        ) : (
-          <>
-            {(faculty.specializations || []).slice(0, 3).map((s, i) => (
-              <span key={i} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                padding: '2px 7px', borderRadius: 99, fontSize: 10, fontWeight: 700,
-                background: '#F0EDF9', color: '#5a4fbf',
-                border: '1px solid #E0DAF8',
-              }}>
-                {typeof s === 'object' ? s.courseCode : s}
-                {typeof s === 'object' && <RatingStars rating={s.rating} />}
-              </span>
-            ))}
-            {(faculty.specializations || []).length > 3 && (
-              <span style={{
-                padding: '2px 7px', borderRadius: 99, fontSize: 10, fontWeight: 700,
-                background: '#F5F4FB', color: '#8883B0', border: '1px solid #E8E4F8',
-              }}>+{faculty.specializations.length - 3} more</span>
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '3px 9px', borderRadius: 99, fontSize: 9.5, fontWeight: 700,
+            background: statusBg,
+            color: statusColor,
+            border: `1px solid ${statusBorder}`,
+            textTransform: 'uppercase', letterSpacing: '0.7px',
+          }}>
+            <span style={{
+              width: 5, height: 5, borderRadius: '50%',
+              background: statusColor, flexShrink: 0,
+              boxShadow: `0 0 0 2px ${statusBg}`,
+            }} />
+            {statusLabel}
+            {isArchived && faculty.status && (
+              <span style={{ opacity: 0.5, marginLeft: 2 }}>·</span>
             )}
-          </>
-        )}
+            {isArchived && faculty.status && (
+              <span style={{ textTransform: 'uppercase' }}>{faculty.status}</span>
+            )}
+          </span>
+        </div>
       </div>
 
-      {/* Hover action bar */}
+      {/* ── Status accent line (bottom) ── */}
+      <div style={{
+        position: 'absolute', bottom: 0, left: 74, right: 0,
+        height: 2.5,
+        background: isArchived
+          ? 'linear-gradient(90deg,#C5C0D8,#E0DBEE)'
+          : isFullTime
+            ? 'linear-gradient(90deg,#34D399,#059669)'
+            : 'linear-gradient(90deg,#A99BE8,#7C6FCD)',
+        opacity: hovered || selected ? 1 : 0.45,
+        transition: 'opacity 0.17s',
+      }} />
+
+      {/* ── Hover action bar ── */}
       {hovered && !selectionMode && (
         <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0,
-          background: 'linear-gradient(to top, rgba(124,111,205,0.08), transparent)',
-          borderRadius: '0 0 14px 14px', height: 36,
-          display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
-          paddingBottom: 7, paddingLeft: 12, paddingRight: 10,
+          position: 'absolute', bottom: 0, left: 74, right: 0,
+          background: 'rgba(255,255,255,0.97)',
+          backdropFilter: 'blur(6px)',
+          borderTop: '1px solid #EBE7F8',
+          height: 36,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0 12px',
+          animation: 'fadeIn 0.13s ease',
         }}>
-          <span style={{ fontSize: 10.5, color: '#7C6FCD', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+          <span style={{ fontSize: 10, color: '#7C6FCD', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#7C6FCD" strokeWidth="2.5">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
             </svg>
-            Click to edit
+            View & edit
           </span>
 
-          <div style={{ display: 'flex', gap: 5 }}>
-            {/* Active tab: Archive button */}
+          <div style={{ display: 'flex', gap: 4 }}>
             {viewTab === 'active' && (
               <button
                 onClick={e => { e.stopPropagation(); onArchive() }}
-                title="Archive faculty member"
+                title="Archive"
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: 26, height: 26, borderRadius: 7,
+                  width: 24, height: 24, borderRadius: 6,
                   background: '#FEF3CD', border: '1px solid #FDE68A',
                   color: '#B45309', cursor: 'pointer', flexShrink: 0,
-                  transition: 'all 0.15s', padding: 0,
+                  transition: 'all 0.14s', padding: 0,
                 }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#D97706'; e.currentTarget.style.color = '#fff' }}
                 onMouseLeave={e => { e.currentTarget.style.background = '#FEF3CD'; e.currentTarget.style.color = '#B45309' }}
@@ -373,18 +404,17 @@ function FacultyCard({ faculty, selected, onSelect, onClick, onArchive, onUnarch
               </button>
             )}
 
-            {/* Archived tab: Unarchive + Permanent Delete buttons */}
             {viewTab === 'archived' && (
               <>
                 <button
                   onClick={e => { e.stopPropagation(); onUnarchive() }}
-                  title="Restore faculty member"
+                  title="Restore"
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    width: 26, height: 26, borderRadius: 7,
+                    width: 24, height: 24, borderRadius: 6,
                     background: '#E6FAF3', border: '1px solid #A7F3D0',
                     color: '#059669', cursor: 'pointer', flexShrink: 0,
-                    transition: 'all 0.15s', padding: 0,
+                    transition: 'all 0.14s', padding: 0,
                   }}
                   onMouseEnter={e => { e.currentTarget.style.background = '#059669'; e.currentTarget.style.color = '#fff' }}
                   onMouseLeave={e => { e.currentTarget.style.background = '#E6FAF3'; e.currentTarget.style.color = '#059669' }}
@@ -395,13 +425,13 @@ function FacultyCard({ faculty, selected, onSelect, onClick, onArchive, onUnarch
                 </button>
                 <button
                   onClick={e => { e.stopPropagation(); onDelete() }}
-                  title="Permanently delete"
+                  title="Delete permanently"
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    width: 26, height: 26, borderRadius: 7,
+                    width: 24, height: 24, borderRadius: 6,
                     background: '#FFE8E8', border: '1px solid #FFCCCC',
                     color: '#C0392B', cursor: 'pointer', flexShrink: 0,
-                    transition: 'all 0.15s', padding: 0,
+                    transition: 'all 0.14s', padding: 0,
                   }}
                   onMouseEnter={e => { e.currentTarget.style.background = '#C0392B'; e.currentTarget.style.color = '#fff' }}
                   onMouseLeave={e => { e.currentTarget.style.background = '#FFE8E8'; e.currentTarget.style.color = '#C0392B' }}
@@ -425,41 +455,27 @@ function FacultyCard({ faculty, selected, onSelect, onClick, onArchive, onUnarch
 export default function FacultyListPage() {
   const { toasts, toast } = useToast()
 
-  // ── FIX: Split into two independent state arrays ──────────────────────────
-  // Previously, one `faculty` array was fetched and then split client-side by
-  // the `archived` flag. But getFaculty() now only returns active faculty
-  // (include_archived=false), so archivedFaculty was always [].
-  //
-  // Now we maintain two separate arrays and fetch them independently.
-  // This also means switching tabs doesn't re-fetch — both lists are loaded
-  // on mount and after any mutation.
   const [activeFaculty,   setActiveFaculty]   = useState([])
   const [archivedFaculty, setArchivedFaculty] = useState([])
 
   const [search,        setSearch]        = useState('')
   const [statusFilter,  setStatusFilter]  = useState([])
-  const [viewTab,       setViewTab]       = useState('active')   // 'active' | 'archived'
+  const [viewTab,       setViewTab]       = useState('active')
   const [loading,       setLoading]       = useState(true)
   const [selected,      setSelected]      = useState(new Set())
   const [busy,          setBusy]          = useState(false)
   const [showImport,    setShowImport]    = useState(false)
   const [pendingAction, setPendingAction] = useState(null)
-  // pendingAction: { mode: 'archive'|'unarchive'|'delete', id?, name?, bulk?, count?, targets? } | null
+
   const navigate = useNavigate()
 
-  // ── FIX: Fetch active and archived lists in parallel ─────────────────────
-  // Both calls go out at the same time (Promise.all) so there's no extra
-  // round-trip penalty compared to the old single-fetch approach.
   async function load() {
     setLoading(true)
     try {
       const [active, archived] = await Promise.all([
-        getFaculty(),           // GET /faculty/?include_archived=false
-        getArchivedFaculty(),   // GET /faculty/?include_archived=true  → filter on server
+        getFaculty(),
+        getArchivedFaculty(),
       ])
-      // getArchivedFaculty returns ALL docs (include_archived=true).
-      // We filter client-side here so the active list is never polluted
-      // if the server ever changes behaviour, and to keep the contract clear.
       setActiveFaculty(active)
       setArchivedFaculty(archived.filter(f => f.archived))
     } finally {
@@ -469,7 +485,6 @@ export default function FacultyListPage() {
   }
   useEffect(() => { load() }, [])
 
-  // The tab drives which list we display — no useMemo split needed anymore.
   const tabFaculty = viewTab === 'active' ? activeFaculty : archivedFaculty
 
   const filtered = useMemo(() => tabFaculty.filter(f => {
@@ -497,12 +512,11 @@ export default function FacultyListPage() {
     setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
 
-  /* ── Single-item action triggers ── */
+  /* ── Action triggers ── */
   function handleCardArchive(id, name)   { setPendingAction({ mode: 'archive',   id, name }) }
   function handleCardUnarchive(id, name) { setPendingAction({ mode: 'unarchive', id, name }) }
   function handleCardDelete(id, name)    { setPendingAction({ mode: 'delete',    id, name }) }
 
-  /* ── Bulk action triggers ── */
   function handleBulkArchive() {
     const targets = filtered.filter(f => selected.has(f.id))
     if (!targets.length) return
@@ -565,6 +579,56 @@ export default function FacultyListPage() {
 
   const hasFilter = search || statusFilter.length > 0
 
+  /* ── Export current faculty list as Excel (matrix template format) ── */
+  function handleExport() {
+    if (!filtered.length) return
+
+    const wb = XLSX.utils.book_new()
+
+    const groups = {
+      'Full-time': filtered.filter(f => f.status === 'full-time'),
+      'Part-time':  filtered.filter(f => f.status === 'part-time'),
+    }
+
+    Object.entries(groups).forEach(([sheetLabel, members]) => {
+      if (!members.length) return
+
+      const allCodes = [...new Set(
+        members.flatMap(f => (f.specializations || []).map(s => typeof s === 'object' ? s.courseCode : s))
+      )].sort()
+
+      const lastNameRow = ['COURSES CODE', 'COURSES NAME', ...members.map(f => {
+        const parts = f.name.split(',')
+        return parts[0]?.trim().toUpperCase() || f.name.toUpperCase()
+      })]
+
+      const firstNameRow = ['', `\u21b3 ${sheetLabel.toUpperCase()} FACULTY`, ...members.map(f => {
+        const parts = f.name.split(',')
+        return parts[1]?.trim().toUpperCase() || ''
+      })]
+
+      const rows = [lastNameRow, firstNameRow]
+
+      allCodes.forEach(code => {
+        const row = [code, '', ...members.map(f => {
+          const spec = (f.specializations || []).find(s =>
+            (typeof s === 'object' ? s.courseCode : s) === code
+          )
+          return spec ? (typeof spec === 'object' ? spec.rating : '') : ''
+        })]
+        rows.push(row)
+      })
+
+      const ws = XLSX.utils.aoa_to_sheet(rows)
+      ws['!cols'] = [{ wch: 18 }, { wch: 24 }, ...members.map(() => ({ wch: 16 }))]
+      XLSX.utils.book_append_sheet(wb, ws, sheetLabel)
+    })
+
+    const date = new Date().toISOString().slice(0, 10)
+    XLSX.writeFile(wb, `Faculty-Specialization-Matrix-${date}.xlsx`)
+    toast('Faculty data exported successfully', 'success')
+  }
+
   return (
     <div style={{ padding: '28px 32px', fontFamily: "'Poppins',sans-serif" }}>
       <style>{`
@@ -615,6 +679,29 @@ export default function FacultyListPage() {
         </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+          {/* Export button — small, icon only */}
+          <button
+            onClick={handleExport}
+            disabled={!filtered.length}
+            title="Export faculty to Excel"
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: 34, height: 34, borderRadius: 9,
+              border: '1.5px solid #D8D3F5',
+              background: '#fff', color: '#7C6FCD',
+              cursor: filtered.length ? 'pointer' : 'not-allowed',
+              opacity: filtered.length ? 1 : 0.45,
+              transition: 'all 0.15s', flexShrink: 0, padding: 0,
+            }}
+            onMouseEnter={e => { if (filtered.length) { e.currentTarget.style.background = '#F2EFFD'; e.currentTarget.style.borderColor = '#B8B0E8' } }}
+            onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#D8D3F5' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path d="M12 19V5"/><polyline points="5 12 12 5 19 12"/>
+              <line x1="4" y1="20" x2="20" y2="20"/>
+            </svg>
+          </button>
+
           <button
             onClick={() => setShowImport(true)}
             style={{
@@ -629,7 +716,7 @@ export default function FacultyListPage() {
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+              <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
             Import Faculty
           </button>
@@ -773,34 +860,25 @@ export default function FacultyListPage() {
       {loading ? (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-          gap: 16,
+          gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+          gap: 14,
           animation: 'fadeIn 0.25s ease',
         }}>
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} style={{
-              background: '#fff', borderRadius: 16, border: '1.5px solid #E8E4F8',
-              padding: '18px 18px 16px', position: 'relative',
-              boxShadow: '0 2px 8px rgba(124,111,205,0.06)'
+              background: '#fff', borderRadius: 14, border: '1.5px solid #EEEBF9',
+              overflow: 'hidden', display: 'flex', flexDirection: 'row',
+              boxShadow: '0 1px 4px rgba(124,111,205,0.06)'
             }}>
-              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 14 }}>
-                <Skel w={44} h={44} r="50%" />
-                <div style={{ flex: 1, paddingTop: 4 }}>
-                  <Skel w="70%" h={14} style={{ marginBottom: 6 }} />
-                  <Skel w="40%" h={11} />
-                </div>
+              {/* Left strip skeleton */}
+              <div style={{ width: 74, flexShrink: 0, background: 'linear-gradient(160deg,#C5C0E0,#A099CC)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'rgba(255,255,255,0.22)' }} />
               </div>
-              <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-                <Skel w={65} h={18} r={99} />
-                <Skel w={55} h={18} r={99} />
-              </div>
-              <div style={{ marginBottom: 12 }}>
-                <Skel w="100%" h={4} r={99} />
-              </div>
-              <div style={{ display: 'flex', gap: 4 }}>
-                <Skel w={45} h={18} r={99} />
-                <Skel w={60} h={18} r={99} />
-                <Skel w={50} h={18} r={99} />
+              {/* Right content skeleton */}
+              <div style={{ flex: 1, padding: '12px 13px', display: 'flex', flexDirection: 'column', gap: 7 }}>
+                <Skel w="85%" h={11} r={4} />
+                <Skel w="55%" h={9} r={4} />
+                <Skel w={62} h={16} r={99} />
               </div>
             </div>
           ))}
@@ -833,8 +911,8 @@ export default function FacultyListPage() {
       ) : (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-          gap: 16,
+          gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+          gap: 14,
           animation: 'fadeIn 0.25s ease',
         }}>
           {filtered.map(f => (

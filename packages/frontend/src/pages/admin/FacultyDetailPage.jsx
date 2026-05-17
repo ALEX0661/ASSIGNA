@@ -343,6 +343,17 @@ export default function FacultyDetailPage() {
                   prefsChanged={prefsChanged} prefSaving={prefSaving} prefSaved={prefSaved} prefError={prefError} onSavePrefs={handleSavePrefs}
                 />
               )}
+              {!isNew && form.status === 'full-time' && (
+                <CredentialsCard
+                  form={form}
+                  credEmail={credEmail} setCredEmail={setCredEmail}
+                  credPassword={credPassword} setCredPassword={setCredPassword}
+                  credConfirm={credConfirm} setCredConfirm={setCredConfirm}
+                  showCredPwd={showCredPwd} setShowCredPwd={setShowCredPwd}
+                  credSaving={credSaving} credError={credError} credSuccess={credSuccess}
+                  onSave={handleSaveCredentials}
+                />
+              )}
               {isNew && (
                 <div>
                   {createError && (
@@ -365,15 +376,17 @@ export default function FacultyDetailPage() {
           {/* Full-width rows — edit mode only */}
           {!isNew && (
             <>
-              <CredentialsCard
-                form={form}
-                credEmail={credEmail} setCredEmail={setCredEmail}
-                credPassword={credPassword} setCredPassword={setCredPassword}
-                credConfirm={credConfirm} setCredConfirm={setCredConfirm}
-                showCredPwd={showCredPwd} setShowCredPwd={setShowCredPwd}
-                credSaving={credSaving} credError={credError} credSuccess={credSuccess}
-                onSave={handleSaveCredentials}
-              />
+              {form.status === 'part-time' && (
+                <CredentialsCard
+                  form={form}
+                  credEmail={credEmail} setCredEmail={setCredEmail}
+                  credPassword={credPassword} setCredPassword={setCredPassword}
+                  credConfirm={credConfirm} setCredConfirm={setCredConfirm}
+                  showCredPwd={showCredPwd} setShowCredPwd={setShowCredPwd}
+                  credSaving={credSaving} credError={credError} credSuccess={credSuccess}
+                  onSave={handleSaveCredentials}
+                />
+              )}
               <ScheduleSection
                 facultyName={form.name}
                 onUnitsLoaded={setScheduleUnits}
