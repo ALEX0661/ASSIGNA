@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from app.core.auth import admin_only
 from app.core.firebase import db, refresh_courses_cache
 from app.models.course import Course, CourseUpdate
+from google.cloud import firestore as fs
 import pandas as pd
 import io
 import logging
@@ -160,7 +161,28 @@ def update_course(course_code: str, program: str, data: CourseUpdate, user=Depen
     doc_ref = db.collection("courses").document(doc_id)
     if not doc_ref.get().exists:
         raise HTTPException(404, "Course not found")
-    update_data = {k: v for k, v in data.dict().items() if v is not None}
+
+    # Build the update payload.
+    # - Non-None values are written as-is.
+    # - Explicit None on a nullable field (e.g. preferredRoom) means "clear it"
+    #   → use DELETE_FIELD so Firestore actually removes the field rather than
+    #     leaving the old value in place.
+    # - Fields that are None only because they weren't sent (all other optional
+    #   fields) are skipped entirely via exclude_unset so we don't accidentally
+    #   wipe legitimate data.
+    NULLABLE_FIELDS = {"preferredRoom"}
+
+    update_data = {}
+    for k, v in data.dict(exclude_unset=True).items():
+        if v is None and k in NULLABLE_FIELDS:
+            update_data[k] = fs.DELETE_FIELD   # clears the field in Firestore
+        elif v is not None:
+            update_data[k] = v
+
+    if not update_data:
+        # Nothing actually changed — return success without hitting Firestore.
+        return {"updated": doc_id}
+
     doc_ref.update(update_data)
     refresh_courses_cache()
     return {"updated": doc_id}

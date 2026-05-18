@@ -230,12 +230,13 @@ export function Legend() {
 }
 
 // ── Program Color Legend ──────────────────────────────────────────────────────
-// Shows each program's section shades so users can quickly read the grid.
-// Pass `events` (the full event list) so it only renders programs actually present.
+// Always-visible horizontal legend.
+// Shows each program's accent colours (one per block letter actually present)
+// so users can immediately match card stripes to blocks.
 export function ProgramLegend({ events = [] }) {
-  const [expanded, setExpanded] = useState(false)
+  const [open, setOpen] = useState(false)
 
-  // Collect unique programs + their blocks actually present in the schedule
+  // Collect programs & the block letters that are actually in the schedule
   const programBlocks = useMemo(() => {
     const map = {}
     events.forEach(e => {
@@ -253,117 +254,146 @@ export function ProgramLegend({ events = [] }) {
   return (
     <div style={{
       background: '#fff', border: `1px solid ${TV.border}`,
-      borderRadius: 10, overflow: 'hidden',
-      marginBottom: 10, fontFamily: 'Poppins, sans-serif',
+      borderRadius: 10, overflow: 'hidden', marginBottom: 10,
+      fontFamily: 'Poppins, sans-serif',
     }}>
-      {/* Header toggle */}
-      <button
-        onClick={() => setExpanded(v => !v)}
-        style={{
-          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '8px 14px', background: 'transparent', border: 'none',
-          cursor: 'pointer', gap: 8,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Palette icon */}
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={TV.deep} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M12 2a10 10 0 0 1 0 20c-1.7 0-3-1.3-3-3 0-.8.3-1.5.8-2l1.2-1.2A2 2 0 0 0 12 14a2 2 0 0 0-2-2H6a4 4 0 0 1 0-8"/>
-          </svg>
-          <span style={{ fontSize: 11.5, fontWeight: 700, color: TV.text }}>Program Color Legend</span>
-          <span style={{ fontSize: 10, color: TV.muted, fontWeight: 400 }}>
-            — {programs.length} program{programs.length !== 1 ? 's' : ''}, darker shade = later block
-          </span>
-        </div>
-        <svg
-          width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={TV.muted}
-          strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-          style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform .2s' }}
-        >
-          <polyline points="6 9 12 15 18 9"/>
-        </svg>
-      </button>
-
-      {/* Expanded content */}
-      {expanded && (
-        <div style={{
-          padding: '4px 14px 14px',
-          borderTop: `1px solid ${TV.border}`,
-          display: 'flex', flexWrap: 'wrap', gap: 12,
-        }}>
+      {/* ── Header ── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '8px 14px', borderBottom: open ? `1px solid ${TV.border}` : 'none',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {/* Compact always-visible strip — one chip per program */}
           {programs.map(prog => {
             const blocks  = [...programBlocks[prog]].sort()
-            const palette = PROGRAM_SHADE_PALETTE[prog]
-            const base    = programColor(prog)
-
+            const first   = sectionColor(prog, blocks[0] ?? 'A')
             return (
               <div key={prog} style={{
-                display: 'flex', flexDirection: 'column', gap: 5,
-                background: '#FAFAFE', borderRadius: 8,
-                border: `1px solid ${TV.border}`,
-                padding: '8px 10px', minWidth: 110,
+                display: 'flex', alignItems: 'center', gap: 4,
               }}>
-                {/* Program name pill */}
-                <div style={{
-                  display: 'inline-flex', alignItems: 'center',
-                  background: base.bg, border: `1.5px solid ${base.border}`,
-                  borderRadius: 20, padding: '2px 8px', alignSelf: 'flex-start',
+                {/* Program label pill using base color */}
+                <span style={{
+                  fontSize: 9.5, fontWeight: 800,
+                  background: first.bg,
+                  border: `1.5px solid ${first.border}`,
+                  color: first.text,
+                  borderRadius: 20, padding: '1.5px 8px',
+                  letterSpacing: '-.2px', whiteSpace: 'nowrap',
                 }}>
-                  <span style={{ fontSize: 10, fontWeight: 800, color: base.text, letterSpacing: '-.2px' }}>
-                    {prog}
-                  </span>
-                </div>
-
-                {/* Block swatches */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                  {blocks.map(block => {
-                    const clr = sectionColor(prog, block)
-                    return (
-                      <div
-                        key={block}
-                        title={`${prog} Block ${block}`}
-                        style={{
-                          width: 26, height: 26, borderRadius: 5,
-                          background: clr.bg,
-                          border: `2px solid ${clr.border}`,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          flexShrink: 0,
-                        }}
-                      >
-                        <span style={{ fontSize: 9, fontWeight: 800, color: clr.text }}>
-                          {block}
-                        </span>
-                      </div>
-                    )
-                  })}
-                  {/* If program has a palette, show up to 6 shades even for unlisted blocks */}
-                  {!blocks.length && palette && palette.slice(0, 3).map((clr, i) => (
-                    <div key={i} style={{
-                      width: 26, height: 26, borderRadius: 5,
-                      background: clr.bg, border: `2px solid ${clr.border}`,
-                    }} />
-                  ))}
-                </div>
-
-                {/* Shade gradient hint */}
-                {palette && blocks.length > 1 && (
-                  <div style={{ display: 'flex', gap: 1, borderRadius: 3, overflow: 'hidden', height: 4 }}>
-                    {palette.map((clr, i) => (
-                      <div key={i} style={{ flex: 1, background: clr.border, opacity: 0.7 }} />
-                    ))}
-                  </div>
-                )}
+                  {prog}
+                </span>
+                {/* Accent colour dots — one per block */}
+                {blocks.map(bl => {
+                  const c = sectionColor(prog, bl)
+                  return (
+                    <div
+                      key={bl}
+                      title={`${prog} · Block ${bl}`}
+                      style={{
+                        width: 18, height: 18, borderRadius: 4,
+                        background: c.accent,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <span style={{ fontSize: 8, fontWeight: 900, color: c.badgeText }}>
+                        {bl}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
             )
           })}
+        </div>
 
+        {/* Expand button */}
+        <button
+          onClick={() => setOpen(v => !v)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            fontSize: 10.5, fontWeight: 600, color: TV.muted, flexShrink: 0,
+            padding: '2px 4px', borderRadius: 6,
+          }}
+        >
+          {open ? 'Less' : 'Details'}
+          <svg
+            width="11" height="11" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2.5"
+            style={{ transform: open ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform .2s' }}
+          >
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* ── Expanded detail panel ── */}
+      {open && (
+        <div style={{ padding: '12px 14px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <p style={{ margin: 0, fontSize: 10, color: TV.muted, lineHeight: 1.5 }}>
+            Each card's <strong style={{ color: TV.text }}>left stripe</strong> and{' '}
+            <strong style={{ color: TV.text }}>block badge</strong> use the accent colour below.
+            Block A is lightest, later blocks get progressively darker.
+          </p>
+
+          {/* Grid of all programs × all blocks */}
           <div style={{
-            alignSelf: 'flex-end', fontSize: 10, color: TV.muted,
-            paddingBottom: 2, lineHeight: 1.5,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+            gap: 8,
           }}>
-            <div>■ Block A → lightest shade</div>
-            <div>■ Block F → deepest accent</div>
+            {programs.map(prog => {
+              const blocks  = [...programBlocks[prog]].sort()
+              const baseClr = programColor(prog)
+              return (
+                <div key={prog} style={{
+                  background: baseClr.bg, border: `1.5px solid ${baseClr.border}`,
+                  borderRadius: 8, padding: '8px 10px',
+                  display: 'flex', flexDirection: 'column', gap: 6,
+                }}>
+                  {/* Program header */}
+                  <span style={{
+                    fontSize: 11, fontWeight: 800, color: baseClr.text, letterSpacing: '-.3px',
+                  }}>
+                    {prog}
+                  </span>
+
+                  {/* Block swatches */}
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {blocks.map(bl => {
+                      const c = sectionColor(prog, bl)
+                      return (
+                        <div key={bl} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                          {/* Accent swatch (matches the left stripe on the card) */}
+                          <div style={{
+                            width: 36, height: 28,
+                            background: c.accent,
+                            borderRadius: 5,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: '0 1px 4px rgba(0,0,0,.15)',
+                          }}>
+                            <span style={{ fontSize: 11, fontWeight: 900, color: c.badgeText, letterSpacing: '-.3px' }}>
+                              {bl}
+                            </span>
+                          </div>
+                          {/* Card bg preview */}
+                          <div style={{
+                            width: 36, height: 6,
+                            background: c.bg,
+                            border: `1px solid ${c.border}`,
+                            borderRadius: 3,
+                          }} />
+                          <span style={{ fontSize: 7.5, fontWeight: 700, color: baseClr.text, opacity: .7 }}>
+                            Blk {bl}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

@@ -19,6 +19,9 @@ export default function SessionCard({
 
   // ── Use section-aware color — block A = shade 0, B = shade 1, etc. ─────────
   const clr    = sectionColor(event.program, event.block)
+  // `accent` is the vivid left-stripe colour (bold, clearly different per block).
+  // `border` is the subtle card outline. Fall back gracefully if palette is old.
+  const stripeColor = clr.accent ?? clr.border
   const { top, height } = getEventStyle(event.period, slotH)
   const merged = isMerged
 
@@ -65,13 +68,13 @@ export default function SessionCard({
     borderColor = TV.mid;  badgeBg    = `rgba(124,111,205,.10)`; textColor = TV.deep
     glowColor   = 'rgba(124,111,205,.35)'
   } else {
-    // Normal state — use the section-aware color for the gradient
-    accentColor = clr.border
+    // Normal state — accent stripe is vivid, bg is the pale program tint
+    accentColor = stripeColor
     bgGradient  = `linear-gradient(160deg,${clr.bg} 0%,#fff 100%)`
     borderColor = clr.border
     badgeBg     = `rgba(0,0,0,.04)`
     textColor   = clr.text
-    glowColor   = 'rgba(0,0,0,.18)'
+    glowColor   = `${stripeColor}44`
   }
 
   const noSelect = {
@@ -229,15 +232,28 @@ export default function SessionCard({
           <span style={{ fontSize: 8, fontWeight: 600, color: textColor, opacity: 0.75, whiteSpace: 'nowrap', lineHeight: 1 }}>
             {event.period?.replace(/\s*[AP]M/g, '').trim()}
           </span>
-          <span style={{
-            fontSize: 7, fontWeight: 800, letterSpacing: '0.5px',
-            color: isLab ? TV.deep : textColor,
-            background: isLab ? `rgba(124,111,205,.12)` : badgeBg,
-            border: `1px solid ${isLab ? TV.mid : borderColor}`,
-            padding: '0.5px 4px', borderRadius: 3, lineHeight: 1.4, flexShrink: 0,
-          }}>
-            {sessionType}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            {/* Block badge (compact) */}
+            {event.block && (
+              <span style={{
+                fontSize: 6.5, fontWeight: 900,
+                background: accentColor,
+                color: clr.badgeText ?? '#fff',
+                borderRadius: 3, padding: '0.5px 4px', lineHeight: 1.4, flexShrink: 0,
+              }}>
+                {event.block}
+              </span>
+            )}
+            <span style={{
+              fontSize: 7, fontWeight: 800, letterSpacing: '0.5px',
+              color: isLab ? TV.deep : textColor,
+              background: isLab ? `rgba(124,111,205,.12)` : badgeBg,
+              border: `1px solid ${isLab ? TV.mid : borderColor}`,
+              padding: '0.5px 4px', borderRadius: 3, lineHeight: 1.4, flexShrink: 0,
+            }}>
+              {sessionType}
+            </span>
+          </div>
         </div>
       </div>
     )
@@ -333,6 +349,7 @@ export default function SessionCard({
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
+          {/* Session type badge */}
           <span style={{
             fontSize: 6.5, fontWeight: 800, letterSpacing: '0.7px',
             background: isLab ? `rgba(124,111,205,.12)` : badgeBg,
@@ -342,6 +359,18 @@ export default function SessionCard({
           }}>
             {sessionType}
           </span>
+          {/* Block letter badge — filled with the accent stripe colour */}
+          {event.block && (
+            <span style={{
+              fontSize: 7.5, fontWeight: 900, letterSpacing: '0.3px',
+              background: accentColor,
+              color: clr.badgeText ?? '#fff',
+              padding: '1px 6px', borderRadius: 4,
+              lineHeight: 1.4, flexShrink: 0,
+            }}>
+              {event.block}
+            </span>
+          )}
           <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
             {isUnassigned && <UnassignedDot />}
 
