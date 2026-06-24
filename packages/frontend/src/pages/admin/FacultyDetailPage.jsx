@@ -336,6 +336,7 @@ export default function FacultyDetailPage() {
                 form={form} setForm={setForm} isNew={isNew}
                 infoChanged={infoChanged} infoSaving={infoSaving} infoSaved={infoSaved} infoError={infoError} onSaveInfo={handleSaveInfo}
                 password={password} setPassword={setPassword} showPassword={showPassword} setShowPassword={setShowPassword}
+                facultyId={id}
               />
               {form.status === 'part-time' && (
                 <SchedulePrefsCard

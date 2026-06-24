@@ -167,10 +167,9 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
   const [courses,    setCourses]     = useState([])
   const [loadingCrs, setLoadingCrs]  = useState(false)
 
-  // ── Manual tab state
-  const [newCode,    setNewCode]     = useState('')
-  const [newRating,  setNewRating]   = useState(3)
-  const [codeError,  setCodeError]   = useState('')
+  // ── Manual tab state (removed — only catalog-based adding allowed)
+  const [newCode] = useState('')    // kept to avoid reference errors
+  const [codeError] = useState('')  // kept to avoid reference errors
 
   useEffect(() => {
     setLoadingCrs(true)
@@ -344,9 +343,6 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
             <NavBtn active={tab === 'browse'} onClick={() => setTab('browse')}
               icon={<><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></>}
               label="Browse Catalog" badge={pendingCount || null} />
-            <NavBtn active={tab === 'manual'} onClick={() => setTab('manual')}
-              icon={<><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></>}
-              label="Add Manually" />
 
             {specCount > 0 && (
               <div style={{ marginTop: 'auto', paddingTop: 14 }}>
@@ -398,7 +394,6 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                       </div>
                       <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                         <button onClick={() => setTab('browse')} style={{ padding: '7px 16px', borderRadius: 9, border: 'none', background: '#6D28D9', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Browse Catalog</button>
-                        <button onClick={() => setTab('manual')} style={{ padding: '7px 14px', borderRadius: 9, border: '1.5px solid #E5E7EB', background: '#fff', color: '#374151', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>Add Manually</button>
                       </div>
                     </div>
                   ) : filteredSpecs.length === 0 ? (
@@ -421,11 +416,17 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                             <div style={{ width: 3, borderRadius: 99, background: lvl.dot, alignSelf: 'stretch', flexShrink: 0, minHeight: 32 }} />
                             {/* Info */}
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: title ? 2 : 0 }}>
-                                <span style={{ fontSize: 12.5, fontWeight: 700, color: '#1a1a2e', letterSpacing: '0.2px' }}>{spec.courseCode}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 2 }}>
+                                {title ? (
+                                  <span style={{ fontSize: 12.5, fontWeight: 700, color: '#1a1a2e', letterSpacing: '0.2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{title}</span>
+                                ) : (
+                                  <span style={{ fontSize: 12.5, fontWeight: 700, color: '#1a1a2e', letterSpacing: '0.2px' }}>{spec.courseCode}</span>
+                                )}
                                 <LevelBadge rating={rating} />
                               </div>
-                              {title && <div style={{ fontSize: 11.5, color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</div>}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontFamily: 'monospace', fontSize: 10.5, fontWeight: 600, color: '#6D28D9', background: '#F5F3FF', padding: '1px 7px', borderRadius: 5, border: '1px solid #DDD6FE', flexShrink: 0 }}>{spec.courseCode}</span>
+                              </div>
                             </div>
                             {/* Rating pips */}
                             <RatingPips size="sm" value={rating} onChange={r => setSpecs(p => p.map((s, i) => i === origIdx ? { ...s, rating: r } : s))} />
@@ -539,7 +540,8 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minWidth: 0 }}>
                       <span style={{ fontSize: 12, fontWeight: 600, color: '#5B3FBF', flexShrink: 0 }}>Staged:</span>
                       {pendingList.slice(0, 5).map(p => {
-                        const lvl = getLvl(p.rating)
+                        const lvl   = getLvl(p.rating)
+                        const label = p.title || courseTitleMap[p.code.toLowerCase()] || p.code
                         return (
                           <span key={p.code} style={{
                             display: 'inline-flex', alignItems: 'center', gap: 5,
@@ -547,7 +549,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                             background: '#fff', border: `1.5px solid ${lvl.border}`,
                             fontSize: 11.5, fontWeight: 600, color: lvl.color,
                           }}>
-                            {p.code}
+                            {label !== p.code ? label : p.code}
                             <span style={{ fontSize: 10, background: lvl.bg, padding: '0 5px', borderRadius: 99, color: lvl.color, fontWeight: 700 }}>{p.rating}</span>
                             <button type="button" onClick={() => togglePending({ courseCode: p.code }, p.rating)}
                               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: lvl.color, opacity: 0.6 }}>
@@ -693,17 +695,21 @@ function BrowseCourseRow({ course, already, staged, onRate }) {
       }}>
       {/* Course info */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: course.title ? 1 : 0 }}>
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: '#1a1a2e', letterSpacing: '0.2px' }}>{code}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: course.title ? 3 : 0 }}>
+          {course.title ? (
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: '#1a1a2e', letterSpacing: '0.2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{course.title}</span>
+          ) : (
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: '#1a1a2e', letterSpacing: '0.2px' }}>{code}</span>
+          )}
           {already && (
-            <span style={{ fontSize: 9.5, fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', padding: '1px 7px', borderRadius: 99, border: '1px solid #DDD6FE' }}>Assigned</span>
+            <span style={{ fontSize: 9.5, fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', padding: '1px 7px', borderRadius: 99, border: '1px solid #DDD6FE', flexShrink: 0 }}>Assigned</span>
           )}
           {staged && !already && (
-            <span style={{ fontSize: 9.5, fontWeight: 700, color: lvl.color, background: lvl.bg, padding: '1px 7px', borderRadius: 99, border: `1px solid ${lvl.border}` }}>Staged · {lvl.label}</span>
+            <span style={{ fontSize: 9.5, fontWeight: 700, color: lvl.color, background: lvl.bg, padding: '1px 7px', borderRadius: 99, border: `1px solid ${lvl.border}`, flexShrink: 0 }}>Staged · {lvl.label}</span>
           )}
         </div>
         {course.title && (
-          <div style={{ fontSize: 11.5, color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{course.title}</div>
+          <span style={{ fontFamily: 'monospace', fontSize: 10.5, fontWeight: 600, color: '#6D28D9', background: '#F5F3FF', padding: '1px 7px', borderRadius: 5, border: '1px solid #DDD6FE' }}>{code}</span>
         )}
       </div>
 

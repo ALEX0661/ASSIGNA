@@ -1,13 +1,10 @@
 /**
  * AnalyticsPage.jsx
  *
- * Improved analytics dashboard — consistent with the lavender/white system design.
- * - No duplicate page header (handled by the app shell)
- * - Schedule selector pill matching DashboardPage
- * - Stat cards with icons + hover effects
- * - Shimmer skeleton loading
- * - Pie chart legends
- * - Unified card styling
+ * Analytics dashboard — colour-matched to DashboardPage green system.
+ * - CSS variables: --surface, --border, --ink, --muted, --muted2, --hover, --bg
+ * - Distinct chart palettes for bar + pie so every segment is clearly separated
+ * - Shimmer skeleton tinted to match dashboard green shimmer
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -25,52 +22,100 @@ import {
 } from "../../services/api";
 import { useScheduleStore } from "../../store/scheduleStore";
 
-// ── Shimmer + shared keyframes ────────────────────────────────────────────────
-const SHIMMER_STYLE = `
-  @keyframes spin   { to { transform: rotate(360deg) } }
-  @keyframes shimmer {
-    0%   { background-position: -400px 0 }
-    100% { background-position:  400px 0 }
+// ── Shared keyframes (mirrors DashboardPage DASH_STYLE) ───────────────────────
+const ANALYTICS_STYLE = `
+  @keyframes spin { to { transform: rotate(360deg) } }
+  @keyframes barIn { from { width: 0 } }
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(10px) }
+    to   { opacity:1; transform:translateY(0) }
   }
-  .skeleton {
-    background: linear-gradient(90deg, #F0EDF9 25%, #E4DEFC 50%, #F0EDF9 75%);
-    background-size: 800px 100%;
+  @keyframes shimmer {
+    0%   { background-position: -600px 0 }
+    100% { background-position:  600px 0 }
+  }
+  /* Green-tinted shimmer — matches DashboardPage .skel */
+  .a-skel {
+    background: linear-gradient(90deg,#EBF4EF 25%,#D8EEE3 50%,#EBF4EF 75%);
+    background-size: 600px 100%;
     animation: shimmer 1.4s ease-in-out infinite;
     border-radius: 7px;
   }
+  .a-card {
+    background: var(--surface);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 12px rgba(10,46,28,0.07);
+    overflow: hidden;
+    animation: fadeUp .35s ease both;
+  }
+  .a-stat-card {
+    background: var(--surface);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 6px rgba(10,46,28,0.06);
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: box-shadow .18s, transform .18s;
+    animation: fadeUp .3s ease both;
+    cursor: default;
+  }
+  .a-stat-card:hover {
+    box-shadow: 0 6px 22px rgba(10,46,28,0.11);
+    transform: translateY(-2px);
+  }
 `;
 
-// ── Design Tokens ─────────────────────────────────────────────────────────────
-const T = {
-  bg:            "#F8F7FE",
-  surface:       "#FFFFFF",
-  border:        "#E8E4F8",
-  borderLight:   "#F0EDF9",
-  text:          "#1a1a2e",
-  muted:         "#8883B0",
-  accent:        "#7C6FCD",
-  accentLight:   "#C4B5FD",
-  success:       "#059669",
-  warn:          "#D97706",
-  danger:        "#C0392B",
-  gridLine:      "#F3F0FC",
+// ── Colour palette (matches Dashboard green system) ───────────────────────────
+// These mirror the exact colours used in DashboardPage for consistency.
+const C = {
+  green:   "#15803D",   // primary accent — Dashboard's main colour
+  blue:    "#2563EB",
+  amber:   "#D97706",
+  purple:  "#7C3AED",
+  cyan:    "#0891B2",
+  red:     "#C0392B",
+  teal:    "#0D9488",
+  rose:    "#E11D48",
 };
 
-const PALETTE = ["#7C6FCD", "#A78BFA", "#6366F1", "#C4B5FD", "#EC4899", "#14B8A6"];
+// ── Distinct palette for pie / bar charts ─────────────────────────────────────
+// 8 high-contrast colours so every segment is clearly distinguishable
+const PALETTE = [
+  C.green,   // #15803D  forest green
+  C.blue,    // #2563EB  royal blue
+  C.amber,   // #D97706  amber
+  C.purple,  // #7C3AED  violet
+  C.cyan,    // #0891B2  cyan
+  C.rose,    // #E11D48  rose
+  C.teal,    // #0D9488  teal
+  "#6D28D9", //          indigo (fallback 8th)
+];
 
+// Daily session bar colours — one per weekday, all distinct
 const DAY_COLORS = {
-  Monday: "#7C6FCD", Tuesday: "#A78BFA", Wednesday: "#C4B5FD",
-  Thursday: "#6366F1", Friday: "#818CF8", Saturday: "#4F46E5",
+  Monday:    C.green,
+  Tuesday:   C.blue,
+  Wednesday: C.amber,
+  Thursday:  C.purple,
+  Friday:    C.cyan,
+  Saturday:  C.rose,
+  Sunday:    C.teal,
 };
+
+// Lecture vs Lab — clearly contrasting pair
+const TYPE_COLORS = [C.green, C.blue];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const pct = (n, total) => total ? `${Math.round((n / total) * 100)}%` : "0%";
 
 const loadColor = (row) => {
-  if (row.overloaded)    return T.danger;
-  if (row.load_pct >= 85) return T.warn;
-  if (row.load_pct <= 30) return T.accentLight;
-  return T.success;
+  if (row.overloaded)     return C.red;
+  if (row.load_pct >= 85) return C.amber;
+  if (row.load_pct <= 30) return "#86EFAC"; // light green — low load
+  return C.green;
 };
 
 const formatName = (name) => {
@@ -78,41 +123,34 @@ const formatName = (name) => {
   return name.length > 18 ? name.substring(0, 16) + "…" : name;
 };
 
-// ── Skeleton helper ───────────────────────────────────────────────────────────
+// ── Skeleton ──────────────────────────────────────────────────────────────────
 function Skel({ w = "100%", h = 14, r = 7, style = {} }) {
-  return <div className="skeleton" style={{ width: w, height: h, borderRadius: r, flexShrink: 0, ...style }} />;
+  return (
+    <div className="a-skel"
+      style={{ width: w, height: h, borderRadius: r, flexShrink: 0, ...style }} />
+  );
 }
 
-// ── Card wrapper (matches Dashboard card style) ───────────────────────────────
+// ── Card ──────────────────────────────────────────────────────────────────────
 function Card({ children, style = {} }) {
   return (
-    <div style={{
-      background: T.surface,
-      borderRadius: 13,
-      border: `1px solid ${T.border}`,
-      boxShadow: "0 2px 8px rgba(124,111,205,0.06)",
-      overflow: "hidden",
-      ...style,
-    }}>
+    <div className="a-card" style={style}>
       {children}
     </div>
   );
 }
 
-// ── Card header (matches Dashboard section header pattern) ────────────────────
+// ── Card header (mirrors DashboardPage SectionHeader) ─────────────────────────
 function CardHeader({ title, subtitle, right }) {
   return (
     <div style={{
       padding: "12px 18px",
-      borderBottom: `1px solid ${T.borderLight}`,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: 8,
+      borderBottom: "1px solid var(--border)",
+      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
     }}>
       <div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{title}</div>
-        {subtitle && <div style={{ fontSize: 11, color: T.muted, marginTop: 2 }}>{subtitle}</div>}
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>{title}</div>
+        {subtitle && <div style={{ fontSize: 11, color: "var(--muted2)", marginTop: 2 }}>{subtitle}</div>}
       </div>
       {right && <div style={{ flexShrink: 0 }}>{right}</div>}
     </div>
@@ -123,19 +161,14 @@ function CardHeader({ title, subtitle, right }) {
 function InsightNote({ text, type = "info" }) {
   if (!text) return null;
   const isWarn = type === "warn" || type === "danger";
-  const color  = isWarn ? T.danger : T.accent;
-  const bg     = isWarn ? "#FFF5F5" : "#F5F3FF";
-  const border = isWarn ? "#FECACA" : T.border;
+  const color  = isWarn ? C.red : C.green;
+  const bg     = isWarn ? "#FFF5F5" : "#F0FDF4";
+  const border = isWarn ? "#FECACA" : "#BBF7D0";
   return (
     <div style={{
-      marginTop: 14,
-      padding: "10px 14px",
-      borderRadius: 8,
-      background: bg,
-      border: `1px solid ${border}`,
-      fontSize: 12,
-      color: T.muted,
-      lineHeight: 1.6,
+      marginTop: 14, padding: "10px 14px", borderRadius: 8,
+      background: bg, border: `1px solid ${border}`,
+      fontSize: 12, color: "var(--muted)", lineHeight: 1.6,
     }}>
       <strong style={{ color, fontWeight: 700, marginRight: 6 }}>Insight:</strong>
       {text}
@@ -143,32 +176,14 @@ function InsightNote({ text, type = "info" }) {
   );
 }
 
-// ── Stat card (matches Dashboard StatCard) ────────────────────────────────────
+// ── Stat card (matches DashboardPage .stat-card) ──────────────────────────────
 function StatCard({ label, value, sub, icon, color, bg, loading }) {
-  const [hov, setHov] = useState(false);
   return (
-    <div
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        background: T.surface,
-        borderRadius: 13,
-        padding: "14px 18px",
-        border: `1px solid ${T.border}`,
-        display: "flex",
-        alignItems: "center",
-        gap: 14,
-        boxShadow: hov && !loading
-          ? "0 6px 20px rgba(124,111,205,0.14)"
-          : "0 2px 8px rgba(124,111,205,0.06)",
-        transform: hov && !loading ? "translateY(-1px)" : "none",
-        transition: "all 0.18s ease",
-      }}
-    >
+    <div className="a-stat-card">
       <div style={{
-        width: 42, height: 42, borderRadius: 11,
-        background: loading ? "#F0EDF9" : bg,
-        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+        width: 42, height: 42, borderRadius: 11, flexShrink: 0,
+        background: loading ? "var(--hover)" : bg,
+        display: "flex", alignItems: "center", justifyContent: "center",
       }}>
         {loading ? <Skel w={42} h={42} r={11} /> : <div style={{ color }}>{icon}</div>}
       </div>
@@ -180,9 +195,11 @@ function StatCard({ label, value, sub, icon, color, bg, loading }) {
           </>
         ) : (
           <>
-            <div style={{ fontSize: 26, fontWeight: 700, color: T.text, lineHeight: 1 }}>{value}</div>
-            <div style={{ fontSize: 11.5, color: T.muted, marginTop: 3, fontWeight: 500 }}>{label}</div>
-            {sub && <div style={{ fontSize: 10.5, color: T.accentLight, marginTop: 2 }}>{sub}</div>}
+            <div style={{ fontSize: 26, fontWeight: 800, color: "var(--ink)", lineHeight: 1, fontFamily: "'Sora',sans-serif" }}>
+              {value}
+            </div>
+            <div style={{ fontSize: 11.5, color: "var(--muted2)", marginTop: 3, fontWeight: 500 }}>{label}</div>
+            {sub && <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 2 }}>{sub}</div>}
           </>
         )}
       </div>
@@ -190,37 +207,25 @@ function StatCard({ label, value, sub, icon, color, bg, loading }) {
   );
 }
 
-// ── Assignment Quality card ───────────────────────────────────────────────────
+// ── Optimization / Score card ─────────────────────────────────────────────────
 function ScoreCard({ loading, autoAssignPct, pctInWindow }) {
-  const [hov, setHov] = useState(false);
   const hasData = autoAssignPct !== null && autoAssignPct !== undefined;
   const status = !hasData  ? null
-    : autoAssignPct >= 90  ? { label: "Excellent", color: "#059669", bg: "#E6FAF3", bar: "#059669" }
-    : autoAssignPct >= 70  ? { label: "Good",      color: "#7C6FCD", bg: "#EEEAFB", bar: "#7C6FCD" }
-    : autoAssignPct >= 50  ? { label: "Fair",       color: "#D97706", bg: "#FEF3CD", bar: "#D97706" }
-    :                        { label: "Needs work", color: "#C0392B", bg: "#FFE8E8", bar: "#C0392B" };
+    : autoAssignPct >= 90  ? { label: "Excellent", color: C.green,  bg: "#DCFCE7", bar: C.green  }
+    : autoAssignPct >= 70  ? { label: "Good",      color: C.blue,   bg: "#DBEAFE", bar: C.blue   }
+    : autoAssignPct >= 50  ? { label: "Fair",       color: C.amber,  bg: "#FEF3CD", bar: C.amber  }
+    :                        { label: "Needs work", color: C.red,    bg: "#FFE8E8", bar: C.red    };
 
   return (
-    <div
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        background: T.surface, borderRadius: 13, padding: "14px 18px",
-        border: `1px solid ${T.border}`,
-        boxShadow: hov && !loading ? "0 6px 20px rgba(124,111,205,0.14)" : "0 2px 8px rgba(124,111,205,0.06)",
-        transform: hov && !loading ? "translateY(-1px)" : "none",
-        transition: "all 0.18s ease",
-        display: "flex", alignItems: "center", gap: 14,
-      }}
-    >
+    <div className="a-stat-card">
       <div style={{
         width: 42, height: 42, borderRadius: 11, flexShrink: 0,
-        background: loading ? "#F0EDF9" : (status?.bg ?? "#F5F4FB"),
+        background: loading ? "var(--hover)" : (status?.bg ?? "var(--hover)"),
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
         {loading ? <Skel w={42} h={42} r={11} /> : (
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none"
-            stroke={status?.color ?? T.muted} strokeWidth="2">
+            stroke={status?.color ?? "var(--muted)"} strokeWidth="2">
             <path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/>
           </svg>
         )}
@@ -235,15 +240,15 @@ function ScoreCard({ loading, autoAssignPct, pctInWindow }) {
           </>
         ) : !hasData ? (
           <>
-            <div style={{ fontSize: 18, fontWeight: 700, color: T.muted, lineHeight: 1 }}>Not run yet</div>
-            <div style={{ fontSize: 11, color: T.muted, marginTop: 5, lineHeight: 1.5 }}>
-              Run the scheduler to see how many sessions were auto-filled.
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--muted)", lineHeight: 1 }}>Not run yet</div>
+            <div style={{ fontSize: 11, color: "var(--muted2)", marginTop: 5, lineHeight: 1.5 }}>
+              Run the scheduler to see auto-fill rate.
             </div>
           </>
         ) : (
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-              <span style={{ fontSize: 26, fontWeight: 700, color: T.text, lineHeight: 1 }}>
+              <span style={{ fontSize: 26, fontWeight: 800, color: "var(--ink)", lineHeight: 1, fontFamily: "'Sora',sans-serif" }}>
                 {autoAssignPct}%
               </span>
               <span style={{
@@ -253,21 +258,18 @@ function ScoreCard({ loading, autoAssignPct, pctInWindow }) {
                 {status.label}
               </span>
             </div>
-
-            <div style={{ fontSize: 11.5, color: T.muted, marginTop: 3, fontWeight: 500 }}>
+            <div style={{ fontSize: 11.5, color: "var(--muted2)", marginTop: 3, fontWeight: 500 }}>
               Auto-filled by scheduler
             </div>
-
-            <div style={{ marginTop: 7, height: 5, borderRadius: 99, background: T.borderLight, overflow: "hidden" }}>
+            <div style={{ marginTop: 7, height: 5, borderRadius: 99, background: "var(--hover)", overflow: "hidden" }}>
               <div style={{
                 height: "100%", width: `${Math.min(autoAssignPct, 100)}%`,
                 borderRadius: 99, background: status.bar, transition: "width 0.4s ease",
               }} />
             </div>
-
             {pctInWindow !== null && pctInWindow !== undefined && (
-              <div style={{ fontSize: 10.5, color: T.muted, marginTop: 5 }}>
-                <span style={{ fontWeight: 700, color: T.text }}>{pctInWindow}%</span> were good faculty matches
+              <div style={{ fontSize: 10.5, color: "var(--muted2)", marginTop: 5 }}>
+                <span style={{ fontWeight: 700, color: "var(--ink)" }}>{pctInWindow}%</span> were good faculty matches
               </div>
             )}
           </>
@@ -285,13 +287,20 @@ function PieLegend({ data, palette }) {
       {data.map((item, i) => (
         <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: palette[i % palette.length], flexShrink: 0 }} />
-            <span style={{ fontSize: 11.5, color: T.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div style={{
+              width: 9, height: 9, borderRadius: 2,
+              background: palette[i % palette.length], flexShrink: 0,
+            }} />
+            <span style={{
+              fontSize: 11.5, color: "var(--muted)", fontWeight: 600,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>
               {item.name}
             </span>
           </div>
-          <span style={{ fontSize: 11.5, fontWeight: 700, color: T.text, flexShrink: 0 }}>
-            {item.value} <span style={{ fontWeight: 400, color: T.muted }}>({pct(item.value, item.total)})</span>
+          <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink)", flexShrink: 0 }}>
+            {item.value}{" "}
+            <span style={{ fontWeight: 400, color: "var(--muted2)" }}>({pct(item.value, item.total)})</span>
           </span>
         </div>
       ))}
@@ -301,9 +310,13 @@ function PieLegend({ data, palette }) {
 
 // ── Tooltips ──────────────────────────────────────────────────────────────────
 const TooltipStyle = {
-  background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8,
-  boxShadow: "0 4px 12px rgba(124,111,205,0.12)", padding: "10px 14px",
-  fontSize: 12, color: T.text,
+  background: "var(--surface)",
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+  boxShadow: "0 4px 12px rgba(10,46,28,0.10)",
+  padding: "10px 14px",
+  fontSize: 12,
+  color: "var(--ink)",
 };
 
 const StandardTooltip = ({ active, payload }) => {
@@ -314,25 +327,27 @@ const StandardTooltip = ({ active, payload }) => {
       <strong style={{ display: "block", marginBottom: 4, fontSize: 12.5 }}>
         {d.name || d.payload?.day || d.payload?.yearLevel || d.payload?.room}
       </strong>
-      <span style={{ color: T.accent, fontWeight: 700 }}>{d.value} sessions</span>
+      <span style={{ color: C.green, fontWeight: 700 }}>{d.value} sessions</span>
       {d.payload?.total && (
-        <span style={{ color: T.muted, marginLeft: 4 }}>({pct(d.value, d.payload.total)})</span>
+        <span style={{ color: "var(--muted2)", marginLeft: 4 }}>({pct(d.value, d.payload.total)})</span>
       )}
     </div>
   );
 };
 
-// ── Schedule selector pill (matches Dashboard) ────────────────────────────────
+// ── Schedule selector pill (mirrors DashboardPage style) ──────────────────────
 function SchedulePill({ savedList, scheduleSource, scheduleName, onChange, loading }) {
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 5,
       padding: "4px 10px", borderRadius: 99,
-      background: "#F5F4FB", border: `1px solid ${T.border}`,
+      background: "var(--surface)", border: "1px solid var(--border)",
     }}>
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={T.muted} strokeWidth="2.5" style={{ flexShrink: 0 }}>
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
+        stroke="var(--muted)" strokeWidth="2.5" style={{ flexShrink: 0 }}>
         <rect x="3" y="4" width="18" height="18" rx="2"/>
-        <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+        <line x1="16" y1="2" x2="16" y2="6"/>
+        <line x1="8" y1="2" x2="8" y2="6"/>
         <line x1="3" y1="10" x2="21" y2="10"/>
       </svg>
       {loading ? (
@@ -343,7 +358,7 @@ function SchedulePill({ savedList, scheduleSource, scheduleName, onChange, loadi
           onChange={e => onChange(e.target.value)}
           style={{
             background: "transparent", border: "none", outline: "none",
-            fontSize: 10.5, fontWeight: 600, color: T.muted, cursor: "pointer",
+            fontSize: 10.5, fontWeight: 600, color: "var(--muted)", cursor: "pointer",
             maxWidth: 140, fontFamily: "inherit", padding: 0,
           }}
         >
@@ -355,7 +370,7 @@ function SchedulePill({ savedList, scheduleSource, scheduleName, onChange, loadi
           ))}
         </select>
       ) : (
-        <span style={{ fontSize: 10.5, fontWeight: 600, color: T.muted }}>
+        <span style={{ fontSize: 10.5, fontWeight: 600, color: "var(--muted)" }}>
           No saved schedules
         </span>
       )}
@@ -385,7 +400,6 @@ export default function AnalyticsPage() {
   const [savedList,      setSavedList]      = useState([]);
   const [scheduleSource, setScheduleSource] = useState(null);
 
-  // Bootstrap: load saved list once
   useEffect(() => {
     listSaved().then(res => {
       const names = Array.isArray(res) ? res : (res?.schedules ?? []);
@@ -413,7 +427,6 @@ export default function AnalyticsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Handle schedule selector change
   const handleScheduleChange = async (value) => {
     const isPinned = value !== "__current__";
     setScheduleSource(isPinned ? value : null);
@@ -470,36 +483,35 @@ export default function AnalyticsPage() {
       : "Faculty workload is currently balanced across the department.";
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div style={{
       fontFamily: "'Poppins', sans-serif",
-      background: T.bg,
+      background: "var(--bg, #F0F7F4)",
       minHeight: "100vh",
       padding: "20px 28px",
-      color: T.text,
+      color: "var(--ink)",
       display: "flex",
       flexDirection: "column",
       gap: 16,
     }}>
-      <style>{SHIMMER_STYLE}</style>
+      <style>{ANALYTICS_STYLE}</style>
 
       {/* ── Top control bar ── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {/* Session count badge */}
           <div style={{
-            fontSize: 11.5, fontWeight: 600, color: T.muted,
+            fontSize: 11.5, fontWeight: 600, color: "var(--muted)",
             padding: "4px 12px", borderRadius: 99,
-            background: T.surface, border: `1px solid ${T.border}`,
+            background: "var(--surface)", border: "1px solid var(--border)",
           }}>
             {loading
               ? <Skel w={80} h={10} r={5} style={{ display: "inline-block" }} />
-              : <><span style={{ fontWeight: 700, color: T.accent }}>{dist?.totalSessions ?? 0}</span> active sessions</>
+              : <><span style={{ fontWeight: 700, color: C.green }}>{dist?.totalSessions ?? 0}</span> active sessions</>
             }
           </div>
 
-          {/* Schedule selector */}
           <SchedulePill
             savedList={savedList}
             scheduleSource={scheduleSource}
@@ -509,14 +521,14 @@ export default function AnalyticsPage() {
           />
         </div>
 
-        {/* Refresh */}
+        {/* Refresh button — matches DashboardPage pill style */}
         <button
           onClick={load}
           disabled={loading}
           style={{
-            background: T.surface,
-            color: T.accent,
-            border: `1px solid ${T.border}`,
+            background: "var(--surface)",
+            color: C.green,
+            border: "1px solid var(--border)",
             borderRadius: 8,
             padding: "6px 14px",
             fontSize: 12,
@@ -530,7 +542,8 @@ export default function AnalyticsPage() {
             transition: "all 0.15s ease",
           }}
         >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2.5"
             style={{ animation: loading ? "spin 0.8s linear infinite" : "none" }}>
             <polyline points="23 4 23 10 17 10"/>
             <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
@@ -541,26 +554,63 @@ export default function AnalyticsPage() {
 
       {/* ── SECTION 1: System Health stat cards ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
+
+        {/* Assigned Sessions */}
         <StatCard
           label="Assigned Sessions" sub={`of ${dist?.totalSessions ?? 0} total`}
           value={loading ? null : (dist?.facultyCoverage?.covered ?? 0)}
-          color={T.accent} bg="#EEEAFB" loading={loading}
+          color={C.green} bg="#DCFCE7" loading={loading}
           icon={<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>}
         />
+
+        {/* Faculty Coverage */}
+        <StatCard
+          label="Faculty Coverage" sub="Instructors assigned"
+          value={loading ? null : `${dist?.facultyCoverage?.pct ?? 0}%`}
+          color={C.blue} bg="#DBEAFE" loading={loading}
+          icon={<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
+        />
+
+        {/* TBA / Unassigned */}
         <StatCard
           label="TBA / Unassigned" sub="Sessions missing faculty"
           value={loading ? null : (quality?.tbaSessions ?? 0)}
-          color="#D97706" bg="#FEF3CD" loading={loading}
+          color={C.amber} bg="#FEF3CD" loading={loading}
           icon={<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
         />
+
+        {/* Hard Conflicts */}
         <StatCard
           label="Hard Conflicts" sub="Room / faculty time clashes"
           value={loading ? null : (quality?.totalConflicts ?? 0)}
-          color="#C0392B" bg="#FFE8E8" loading={loading}
+          color={C.red} bg="#FFE8E8" loading={loading}
           icon={<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
         />
+      </div>
 
-        {/* Optimization Score — custom card with contextual explanation */}
+      {/* ── Coverage insight + Optimization Score row ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        {/* Coverage insight card */}
+        <div className="a-stat-card" style={{ alignItems: "flex-start", flexDirection: "column", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)" }}>Coverage Summary</div>
+          <div style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.6 }}>
+            {loading ? <Skel w="90%" h={11} r={5} /> : getCoverageInterpretation()}
+          </div>
+          {!loading && (
+            <div style={{ marginTop: 4, height: 6, borderRadius: 99, background: "var(--hover)", overflow: "hidden", width: "100%" }}>
+              <div style={{
+                height: "100%", borderRadius: 99,
+                width: `${dist?.facultyCoverage?.pct ?? 0}%`,
+                background: (dist?.facultyCoverage?.pct ?? 0) >= 95 ? C.green
+                          : (dist?.facultyCoverage?.pct ?? 0) >= 80 ? C.amber
+                          : C.red,
+                transition: "width 0.6s ease",
+              }} />
+            </div>
+          )}
+        </div>
+
+        {/* Optimization / Score card */}
         <ScoreCard
           loading={loading}
           autoAssignPct={quality?.autoAssignPct ?? null}
@@ -571,7 +621,7 @@ export default function AnalyticsPage() {
       {/* ── SECTION 2: Academic Composition ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
 
-        {/* Program Distribution */}
+        {/* Program Distribution — distinct PALETTE */}
         <Card>
           <CardHeader
             title="Distribution by Program"
@@ -584,8 +634,15 @@ export default function AnalyticsPage() {
               <>
                 <ResponsiveContainer width="100%" height={200}>
                   <PieChart>
-                    <Pie data={programData} cx="50%" cy="50%" innerRadius={52} outerRadius={80} dataKey="value" stroke="none">
-                      {programData.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
+                    <Pie
+                      data={programData} cx="50%" cy="50%"
+                      innerRadius={52} outerRadius={80}
+                      dataKey="value" stroke="var(--surface)" strokeWidth={2}
+                      paddingAngle={2}
+                    >
+                      {programData.map((_, i) => (
+                        <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+                      ))}
                     </Pie>
                     <Tooltip content={<StandardTooltip />} />
                   </PieChart>
@@ -597,7 +654,7 @@ export default function AnalyticsPage() {
           </div>
         </Card>
 
-        {/* Lecture vs Lab */}
+        {/* Lecture vs Lab — green/blue clearly contrasting */}
         <Card>
           <CardHeader
             title="Lecture vs. Laboratory"
@@ -610,13 +667,20 @@ export default function AnalyticsPage() {
               <>
                 <ResponsiveContainer width="100%" height={200}>
                   <PieChart>
-                    <Pie data={typeData} cx="50%" cy="50%" outerRadius={80} dataKey="value" stroke="none">
-                      {typeData.map((_, i) => <Cell key={i} fill={i === 0 ? T.accent : T.accentLight} />)}
+                    <Pie
+                      data={typeData} cx="50%" cy="50%"
+                      outerRadius={80} dataKey="value"
+                      stroke="var(--surface)" strokeWidth={2}
+                      paddingAngle={3}
+                    >
+                      {typeData.map((_, i) => (
+                        <Cell key={i} fill={TYPE_COLORS[i % TYPE_COLORS.length]} />
+                      ))}
                     </Pie>
                     <Tooltip content={<StandardTooltip />} />
                   </PieChart>
                 </ResponsiveContainer>
-                <PieLegend data={typeData} palette={[T.accent, T.accentLight]} />
+                <PieLegend data={typeData} palette={TYPE_COLORS} />
                 <InsightNote text="Indicates balance between lecture-based and hands-on lab instruction." />
               </>
             )}
@@ -624,7 +688,7 @@ export default function AnalyticsPage() {
         </Card>
       </div>
 
-      {/* ── SECTION 3: Temporal Volume ── */}
+      {/* ── SECTION 3: Daily Session Volume (bar chart — distinct colour per day) ── */}
       <Card>
         <CardHeader
           title="Daily Session Volume"
@@ -636,20 +700,39 @@ export default function AnalyticsPage() {
           ) : (
             <>
               <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={dayData} margin={{ top: 10, right: 4, bottom: 0, left: -20 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={T.gridLine} />
-                  <XAxis dataKey="day" axisLine={false} tickLine={false}
-                    tick={{ fill: T.muted, fontSize: 12, fontFamily: "Poppins", dy: 8 }} />
-                  <YAxis axisLine={false} tickLine={false}
-                    tick={{ fill: T.muted, fontSize: 11, fontFamily: "Poppins" }} />
-                  <Tooltip cursor={{ fill: "rgba(124,111,205,0.04)" }} content={<StandardTooltip />} />
-                  <Bar dataKey="sessions" radius={[5, 5, 0, 0]} maxBarSize={48}>
-                    {dayData.map((d, i) => <Cell key={i} fill={DAY_COLORS[d.day] ?? T.accent} />)}
-                    <LabelList dataKey="sessions" position="top"
-                      style={{ fill: T.text, fontSize: 11, fontWeight: 600, fontFamily: "Poppins" }} />
+                <BarChart data={dayData} margin={{ top: 14, right: 4, bottom: 0, left: -20 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--hover)" />
+                  <XAxis
+                    dataKey="day" axisLine={false} tickLine={false}
+                    tick={{ fill: "var(--muted)", fontSize: 12, fontFamily: "Poppins", dy: 8 }}
+                  />
+                  <YAxis
+                    axisLine={false} tickLine={false}
+                    tick={{ fill: "var(--muted2)", fontSize: 11, fontFamily: "Poppins" }}
+                  />
+                  <Tooltip cursor={{ fill: "rgba(10,46,28,0.04)" }} content={<StandardTooltip />} />
+                  <Bar dataKey="sessions" radius={[6, 6, 0, 0]} maxBarSize={52}>
+                    {dayData.map((d, i) => (
+                      <Cell key={i} fill={DAY_COLORS[d.day] ?? C.green} />
+                    ))}
+                    <LabelList
+                      dataKey="sessions" position="top"
+                      style={{ fill: "var(--ink)", fontSize: 11, fontWeight: 700, fontFamily: "Poppins" }}
+                    />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+
+              {/* Day colour legend */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px", marginTop: 12 }}>
+                {dayData.map((d, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: 2, background: DAY_COLORS[d.day] ?? C.green }} />
+                    <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600 }}>{d.day}</span>
+                  </div>
+                ))}
+              </div>
+
               <InsightNote text={getTemporalInterpretation()} />
             </>
           )}
@@ -659,7 +742,7 @@ export default function AnalyticsPage() {
       {/* ── SECTION 4: Resource Constraints ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
 
-        {/* Faculty Workload */}
+        {/* Faculty Workload — load-based colour per bar */}
         <Card>
           <CardHeader
             title="Faculty Workload"
@@ -667,7 +750,7 @@ export default function AnalyticsPage() {
             right={
               workloadData.some(w => w.overloaded) && (
                 <span style={{
-                  background: "#FFE8E8", color: T.danger,
+                  background: "#FFE8E8", color: C.red,
                   fontSize: 10.5, fontWeight: 700, padding: "3px 9px", borderRadius: 99,
                 }}>
                   {workloadData.filter(w => w.overloaded).length} over cap
@@ -682,22 +765,40 @@ export default function AnalyticsPage() {
               <>
                 <ResponsiveContainer width="100%" height={Math.max(220, workloadData.length * 34)}>
                   <BarChart data={workloadData} layout="vertical" margin={{ top: 0, right: 36, bottom: 0, left: 16 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={T.gridLine} />
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--hover)" />
                     <XAxis type="number" axisLine={false} tickLine={false}
-                      tick={{ fontSize: 11, fill: T.muted, fontFamily: "Poppins" }} />
+                      tick={{ fontSize: 11, fill: "var(--muted2)", fontFamily: "Poppins" }} />
                     <YAxis type="category" dataKey="name" axisLine={false} tickLine={false}
-                      width={120} tick={{ fontSize: 11, fill: T.text, fontFamily: "Poppins" }}
+                      width={120} tick={{ fontSize: 11, fill: "var(--ink)", fontFamily: "Poppins" }}
                       tickFormatter={formatName} />
-                    <Tooltip cursor={{ fill: "rgba(124,111,205,0.04)" }} contentStyle={TooltipStyle} />
-                    <Bar dataKey="effective_max" fill={T.borderLight} radius={4} barSize={10} />
+                    <Tooltip cursor={{ fill: "rgba(10,46,28,0.04)" }} contentStyle={TooltipStyle} />
+                    {/* Capacity bar — subtle track */}
+                    <Bar dataKey="effective_max" fill="#D1EAD9" radius={4} barSize={10} />
+                    {/* Assigned bar — coloured by load status */}
                     <Bar dataKey="assigned" radius={4} barSize={10}>
                       {workloadData.map((r, i) => <Cell key={i} fill={loadColor(r)} />)}
                       <LabelList dataKey="assigned" position="right"
-                        style={{ fontSize: 10, fontWeight: 600, fill: T.text, fontFamily: "Poppins" }}
+                        style={{ fontSize: 10, fontWeight: 600, fill: "var(--ink)", fontFamily: "Poppins" }}
                         formatter={(v) => `${v}u`} />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
+
+                {/* Workload legend */}
+                <div style={{ display: "flex", gap: 14, marginTop: 10, flexWrap: "wrap" }}>
+                  {[
+                    { label: "Balanced",    color: C.green },
+                    { label: "Near cap",    color: C.amber },
+                    { label: "Overloaded",  color: C.red   },
+                    { label: "Low load",    color: "#86EFAC" },
+                  ].map(x => (
+                    <div key={x.label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: 2, background: x.color }} />
+                      <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600 }}>{x.label}</span>
+                    </div>
+                  ))}
+                </div>
+
                 <InsightNote
                   text={getWorkloadInterpretation()}
                   type={workloadData.some(w => w.overloaded) ? "warn" : "info"}
@@ -707,7 +808,7 @@ export default function AnalyticsPage() {
           </div>
         </Card>
 
-        {/* Room Utilization */}
+        {/* Room Utilization — stepped PALETTE so bars are visually distinct */}
         <Card>
           <CardHeader
             title="Most Utilized Rooms"
@@ -720,15 +821,18 @@ export default function AnalyticsPage() {
               <>
                 <ResponsiveContainer width="100%" height={Math.max(220, roomData.length * 34)}>
                   <BarChart data={roomData} layout="vertical" margin={{ top: 0, right: 36, bottom: 0, left: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={T.gridLine} />
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--hover)" />
                     <XAxis type="number" axisLine={false} tickLine={false}
-                      tick={{ fontSize: 11, fill: T.muted, fontFamily: "Poppins" }} />
+                      tick={{ fontSize: 11, fill: "var(--muted2)", fontFamily: "Poppins" }} />
                     <YAxis type="category" dataKey="room" axisLine={false} tickLine={false}
-                      width={70} tick={{ fontSize: 11, fill: T.text, fontFamily: "Poppins" }} />
-                    <Tooltip cursor={{ fill: "rgba(124,111,205,0.04)" }} contentStyle={TooltipStyle} />
-                    <Bar dataKey="sessions" fill={T.accentLight} radius={[0, 5, 5, 0]} barSize={16}>
+                      width={70} tick={{ fontSize: 11, fill: "var(--ink)", fontFamily: "Poppins" }} />
+                    <Tooltip cursor={{ fill: "rgba(10,46,28,0.04)" }} contentStyle={TooltipStyle} />
+                    <Bar dataKey="sessions" radius={[0, 5, 5, 0]} barSize={16}>
+                      {roomData.map((_, i) => (
+                        <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+                      ))}
                       <LabelList dataKey="sessions" position="right"
-                        style={{ fontSize: 10, fontWeight: 600, fill: T.text, fontFamily: "Poppins" }} />
+                        style={{ fontSize: 10, fontWeight: 600, fill: "var(--ink)", fontFamily: "Poppins" }} />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
@@ -741,10 +845,8 @@ export default function AnalyticsPage() {
             )}
           </div>
         </Card>
+
       </div>
-
-
-
     </div>
   );
 }

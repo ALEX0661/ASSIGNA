@@ -14,8 +14,10 @@ export const useSolverStore = create((set) => ({
   processId: null,
   progress:  0,
   status:    'idle',   // idle | running | complete | failed
+  label:     null,     // name of the schedule currently solving — shown in the floating pill
   setProcessId: (id)   => set({ processId: id }),
   setProgress:  (p)    => set({ progress: p }),
   setStatus:    (s)    => set({ status: s }),
-  reset:        ()     => set({ processId: null, progress: 0, status: 'idle' }),
+  setLabel:     (l)    => set({ label: l }),
+  reset:        ()     => set({ processId: null, progress: 0, status: 'idle', label: null }),
 }))

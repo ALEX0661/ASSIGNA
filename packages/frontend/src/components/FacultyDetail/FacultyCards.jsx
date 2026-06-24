@@ -1,5 +1,13 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { ACADEMIC_RANKS, DEPARTMENTS, ALL_DAYS, RATING_COLORS, RATING_LABELS, SPECS_PREVIEW, fmtHour, FormField, SectionSaveBtn, StarRating } from './fdShared'
+
+// Add spin animation
+if (!document.getElementById('role-spin-animation')) {
+  const style = document.createElement('style')
+  style.id = 'role-spin-animation'
+  style.textContent = '@keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }'
+  document.head.appendChild(style)
+}
 
 // ─── Theme Tokens (Lavender & White) ──────────────────────────────────────────
 const T = {
@@ -66,9 +74,14 @@ function SpecsGrid({ specs, preview, expanded, onToggle }) {
           const title  = typeof spec==='object' ? (spec.title||'') : ''
           return (
             <div key={i} style={{ padding:'10px 14px', borderRadius:'10px', background:T.bgAlt, border:`1px solid ${T.border}`, display:'flex', flexDirection:'column', gap:4 }}>
-              <span style={{ fontSize:12, fontWeight:700, color:T.purpleDeep }}>{code}</span>
-              {title && <span style={{ fontSize:11, color:T.textMuted, lineHeight:1.3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontWeight: 500 }}>{title}</span>}
-              <div style={{ display:'flex', alignItems:'center', gap:3, marginTop:4 }}>
+              {title
+                ? <span style={{ fontSize:12, fontWeight:700, color:T.textMain, lineHeight:1.3 }}>{title}</span>
+                : <span style={{ fontSize:12, fontWeight:700, color:T.purpleDeep }}>{code}</span>
+              }
+              {title && (
+                <span style={{ fontFamily:'monospace', fontSize:10, fontWeight:600, color:T.purpleDeep, background:T.purpleSoft, padding:'1px 6px', borderRadius:4, alignSelf:'flex-start' }}>{code}</span>
+              )}
+              <div style={{ display:'flex', alignItems:'center', gap:3, marginTop:2 }}>
                 {[1,2,3,4,5].map(s => <MiniStar key={s} filled={s<=rating}/>)}
                 <span style={{ fontSize:10, color:RATING_COLORS[rating]||T.textMuted, fontWeight:700, marginLeft:4 }}>{RATING_LABELS[rating]||''}</span>
               </div>
@@ -179,7 +192,78 @@ export function UnitLoadCard({ displayUnits, effectiveCap, isOverloaded, loadPct
 }
 
 // ─── BasicInfoCard ────────────────────────────────────────────────────────────
-export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, infoSaved, infoError, onSaveInfo, password, setPassword, showPassword, setShowPassword }) {
+export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, infoSaved, infoError, onSaveInfo, password, setPassword, showPassword, setShowPassword, facultyId }) {
+  // Role management state (only for existing faculty)
+  const [roleLoading, setRoleLoading] = useState(!isNew)
+  const [roleSaving, setRoleSaving] = useState(false)
+  const [currentRole, setCurrentRole] = useState(null)
+  const [isCoordinator, setIsCoordinator] = useState(false)
+  const [coordinatorProgram, setCoordinatorProgram] = useState('')
+  const [selectedRole, setSelectedRole] = useState('faculty')
+  const [selectedCoordinator, setSelectedCoordinator] = useState(false)
+  const [selectedProgram, setSelectedProgram] = useState('')
+  const [roleError, setRoleError] = useState('')
+  const [roleSuccess, setRoleSuccess] = useState('')
+
+  const PROGRAMS = ['BSCS', 'BSIT', 'BSEMC', 'ACT']
+
+  // Load role for existing faculty
+  useEffect(() => {
+    if (isNew || !facultyId) return
+    
+    async function loadRole() {
+      try {
+        const { getFacultyRole } = await import('../../services/api')
+        const data = await getFacultyRole(facultyId)
+        setCurrentRole(data.role)
+        setIsCoordinator(data.isCoordinator || false)
+        setCoordinatorProgram(data.coordinatorProgram || '')
+        setSelectedRole(data.role || 'faculty')
+        setSelectedCoordinator(data.isCoordinator || false)
+        setSelectedProgram(data.coordinatorProgram || '')
+      } catch (err) {
+        setCurrentRole(null)
+        setIsCoordinator(false)
+        setCoordinatorProgram('')
+        setSelectedRole('faculty')
+        setSelectedCoordinator(false)
+        setSelectedProgram('')
+      } finally {
+        setRoleLoading(false)
+      }
+    }
+    loadRole()
+  }, [facultyId, isNew])
+
+  const roleHasChanges = !isNew && (selectedRole !== currentRole || 
+                                     selectedCoordinator !== isCoordinator ||
+                                     selectedProgram !== coordinatorProgram)
+
+  async function handleSaveRole() {
+    setRoleError('')
+    setRoleSuccess('')
+    
+    if (selectedCoordinator && !selectedProgram) {
+      setRoleError('Please select a program for the coordinator.')
+      return
+    }
+    
+    setRoleSaving(true)
+    try {
+      const { setFacultyRole } = await import('../../services/api')
+      await setFacultyRole(facultyId, selectedRole, selectedCoordinator, selectedProgram || null)
+      setCurrentRole(selectedRole)
+      setIsCoordinator(selectedCoordinator)
+      setCoordinatorProgram(selectedProgram)
+      setRoleSuccess(`Role updated${selectedCoordinator ? ` as ${selectedProgram} Coordinator` : ''}. User must log out and back in.`)
+      setTimeout(() => setRoleSuccess(''), 4000)
+    } catch (err) {
+      setRoleError(err.response?.data?.detail || 'Failed to update role.')
+    } finally {
+      setRoleSaving(false)
+    }
+  }
+
   return (
     <>
       <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(124,111,205,0.04)', fontFamily: "'Poppins', sans-serif" }}>
@@ -227,6 +311,110 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
             </select>
           </FormField>
         </div>
+
+        {/* ── Role & Permissions — edit mode only ── */}
+        {!isNew && (
+          <div style={{ margin:'0 20px', paddingTop:20, borderTop:`1px solid ${T.borderLight}`, marginTop:20 }}>
+            {/* Sub-header */}
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
+              <div style={{ width:26, height:26, borderRadius:'7px', background:T.purpleSoft, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.purple} strokeWidth="2.2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              </div>
+              <span style={{ fontSize:13, fontWeight:700, color:T.textMain, flex:1 }}>Role & Permissions</span>
+              {!roleLoading && currentRole && (
+                <span style={{ fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background: currentRole==='admin' ? '#FEF3CD' : isCoordinator ? T.purpleSoft : '#F0FDF4', color: currentRole==='admin' ? '#B45309' : isCoordinator ? T.purpleDeep : '#166534' }}>
+                  {currentRole==='admin' ? 'Admin' : isCoordinator ? `${coordinatorProgram} Coordinator` : 'Faculty'}
+                </span>
+              )}
+            </div>
+
+            {roleLoading ? (
+              <div style={{ padding:'8px 0 4px', color:T.textMuted, fontSize:12 }}>Loading...</div>
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                {/* Role toggle */}
+                <div>
+                  <div style={{ fontSize:11, fontWeight:600, color:T.textMuted, letterSpacing:'.3px', marginBottom:7, textTransform:'uppercase' }}>System Role</div>
+                  <div style={{ display:'flex', gap:8 }}>
+                    {[
+                      { value:'faculty', label:'Faculty', icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+                      { value:'admin',   label:'Admin',   icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg> },
+                    ].map(opt => {
+                      const active = selectedRole === opt.value
+                      return (
+                        <button key={opt.value} type="button"
+                          onClick={() => { setSelectedRole(opt.value); if (opt.value==='admin') setSelectedCoordinator(false) }}
+                          style={{ flex:1, padding:'9px 12px', borderRadius:'9px', fontSize:12.5, fontFamily:"'Poppins',sans-serif", background: active ? 'linear-gradient(135deg,#7C6FCD,#5a4fbf)' : T.bgAlt, color: active ? '#fff' : T.textMuted, border: active ? 'none' : `1.5px solid ${T.border}`, cursor:'pointer', fontWeight:600, transition:'all 0.18s', display:'flex', alignItems:'center', justifyContent:'center', gap:7, boxShadow: active ? '0 3px 10px rgba(124,111,205,0.3)' : 'none' }}
+                        >
+                          {opt.icon}{opt.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Coordinator toggle */}
+                {selectedRole === 'faculty' && (
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:600, color:T.textMuted, letterSpacing:'.3px', marginBottom:7, textTransform:'uppercase' }}>Coordinator Access</div>
+                    <label style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:'9px', background: selectedCoordinator ? T.purpleSoft : T.bgAlt, border: selectedCoordinator ? `1.5px solid ${T.purpleBorder}` : `1.5px solid ${T.border}`, cursor:'pointer', transition:'all 0.18s' }}>
+                      <input type="checkbox" checked={selectedCoordinator} onChange={e => setSelectedCoordinator(e.target.checked)} style={{ width:15, height:15, cursor:'pointer', accentColor:T.purple }} />
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:12.5, fontWeight:600, color: selectedCoordinator ? T.purpleDeep : T.textMain }}>Program Coordinator</div>
+                        <div style={{ fontSize:10.5, color:T.textMuted, marginTop:1 }}>Can log in as Coordinator or Faculty</div>
+                      </div>
+                    </label>
+                  </div>
+                )}
+
+                {/* Program pills */}
+                {selectedRole === 'faculty' && selectedCoordinator && (
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:600, color:T.textMuted, letterSpacing:'.3px', marginBottom:7, textTransform:'uppercase' }}>Assigned Program</div>
+                    <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                      {PROGRAMS.map(prog => {
+                        const active = selectedProgram === prog
+                        return (
+                          <button key={prog} type="button" onClick={() => setSelectedProgram(prog)}
+                            style={{ padding:'7px 16px', borderRadius:'99px', fontSize:12, fontFamily:"'Poppins',sans-serif", background: active ? T.purpleDeep : T.bgAlt, color: active ? '#fff' : T.textMuted, border: active ? 'none' : `1.5px solid ${T.border}`, cursor:'pointer', fontWeight:600, transition:'all 0.18s', boxShadow: active ? '0 2px 8px rgba(90,79,191,0.3)' : 'none' }}
+                          >
+                            {prog}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Feedback */}
+                {roleSuccess && (
+                  <div style={{ padding:'9px 12px', borderRadius:'8px', background:'#F0FDF4', border:'1px solid #BBF7D0', display:'flex', gap:8, alignItems:'flex-start' }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" style={{ flexShrink:0, marginTop:1 }}><polyline points="20 6 9 17 4 12"/></svg>
+                    <span style={{ fontSize:11.5, color:'#166534', fontWeight:500, lineHeight:1.4 }}>{roleSuccess}</span>
+                  </div>
+                )}
+                {roleError && (
+                  <div style={{ padding:'9px 12px', borderRadius:'8px', background:T.dangerSoft, border:'1px solid #FECACA', display:'flex', gap:8, alignItems:'center' }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={T.danger} strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
+                    <span style={{ fontSize:11.5, color:T.danger, fontWeight:500 }}>{roleError}</span>
+                  </div>
+                )}
+
+                {/* Save */}
+                {roleHasChanges && (
+                  <button type="button" onClick={handleSaveRole} disabled={roleSaving}
+                    style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:'9px', border:'none', background: roleSaving ? T.borderLight : 'linear-gradient(135deg,#7C6FCD,#5a4fbf)', color:'#fff', fontSize:12.5, fontWeight:600, cursor: roleSaving ? 'default' : 'pointer', fontFamily:"'Poppins',sans-serif", boxShadow: roleSaving ? 'none' : '0 3px 12px rgba(124,111,205,0.32)', opacity: roleSaving ? 0.7 : 1, transition:'all 0.2s', width:'fit-content' }}
+                  >
+                    {roleSaving
+                      ? <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation:'spin .8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Saving...</>
+                      : <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>Save Role</>
+                    }
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         {infoError && !isNew && (
           <div style={{ margin:'0 20px 20px', padding:'10px 14px', borderRadius:'8px', background:T.dangerSoft, border:'1px solid #FECACA', display:'flex', gap:8, alignItems:'center' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.danger} strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
@@ -355,6 +543,253 @@ export function CredentialsCard({ form, credEmail, setCredEmail, credPassword, s
             {credError && <div style={{ padding:'10px 14px', borderRadius:'8px', background:T.dangerSoft, border:'1px solid #FECACA', display:'flex', gap:8, alignItems:'center', marginTop:12 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.danger} strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg><span style={{ fontSize:12, color:T.danger, fontWeight:500 }}>{credError}</span></div>}
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+
+// ─── RoleManagementCard ───────────────────────────────────────────────────────
+export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [currentRole, setCurrentRole] = useState(null)
+  const [isCoordinator, setIsCoordinator] = useState(false)
+  const [coordinatorProgram, setCoordinatorProgram] = useState('')
+  const [selectedRole, setSelectedRole] = useState('faculty')
+  const [selectedCoordinator, setSelectedCoordinator] = useState(false)
+  const [selectedProgram, setSelectedProgram] = useState('')
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  // Available programs
+  const PROGRAMS = ['BSCS', 'BSIT', 'BSEMC', 'ACT']
+
+  // Load current role on mount
+  useEffect(() => {
+    async function loadRole() {
+      try {
+        const { getFacultyRole } = await import('../../services/api')
+        const data = await getFacultyRole(facultyId)
+        setCurrentRole(data.role)
+        setIsCoordinator(data.isCoordinator || false)
+        setCoordinatorProgram(data.coordinatorProgram || '')
+        setSelectedRole(data.role || 'faculty')
+        setSelectedCoordinator(data.isCoordinator || false)
+        setSelectedProgram(data.coordinatorProgram || '')
+      } catch (err) {
+        // If no role set yet, default to faculty
+        setCurrentRole(null)
+        setIsCoordinator(false)
+        setCoordinatorProgram('')
+        setSelectedRole('faculty')
+        setSelectedCoordinator(false)
+        setSelectedProgram('')
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadRole()
+  }, [facultyId])
+
+  const hasChanges = selectedRole !== currentRole || 
+                     selectedCoordinator !== isCoordinator ||
+                     selectedProgram !== coordinatorProgram
+
+  async function handleSave() {
+    setError('')
+    setSuccess('')
+    
+    // Validate coordinator program
+    if (selectedCoordinator && !selectedProgram) {
+      setError('Please select a program for the coordinator.')
+      return
+    }
+    
+    setSaving(true)
+    try {
+      const { setFacultyRole } = await import('../../services/api')
+      await setFacultyRole(facultyId, selectedRole, selectedCoordinator, selectedProgram || null)
+      setCurrentRole(selectedRole)
+      setIsCoordinator(selectedCoordinator)
+      setCoordinatorProgram(selectedProgram)
+      setSuccess(`Role updated successfully${selectedCoordinator ? ` as ${selectedProgram} Coordinator` : ''}. User must log out and back in for changes to take effect.`)
+      if (onRoleUpdated) onRoleUpdated(selectedRole, selectedCoordinator, selectedProgram)
+      setTimeout(() => setSuccess(''), 5000)
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to update role.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(124,111,205,0.04)', fontFamily: "'Poppins', sans-serif" }}>
+        <div style={{ padding:'16px 20px', borderBottom:`1px solid ${T.borderLight}`, display:'flex', alignItems:'center', gap:10, background:T.bgAlt }}>
+          <div style={{ width:30, height:30, borderRadius:'8px', background:T.purpleSoft, display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.purple} strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          </div>
+          <span style={{ fontSize:14, fontWeight:700, color:T.textMain, flex:1 }}>Role & Permissions</span>
+        </div>
+        <div style={{ padding:'24px 20px', textAlign:'center', color:T.textMuted }}>Loading role information...</div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(124,111,205,0.04)', fontFamily: "'Poppins', sans-serif" }}>
+      <div style={{ padding:'16px 20px', borderBottom:`1px solid ${T.borderLight}`, display:'flex', alignItems:'center', gap:10, background:T.bgAlt }}>
+        <div style={{ width:30, height:30, borderRadius:'8px', background:T.purpleSoft, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.purple} strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        </div>
+        <span style={{ fontSize:14, fontWeight:700, color:T.textMain, flex:1 }}>Role & Permissions</span>
+        {currentRole && (
+          <span style={{ fontSize:11, fontWeight:700, padding:'4px 12px', borderRadius:'99px', background: currentRole === 'admin' ? '#FEF3CD' : '#E6FAF3', color: currentRole === 'admin' ? '#B45309' : '#059669' }}>
+            {currentRole === 'admin' ? 'Admin' : isCoordinator ? `${coordinatorProgram || ''} Coordinator`.trim() : 'Faculty'}
+          </span>
+        )}
+      </div>
+
+      {!facultyEmail && (
+        <div style={{ margin:'20px 20px 0', padding:'12px 16px', borderRadius:'8px', background:'#FFFBEB', border:'1px solid #FEF3C7', display:'flex', gap:10, alignItems:'flex-start' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" style={{ flexShrink:0, marginTop:2 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span style={{ fontSize:12, color:'#B45309', lineHeight:1.5 }}>No login account yet. Activate credentials first before setting a role.</span>
+        </div>
+      )}
+
+      <div style={{ padding:'24px 20px', display:'flex', flexDirection:'column', gap:20 }}>
+        <FormField label="System Role" hint="Determines which panel the user can access">
+          <div style={{ display:'flex', gap:8 }}>
+            <button
+              type="button"
+              onClick={() => { setSelectedRole('faculty'); if (selectedRole === 'admin') setSelectedCoordinator(false) }}
+              disabled={!facultyEmail}
+              style={{
+                flex:1, padding:'10px 14px', borderRadius:'8px', fontSize:13, fontFamily:"'Poppins',sans-serif",
+                background: selectedRole === 'faculty' ? T.purpleSoft : T.bgAlt,
+                color: selectedRole === 'faculty' ? T.purpleDeep : T.textMuted,
+                border: selectedRole === 'faculty' ? `1.5px solid ${T.purpleBorder}` : `1px solid ${T.border}`,
+                cursor: facultyEmail ? 'pointer' : 'not-allowed',
+                fontWeight:600, transition: 'all 0.2s',
+                opacity: facultyEmail ? 1 : 0.5
+              }}
+            >
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Faculty
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedRole('admin')}
+              disabled={!facultyEmail}
+              style={{
+                flex:1, padding:'10px 14px', borderRadius:'8px', fontSize:13, fontFamily:"'Poppins',sans-serif",
+                background: selectedRole === 'admin' ? T.purpleSoft : T.bgAlt,
+                color: selectedRole === 'admin' ? T.purpleDeep : T.textMuted,
+                border: selectedRole === 'admin' ? `1.5px solid ${T.purpleBorder}` : `1px solid ${T.border}`,
+                cursor: facultyEmail ? 'pointer' : 'not-allowed',
+                fontWeight:600, transition: 'all 0.2s',
+                opacity: facultyEmail ? 1 : 0.5
+              }}
+            >
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                Admin
+              </div>
+            </button>
+          </div>
+        </FormField>
+
+        {selectedRole === 'faculty' && (
+          <>
+            <FormField label="Coordinator Access" hint="Grants access to program coordinator panel">
+              <label style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderRadius:'8px', background:T.bgAlt, border:`1px solid ${T.border}`, cursor: facultyEmail ? 'pointer' : 'not-allowed', opacity: facultyEmail ? 1 : 0.5 }}>
+                <input
+                  type="checkbox"
+                  checked={selectedCoordinator}
+                  onChange={e => setSelectedCoordinator(e.target.checked)}
+                  disabled={!facultyEmail}
+                  style={{ width:18, height:18, cursor: facultyEmail ? 'pointer' : 'not-allowed' }}
+                />
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:13, fontWeight:600, color:T.textMain }}>Grant Coordinator Access</div>
+                  <div style={{ fontSize:11, color:T.textMuted, marginTop:2 }}>Can log in as either Coordinator or Faculty</div>
+                </div>
+              </label>
+            </FormField>
+
+            {selectedCoordinator && (
+              <FormField label="Coordinator Program" hint="Select which program this coordinator manages" required>
+                <select
+                  value={selectedProgram}
+                  onChange={e => setSelectedProgram(e.target.value)}
+                  disabled={!facultyEmail}
+                  style={{
+                    padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`,
+                    fontSize:13, fontFamily:"'Poppins',sans-serif", background:T.bg,
+                    width:'100%', boxSizing:'border-box', outline:'none', color: T.textMain,
+                    cursor: facultyEmail ? 'pointer' : 'not-allowed',
+                    opacity: facultyEmail ? 1 : 0.5
+                  }}
+                >
+                  <option value="">Select program...</option>
+                  {PROGRAMS.map(prog => (
+                    <option key={prog} value={prog}>{prog}</option>
+                  ))}
+                </select>
+              </FormField>
+            )}
+          </>
+        )}
+
+        {success && (
+          <div style={{ padding:'10px 14px', borderRadius:'8px', background:'#E6FAF3', border:'1px solid #A7F3D0', display:'flex', gap:8, alignItems:'flex-start' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" style={{ flexShrink:0, marginTop:2 }}><polyline points="20 6 9 17 4 12"/></svg>
+            <span style={{ fontSize:12, color:'#059669', fontWeight:500, lineHeight:1.5 }}>{success}</span>
+          </div>
+        )}
+
+        {error && (
+          <div style={{ padding:'10px 14px', borderRadius:'8px', background:T.dangerSoft, border:'1px solid #FECACA', display:'flex', gap:8, alignItems:'center' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.danger} strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
+            <span style={{ fontSize:12, color:T.danger, fontWeight:500 }}>{error}</span>
+          </div>
+        )}
+
+        {hasChanges && facultyEmail && (
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            style={{
+              display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8,
+              padding:'10px 18px', borderRadius:'10px', border:'none',
+              background: saving ? T.borderLight : 'linear-gradient(135deg,#7C6FCD,#5a4fbf)',
+              color:'#fff', fontSize:13, fontWeight:600,
+              cursor: saving ? 'default' : 'pointer',
+              fontFamily:"'Poppins',sans-serif",
+              boxShadow: saving ? 'none' : '0 3px 12px rgba(124,111,205,0.32)',
+              opacity: saving ? 0.7 : 1,
+              transition: 'all 0.2s'
+            }}
+          >
+            {saving ? (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'spin 0.8s linear infinite' }}>
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                </svg>
+                Saving...
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                Save Role Changes
+              </>
+            )}
+          </button>
+        )}
       </div>
     </div>
   )

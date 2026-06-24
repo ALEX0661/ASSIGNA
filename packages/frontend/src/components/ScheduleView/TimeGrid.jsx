@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import {
   TIME_SLOTS, GRID_START, SLOT_MINUTES,
-  getEventId, parsePeriodRange, timeOverlaps,
+  getEventId, parsePeriodRange, timeOverlaps, isOnlineRoom,
 } from './svHelpers'
 import { TV } from './svPrimitives'
 import SessionCard from './SessionCard'
@@ -264,6 +264,59 @@ export default function TimeGrid({
   const resolvedSize = compact ? 'compact' : gridSize
   const { slotH, roomMinW } = resolveDims(resolvedSize)
 
+  // ── Auto-scroll while dragging near the top/bottom edge ───────────────────
+  const scrollRef    = useRef(null)
+  const scrollRafRef = useRef(null)
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+
+    const ZONE      = 72   // px from edge that triggers scrolling
+    const MAX_SPEED = 16   // max px scrolled per animation frame
+    let speed = 0
+    let rafId = null
+
+    const animate = () => {
+      if (speed === 0) { rafId = null; return }
+      el.scrollTop += speed
+      rafId = requestAnimationFrame(animate)
+    }
+
+    const onDragOver = (evt) => {
+      const rect = el.getBoundingClientRect()
+      const y    = evt.clientY - rect.top
+      const h    = rect.height
+
+      let newSpeed = 0
+      if (y < ZONE)        newSpeed = -MAX_SPEED * Math.pow(1 - y / ZONE, 1.5)
+      else if (y > h - ZONE) newSpeed =  MAX_SPEED * Math.pow(1 - (h - y) / ZONE, 1.5)
+
+      speed = newSpeed
+      if (!rafId && speed !== 0) {
+        rafId = requestAnimationFrame(animate)
+      }
+    }
+
+    const stop = () => {
+      speed = 0
+      if (rafId) { cancelAnimationFrame(rafId); rafId = null }
+    }
+
+    el.addEventListener('dragover', onDragOver)
+    document.addEventListener('dragend',  stop)
+    document.addEventListener('drop',     stop)
+    document.addEventListener('mouseup',  stop)
+
+    return () => {
+      el.removeEventListener('dragover', onDragOver)
+      document.removeEventListener('dragend',  stop)
+      document.removeEventListener('drop',     stop)
+      document.removeEventListener('mouseup',  stop)
+      if (rafId) cancelAnimationFrame(rafId)
+    }
+  }, [])
+
   const totalH   = TIME_SLOTS.length * slotH
   const gridMinW = TIME_COL_W + rooms.length * roomMinW
 
@@ -333,7 +386,7 @@ export default function TimeGrid({
           const r = parsePeriodRange(ev.period)
           if (!r || !timeOverlaps(proposed, r)) continue
 
-          const roomC    = ev.room === room && room !== 'TBA'
+          const roomC    = ev.room === room && room !== 'TBA' && !isOnlineRoom(room)
           const sectionC = draggedEvent.program && ev.program === draggedEvent.program
               && String(ev.year) === String(draggedEvent.year)
               && ev.block === draggedEvent.block
@@ -366,7 +419,7 @@ export default function TimeGrid({
   }, [draggedEvent, rooms, allEvents, ambientMergeIds])
 
   return (
-    <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: gridH, paddingBottom: 12 }}>
+    <div ref={scrollRef} style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: gridH, paddingBottom: 12 }}>
       <div style={{ minWidth: gridMinW }}>
 
         {/* ── HEADER ── */}

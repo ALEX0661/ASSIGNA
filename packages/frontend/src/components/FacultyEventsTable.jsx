@@ -1,308 +1,910 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useRef } from 'react'
+import { uploadCourses, extractSheet, commitCourses } from '../services/api'
+import courseListTemplate from '../assets/templates/CCS_COURSE_LIST_Template.xlsx';
 
-// ─── Lavender & White Theme Tokens ────────────────────────────────────────────
-const T = {
-  purple:       '#7C6FCD',
-  purpleDeep:   '#5a4fbf',
-  purpleSoft:   '#EEEAFB',
-  purpleBorder: '#D8D3F5',
-  textMain:     '#1a1a2e',
-  textMid:      '#4a4a6a',
-  textMuted:    '#8883B0',
-  textLight:    '#B0ABCC',
-  border:       '#E8E4F8',
-  borderLight:  '#F5F4FB',
-  bg:           '#FFFFFF',
-  bgAlt:        '#FAFAFE',
-  danger:       '#EF4444',
-  dangerSoft:   '#FEF2F2',
-};
+const PROGRAMS = ['BSCS', 'BSIT', 'BSEMC-GD', 'BSEMC-DAT']
+const SEMESTERS = ['1st Semester', '2nd Semester', 'Midyear']
 
-const SESSION_STYLE = {
-  Lecture:    { bg: T.bgAlt,      color: T.textMid,    label: 'Lecture' },
-  Lab:        { bg: T.purpleSoft, color: T.purpleDeep, label: 'Lab'     },
-  Laboratory: { bg: T.purpleSoft, color: T.purpleDeep, label: 'Lab'     },
-};
+// Sheets that must be present in the official CCS Course List template.
+const TEMPLATE_SHEETS     = ['First Semester', 'Second Semester', 'Midyear']
+const TEMPLATE_SHEETS_SET = new Set(TEMPLATE_SHEETS)
 
-function getSessionStyle(session) {
-  if (!session) return null;
-  const key = Object.keys(SESSION_STYLE).find(k =>
-    session.toLowerCase().includes(k.toLowerCase())
-  );
-  return key ? SESSION_STYLE[key] : { bg: T.bgAlt, color: T.textMid, label: session };
+const ORDINAL = n => {
+  const s = ['th','st','nd','rd'], v = n % 100
+  return n + (s[(v-20)%10] || s[v] || s[0])
 }
 
-const Icon = {
-  clock:    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-  room:     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
-  group:    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="4" rx="2"/><rect x="3" y="10" width="18" height="4" rx="2"/><rect x="3" y="17" width="18" height="4" rx="2"/></svg>,
-  filter:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>,
-  download: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
-};
+/* ─── Styles ────────────────────────────────────────────────────────────── */
+if (!document.getElementById('import-modal-style')) {
+  const s = document.createElement('style')
+  s.id = 'import-modal-style'
+  s.textContent = `
+    @keyframes imSpin   { to { transform: rotate(360deg) } }
+    @keyframes imFadeIn { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:translateY(0) } }
+    @keyframes imPop    { 0%{transform:scale(.92);opacity:0} 100%{transform:scale(1);opacity:1} }
 
-const COLUMNS = [
-  { key: 'courseCode', label: 'Course' },
-  { key: 'title',      label: 'Title'  },
-  { key: 'session',    label: 'Type'   },
-  { key: 'class',      label: 'Class'  },
-  { key: 'day',        label: 'Day'    },
-  { key: 'period',     label: 'Time'   },
-  { key: 'room',       label: 'Room'   },
-  { key: 'units',      label: 'Units'  },
-];
+    .im-primary {
+      display:inline-flex; align-items:center; gap:7px;
+      padding:9px 20px; border-radius:10px; border:none;
+      font-family:'Poppins',sans-serif; font-size:12.5px; font-weight:600;
+      cursor:pointer; transition:all .15s;
+      background:linear-gradient(135deg,#2E9E5B,#1F7A45); color:#fff;
+      box-shadow:0 3px 12px rgba(46,158,91,.32);
+    }
+    .im-primary:hover:not(:disabled) { background:linear-gradient(135deg,#4BB377,#27914F); transform:translateY(-1px); box-shadow:0 5px 18px rgba(46,158,91,.4); }
+    .im-primary:active:not(:disabled) { transform:translateY(0); }
+    .im-primary:disabled { opacity:.45; cursor:default; transform:none; box-shadow:none; }
 
-const DAY_ORDER = { Monday:1, Tuesday:2, Wednesday:3, Thursday:4, Friday:5, Saturday:6, Sunday:7 };
+    .im-ghost {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:8px 15px; border-radius:10px;
+      border:1.5px solid #DCF3E4; font-family:'Poppins',sans-serif;
+      font-size:12px; font-weight:500; cursor:pointer;
+      background:#fff; color:#5C8A6E; transition:all .13s;
+    }
+    .im-ghost:hover:not(:disabled) { background:#EFFAF4; border-color:#9EDDB7; color:#1F7A45; }
+    .im-ghost:disabled { opacity:.45; cursor:default; }
 
-function parseTime(periodStr) {
-  if (!periodStr) return 9999;
-  const match = periodStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?/);
-  if (!match) return 9999;
-  let h = parseInt(match[1], 10);
-  let m = parseInt(match[2], 10);
-  let ampm = match[3] ? match[3].toLowerCase() : null;
-  if (ampm === 'pm' && h < 12) h += 12;
-  if (ampm === 'am' && h === 12) h = 0;
-  return h * 60 + m;
+    .im-download {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:7px 14px; border-radius:9px;
+      border:1.5px solid #C9ECD6; font-family:'Poppins',sans-serif;
+      font-size:11.5px; font-weight:600; cursor:pointer;
+      background:#F1FBF5; color:#2E9E5B; transition:all .13s;
+    }
+    .im-download:hover { background:#E5F9EC; border-color:#6FC795; color:#1F7A45; transform:translateY(-1px); box-shadow:0 3px 10px rgba(46,158,91,.15); }
+    .im-download:active { transform:translateY(0); box-shadow:none; }
+
+    .im-close {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px; border-radius: 8px;
+      border: 1.5px solid #DCF3E4; cursor: pointer;
+      background: #EFFAF4; color: #2E9E5B; transition: all 0.2s; flex-shrink: 0;
+      padding: 0;
+    }
+    .im-close:hover { background:#FFE8E8; border-color:#FECACA; color:#DC2626; }
+
+    .im-sheet-btn {
+      text-align:left; display:flex; align-items:center; gap:10px;
+      padding:12px 16px; border-radius:10px; border:1.5px solid #DCF3E4;
+      background:#F7FCF9; cursor:pointer; transition:all .13s;
+      font-family:'Poppins',sans-serif; font-size:13px; font-weight:600; color:#0E2A20;
+    }
+    .im-sheet-btn:hover:not(:disabled) { background:#E5F9EC; border-color:#9EDDB7; }
+    .im-sheet-btn.active { background:#E5F9EC; border-color:#6FC795; }
+    .im-sheet-btn:disabled { opacity:.5; cursor:wait; }
+
+    .im-row-save {
+      padding: 3px 9px; border-radius: 7px; border: 1.5px solid #A7F3D0;
+      background: #EEF9F0; color: #16A34A; font-family: 'Poppins',sans-serif;
+      font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.12s;
+    }
+    .im-row-save:hover { background: #D1FAE5; }
+
+    .im-row-cancel {
+      padding: 3px 9px; border-radius: 7px; border: 1.5px solid #DCF3E4;
+      background: #fff; color: #5C8A6E; font-family: 'Poppins',sans-serif;
+      font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.12s;
+    }
+    .im-row-cancel:hover { background: #EFFAF4; border-color: #9EDDB7; color: #1F7A45; }
+
+    .im-remove {
+      width: 24px; height: 24px; border-radius: 7px;
+      border: 1.5px solid #FECACA; background: #FFF5F5; color: #DC2626;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.12s; flex-shrink: 0; margin-left: auto;
+      padding: 0;
+    }
+    .im-remove:hover { background: #FEE2E2; border-color: #FCA5A5; }
+
+    .im-warn-box {
+      background:#FFFBEB; border:1.5px solid #FCD34D; border-radius:10px;
+      padding:11px 14px; font-size:12px; color:#92400E; line-height:1.6;
+      display:flex; gap:9px; align-items:flex-start;
+    }
+
+    /* ── Block Config Stepper ── */
+    .im-stepper {
+      display: inline-flex; align-items: center;
+      background: #F7FCF9; border: 1.5px solid #DCF3E4;
+      border-radius: 10px; overflow: hidden;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .im-stepper:focus-within { border-color: #2E9E5B; box-shadow: 0 0 0 3px rgba(46,158,91,0.1); }
+    .im-stepper-btn {
+      width: 32px; height: 32px; background: transparent;
+      border: none; color: #2E9E5B; font-size: 16px; font-weight: 500;
+      cursor: pointer; transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .im-stepper-btn:hover:not(:disabled) { background: #E5F9EC; }
+    .im-stepper-btn:active:not(:disabled) { background: #C9ECD6; }
+    .im-stepper-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .im-stepper-input {
+      width: 36px; text-align: center; border: none; background: transparent;
+      font-weight: 600; font-size: 14px; color: #0E2A20;
+      font-family: 'Poppins', sans-serif; outline: none; -moz-appearance: textfield;
+    }
+    .im-stepper-input::-webkit-outer-spin-button,
+    .im-stepper-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+    /* ── Block Config Group Card ── */
+    .im-group-card {
+      border: 1.5px solid #DCF3E4; border-radius: 14px; background: #ffffff;
+      padding: 14px 16px; display: flex; align-items: center;
+      justify-content: space-between; gap: 16px; transition: all 0.2s ease;
+    }
+    .im-group-card:hover {
+      border-color: #9EDDB7;
+      box-shadow: 0 4px 20px rgba(46,158,91,0.06);
+      transform: translateY(-1px);
+    }
+  `
+  document.head.appendChild(s)
 }
 
-// ─── Shared UI ────────────────────────────────────────────────────────────────
-function EmptyState({ fetchError }) {
+// ─── Template download ────────────────────────────────────────────────────────
+function downloadTemplate() {
+    const a = document.createElement('a');
+    a.href = courseListTemplate; 
+    a.download = 'CCS_COURSE_LIST_Template.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+const Spin = () => (
+  <div style={{ width:16, height:16, border:'2px solid #DCF3E4', borderTopColor:'#2E9E5B', borderRadius:'50%', animation:'imSpin .8s linear infinite', flexShrink:0 }} />
+)
+
+const ErrBox = ({ msg }) => !msg ? null : (
+  <div style={{ background:'#FFF5F5', border:'1px solid #FECACA', borderRadius:9, padding:'9px 13px', fontSize:12, color:'#DC2626', display:'flex', alignItems:'flex-start', gap:7 }}>
+    <svg style={{ flexShrink:0, marginTop:1 }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    {msg}
+  </div>
+)
+
+const HintBox = ({ children }) => (
+  <div style={{ background:'#F1FBF5', border:'1px solid #DCF3E4', borderRadius:10, padding:'11px 14px', fontSize:12, color:'#5C8A6E', lineHeight:1.65 }}>
+    {children}
+  </div>
+)
+
+/* ─── Step indicator ────────────────────────────────────────────────────── */
+function Steps({ current }) {
+  const steps = ['Upload', 'Select Sheet', 'Configure Blocks', 'Review']
   return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'64px 24px', gap:16 }}>
-      <div style={{ width:48, height:48, borderRadius:'12px', background: fetchError ? T.dangerSoft : T.bgAlt, color: fetchError ? T.danger : T.textMuted, display:'flex', alignItems:'center', justifyContent:'center', border:`1px solid ${fetchError ? '#FECACA' : T.border}` }}>
-        {fetchError
-          ? <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          : <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        }
-      </div>
-      <div style={{ textAlign:'center' }}>
-        <h3 style={{ fontSize:15, fontWeight:600, color:T.textMain, margin:'0 0 4px 0' }}>
-          {fetchError ? 'Failed to load schedule' : 'No classes scheduled'}
-        </h3>
-        <p style={{ fontSize:13, color:T.textMuted, margin:0 }}>
-          {fetchError ? 'There was a problem fetching this data. Please refresh.' : 'This faculty has no assigned classes in this view.'}
-        </p>
-      </div>
+    <div style={{ display:'flex', alignItems:'center', marginBottom:26, padding:'0 2px' }}>
+      {steps.map((label, i) => {
+        const idx = i + 1, done = idx < current, active = idx === current
+        return (
+          <div key={label} style={{ display:'flex', alignItems:'center', flex: i < steps.length - 1 ? 1 : 'none' }}>
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
+              <div style={{
+                width:30, height:30, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center',
+                fontSize:12, fontWeight:700, flexShrink:0, transition:'all .2s',
+                background: done ? 'linear-gradient(135deg,#2E9E5B,#1F7A45)' : active ? 'linear-gradient(135deg,#6FC795,#2E9E5B)' : '#E5F9EC',
+                color: (done || active) ? '#fff' : '#A8D9BB',
+                boxShadow: active ? '0 3px 12px rgba(46,158,91,.35)' : done ? '0 2px 8px rgba(46,158,91,.2)' : 'none',
+              }}>
+                {done
+                  ? <svg width="12" height="9" viewBox="0 0 12 9" fill="none"><polyline points="1,4.5 4.5,8 11,1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  : idx}
+              </div>
+              <span style={{ fontSize:10.5, fontWeight:active?700:500, color:active?'#2E9E5B':done?'#6FC795':'#A8D9BB', whiteSpace:'nowrap', letterSpacing:'.3px' }}>
+                {label}
+              </span>
+            </div>
+            {i < steps.length - 1 && (
+              <div style={{ flex:1, height:2, margin:'0 8px 18px', borderRadius:99, background: done ? 'linear-gradient(90deg,#2E9E5B,#6FC795)' : '#DCF3E4', transition:'background .3s' }} />
+            )}
+          </div>
+        )
+      })}
     </div>
-  );
+  )
 }
 
-function SessionBadge({ session }) {
-  if (!session) return <span style={{ color: T.textLight }}>—</span>;
-  const s = getSessionStyle(session);
-  return (
-    <span style={{ display:'inline-flex', padding:'3px 10px', borderRadius:'6px', background:s.bg, color:s.color, fontSize:12, fontWeight:600 }}>
-      {s.label}
-    </span>
-  );
-}
+/* ─── Step 1: Upload ────────────────────────────────────────────────────── */
+function UploadStep({ onUploaded }) {
+  const [dragging, setDragging] = useState(false)
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState('')
+  const inputRef = useRef()
 
-function ClassCell({ event }) {
-  const parts = [event.program, event.year && `Y${event.year}`, event.block].filter(Boolean);
-  if (parts.length === 0) return <span style={{ color: T.textLight }}>—</span>;
-  return <span style={{ fontSize:13, color:T.textMid, fontWeight:500 }}>{parts.join(' ')}</span>;
-}
-
-function GroupHeader({ label, count }) {
-  return (
-    <div style={{ padding:'12px 20px', background:T.bgAlt, borderBottom:`1px solid ${T.border}`, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-        <span style={{ width:6, height:6, borderRadius:'50%', background:T.purple }}></span>
-        <span style={{ fontSize:14, fontWeight:600, color:T.textMain }}>{label}</span>
-      </div>
-      <span style={{ fontSize:12, color:T.textMuted, fontWeight:600 }}>{count} {count === 1 ? 'class' : 'classes'}</span>
-    </div>
-  );
-}
-
-// ─── Main Component ───────────────────────────────────────────────────────────
-/**
- * @param {object[]} events
- * @param {function} computeUnits
- * @param {boolean}  fetchError
- * @param {function} onExport   – called with the events array to export;
- *                                provided by ScheduleSection (handles naming + xlsx write)
- */
-const FacultyEventsTable = ({ events, computeUnits, fetchError, onExport }) => {
-  const [groupBy,    setGroupBy]    = useState(false);
-  const [filterDay,  setFilterDay]  = useState('');
-  const [exporting,  setExporting]  = useState(false);
-
-  const isEmpty = !events || events.length === 0;
-
-  const allDays = useMemo(() => {
-    if (!events) return [];
-    return [...new Set(events.map(e => e.day).filter(Boolean))]
-      .sort((a, b) => (DAY_ORDER[a] || 99) - (DAY_ORDER[b] || 99));
-  }, [events]);
-
-  const processed = useMemo(() => {
-    if (!events) return [];
-    let arr = [...events];
-    if (filterDay) arr = arr.filter(e => e.day === filterDay);
-    arr.sort((a, b) => {
-      const cmp = (DAY_ORDER[a.day] || 99) - (DAY_ORDER[b.day] || 99);
-      return cmp !== 0 ? cmp : parseTime(a.period) - parseTime(b.period);
-    });
-    return arr;
-  }, [events, filterDay]);
-
-  const grouped = useMemo(() => {
-    if (!groupBy) return null;
-    const map = {};
-    processed.forEach(e => {
-      const k = e.day || 'Unscheduled';
-      if (!map[k]) map[k] = [];
-      map[k].push(e);
-    });
-    return Object.entries(map).sort(([a], [b]) => (DAY_ORDER[a] || 99) - (DAY_ORDER[b] || 99));
-  }, [processed, groupBy]);
-
-  /* ── Handle export of filtered view ──────────────────────────────────────── */
-  async function handleExportView() {
-    if (!onExport || !processed.length || exporting) return
-    setExporting(true)
+  async function processFile(file) {
+    if (!file) return
+    if (!file.name.match(/\.(xlsx|xls)$/i)) { setError('Please upload an .xlsx or .xls file.'); return }
+    setLoading(true); setError('')
     try {
-      await onExport(processed)
-    } finally {
-      setExporting(false)
+      const res = await uploadCourses(file)
+      if (!res.sheets || res.sheets.length === 0) { setError('No sheets found in the file.'); return }
+
+      const badSheets = res.sheets.filter(s => !TEMPLATE_SHEETS_SET.has(s))
+      if (badSheets.length > 0) {
+        setError(
+          `Wrong template — unexpected sheet(s): "${badSheets.join('", "')}". ` +
+          `Please download and use the official CCS Course List template ` +
+          `(expected sheets: ${TEMPLATE_SHEETS.join(', ')}).`
+        )
+        setLoading(false)
+        return
+      }
+      if (!res.sheets.some(s => TEMPLATE_SHEETS_SET.has(s))) {
+        setError(`No valid template sheets found. Expected: ${TEMPLATE_SHEETS.join(', ')}.`)
+        setLoading(false)
+        return
+      }
+
+      onUploaded(res.sheets, res.fileData)
+    } catch(err) {
+      setError(err.response?.data?.detail || 'Could not parse the file. Check the format and try again.')
+    } finally { setLoading(false) }
+  }
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+      <div
+        onDragOver={e => { e.preventDefault(); setDragging(true) }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={e => { e.preventDefault(); setDragging(false); processFile(e.dataTransfer.files[0]) }}
+        onClick={() => !loading && inputRef.current?.click()}
+        style={{
+          border:`2px dashed ${dragging ? '#2E9E5B' : '#C9ECD6'}`, borderRadius:14,
+          padding:'44px 24px', textAlign:'center',
+          background: dragging ? '#F1FBF5' : '#F7FCF9',
+          cursor: loading ? 'wait' : 'pointer', transition:'all .15s',
+        }}
+      >
+        {loading ? (
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
+            <div style={{ width:40, height:40, borderRadius:'50%', border:'3px solid #DCF3E4', borderTopColor:'#2E9E5B', animation:'imSpin 0.8s linear infinite' }} />
+            <p style={{ fontSize:13, color:'#5C8A6E', fontWeight:500, margin:0 }}>Reading file…</p>
+          </div>
+        ) : (
+          <>
+            <div style={{ width:54, height:54, margin:'0 auto 14px', borderRadius:14, display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s', background:dragging?'linear-gradient(135deg,#2E9E5B,#1F7A45)':'linear-gradient(135deg,#E5F9EC,#D7F2E0)', boxShadow:dragging?'0 6px 20px rgba(46,158,91,0.35)':'none' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={dragging?'#fff':'#2E9E5B'} strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+            </div>
+            <p style={{ fontWeight:700, fontSize:14, color:'#0E2A20', marginBottom:4 }}>
+              {dragging ? 'Drop it here!' : 'Drop your Course List Excel file'}
+            </p>
+            <p style={{ fontSize:12, color:'#7DAB8E', margin:0 }}>
+              or <span style={{ color:'#2E9E5B', fontWeight:600 }}>click to browse</span> · .xlsx or .xls
+            </p>
+          </>
+        )}
+      </div>
+      <input ref={inputRef} type="file" accept=".xlsx,.xls" style={{ display:'none' }} onChange={e => { processFile(e.target.files[0]); e.target.value = null }} />
+      
+      <ErrBox msg={error} />
+      
+      {error && error.includes('template') && (
+        <div className="im-warn-box">
+          <svg style={{ flexShrink:0, marginTop:1 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span>
+            <strong>Wrong template!</strong> For course import, please use the official <strong>CCS Course List</strong> template.
+          </span>
+        </div>
+      )}
+
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
+        <p style={{ fontSize:11.5, color:'#7DAB8E', margin:0, lineHeight:1.5 }}>
+          Official CCS Course List template only · Semester read from sheet name
+        </p>
+        <button
+          onClick={e => { e.stopPropagation(); downloadTemplate() }}
+          className="im-download"
+          title="Download the blank Course List template"
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Download template
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/* ─── Semester detection from sheet name ─────────────────────────────────── */
+const SEM_DETECT_MAP = [
+  { patterns: ['1st sem', '1st semester', 'first sem', 'sem 1', 'semester 1', 'first semester'], value: '1st Semester' },
+  { patterns: ['2nd sem', '2nd semester', 'second sem', 'sem 2', 'semester 2', 'second semester'], value: '2nd Semester' },
+  { patterns: ['midyear', 'mid year', 'mid-year', 'summer'], value: 'Midyear' },
+]
+const SEM_BADGE = {
+  '1st Semester': { bg:'#EEF9F0', color:'#16A34A', border:'#A7F3D0', short:'1st Sem' },
+  '2nd Semester': { bg:'#DCFCE7', color:'#15803D', border:'#BBF7D0', short:'2nd Sem' },
+  'Midyear':      { bg:'#FFF7ED', color:'#D97706', border:'#FDE68A', short:'Midyear' },
+}
+function detectSemester(sheetName) {
+  const lower = sheetName.toLowerCase().trim()
+  for (const { patterns, value } of SEM_DETECT_MAP) {
+    if (patterns.some(p => lower.includes(p))) return value
+  }
+  return null
+}
+
+/* ─── Step 2: Sheet Selection ───────────────────────────────────────────── */
+function SheetSelectionStep({ sheets, fileData, onParsed, onBack }) {
+  const [loading, setLoading] = useState(false)
+  const [active,  setActive]  = useState(null)
+  const [error,   setError]   = useState('')
+
+  const sheetSemesters = sheets.map(name => ({ name, semester: detectSemester(name) }))
+
+  async function handleSelect(sheetName) {
+    const sem = detectSemester(sheetName) || '1st Semester'
+    setLoading(true); setActive(sheetName); setError('')
+    try {
+      const res = await extractSheet({ sheetName, fileData })
+      if (!res.preview || res.preview.length === 0) {
+        setError(`No valid courses found in sheet "${sheetName}". Check column headers.`)
+        setLoading(false); setActive(null); return
+      }
+      onParsed(res.preview.map(c => ({ ...c, semester: sem })))
+    } catch(err) {
+      setError(err.response?.data?.detail || 'Error extracting data from this sheet.')
+      setLoading(false); setActive(null)
     }
   }
 
-  // ─── Toolbar ──────────────────────────────────────────────────────────────
-  const Toolbar = () => (
-    <div style={{
-      padding:'12px 20px', borderBottom:`1px solid ${T.border}`,
-      display:'flex', alignItems:'center', justifyContent:'space-between', gap:16,
-      background:T.bg, flexWrap:'wrap'
-    }}>
-      {/* Left: day filter pills */}
-      <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-        <span style={{ display:'flex', alignItems:'center', gap:6, color:T.textMuted, fontSize:13, fontWeight:600, marginRight:8 }}>
-          {Icon.filter} Filter
-        </span>
+  async function handleImportAll() {
+    setLoading(true); setActive('__all__'); setError('')
+    try {
+      let allCourses = []
+      for (const { name, semester } of sheetSemesters) {
+        const sem = semester || '1st Semester'
+        const res = await extractSheet({ sheetName: name, fileData })
+        if (res.preview && res.preview.length > 0) {
+          allCourses = allCourses.concat(res.preview.map(c => ({ ...c, semester: sem })))
+        }
+      }
+      if (allCourses.length === 0) {
+        setError('No valid courses found in any sheet. Check column headers.')
+        setLoading(false); setActive(null); return
+      }
+      onParsed(allCourses)
+    } catch(err) {
+      setError(err.response?.data?.detail || 'Error extracting data.')
+      setLoading(false); setActive(null)
+    }
+  }
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+      <p style={{ fontSize:13, color:'#5C8A6E', margin:0 }}>
+        Select the sheet(s) that contain course data. You can import all at once.
+      </p>
+
+      {sheets.length > 1 && (
         <button
-          onClick={() => setFilterDay('')}
-          style={{ padding:'6px 14px', borderRadius:'99px', fontSize:12, fontWeight:600, cursor:'pointer', border:'1px solid', transition:'all 0.2s', background:!filterDay ? T.purpleSoft : 'transparent', borderColor:!filterDay ? T.purpleBorder : T.border, color:!filterDay ? T.purpleDeep : T.textMuted, fontFamily:"'Poppins', sans-serif" }}
-        >All</button>
-        {allDays.map(d => {
-          const active = filterDay === d;
+          onClick={handleImportAll}
+          disabled={loading}
+          className={`im-sheet-btn${active === '__all__' ? ' active' : ''}`}
+          style={{ background: active === '__all__' ? '#EFFAF4' : '#fff' }}
+        >
+          <div style={{ width:28, height:28, borderRadius:7, background:'#E5F9EC', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2E9E5B" strokeWidth="2.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <span style={{ flex:1 }}>Import All Sheets</span>
+          {loading && active === '__all__' && <Spin />}
+        </button>
+      )}
+
+      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        {sheetSemesters.map(({ name, semester }) => {
+          const badge = semester ? SEM_BADGE[semester] : null
+          const isSelected = active === name
           return (
-            <button key={d} onClick={() => setFilterDay(d === filterDay ? '' : d)} style={{ padding:'6px 14px', borderRadius:'99px', fontSize:12, fontWeight:600, cursor:'pointer', border:'1px solid', transition:'all 0.2s', background:active ? T.purpleSoft : 'transparent', borderColor:active ? T.purpleBorder : T.border, color:active ? T.purpleDeep : T.textMuted, fontFamily:"'Poppins', sans-serif" }}>
-              {d.slice(0, 3)}
+            <button key={name} onClick={() => handleSelect(name)} disabled={loading} className={`im-sheet-btn${isSelected ? ' active' : ''}`}>
+              <div style={{ width:28, height:28, borderRadius:7, background:'#F7FCF9', border:'1px solid #DCF3E4', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2E9E5B" strokeWidth="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+              </div>
+              <span style={{ flex:1 }}>{name}</span>
+              {badge ? (
+                <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:99, background:badge.bg, color:badge.color, border:`1px solid ${badge.border}` }}>
+                  {badge.short}
+                </span>
+              ) : (
+                <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:99, background:'#FFF5F5', color:'#DC2626', border:'1px solid #FECACA' }}>
+                  Unknown
+                </span>
+              )}
+              {loading && isSelected && <Spin />}
             </button>
-          );
+          )
         })}
       </div>
 
-      {/* Right: group + export */}
-      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-        <button
-          onClick={() => setGroupBy(v => !v)}
-          style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:'8px', fontSize:12, fontWeight:600, border:`1px solid ${groupBy ? T.purpleBorder : T.border}`, background:groupBy ? T.purpleSoft : T.bgAlt, color:groupBy ? T.purpleDeep : T.textMuted, cursor:'pointer', transition:'all 0.2s', fontFamily:"'Poppins', sans-serif" }}
-        >
-          {Icon.group} Group by Day
+      <ErrBox msg={error} />
+      
+      <div style={{ display:'flex', gap:8 }}>
+        <button className="im-ghost" onClick={onBack} disabled={loading}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          Back
         </button>
-
-        {/* Export current view button */}
-        {onExport && processed.length > 0 && (
-          <button
-            onClick={handleExportView}
-            disabled={exporting}
-            title={filterDay ? `Export ${filterDay} view to Excel` : 'Export current view to Excel'}
-            style={{
-              display:'inline-flex', alignItems:'center', gap:6,
-              padding:'6px 12px', borderRadius:'8px', fontSize:12, fontWeight:600,
-              border:`1px solid ${T.purpleBorder}`,
-              background: exporting ? T.bgAlt : T.purpleSoft,
-              color: exporting ? T.textMuted : T.purpleDeep,
-              cursor: exporting ? 'default' : 'pointer',
-              transition:'all 0.2s', fontFamily:"'Poppins', sans-serif",
-              opacity: exporting ? 0.7 : 1,
-            }}
-            onMouseEnter={e => { if (!exporting) e.currentTarget.style.borderColor = T.purple }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = T.purpleBorder }}
-          >
-            {exporting
-              ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ animation:'spin 0.8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-              : Icon.download
-            }
-            {filterDay ? `Export ${filterDay.slice(0, 3)}` : 'Export View'}
-          </button>
-        )}
       </div>
     </div>
-  );
+  )
+}
 
-  // ─── Table ────────────────────────────────────────────────────────────────
-  const Th = ({ col }) => (
-    <th style={{ padding:'14px 20px', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', whiteSpace:'nowrap', color:T.textMuted, borderBottom:`2px solid ${T.border}`, userSelect:'none', textAlign:'left', background:T.bgAlt }}>
-      {col.label}
-    </th>
-  );
+/* ─── Block config helpers ──────────────────────────────────────────────── */
+const ICM_PROG_META = {
+  'BSCS':      { color: '#0369A1', bg: '#E0F2FE' },
+  'BSIT':      { color: '#15803D', bg: '#DCFCE7' },
+  'BSEMC-GD':  { color: '#B45309', bg: '#FEF3C7' },
+  'BSEMC-DAT': { color: '#B91C1C', bg: '#FEE2E2' },
+}
+const ICM_PROG_META_DEFAULT = { color: '#5C8A6E', bg: '#F1FBF5' }
 
-  const TR = ({ event }) => {
-    const units = computeUnits(event);
-    const [hovered, setHovered] = useState(false);
-    return (
-      <tr onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} style={{ background: hovered ? T.bgAlt : T.bg, transition:'background 0.15s' }}>
-        <td style={{ padding:'14px 20px', borderBottom:`1px solid ${T.borderLight}` }}>
-          <span style={{ fontSize:13, fontWeight:700, color:T.purpleDeep }}>{event.courseCode}</span>
-        </td>
-        <td style={{ padding:'14px 20px', borderBottom:`1px solid ${T.borderLight}`, maxWidth:220 }}>
-          <span style={{ fontSize:13, fontWeight:500, color:T.textMain, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', display:'block' }}>
-            {event.title || '—'}
-          </span>
-        </td>
-        <td style={{ padding:'14px 20px', borderBottom:`1px solid ${T.borderLight}` }}>
-          <SessionBadge session={event.session} />
-        </td>
-        <td style={{ padding:'14px 20px', borderBottom:`1px solid ${T.borderLight}` }}>
-          <ClassCell event={event} />
-        </td>
-        <td style={{ padding:'14px 20px', borderBottom:`1px solid ${T.borderLight}` }}>
-          <span style={{ fontSize:13, color:T.textMid, fontWeight:500 }}>{event.day || '—'}</span>
-        </td>
-        <td style={{ padding:'14px 20px', borderBottom:`1px solid ${T.borderLight}` }}>
-          <span style={{ fontSize:13, color:T.textMid }}>{event.period || '—'}</span>
-        </td>
-        <td style={{ padding:'14px 20px', borderBottom:`1px solid ${T.borderLight}` }}>
-          <span style={{ fontSize:13, color:T.textMain, fontWeight:600 }}>{event.room || '—'}</span>
-        </td>
-        <td style={{ padding:'14px 20px', borderBottom:`1px solid ${T.borderLight}`, color:T.textMuted, fontSize:13, fontWeight:600 }}>
-          {units === '—' || units == null ? '—' : units}
-        </td>
-      </tr>
-    );
-  };
-
-  // ─── Render ───────────────────────────────────────────────────────────────
-  if (isEmpty) return <EmptyState fetchError={fetchError} />;
-
-  const renderTable = (evts) => (
-    <div style={{ overflowX:'auto' }}>
-      <table style={{ width:'100%', borderCollapse:'collapse', textAlign:'left' }}>
-        <thead><tr>{COLUMNS.map(col => <Th key={col.key} col={col} />)}</tr></thead>
-        <tbody>{evts.map(e => <TR key={e.schedule_id ?? `${e.courseCode}-${e.day}-${e.period}`} event={e} />)}</tbody>
-      </table>
+function BlockStepper({ value, onChange }) {
+  const num = value === '' ? '' : Number(value)
+  return (
+    <div className="im-stepper">
+      <button type="button" className="im-stepper-btn" disabled={num <= 1 || num === ''} onClick={() => onChange(Math.max(1, num - 1))}>−</button>
+      <input className="im-stepper-input" type="number" min={1} max={20} value={value} onChange={e => onChange(e.target.value === '' ? '' : Number(e.target.value))} placeholder="—" />
+      <button type="button" className="im-stepper-btn" disabled={num >= 20} onClick={() => onChange(num === '' ? 1 : Math.min(20, num + 1))}>+</button>
     </div>
-  );
+  )
+}
+
+/* ─── Step 3: Block config ──────────────────────────────────────────────── */
+function BlockConfigStep({ courses, onBack, onSubmit }) {
+  const semesters = [...new Set(courses.map(c => c.semester || '1st Semester'))]
+  const [activeSem, setActiveSem] = useState(semesters[0])
+
+  const allGroups = []
+  const seen = new Set()
+  courses.forEach(c => {
+    const sem = c.semester || '1st Semester'
+    const key = `${c.program}_${c.yearLevel}_${sem}`
+    if (!seen.has(key)) {
+      seen.add(key)
+      const count = courses.filter(x => x.program === c.program && x.yearLevel === c.yearLevel && (x.semester || '1st Semester') === sem).length
+      allGroups.push({ key, program: c.program, yearLevel: Number(c.yearLevel), semester: sem, count })
+    }
+  })
+  allGroups.sort((a, b) => a.program.localeCompare(b.program) || a.yearLevel - b.yearLevel)
+
+  const filteredGroups = allGroups.filter(g => g.semester === activeSem)
+  const activePrograms = [...new Set(filteredGroups.map(g => g.program))]
+
+  const [blocks, setBlocks] = useState(() => {
+    const init = {}
+    allGroups.forEach(g => { init[g.key] = '' })
+    return init
+  })
+  const [error, setError] = useState('')
+
+  function setVal(key, value) {
+    setBlocks(prev => ({ ...prev, [key]: value === '' ? '' : Number(value) }))
+    setError('')
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    const missing = allGroups.filter(g => !blocks[g.key] || Number(blocks[g.key]) < 1)
+    if (missing.length > 0) {
+      setError(`Set at least 1 section for: ${missing.map(g => `${g.program} Y${g.yearLevel}`).join(', ')}`)
+      return
+    }
+    onSubmit(blocks)
+  }
+
+  const semBadge = {
+    '1st Semester': { bg:'#EEF9F0', color:'#16A34A', short:'1st Sem' },
+    '2nd Semester': { bg:'#DCFCE7', color:'#15803D', short:'2nd Sem' },
+    'Midyear':      { bg:'#FFF7ED', color:'#D97706', short:'Midyear' },
+  }
 
   return (
-    <div style={{ fontFamily:"'Poppins', sans-serif" }}>
-      <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
-      <Toolbar />
-      {groupBy && grouped
-        ? grouped.map(([day, evts]) => (
-            <div key={day}>
-              <GroupHeader label={day} count={evts.length} />
-              {renderTable(evts)}
-            </div>
-          ))
-        : renderTable(processed)
-      }
-    </div>
-  );
-};
+    <form onSubmit={handleSubmit} style={{ display:'flex', flexDirection:'column', gap:16 }}>
+      <p style={{ fontSize:13, color:'#5C8A6E', margin:0 }}>
+        Set how many sections (blocks) exist for each program-year group.
+      </p>
 
-export default FacultyEventsTable;
+      {semesters.length > 1 && (
+        <div style={{ display:'flex', gap:3, background:'#EFFAF4', padding:4, borderRadius:10, border:'1px solid #DCF3E4' }}>
+          {semesters.map(sem => {
+            const badge = semBadge[sem] || { bg:'#EFFAF4', color:'#5C8A6E', short: sem }
+            const count = allGroups.filter(g => g.semester === sem).length
+            return (
+              <button key={sem} type="button" onClick={() => setActiveSem(sem)}
+                style={{
+                  display:'inline-flex', alignItems:'center', gap:5, padding:'6px 14px', borderRadius:8,
+                  border:'none', fontFamily:'Poppins,sans-serif', fontSize:12, fontWeight:600, cursor:'pointer',
+                  transition:'all 0.15s',
+                  background: activeSem === sem ? 'linear-gradient(135deg,#2E9E5B,#1F7A45)' : 'transparent',
+                  color: activeSem === sem ? '#fff' : '#5C8A6E',
+                  boxShadow: activeSem === sem ? '0 2px 8px rgba(46,158,91,0.25)' : 'none',
+                }}>
+                {badge.short}
+                <span style={{
+                  fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:99,
+                  background: activeSem === sem ? 'rgba(255,255,255,0.2)' : '#DCF3E4',
+                  color: activeSem === sem ? '#fff' : '#5C8A6E',
+                }}>{count}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      <div style={{ display:'flex', flexDirection:'column', gap:20, background:'#F7FCF9', borderRadius:12, padding:16, border:'1px solid #DCF3E4' }}>
+        {activePrograms.map(prog => {
+          const meta = ICM_PROG_META[prog] || ICM_PROG_META_DEFAULT
+          const progGroups = filteredGroups.filter(g => g.program === prog)
+          return (
+            <div key={prog}>
+              <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
+                <span style={{ fontSize:12, fontWeight:600, padding:'4px 12px', borderRadius:8, background: meta.bg, color: meta.color, border: `1px solid ${meta.color}20` }}>
+                  {prog}
+                </span>
+                <div style={{ flex:1, height:1, background:'#DCF3E4' }} />
+                <span style={{ fontSize:12, color:'#7DAB8E', fontWeight:500 }}>
+                  {progGroups.reduce((s, g) => s + g.count, 0)} courses
+                </span>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:10 }}>
+                {progGroups.map(g => (
+                  <div key={g.key} className="im-group-card">
+                    <div style={{ display:'flex', gap:12, alignItems:'center' }}>
+                      <div style={{ width:4, height:32, borderRadius:4, background: meta.color, flexShrink:0 }} />
+                      <div>
+                        <div style={{ fontSize:14, fontWeight:600, color:'#0E2A20', marginBottom:2 }}>
+                          {ORDINAL(g.yearLevel)} Year
+                        </div>
+                        <div style={{ fontSize:12, color:'#5C8A6E' }}>
+                          {g.count} course{g.count !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                    </div>
+                    <BlockStepper value={blocks[g.key] ?? ''} onChange={v => setVal(g.key, v)} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      <ErrBox msg={error} />
+
+      <div style={{ display:'flex', gap:8 }}>
+        <button type="submit" className="im-primary">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          Continue to Review
+        </button>
+        <button type="button" className="im-ghost" onClick={onBack}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          Back
+        </button>
+      </div>
+    </form>
+  )
+}
+
+/* ─── Editable row ──────────────────────────────────────────────────────── */
+function EditableRow({ course, invalid, onEdit, onRemove }) {
+  const [editing, setEditing] = useState(false)
+  const [draft,   setDraft]   = useState({...course})
+
+  function save() { onEdit({...draft,yearLevel:Number(draft.yearLevel),unitsLecture:Number(draft.unitsLecture),unitsLab:Number(draft.unitsLab),blocks:Number(draft.blocks)}); setEditing(false) }
+  function cancel() { setDraft({...course}); setEditing(false) }
+
+  const cellInp = (field, opts={}) => (
+    <input value={draft[field]??''} onChange={e=>setDraft(d=>({...d,[field]:e.target.value}))}
+      onClick={e=>e.stopPropagation()}
+      style={{ width:'100%', minWidth:opts.wide?100:52, fontSize:12, padding:'3px 6px', borderRadius:6, border:'1.5px solid #C9ECD6', fontFamily:'Poppins,sans-serif', outline:'none' }}
+      type={opts.number?'number':'text'} min={opts.min} />
+  )
+
+  if (editing) return (
+    <tr style={{ background:'#F1FBF5' }}>
+      <td style={{ padding:'6px 8px' }}>{cellInp('courseCode')}</td>
+      <td style={{ padding:'6px 8px' }}>{cellInp('title',{wide:true})}</td>
+      <td style={{ padding:'6px 8px' }}>
+        <select value={draft.program} onChange={e=>setDraft(d=>({...d,program:e.target.value}))} onClick={e=>e.stopPropagation()}
+          style={{ fontSize:12, padding:'3px 6px', borderRadius:6, border:'1.5px solid #C9ECD6', fontFamily:'Poppins,sans-serif', outline:'none' }}>
+          {PROGRAMS.map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+      </td>
+      <td style={{ padding:'6px 8px' }}>{cellInp('yearLevel',{number:true,min:1})}</td>
+      <td style={{ padding:'6px 8px' }}>{cellInp('unitsLecture',{number:true,min:0})}</td>
+      <td style={{ padding:'6px 8px' }}>{cellInp('unitsLab',{number:true,min:0})}</td>
+      <td style={{ padding:'6px 8px' }}>{cellInp('blocks',{number:true,min:1})}</td>
+      <td style={{ padding:'6px 10px' }}>
+        <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+          <button className="im-row-save" onClick={e=>{e.stopPropagation();save()}}>✓ Save</button>
+          <button className="im-row-cancel" onClick={e=>{e.stopPropagation();cancel()}}>✕</button>
+        </div>
+      </td>
+    </tr>
+  )
+
+  return (
+    <tr onClick={()=>setEditing(true)} style={{ background:invalid?'#FFF8F8':'transparent', cursor:'pointer' }}>
+      <td style={{ padding:'8px 8px' }}>
+        <span style={{ display:'inline-block', padding:'2px 8px', background:invalid?'#FFE8E8':'#E5F9EC', color:invalid?'#DC2626':'#2E9E5B', borderRadius:99, fontSize:11, fontWeight:700 }}>
+          {course.courseCode||'—'}
+        </span>
+      </td>
+      <td style={{ padding:'8px 8px', fontWeight:500, color:'#0E2A20', fontSize:12.5 }}>{course.title||<span style={{color:'#FECACA'}}>—</span>}</td>
+      <td style={{ padding:'8px 8px' }}>
+        <span style={{ display:'inline-block', padding:'2px 8px', background:'#F1FBF5', color:'#1F7A45', borderRadius:99, fontSize:11, fontWeight:600 }}>{course.program||'—'}</span>
+      </td>
+      <td style={{ textAlign:'center', fontSize:12, color:'#5C8A6E', padding:'8px 8px' }}>{course.yearLevel}</td>
+      <td style={{ textAlign:'center', fontSize:12, color:'#5C8A6E', padding:'8px 8px' }}>{course.unitsLecture}</td>
+      <td style={{ textAlign:'center', fontSize:12, color:'#5C8A6E', padding:'8px 8px' }}>{course.unitsLab}</td>
+      <td style={{ textAlign:'center', padding:'8px 8px' }}>
+        {Number(course.blocks)>=1
+          ? <span style={{ fontSize:12, fontWeight:700, color:'#2E9E5B' }}>{course.blocks}</span>
+          : <span style={{ color:'#DC2626', fontWeight:700, fontSize:12 }}>!</span>}
+      </td>
+      <td style={{ padding:'8px 10px' }}>
+        <button className="im-remove" onClick={e=>{e.stopPropagation();onRemove()}} title="Remove row">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </td>
+    </tr>
+  )
+}
+
+/* ─── Step 4: Review ────────────────────────────────────────────────────── */
+function ReviewStep({ courses, onBack, onCommit, onRemove, onEdit, onImported }) {
+  const [saving,  setSaving]  = useState(false)
+  const [results, setResults] = useState(null)
+
+  const semesters = [...new Set(courses.map(c => c.semester || '1st Semester'))]
+  const [activeSem, setActiveSem] = useState(semesters[0])
+  const semBadge = { '1st Semester':{ short:'1st Sem' }, '2nd Semester':{ short:'2nd Sem' }, 'Midyear':{ short:'Midyear' } }
+
+  const displayed = semesters.length > 1 ? courses.filter(c => (c.semester || '1st Semester') === activeSem) : courses
+
+  async function handleSave() {
+    setSaving(true)
+    try { const res = await onCommit(courses); setResults(res) }
+    finally { setSaving(false) }
+  }
+
+  const isValid = c => c.courseCode && c.title && c.program && Number(c.blocks) >= 1
+  const invalidCount = courses.filter(c=>!isValid(c)).length
+
+  if (results) {
+    const allGood = results.failed.length === 0
+    return (
+      <div style={{ display:'flex', flexDirection:'column', gap:16, animation:'imPop .2s ease' }}>
+        {allGood ? (
+          <div style={{ textAlign:'center', padding:'36px 0', display:'flex', flexDirection:'column', alignItems:'center', gap:14 }}>
+            <div style={{ width:60, height:60, borderRadius:'50%', background:'linear-gradient(135deg,#2E9E5B,#1F7A45)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 6px 20px rgba(46,158,91,.35)' }}>
+              <svg width="26" height="20" viewBox="0 0 26 20" fill="none"><polyline points="2,10 9,17 24,2" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <div>
+              <p style={{ fontWeight:700, fontSize:17, color:'#0E2A20', marginBottom:5 }}>
+                {results.saved} course{results.saved!==1?'s':''} imported!
+              </p>
+              <p style={{ color:'#5C8A6E', fontSize:13, margin:0 }}>You can now use these courses in the scheduler.</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div style={{ background:'#FEF3CD', border:'1px solid #F0C040', borderRadius:10, padding:'12px 16px' }}>
+              <p style={{ fontWeight:700, fontSize:13, color:'#0E2A20', marginBottom:3 }}>{results.saved} saved · {results.failed.length} failed</p>
+              <p style={{ fontSize:12, color:'#5C8A6E', margin:0 }}>These courses couldn't be saved — they may already exist or have invalid data.</p>
+            </div>
+            <div style={{ maxHeight:320, overflowY:'auto', overflowX:'auto', border:'1px solid #DCF3E4', borderRadius:10 }}>
+               <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                <thead style={{ position:'sticky', top:0, background:'#F7FCF9', zIndex:1 }}>
+                  <tr>
+                    <th style={{ padding:'8px', fontSize:10.5, fontWeight:700, color:'#7DAB8E', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Code</th>
+                    <th style={{ padding:'8px', fontSize:10.5, fontWeight:700, color:'#7DAB8E', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Title</th>
+                    <th style={{ padding:'8px', fontSize:10.5, fontWeight:700, color:'#7DAB8E', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Program</th>
+                    <th style={{ padding:'8px', fontSize:10.5, fontWeight:700, color:'#7DAB8E', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.failed.map((f,i) => (
+                    <tr key={i} style={{ borderTop:'1px solid #DCF3E4' }}>
+                      <td style={{ padding:'8px' }}><span style={{ display:'inline-block', padding:'2px 8px', background:'#E5F9EC', color:'#2E9E5B', borderRadius:99, fontSize:11, fontWeight:700 }}>{f.course.courseCode}</span></td>
+                      <td style={{ padding:'8px', fontWeight:500, fontSize:12 }}>{f.course.title}</td>
+                      <td style={{ padding:'8px', fontSize:12 }}>{f.course.program}</td>
+                      <td style={{ padding:'8px', color:'#DC2626', fontSize:12 }}>{f.reason}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
+          <button className="im-primary" onClick={onImported} style={{ padding: '10px 40px', fontSize: 13 }}>Done</button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <span style={{ fontSize:13, color:'#5C8A6E' }}>
+            <strong style={{ color:'#0E2A20' }}>{courses.length}</strong> course{courses.length!==1?'s':''} ready
+          </span>
+          {invalidCount > 0 && (
+            <span style={{ background:'#FFF0F0', color:'#DC2626', fontSize:11, fontWeight:700, padding:'2px 9px', borderRadius:99, border:'1px solid #FECACA' }}>
+              ⚠ {invalidCount} invalid
+            </span>
+          )}
+        </div>
+        <span style={{ fontSize:11, color:'#7DAB8E' }}>Click a row to edit</span>
+      </div>
+
+      {semesters.length > 1 && (
+        <div style={{ display:'flex', gap:3, background:'#EFFAF4', padding:4, borderRadius:10, border:'1px solid #DCF3E4' }}>
+          {semesters.map(sem => {
+            const count = courses.filter(c => (c.semester || '1st Semester') === sem).length
+            return (
+              <button key={sem} type="button" onClick={() => setActiveSem(sem)}
+                style={{
+                  display:'inline-flex', alignItems:'center', gap:5, padding:'6px 14px', borderRadius:8,
+                  border:'none', fontFamily:'Poppins,sans-serif', fontSize:12, fontWeight:600, cursor:'pointer',
+                  transition:'all 0.15s',
+                  background: activeSem === sem ? 'linear-gradient(135deg,#2E9E5B,#1F7A45)' : 'transparent',
+                  color: activeSem === sem ? '#fff' : '#5C8A6E',
+                  boxShadow: activeSem === sem ? '0 2px 8px rgba(46,158,91,0.25)' : 'none',
+                }}>
+                {(semBadge[sem] || { short: sem }).short}
+                <span style={{
+                  fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:99,
+                  background: activeSem === sem ? 'rgba(255,255,255,0.2)' : '#DCF3E4',
+                  color: activeSem === sem ? '#fff' : '#5C8A6E',
+                }}>{count}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      <div style={{ maxHeight:200, overflowY:'auto', overflowX:'auto', border:'1px solid #DCF3E4', borderRadius:10 }}>
+        <table style={{ width:'100%', borderCollapse:'collapse' }}>
+          <thead style={{ position:'sticky', top:0, background:'#F7FCF9', zIndex:1 }}>
+            <tr>
+              <th style={{ padding:'8px 8px', fontSize:10.5, fontWeight:700, color:'#7DAB8E', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Code</th>
+              <th style={{ padding:'8px 8px', fontSize:10.5, fontWeight:700, color:'#7DAB8E', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Title</th>
+              <th style={{ padding:'8px 8px', fontSize:10.5, fontWeight:700, color:'#7DAB8E', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Program</th>
+              <th style={{ padding:'8px 8px', textAlign:'center', fontSize:10.5, fontWeight:700, color:'#7DAB8E', textTransform:'uppercase', letterSpacing:'.5px' }}>Yr</th>
+              <th style={{ padding:'8px 8px', textAlign:'center', fontSize:10.5, fontWeight:700, color:'#7DAB8E', textTransform:'uppercase', letterSpacing:'.5px' }}>Lec</th>
+              <th style={{ padding:'8px 8px', textAlign:'center', fontSize:10.5, fontWeight:700, color:'#7DAB8E', textTransform:'uppercase', letterSpacing:'.5px' }}>Lab</th>
+              <th style={{ padding:'8px 8px', textAlign:'center', fontSize:10.5, fontWeight:700, color:'#7DAB8E', textTransform:'uppercase', letterSpacing:'.5px' }}>Blk</th>
+              <th style={{ width:36 }}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {displayed.map((c,i) => (
+              <EditableRow key={`${c.courseCode}_${c.semester}_${i}`} course={c} invalid={!isValid(c)} onEdit={u=>onEdit(c,u)} onRemove={()=>onRemove(c)} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {invalidCount > 0 && (
+        <HintBox>
+          <span style={{ color:'#DC2626', fontWeight:600 }}>{invalidCount} row{invalidCount!==1?'s':''}</span> with missing data will be skipped on save. Fix them by clicking the row, or remove them.
+        </HintBox>
+      )}
+
+      <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+        <button className="im-primary" onClick={handleSave} disabled={saving||courses.length===0}>
+          {saving ? (
+            <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{animation:'imSpin .8s linear infinite'}}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Saving…</>
+          ) : (
+            <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>Import {courses.length} course{courses.length!==1?'s':''}</>
+          )}
+        </button>
+        <button className="im-ghost" onClick={onBack} disabled={saving}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          Back
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/* ─── Main Modal ────────────────────────────────────────────────────────── */
+export default function ImportCoursesModal({ onClose, onImported }) {
+  const [step,     setStep]     = useState(1)
+  const [sheets,   setSheets]   = useState([])
+  const [fileData, setFileData] = useState(null)
+  const [parsed,   setParsed]   = useState([])
+  const [courses,  setCourses]  = useState([])
+
+  function handleUploaded(s, b) { setSheets(s); setFileData(b); setStep(2) }
+  function handleParsed(p)      { setParsed(p); setStep(3) }
+  function handleBlockConfig(blocksMap) {
+    setCourses(parsed.map(c => { const sem=c.semester||'1st Semester'; const key=`${c.program}_${c.yearLevel}_${sem}`; return {...c,blocks:Number(blocksMap[key])||0} }))
+    setStep(4)
+  }
+  function handleEdit(original, updated) {
+    setCourses(prev => prev.map(c => c.courseCode===original.courseCode&&c.program===original.program&&c.yearLevel===original.yearLevel ? updated : c))
+  }
+  function handleRemove(course) {
+    setCourses(prev => prev.filter(c => !(c.courseCode===course.courseCode&&c.program===course.program&&c.yearLevel===course.yearLevel)))
+  }
+  async function handleCommit(rows) {
+    const valid   = rows.filter(c => c.courseCode&&c.title&&c.program&&Number(c.blocks)>=1)
+    const invalid = rows.filter(c => !(c.courseCode&&c.title&&c.program&&Number(c.blocks)>=1))
+    const failed  = invalid.map(c => ({course:c,reason:'Missing required field(s)'}))
+    try {
+      const res = await commitCourses(valid)
+      return { saved: res.committed??valid.length, failed }
+    } catch(err) {
+      const reason = err.response?.data?.detail || 'Server error'
+      return { saved:0, failed:[...rows.map(c=>({course:c,reason}))] }
+    }
+  }
+
+  const stepTitles = ['','Import from Excel','Select Sheet','Configure Sections','Review & Import']
+
+  return (
+    <div
+      style={{ position:'fixed', inset:0, background:'rgba(14,42,32,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, backdropFilter:'blur(4px)', animation:'imFadeIn 0.18s ease' }}
+      onClick={e=>e.target===e.currentTarget&&onClose()}
+    >
+      <div style={{
+        background:'#fff', borderRadius:18, padding:'26px 28px',
+        width: step === 4 ? 760 : step === 3 ? 700 : 540, maxWidth:'95vw', maxHeight:'90vh',
+        overflowY:'auto', fontFamily:"'Poppins',sans-serif",
+        boxShadow:'0 24px 64px rgba(14,42,32,0.24),0 4px 16px rgba(46,158,91,0.12)',
+        transition:'width 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+      }}>
+        {/* Header */}
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:22 }}>
+          <div>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4 }}>
+              <div style={{ width:34, height:34, borderRadius:10, background:'linear-gradient(135deg,#E5F9EC,#C9ECD6)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2E9E5B" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+              </div>
+              <h2 style={{ fontSize:16, fontWeight:700, color:'#0E2A20', margin:0 }}>{stepTitles[step]}</h2>
+            </div>
+            <p style={{ fontSize:11.5, color:'#7DAB8E', margin:0, marginLeft:44 }}>
+              Step {step} of 4 · Upload → Sheet → Sections → Review
+            </p>
+          </div>
+          <button className="im-close" onClick={onClose} aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        <Steps current={step} />
+
+        {step===1 && <UploadStep onUploaded={handleUploaded} />}
+        {step===2 && <SheetSelectionStep sheets={sheets} fileData={fileData} onParsed={handleParsed} onBack={()=>setStep(1)} />}
+        {step===3 && <BlockConfigStep courses={parsed} onBack={()=>setStep(2)} onSubmit={handleBlockConfig} />}
+        {step===4 && <ReviewStep courses={courses} onBack={()=>setStep(3)} onCommit={handleCommit} onRemove={handleRemove} onEdit={handleEdit} onImported={onImported} />}
+      </div>
+    </div>
+  )
+}

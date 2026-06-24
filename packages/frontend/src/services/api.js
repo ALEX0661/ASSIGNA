@@ -2,9 +2,7 @@ import axios from 'axios'
 import { auth } from './firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 
-const BASE = import.meta.env.VITE_API_URL || 'https://logos-backend.up.railway.app'//
-
-  //const BASE = 'http://localhost:8000'
+const BASE = 'http://localhost:8000'
 
 async function getToken() {
   if (auth.currentUser) {
@@ -43,14 +41,23 @@ export const updatePreferences  = async (id, d)   => axios.put(`${BASE}/faculty/
 export const archiveFaculty   = async (id) => updateFaculty(id, { archived: true  })
 export const unarchiveFaculty = async (id) => updateFaculty(id, { archived: false })
 
+// ── File Uploads ──────────────────────────────────────────────────────────────
 export const uploadFaculty = async (file) => {
   const form = new FormData()
   form.append('file', file)
-  return axios.post(`${BASE}/faculty/upload`, form, { headers: await authHeaders() }).then(r => r.data)
+  // Axios handles the multipart boundary automatically when passing FormData
+  const res = await axios.post(`${BASE}/faculty/upload`, form, {
+    headers: await authHeaders()
+  })
+  return res.data
 }
 
-export const extractFacultySheets = async (data) =>
-  axios.post(`${BASE}/faculty/upload/extract`, data, { headers: await authHeaders() }).then(r => r.data)
+export const extractFacultySheets = async ({ fileData, sheetNames }) =>
+  axios.post(
+    `${BASE}/faculty/upload/extract`,
+    { fileData, sheetNames },
+    { headers: await authHeaders() }
+  ).then(r => r.data)
 
 export const commitFaculty = async (faculty) =>
   axios.post(`${BASE}/faculty/upload/commit`, { faculty }, { headers: await authHeaders() }).then(r => r.data)
@@ -64,7 +71,10 @@ export const deleteCourse  = async (code, prog)    => axios.delete(`${BASE}/cour
 export const uploadCourses = async (file) => {
   const form = new FormData()
   form.append('file', file)
-  return axios.post(`${BASE}/courses/upload`, form, { headers: await authHeaders() }).then(r => r.data)
+  const res = await axios.post(`${BASE}/courses/upload`, form, {
+    headers: await authHeaders()
+  })
+  return res.data
 }
 
 export const extractSheet  = async (data) =>
@@ -74,19 +84,15 @@ export const commitCourses = async (courses) =>
   axios.post(`${BASE}/courses/upload/commit`, { courses }, { headers: await authHeaders() }).then(r => r.data)
 
 // ── Course Room Assignment ────────────────────────────────────────────────────
-// Pins a course to a specific room by name (e.g. "Room 407").
-// Pass null or "" to clear the assignment and let the scheduler decide.
 export const setCoursePreferredRoom = async (courseCode, program, roomName) =>
   updateCourse(courseCode, program, { preferredRoom: roomName || null })
 
-// Bulk-save a map of { "CODE_PROG": "Room 407" | "" | null } entries.
-// Returns { committed, failed } so the caller can surface partial errors.
 export const bulkSetPreferredRooms = async (assignmentMap) => {
   const entries = Object.entries(assignmentMap)
   const results = await Promise.allSettled(
     entries.map(([key, roomName]) => {
       const [code, ...progParts] = key.split('_')
-      const prog = progParts.join('_')   // handles programs that contain underscores
+      const prog = progParts.join('_')
       return setCoursePreferredRoom(code, prog, roomName)
     })
   )
@@ -142,9 +148,18 @@ export const getAssignmentQuality    = async () => axios.get(`${BASE}/analytics/
 export const getFacultyPreview       = async () => axios.get(`${BASE}/analytics/faculty-preview`,       { headers: await authHeaders() }).then(r => r.data)
 export const getWorkload             = async () => axios.get(`${BASE}/analytics/workload`,              { headers: await authHeaders() }).then(r => r.data)
 export const getScheduleDistribution = async () => axios.get(`${BASE}/analytics/schedule-distribution`, { headers: await authHeaders() }).then(r => r.data)
+export const getDashboardStats       = async () => axios.get(`${BASE}/analytics/dashboard-stats`,       { headers: await authHeaders() }).then(r => r.data)
+export const getPreDiagnostic        = async (semester) => axios.get(`${BASE}/analytics/pre-diagnostic`, { headers: await authHeaders(), params: semester ? { semester } : {} }).then(r => r.data)
 
 export const updateCredentials = async (id, d) =>
   axios.put(`${BASE}/faculty/credentials/${id}`, d, { headers: await authHeaders() }).then(r => r.data)
+
+// ── Role Management ───────────────────────────────────────────────────────────
+export const setFacultyRole = async (id, role, isCoordinator = false, coordinatorProgram = null) =>
+  axios.post(`${BASE}/faculty/role/${id}`, { role, isCoordinator, coordinatorProgram }, { headers: await authHeaders() }).then(r => r.data)
+
+export const getFacultyRole = async (id) =>
+  axios.get(`${BASE}/faculty/role/${id}`, { headers: await authHeaders() }).then(r => r.data)
 
 // ── Block Config ──────────────────────────────────────────────────────────────
 export const getBlockConfigs   = async (semester) => axios.get(`${BASE}/block-config/`,    { headers: await authHeaders(), params: semester ? { semester } : {} }).then(r => r.data)

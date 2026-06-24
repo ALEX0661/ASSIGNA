@@ -26,6 +26,7 @@ class Faculty(BaseModel):
     preferredTimeEnd: float = 21.0
     maxConsecutiveHours: float = 4.0
     archived: bool = False
+    coordinatorProgram: Optional[str] = None  # e.g. "BSCS", "BSIT", "BSEMC"
 
 
 class FacultyUpdate(BaseModel):
@@ -56,3 +57,6 @@ class FacultyUpdate(BaseModel):
 
     # Soft-delete / archive
     archived: Optional[bool] = None
+    
+    # Coordinator assignment
+    coordinatorProgram: Optional[str] = None
