@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { overrideSession } from '../../services/api'
-import { parsePeriodRange, minutesToTimeLabel, getEventId, timeOverlaps, buildConflictMap, areMergePartners } from './svHelpers'
+import { parsePeriodRange, minutesToTimeLabel, getEventId, timeOverlaps, buildConflictMap, areMergePartners, isOnlineRoom } from './svHelpers'
 
 // ── useFilters ────────────────────────────────────────────────────────────────
 export function useFilters(events, masterFacultyList, masterRooms, activeDay) {
@@ -230,7 +230,7 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
         ev.room === hRoom && hRoom !== 'TBA'
       if (wouldMerge) continue
 
-      const roomC    = ev.room === hRoom && hRoom !== 'TBA'
+      const roomC    = ev.room === hRoom && hRoom !== 'TBA' && !isOnlineRoom(hRoom)
       const sectionC = draggedEvent.program && draggedEvent.year && draggedEvent.block
         && ev.program === draggedEvent.program
         && String(ev.year) === String(draggedEvent.year)
@@ -387,7 +387,7 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
       }
 
       const types = []
-      const roomC    = ev.room === targetRoom && targetRoom !== 'TBA'
+      const roomC    = ev.room === targetRoom && targetRoom !== 'TBA' && !isOnlineRoom(targetRoom)
       const sectionC = draggedEvent.program && draggedEvent.year && draggedEvent.block
         && ev.program === draggedEvent.program
         && String(ev.year) === String(draggedEvent.year)
@@ -567,7 +567,7 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
       if (getEventId(ev) === dragId || ev.day !== activeDay) continue
       const r = parsePeriodRange(ev.period)
       if (!r || !timeOverlaps(proposed, r)) continue
-      if (ev.room === room && room !== 'TBA') conflictTypes.add('Room')
+      if (ev.room === room && room !== 'TBA' && !isOnlineRoom(room)) conflictTypes.add('Room')
       if (draggedEvent.program && ev.program === draggedEvent.program
           && String(ev.year) === String(draggedEvent.year)
           && ev.block === draggedEvent.block) conflictTypes.add('Section')

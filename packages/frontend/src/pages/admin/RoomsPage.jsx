@@ -1,331 +1,297 @@
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { getRooms, saveRooms, getCourses, bulkSetPreferredRooms } from '../../services/api'
 
+import iconLab from '../../assets/LABROOM.png'
+import iconLec from '../../assets/LECROOM.png'
+import iconAssign from '../../assets/ASSIGMENT.png'
+
+/* ── Design tokens (Unified) ── */
+const G = {
+  meadow:       '#15803D',
+  meadowDeep:   '#0F5C2C',
+  meadowMid:    '#166534',
+  meadowSoft:   '#DCFCE7',
+  meadowBorder: '#BBF7D0',
+  ink:          '#0E2A20',
+  inkMid:       '#1C3D2A',
+  muted:        '#4B7060',
+  muted2:       '#6B8C7A',
+  border:       '#D8E8DF',
+  borderLight:  '#EBF4EF',
+  bg:           '#F2F7F4',
+  surface:      '#FFFFFF',
+  hover:        '#EBF4EF',
+}
+
+/* ─── Styles ─────────────────────────────────────────────────────────────── */
 if (!document.getElementById('rooms-page-style')) {
   const s = document.createElement('style')
   s.id = 'rooms-page-style'
   s.textContent = `
-    .room-row {
-      display: flex; align-items: center; gap: 8px;
-      padding: 6px 10px; border-radius: 8px;
-      border: 1px solid #EEEBF8; background: #fff;
-      transition: box-shadow 0.15s, border-color 0.15s;
-      animation: slideInR 0.15s ease;
-    }
-    .room-row:hover { border-color: #D8D3F5; box-shadow: 0 2px 6px rgba(124,111,205,0.09); }
-    .room-row:hover .room-del { opacity: 1; }
-    .room-row.drag-over { border-color: #7C6FCD; box-shadow: 0 0 0 2px rgba(124,111,205,0.18); }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-    .drag-handle {
-      cursor: grab; color: #C0BBDC; display: flex; align-items: center;
-      padding: 2px; border-radius: 4px; transition: color 0.12s; flex-shrink: 0;
-    }
-    .drag-handle:hover { color: #7C6FCD; }
-    .drag-handle:active { cursor: grabbing; }
-
-    .room-badge {
-      min-width: 18px; height: 18px; border-radius: 5px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 9px; font-weight: 700; flex-shrink: 0;
-    }
-    .room-badge.lec { background: #EDE9FB; color: #7C6FCD; }
-    .room-badge.lab { background: #FEF3CD; color: #D97706; }
-
-    .room-del {
-      margin-left: auto; flex-shrink: 0;
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 22px; height: 22px; border-radius: 6px;
-      border: 1.5px solid #E8E4F8; cursor: pointer;
-      background: #fff; color: #C0BBDC;
-      transition: all 0.13s; opacity: 0.6;
-      padding: 0;
-    }
-    .room-del:hover { background: #FEE2E2; border-color: #FECACA; color: #DC2626; opacity: 1; }
-
-    .room-add-input {
-      flex: 1; padding: 6px 10px; border-radius: 8px;
-      border: 1.5px dashed #D8D3F5; font-family: 'Poppins', sans-serif;
-      font-size: 12px; color: #1a1a2e; background: #FAFAFE;
-      outline: none; transition: border-color 0.15s, background 0.15s;
-    }
-    .room-add-input:focus {
-      border-color: #A99BE8; background: #fff;
-      box-shadow: 0 0 0 3px rgba(169,155,232,0.12); border-style: solid;
-    }
-    .room-add-input::placeholder { color: #C0BBDC; }
-
-    .rooms-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
-
-    .empty-room-state {
-      display: flex; align-items: center; gap: 8px;
-      padding: 10px; border-radius: 8px;
-      border: 1.5px dashed #E8E4F8; background: #FAFAFE; margin-bottom: 10px;
-    }
-
-    .room-card-head {
-      display: flex; align-items: center; gap: 9px;
-      padding: 11px 14px; border-bottom: 1px solid #F0EDF9;
-    }
-
-    .rm-save {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 6px 12px; border-radius: 8px;
-      border: 1.5px solid #E8E4F8; font-family: 'Poppins', sans-serif;
-      font-size: 11.5px; font-weight: 600; cursor: pointer;
-      background: #fff; color: #7C6FCD; transition: all 0.13s; flex-shrink: 0;
-    }
-    .rm-save:hover:not(:disabled) { background: #EEEAFB; border-color: #C5BBEF; }
-    .rm-save.saved { background: #E6FAF3; color: #059669; border-color: #A7F3D0; }
-    .rm-save:disabled { opacity: .6; cursor: default; }
-
-    .rm-add-btn {
-      padding: 6px 12px; border-radius: 8px; border: 1.5px solid #E8E4F8;
-      font-family: 'Poppins', sans-serif; font-size: 11.5px; font-weight: 600;
-      cursor: pointer; background: #fff; color: #7C6FCD;
-      display: inline-flex; align-items: center; gap: 4px; transition: all 0.13s; flex-shrink: 0;
-    }
-    .rm-add-btn:hover { background: #EEEAFB; border-color: #C5BBEF; }
-
-    @keyframes slideInR { from{opacity:0;transform:translateY(-3px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+    @keyframes slideUp { from{opacity:0;transform:translateY(15px) scale(0.98)} to{opacity:1;transform:translateY(0) scale(1)} }
     @keyframes spin-r { to{transform:rotate(360deg)} }
+    @keyframes cpToastIn { from{opacity:0;transform:scale(.96) translateY(12px)} to{opacity:1;transform:scale(1) translateY(0)} }
+    @keyframes rmShimmer { 0% { background-position: -400px 0 } 100% { background-position:  400px 0 } }
 
-    @keyframes rmShimmer {
-      0%   { background-position: -400px 0 }
-      100% { background-position:  400px 0 }
-    }
     .rm-skeleton {
-      background: linear-gradient(90deg, #F0EDF9 25%, #E4DEFC 50%, #F0EDF9 75%);
+      background: linear-gradient(90deg, ${G.hover} 25%, ${G.borderLight} 50%, ${G.hover} 75%);
       background-size: 800px 100%;
       animation: rmShimmer 1.4s ease-in-out infinite;
-      border-radius: 7px;
+      border-radius: 6px;
     }
 
-    /* ── Course Room Assignment Section ──────────────────────────────────────── */
+    /* Toasts */
+    .cp-toast-wrap { position:fixed;bottom:20px;left:50%;z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;transform:translateX(-50%); }
+    .cp-toast { display:flex;align-items:center;gap:8px;padding:12px 20px;border-radius:12px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;animation:cpToastIn .2s cubic-bezier(.4,0,.2,1);white-space:nowrap;pointer-events:auto; box-shadow: 0 8px 24px rgba(21,128,61,0.15); }
+    .cp-toast.success { background:${G.meadow};color:#fff;border:1px solid ${G.meadowDeep}; }
+    .cp-toast.error   { background:#fff;color:#DC2626;border:1px solid #FECACA; }
+    .cp-toast.info    { background:#fff;color:${G.meadowDeep};border:1px solid ${G.meadowBorder}; }
 
-    .cp-search {
-      flex: 1; padding: 7px 12px 7px 34px; border-radius: 9px;
-      border: 1.5px solid #E8E4F8; font-family: 'Poppins', sans-serif;
-      font-size: 12px; color: #1a1a2e; background: #FAFAFE;
-      outline: none; transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
-    }
-    .cp-search:focus {
-      border-color: #A99BE8; background: #fff;
-      box-shadow: 0 0 0 3px rgba(169,155,232,0.12);
-    }
-    .cp-search::placeholder { color: #C0BBDC; }
+    /* Compact Layout Cards */
+    .room-card { background: #fff; border-radius: 12px; border: 1px solid ${G.border}; overflow: hidden; box-shadow: 0 4px 12px rgba(10,46,28,0.04); display: flex; flex-direction: column; }
+    .room-card-head { display: flex; align-items: center; gap: 14px; padding: 16px 20px; border-bottom: 1px solid ${G.border}; background: ${G.surface}; flex-wrap: wrap; }
 
-    .cp-prog-pill {
-      padding: 4px 10px; border-radius: 20px; border: 1.5px solid #E8E4F8;
-      font-family: 'Poppins', sans-serif; font-size: 10.5px; font-weight: 600;
-      cursor: pointer; background: #fff; color: #8883B0;
-      transition: all 0.13s; white-space: nowrap; flex-shrink: 0;
+    /* Ultra-Compact Draggable Chips (Updated to Green) */
+    .chip-container { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .room-chip { 
+      display: inline-flex; align-items: center; gap: 6px; 
+      padding: 5px 8px 5px 10px; border-radius: 8px; 
+      border: 1px solid ${G.meadowBorder}; background: ${G.meadowSoft}; 
+      font-size: 12.5px; font-weight: 700; color: ${G.meadowDeep};
+      cursor: grab; transition: all 0.15s; box-shadow: 0 1px 3px rgba(21,128,61,0.05);
     }
-    .cp-prog-pill.active {
-      background: #EDE9FB; border-color: #C5BBEF; color: #7C6FCD;
-    }
-    .cp-prog-pill:hover:not(.active) { background: #F5F3FD; border-color: #D8D3F5; color: #7C6FCD; }
+    .room-chip:hover { border-color: ${G.meadow}; box-shadow: 0 3px 8px rgba(21,128,61,0.15); transform: translateY(-1px); }
+    .room-chip:active { cursor: grabbing; transform: scale(0.98); }
+    .room-chip.drag-over { border-color: ${G.meadowDeep}; background: ${G.meadowBorder}; transform: scale(1.02); }
+    
+    .room-chip-idx { font-size: 10px; font-weight: 800; color: #fff; background: ${G.meadow}; padding: 2px 6px; border-radius: 4px; }
+    
+    .chip-del { display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 5px; color: ${G.meadow}; cursor: pointer; transition: all 0.1s; }
+    .chip-del:hover { background: #fff; color: #DC2626; }
 
-    .cp-course-row {
-      display: flex; align-items: center; gap: 10px;
-      padding: 8px 14px; border-bottom: 1px solid #F5F3FD;
-      transition: background 0.1s;
+    /* Inline Add Input */
+    .inline-add-wrap { display: inline-flex; align-items: center; gap: 8px; }
+    .inline-add-input { 
+      padding: 7px 12px; border-radius: 8px; border: 1px dashed ${G.border}; 
+      font-family: 'Inter', sans-serif; font-size: 12px; color: ${G.ink}; 
+      background: transparent; outline: none; transition: all 0.15s; width: 160px;
     }
-    .cp-course-row:last-child { border-bottom: none; }
-    .cp-course-row:hover { background: #FAFAFE; }
+    .inline-add-input:focus { border-color: ${G.meadow}; border-style: solid; box-shadow: 0 0 0 2px rgba(21,128,61,0.1); background: #fff; }
 
-    /* ── Room dropdown ──────────────────────────────────────────────────────── */
-    .room-select {
-      padding: 5px 28px 5px 10px; border-radius: 8px;
-      border: 1.5px solid #E8E4F8; font-family: 'Poppins', sans-serif;
-      font-size: 11px; font-weight: 500; color: #3D3773;
-      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23A09CC0' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 8px center;
-      -webkit-appearance: none; appearance: none;
-      cursor: pointer; flex-shrink: 0; min-width: 140px; max-width: 200px;
-      outline: none; transition: border-color 0.15s, box-shadow 0.15s;
-    }
-    .room-select:focus {
-      border-color: #A99BE8;
-      box-shadow: 0 0 0 3px rgba(169,155,232,0.12);
-    }
-    .room-select.is-assigned {
-      border-color: #A99BE8; background-color: #F5F3FD;
-      color: #5B50A8; font-weight: 600;
-    }
-    .room-select.is-assigned-lab {
-      border-color: #FCD34D; background-color: #FFFBEB;
-      color: #92400E; font-weight: 600;
-    }
+    /* Buttons */
+    .btn-outline { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; border: 1px solid ${G.border}; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; background: #fff; color: ${G.muted}; transition: all 0.13s; flex-shrink: 0; }
+    .btn-outline:hover:not(:disabled) { background: ${G.hover}; color: ${G.ink}; border-color: ${G.meadowBorder}; }
+    .btn-outline:disabled { opacity: .6; cursor: default; }
 
-    .cp-dirty-badge {
-      display: inline-flex; align-items: center; justify-content: center;
-      min-width: 18px; height: 18px; padding: 0 5px; border-radius: 20px;
-      background: #7C6FCD; color: #fff; font-size: 10px; font-weight: 700;
-      font-family: 'Poppins', sans-serif; flex-shrink: 0;
-    }
+    /* Solid Green Primary Button (Fixed Hover) */
+    .btn-primary { display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; border-radius: 8px; border: none; font-family: 'Inter',sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s; background: ${G.meadow}; color: #fff; box-shadow: 0 3px 10px rgba(21,128,61,0.25); }
+    .btn-primary:hover:not(:disabled) { background: ${G.meadowDeep}; box-shadow: 0 5px 15px rgba(21,128,61,0.35); transform: translateY(-1px); }
+    .btn-primary.saved { background: ${G.inkMid}; box-shadow: none; }
+    .btn-primary:disabled { opacity: .6; cursor: default; }
 
-    .cp-save-bar {
-      display: flex; align-items: center; gap: 8px;
-      padding: 10px 14px; border-top: 1px solid #F0EDF9;
-      background: #FAFAFE;
-    }
+    /* Compact Data Table */
+    .cp-search { flex: 1; padding: 8px 14px 8px 36px; border-radius: 8px; border: 1px solid ${G.border}; font-family: 'Inter', sans-serif; font-size: 13px; color: ${G.ink}; background: #fff; outline: none; transition: all 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+    .cp-search:focus { border-color: ${G.meadow}; box-shadow: 0 0 0 2px rgba(21,128,61,0.1); }
+    
+    .cp-tr-hover:hover td { background: ${G.hover}; }
 
-    .cp-reset-btn {
-      padding: 5px 10px; border-radius: 7px; border: 1.5px solid #E8E4F8;
-      font-family: 'Poppins', sans-serif; font-size: 11px; font-weight: 600;
-      cursor: pointer; background: #fff; color: #A09CC0;
-      transition: all 0.13s;
-    }
-    .cp-reset-btn:hover:not(:disabled) { background: #FEF3CD; border-color: #FCD34D; color: #D97706; }
-    .cp-reset-btn:disabled { opacity: .5; cursor: default; }
+    /* Tab Styles */
+    .room-tabs { display: flex; gap: 4px; background: ${G.hover}; padding: 4px; border-radius: 9px; border: 1px solid ${G.border}; width: fit-content; }
+    .room-tab { padding: 5px 14px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; border: none; background: transparent; color: ${G.muted}; font-family: 'Inter', sans-serif; }
+    .room-tab.active { background: #fff; color: ${G.ink}; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 
-    .cp-empty {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      padding: 28px 0; gap: 8px; color: #B0ABCC;
-    }
+    /* Modal Styles */
+    .rm-modal-overlay { position: fixed; inset: 0; background: rgba(14,42,32,0.6); backdrop-filter: blur(4px); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn 0.2s ease-out; }
+    .rm-modal-box { background: #fff; border-radius: 16px; width: 100%; max-width: 540px; box-shadow: 0 24px 48px rgba(10,46,28,0.25); overflow: hidden; display: flex; flex-direction: column; max-height: 85vh; animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+    .rm-modal-head { padding: 20px 24px; border-bottom: 1px solid ${G.border}; display: flex; align-items: center; justify-content: space-between; background: #fff; }
+    .rm-modal-body { padding: 24px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 24px; background: ${G.bg}; }
+    .rm-modal-foot { padding: 16px 24px; border-top: 1px solid ${G.border}; display: flex; justify-content: flex-end; gap: 10px; background: #fff; }
 
-    @keyframes cp-fadein { from{opacity:0;transform:translateY(2px)} to{opacity:1;transform:translateY(0)} }
-    .cp-course-row { animation: cp-fadein 0.12s ease; }
+    /* Modal Close Button (Adapted from block config modal for consistency) */
+    .modal-close-btn { 
+      display: inline-flex; align-items: center; justify-content: center; 
+      width: 32px; height: 32px; border-radius: 8px; 
+      border: 1.5px solid ${G.meadowBorder}; cursor: pointer; 
+      background: ${G.meadowSoft}; color: ${G.meadowDeep}; transition: all 0.2s; flex-shrink: 0; 
+      padding: 0; 
+    }
+    .modal-close-btn:hover { background: #FFE8E8; border-color: #FECACA; color: #DC2626; }
+
+    /* Modal Selectable Cards (Upgraded UI) */
+    .modal-room-card { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #fff; border: 1.5px solid ${G.border}; border-radius: 10px; cursor: pointer; transition: all 0.15s; color: ${G.ink}; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+    .modal-room-card:hover { border-color: ${G.meadowBorder}; background: ${G.surface}; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(21,128,61,0.08); }
+    .modal-room-card.selected { border-color: ${G.meadow}; background: ${G.meadowSoft}; color: ${G.meadowDeep}; box-shadow: 0 2px 8px rgba(21,128,61,0.15); }
+    .modal-room-card-inner { display: flex; align-items: center; gap: 12px; }
+
+    /* Green Room Pills for Table */
+    .assign-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 7px; font-size: 11.5px; font-weight: 600; background: #fff; color: ${G.meadowDeep}; border: 1px dashed ${G.meadow}; cursor: pointer; transition: all 0.15s; }
+    .assign-trigger:hover { background: ${G.meadowSoft}; border-style: solid; }
+    
+    .assigned-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background: ${G.meadowSoft}; color: ${G.meadowDeep}; border: 1px solid ${G.meadowBorder}; }
   `
   document.head.appendChild(s)
 }
 
-// ── Shared helpers ────────────────────────────────────────────────────────────
+/* ── Shared Helpers ──────────────────────────────────────────────────────────── */
 
-function Skel({ w = '100%', h = 14, r = 7, style = {} }) {
-  return (
-    <div className="rm-skeleton" style={{ width: w, height: h, borderRadius: r, flexShrink: 0, ...style }} />
-  )
+function Skel({ w = '100%', h = 14, r = 6, style = {} }) {
+  return <div className="rm-skeleton" style={{ width: w, height: h, borderRadius: r, flexShrink: 0, ...style }} />
 }
 
-async function parseError(err, action) {
-  let title   = `Failed to ${action}`
-  let message = 'An unexpected error occurred. Please try again.'
-  let code    = null
+function useToast() {
+  const [toasts, setToasts] = useState([])
+  const toast = useCallback((message, type = 'info', duration = 3000) => {
+    const id = Date.now() + Math.random()
+    setToasts(prev => [...prev, { id, message, type }])
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), duration)
+  }, [])
+  return { toasts, toast }
+}
 
-  if (err instanceof Response || err?.status) {
-    code = err.status ?? null
-    const causeMap = {
-      400: `Failed to ${action} — invalid data sent`,
-      401: `Failed to ${action} — not authenticated`,
-      403: `Failed to ${action} — access denied`,
-      404: `Failed to ${action} — endpoint not found`,
-      408: `Failed to ${action} — request timed out`,
-      409: `Failed to ${action} — data conflict`,
-      422: `Failed to ${action} — validation rejected`,
-      429: `Failed to ${action} — too many requests`,
-      500: `Failed to ${action} — backend error`,
-      502: `Failed to ${action} — bad gateway`,
-      503: `Failed to ${action} — server unavailable`,
-      504: `Failed to ${action} — gateway timeout`,
-    }
-    title = causeMap[code] ?? `Failed to ${action} — server error (${code})`
-    const detailMap = {
-      400: 'The data submitted was rejected as invalid. Check your inputs and try again.',
-      401: 'Your session may have expired. Please refresh the page and log in again.',
-      403: 'You don\'t have the required permissions to perform this action.',
-      404: 'The server endpoint could not be found. The API may have changed.',
-      408: 'The server took too long to respond. Check your connection and retry.',
-      409: 'This change conflicts with existing data on the server.',
-      422: 'The server could not process the submitted values. Check for invalid fields.',
-      429: 'You\'ve sent too many requests. Wait a moment, then try again.',
-      500: 'An internal server error occurred on the backend. Try again shortly.',
-      502: 'The server returned an invalid response. The service may be restarting.',
-      503: 'The server is temporarily unavailable. Try again in a few moments.',
-      504: 'The gateway did not receive a timely response from the backend.',
-    }
-    message = detailMap[code] ?? `The server responded with an unexpected status (${code}).`
-    try {
-      const body = await (err.json?.() ?? Promise.resolve(null))
-      if (body?.detail)                                    message = body.detail
-      else if (body?.message)                              message = body.message
-      else if (typeof body === 'string' && body.length < 200) message = body
-    } catch { /* ignore */ }
-  } else if (err instanceof TypeError && err.message.includes('fetch')) {
-    title   = `Failed to ${action} — no connection`
-    message = 'Could not reach the server. Check your internet connection and try again.'
-  } else if (err instanceof Error && err.message) {
-    title   = `Failed to ${action} — unexpected error`
-    message = err.message
+function ToastContainer({ toasts }) {
+  const icons = {
+    success: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>,
+    error:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>,
+    info:    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/></svg>,
   }
-  return { title, message, code }
-}
-
-function ErrorBanner({ error, onDismiss }) {
-  if (!error) return null
   return (
-    <div style={{
-      display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12,
-      padding: '11px 14px', borderRadius: 10,
-      background: '#FFF5F5', border: '1px solid #FECACA',
-    }}>
-      <div style={{
-        width: 28, height: 28, borderRadius: 8, background: '#FEE2E2',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1,
-      }}>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3 }}>
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: '#B91C1C' }}>{error.title}</span>
-          {error.code && (
-            <span style={{
-              fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 20,
-              background: '#FEE2E2', color: '#DC2626', border: '1px solid #FECACA',
-            }}>
-              {error.code}
-            </span>
-          )}
-        </div>
-        <div style={{ fontSize: 12, color: '#C0392B', lineHeight: 1.5 }}>{error.message}</div>
-      </div>
-      {onDismiss && (
-        <button onClick={onDismiss} style={{
-          background: 'none', border: 'none', cursor: 'pointer',
-          color: '#EF9999', padding: 2, flexShrink: 0, lineHeight: 0,
-          borderRadius: 4, transition: 'color 0.13s',
-        }}
-          onMouseEnter={e => e.currentTarget.style.color = '#DC2626'}
-          onMouseLeave={e => e.currentTarget.style.color = '#EF9999'}
-          title="Dismiss"
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
-      )}
+    <div className="cp-toast-wrap">
+      {toasts.map(t => <div key={t.id} className={`cp-toast ${t.type}`}>{icons[t.type]}{t.message}</div>)}
     </div>
   )
 }
 
-function SaveBtn({ saving, saved, onClick, disabled }) {
+function Checkbox({ checked, indeterminate, onChange }) {
+  const active = checked || indeterminate
   return (
-    <button className={`rm-save${saved?' saved':''}`} onClick={onClick} disabled={saving || disabled}>
-      {saving ? (
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation:'spin-r .8s linear infinite' }}>
-          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-        </svg>
-      ) : saved ? (
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-          <polyline points="20 6 9 17 4 12"/>
-        </svg>
-      ) : (
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-          <polyline points="17 21 17 13 7 13 7 21"/>
-          <polyline points="7 3 7 8 15 8"/>
-        </svg>
-      )}
-      {saving ? 'Saving…' : saved ? 'Saved!' : 'Save'}
-    </button>
+    <span onClick={onChange} style={{
+      width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+      border: `1.5px solid ${active ? G.meadow : G.muted2}`,
+      background: active ? G.meadow : '#fff',
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      transition: 'all 0.15s', cursor: 'pointer',
+    }}>
+      {indeterminate && !checked && <svg width="10" height="2" viewBox="0 0 8 2" fill="none"><rect width="8" height="2" rx="1" fill="#fff"/></svg>}
+      {checked && <svg width="12" height="10" viewBox="0 0 10 8" fill="none"><polyline points="1.5,4 4,6.5 8.5,1.5" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+    </span>
   )
 }
 
-// ── Room list (drag-to-reorder) ───────────────────────────────────────────────
+/* ── Upgraded Modal Component ──────────────────────────────────────────────── */
 
-function RoomList({ rooms, setRooms, type, loading }) {
+function RoomAssignModal({ isOpen, onClose, onSave, title, initialRooms = [], lectureRooms = [], labRooms = [] }) {
+  const [selected, setSelected] = useState([])
+
+  useEffect(() => {
+    if (isOpen) setSelected([...initialRooms])
+  }, [isOpen, initialRooms])
+
+  if (!isOpen) return null
+
+  const toggle = (r) => {
+    if (selected.includes(r)) setSelected(selected.filter(x => x !== r))
+    else setSelected([...selected, r])
+  }
+
+  return (
+    <div className="rm-modal-overlay" onMouseDown={onClose}>
+      <div className="rm-modal-box" onMouseDown={e => e.stopPropagation()}>
+        <div className="rm-modal-head">
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: G.ink, fontFamily: "'Inter', sans-serif" }}>Assign Rooms</div>
+            <div style={{ fontSize: 13, color: G.muted, marginTop: 4, fontWeight: 500 }}>{title}</div>
+          </div>
+          <button className="modal-close-btn" onClick={onClose} aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        
+        <div className="rm-modal-body">
+          <div style={{ background: '#fff', padding: '16px', borderRadius: 12, border: `1px solid ${G.border}`, boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Selected Rooms ({selected.length})</span>
+              {selected.length > 0 && (
+                <button onClick={() => setSelected([])} style={{ background: 'none', border: 'none', color: '#DC2626', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>Clear All</button>
+              )}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {selected.length === 0 && <span style={{ fontSize: 13, color: G.muted, fontStyle: 'italic' }}>No rooms assigned to this pool yet.</span>}
+              {selected.map(r => (
+                <span key={r} className="assigned-pill" style={{ padding: '6px 10px', fontSize: 12 }}>
+                  {r} 
+                  <svg onClick={() => toggle(r)} style={{ cursor: 'pointer', marginLeft: 4, opacity: 0.7 }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {lectureRooms.length > 0 && (
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', marginBottom: 10, letterSpacing: '0.5px' }}>Lecture Rooms</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {lectureRooms.map(r => {
+                    const isSel = selected.includes(r);
+                    return (
+                      <div key={r} className={`modal-room-card ${isSel ? 'selected' : ''}`} onClick={() => toggle(r)}>
+                        <div className="modal-room-card-inner">
+                          <Checkbox checked={isSel} onChange={() => {}} /> 
+                          <span style={{ fontSize: 14, fontWeight: 700 }}>{r}</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+            
+            {labRooms.length > 0 && (
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', marginBottom: 10, letterSpacing: '0.5px' }}>Lab Rooms</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {labRooms.map(r => {
+                    const isSel = selected.includes(r);
+                    return (
+                      <div key={r} className={`modal-room-card ${isSel ? 'selected' : ''}`} onClick={() => toggle(r)}>
+                        <div className="modal-room-card-inner">
+                          <Checkbox checked={isSel} onChange={() => {}} /> 
+                          <span style={{ fontSize: 14, fontWeight: 700 }}>{r}</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {lectureRooms.length === 0 && labRooms.length === 0 && (
+              <div style={{ fontSize: 13, color: G.muted, textAlign: 'center', padding: '30px', background: '#fff', borderRadius: 12, border: `1px dashed ${G.border}` }}>
+                No rooms configured on campus. Add rooms in the header first.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="rm-modal-foot">
+          <button className="btn-outline" onClick={onClose} style={{ padding: '8px 16px', fontSize: 13 }}>Cancel</button>
+          <button className="btn-primary" onClick={() => { onSave(selected); onClose(); }} style={{ padding: '8px 20px', fontSize: 13 }}>
+            Confirm Selection
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Components ──────────────────────────────────────────────────────────── */
+
+function RoomChipList({ rooms, setRooms, type, loading, inputValue, setInputValue, onAdd }) {
   const dragIdx = useRef(null)
   const [overIdx, setOverIdx] = useState(null)
 
@@ -342,555 +308,485 @@ function RoomList({ rooms, setRooms, type, loading }) {
   }
   function onDragEnd() { dragIdx.current = null; setOverIdx(null) }
 
-  const ac = type === 'lec' ? '#7C6FCD' : '#D97706'
-  const bg = type === 'lec' ? '#EDE9FB' : '#FEF3CD'
-
   if (loading) return (
-    <div className="rooms-list">
-      {[1, 2, 3].map(i => (
-        <div key={i} className="room-row" style={{ padding: '6px 10px' }}>
-          <Skel w={14} h={14} r={4} />
-          <Skel w={18} h={18} r={5} />
-          <Skel w={120} h={14} r={6} style={{ flex: 1, margin: '0 4px' }} />
-          <Skel w={22} h={22} r={6} />
-        </div>
-      ))}
-    </div>
-  )
-
-  if (rooms.length === 0) return (
-    <div className="empty-room-state">
-      <div style={{ width:24, height:24, borderRadius:6, background:bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={ac} strokeWidth="2.5">
-          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-      </div>
-      <span style={{ fontSize:11.5, color:'#B0ABCC' }}>No rooms yet — add one below.</span>
+    <div className="chip-container">
+      {[1, 2, 3, 4, 5].map(i => <Skel key={i} w={80 + Math.random()*30} h={30} r={8} />)}
     </div>
   )
 
   return (
-    <div className="rooms-list">
+    <div className="chip-container">
       {rooms.map((r, i) => (
-        <div
-          key={r}
-          className={`room-row${overIdx === i ? ' drag-over' : ''}`}
-          draggable
-          onDragStart={() => onDragStart(i)}
-          onDragOver={e => onDragOver(e, i)}
-          onDrop={e => onDrop(e, i)}
+        <div 
+          key={r} 
+          className={`room-chip${overIdx === i ? ' drag-over' : ''}`} 
+          draggable 
+          onDragStart={() => onDragStart(i)} 
+          onDragOver={e => onDragOver(e, i)} 
+          onDrop={e => onDrop(e, i)} 
           onDragEnd={onDragEnd}
+          title="Drag to prioritize"
         >
-          <div className="drag-handle" title="Drag to reorder">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/>
-              <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
-              <circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/>
-            </svg>
+          <span className="room-chip-idx">{i + 1}</span>
+          {r}
+          <div className="chip-del" onClick={() => setRooms(rooms.filter(x => x !== r))}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
           </div>
-          <div className={`room-badge ${type}`}>{i + 1}</div>
-          <span style={{ fontSize:12.5, fontWeight:500, color:'#2D2760', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-            {r}
-          </span>
-          {i === 0 && (
-            <span style={{ fontSize:9.5, fontWeight:700, padding:'2px 6px', borderRadius:20, background:bg, color:ac, flexShrink:0 }}>
-              Priority 1
-            </span>
-          )}
-          <button
-            className="room-del"
-            title="Remove room"
-            onClick={() => setRooms(rooms.filter(x => x !== r))}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
         </div>
       ))}
-    </div>
-  )
-}
 
-function AddRow({ value, onChange, onAdd, placeholder, loading }) {
-  return (
-    <div style={{ display:'flex', gap:6 }}>
-      {loading ? (
-        <Skel w="100%" h={32} r={8} />
-      ) : (
-        <>
-          <input
-            className="room-add-input" value={value} onChange={e => onChange(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), onAdd())}
-            placeholder={placeholder}
-          />
-          <button className="rm-add-btn" onClick={onAdd}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
+      {/* Inline Add Input */}
+      <div className="inline-add-wrap">
+        <input 
+          className="inline-add-input" 
+          value={inputValue} 
+          onChange={e => setInputValue(e.target.value)} 
+          onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), onAdd())} 
+          placeholder={`+ Add ${type === 'lec' ? 'Lecture' : 'Lab'}...`} 
+        />
+        {inputValue && (
+          <button className="btn-primary" style={{ padding: '6px 12px', boxShadow: 'none' }} onClick={onAdd}>
             Add
           </button>
-        </>
-      )}
+        )}
+      </div>
     </div>
   )
 }
 
-// ── Course Room Assignment Section ────────────────────────────────────────────
+/* ── Main Page ───────────────────────────────────────────────────────────────── */
 
-/**
- * RoomDropdown renders a <select> populated with all configured rooms.
- * lectureRooms and labRooms are string arrays from /settings/rooms.
- * value is the currently assigned room name, or "" for no preference.
- */
-function RoomDropdown({ value, onChange, lectureRooms, labRooms }) {
-  const assigned  = value || ''
-  // Determine styling: which type is the assigned room?
-  const isLec = lectureRooms.includes(assigned)
-  const isLab = labRooms.includes(assigned)
-  const cls   = assigned
-    ? (isLab ? 'room-select is-assigned-lab' : 'room-select is-assigned')
-    : 'room-select'
-
-  return (
-    <select
-      className={cls}
-      value={assigned}
-      onChange={e => onChange(e.target.value || null)}
-      title={assigned ? `Pinned to: ${assigned}` : 'No room preference — scheduler decides'}
-    >
-      <option value="">— No preference —</option>
-
-      {lectureRooms.length > 0 && (
-        <optgroup label="Lecture Rooms">
-          {lectureRooms.map(r => (
-            <option key={r} value={r}>{r}</option>
-          ))}
-        </optgroup>
-      )}
-
-      {labRooms.length > 0 && (
-        <optgroup label="Lab Rooms">
-          {labRooms.map(r => (
-            <option key={r} value={r}>{r}</option>
-          ))}
-        </optgroup>
-      )}
-
-      {lectureRooms.length === 0 && labRooms.length === 0 && (
-        <option disabled>No rooms configured yet</option>
-      )}
-    </select>
-  )
-}
-
-function CourseRoomAssignmentSection({ onError }) {
-  const [courses,     setCourses]     = useState([])
-  const [lectureRooms, setLectureRooms] = useState([])
-  const [labRooms,    setLabRooms]    = useState([])
-  const [loading,     setLoading]     = useState(true)
-  const [saving,      setSaving]      = useState(false)
-  const [saved,       setSaved]       = useState(false)
-  // assignments: { "CODE_PROG": "Room 407" | "" | null }
+export default function RoomsPage() {
+  const { toasts, toast } = useToast()
+  
+  const [loading, setLoading] = useState(true)
+  const [lecture, setLecture] = useState([])
+  const [lab, setLab] = useState([])
+  
+  const [courses, setCourses] = useState([])
   const [assignments, setAssignments] = useState({})
-  const [original,    setOriginal]    = useState({})
-  const [search,      setSearch]      = useState('')
-  const [progFilter,  setProgFilter]  = useState('All')
+  const [original, setOriginal] = useState({})
+  
+  // Room Config State
+  const [activeTab, setActiveTab] = useState('lec')
+  const [newLec, setNewLec] = useState('')
+  const [newLab, setNewLab] = useState('')
+  const [savingRooms, setSavingRooms] = useState(false)
+  const [originalRooms, setOriginalRooms] = useState({ lecture: [], lab: [] })
+  
+  // Table State
+  const [savingAssigns, setSavingAssigns] = useState(false)
+  const [search, setSearch] = useState('')
+  const [progFilter, setProgFilter] = useState('All')
+  const [statusFilter, setStatusFilter] = useState('All')
+  const [selected, setSelected] = useState(new Set())
 
-  // Load courses AND rooms in parallel on mount
+  // Modal State
+  const [modalState, setModalState] = useState({ isOpen: false, targetKey: null, rooms: [], title: '' })
+
+  // Load Data
   useEffect(() => {
-    Promise.all([getCourses(), getRooms()])
-      .then(([courseData, roomData]) => {
+    Promise.all([getRooms(), getCourses()])
+      .then(([roomData, courseData]) => {
+        const lec = roomData.lecture || []
+        const lb = roomData.lab || []
+        
+        setLecture(lec)
+        setLab(lb)
+        setOriginalRooms({ lecture: [...lec], lab: [...lb] })
+        
         setCourses(courseData)
-        setLectureRooms(roomData.lecture || [])
-        setLabRooms(roomData.lab || [])
-
-        // Build initial assignment map from course.preferredRoom
         const init = {}
         courseData.forEach(c => {
           const key = `${c.courseCode}_${c.program}`
-          init[key] = c.preferredRoom || ''
+          init[key] = c.preferredRoom 
+            ? c.preferredRoom.split(',').map(s => s.trim()).filter(Boolean) 
+            : []
         })
         setAssignments(init)
         setOriginal(init)
       })
-      .catch(async err => onError(await parseError(err, 'load room assignments')))
+      .catch(() => toast('Failed to load room data. Please refresh.', 'error'))
       .finally(() => setLoading(false))
-  }, [])
+  }, [toast])
 
-  // Unique programs for filter pills
-  const programs = useMemo(() => {
-    const s = new Set(courses.map(c => c.program).filter(Boolean))
-    return ['All', ...Array.from(s).sort()]
-  }, [courses])
+  /* ── Room Handlers ── */
+  function addLecture() {
+    const vals = newLec.split(',').map(v => v.trim()).filter(Boolean)
+    if (!vals.length) return
+    const valid = vals.filter(v => !lecture.includes(v))
+    if (valid.length) setLecture(l => [...l, ...valid])
+    setNewLec('')
+  }
+  
+  function addLab() {
+    const vals = newLab.split(',').map(v => v.trim()).filter(Boolean)
+    if (!vals.length) return
+    const valid = vals.filter(v => !lab.includes(v))
+    if (valid.length) setLab(l => [...l, ...valid])
+    setNewLab('')
+  }
 
-  // Filtered + searched courses
-  const visible = useMemo(() => {
+  const roomsDirty = useMemo(() => {
+    return lecture.join(',') !== originalRooms.lecture.join(',') || 
+           lab.join(',') !== originalRooms.lab.join(',')
+  }, [lecture, lab, originalRooms])
+
+  function discardRooms() {
+    setLecture([...originalRooms.lecture])
+    setLab([...originalRooms.lab])
+    setNewLec('')
+    setNewLab('')
+  }
+
+  async function handleSaveRooms() {
+    setSavingRooms(true)
+    try { 
+      await saveRooms({ lecture, lab })
+      setOriginalRooms({ lecture: [...lecture], lab: [...lab] })
+      toast('Rooms saved successfully', 'success')
+    }
+    catch (err) { toast('Failed to save rooms.', 'error') }
+    finally { setSavingRooms(false) }
+  }
+
+  /* ── Assignment Handlers ── */
+  const programs = useMemo(() => ['All', ...Array.from(new Set(courses.map(c => c.program).filter(Boolean))).sort()], [courses])
+  
+  const dirtyKeys = useMemo(() => Object.keys(assignments).filter(k => assignments[k].join(',') !== original[k].join(',')), [assignments, original])
+
+  const visibleCourses = useMemo(() => {
     const q = search.toLowerCase().trim()
     return courses.filter(c => {
+      const key = `${c.courseCode}_${c.program}`
+      const isAssigned = assignments[key]?.length > 0
+      
       if (progFilter !== 'All' && c.program !== progFilter) return false
+      if (statusFilter === 'Assigned' && !isAssigned) return false
+      if (statusFilter === 'Unassigned' && isAssigned) return false
       if (q && !c.courseCode.toLowerCase().includes(q) && !c.title.toLowerCase().includes(q)) return false
       return true
     })
-  }, [courses, search, progFilter])
+  }, [courses, search, progFilter, statusFilter, assignments])
 
-  // Number of unsaved changes
-  const dirtyKeys = useMemo(() =>
-    Object.keys(assignments).filter(k => assignments[k] !== original[k]),
-    [assignments, original]
-  )
+  const visibleKeys = visibleCourses.map(c => `${c.courseCode}_${c.program}`)
+  const allSel = visibleKeys.length > 0 && visibleKeys.every(k => selected.has(k))
+  const someSel = visibleKeys.some(k => selected.has(k)) && !allSel
 
-  function setAssignment(key, roomName) {
-    setAssignments(prev => ({ ...prev, [key]: roomName || '' }))
-    setSaved(false)
+  const togAll = () => allSel 
+    ? setSelected(p => { const n = new Set(p); visibleKeys.forEach(k => n.delete(k)); return n })
+    : setSelected(p => { const n = new Set(p); visibleKeys.forEach(k => n.add(k)); return n })
+  const togOne = k => setSelected(p => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n })
+
+  // Modal Openers
+  const openSingleModal = (key, title, currentRooms) => {
+    setModalState({ isOpen: true, targetKey: key, title, rooms: currentRooms })
+  }
+
+  const openBulkModal = () => {
+    setModalState({ isOpen: true, targetKey: 'BULK', title: `Bulk assign for ${selected.size} courses`, rooms: [] })
+  }
+
+  const handleModalSave = (selectedRooms) => {
+    if (modalState.targetKey === 'BULK') {
+      setAssignments(prev => {
+        const next = { ...prev }
+        selected.forEach(k => next[k] = selectedRooms)
+        return next
+      })
+      setSelected(new Set())
+      toast(`Updated assignments for ${selected.size} courses`, 'success')
+    } else {
+      setAssignments(prev => ({ ...prev, [modalState.targetKey]: selectedRooms }))
+    }
   }
 
   function resetDirty() {
     setAssignments({ ...original })
-    setSaved(false)
   }
 
-  async function handleSave() {
+  async function handleSaveAssignments() {
     if (dirtyKeys.length === 0) return
-    setSaving(true)
+    setSavingAssigns(true)
     const toSave = {}
-    dirtyKeys.forEach(k => { toSave[k] = assignments[k] || null })
+    
+    dirtyKeys.forEach(k => { 
+      toSave[k] = assignments[k].length > 0 ? assignments[k].join(', ') : null 
+    })
+    
     try {
       const { committed, failed } = await bulkSetPreferredRooms(toSave)
       if (failed.length > 0) {
-        onError({
-          title: 'Partial save failure',
-          message: `${committed} course(s) saved, but ${failed.length} failed: ${failed.map(f => f.key).join(', ')}`,
-          code: null,
-        })
+        toast(`Partial success: ${committed} saved, ${failed.length} failed`, 'error')
       } else {
-        setOriginal(prev => ({ ...prev, ...toSave }))
-        setSaved(true)
-        setTimeout(() => setSaved(false), 2500)
+        setOriginal(prev => ({ ...prev, ...assignments })) 
+        toast('Assignments updated successfully', 'success')
       }
     } catch (err) {
-      onError(await parseError(err, 'save room assignments'))
+      toast('Failed to save room assignments', 'error')
     } finally {
-      setSaving(false)
+      setSavingAssigns(false)
     }
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
-
-  // Count how many courses have a room pinned
-  const pinnedCount = Object.values(assignments).filter(Boolean).length
-
   return (
-    <div className="card" style={{ padding: 0, overflow: 'hidden', marginTop: 14 }}>
-
-      {/* Header */}
-      <div className="room-card-head" style={{ gap: 10 }}>
-        <div style={{ width:28, height:28, borderRadius:8, background:'linear-gradient(135deg,#EDE9FB 0%,#FEF3CD 100%)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7C6FCD" strokeWidth="2">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-            <polyline points="9 22 9 12 15 12 15 22"/>
-            <line x1="12" y1="1" x2="12" y2="5"/>
-          </svg>
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize:12.5, fontWeight:700, color:'#1a1a2e' }}>Course Room Assignment</div>
-          <div style={{ fontSize:11, color:'#8883B0' }}>
-            {loading
-              ? <Skel w={200} h={11} style={{ marginTop:2 }} />
-              : pinnedCount > 0
-                ? `${pinnedCount} course${pinnedCount !== 1 ? 's' : ''} pinned to a specific room`
-                : 'Pin courses to a specific room — scheduler will honour it'}
+    <div className="page" style={{ fontFamily:"'Inter', sans-serif", background: G.bg, minHeight: '100%', padding: '32px 40px' }}>
+      
+      {/* ── Top Row: Ultra-Compact Room Configuration ── */}
+      <div className="room-card" style={{ marginBottom: 24 }}>
+        <div className="room-card-head" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: G.meadowSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${G.meadowBorder}` }}>
+              <img src={activeTab === 'lec' ? iconLec : iconLab} alt="Rooms" style={{ width: 22, height: 22, objectFit: 'contain' }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: G.ink }}>Campus Rooms</div>
+              <div style={{ fontSize: 12.5, color: G.muted }}>Define and prioritize campus rooms for scheduling</div>
+            </div>
           </div>
+          
+          {/* Header Save Bar Logic for Campus Rooms */}
+          {!loading && roomsDirty ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: '#FFFBEB', padding: '8px 16px', borderRadius: '10px', border: '1px solid #FDE68A', animation: 'fadeIn 0.2s ease-out' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 24, height: 24, borderRadius: 6, background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #FCD34D' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <span style={{ fontSize: 13, color: G.ink, fontWeight: 600, fontFamily: "'Inter', sans-serif" }}>
+                  <strong style={{ color: '#D97706' }}>Unsaved</strong> campus room changes
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn-outline" onClick={discardRooms} disabled={savingRooms} style={{ padding: '6px 12px' }}>Discard</button>
+                <button className="btn-primary" onClick={handleSaveRooms} disabled={savingRooms} style={{ padding: '6px 12px' }}>
+                  {savingRooms ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation:'spin-r .8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                  )}
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div className="room-tabs">
+                <button className={`room-tab ${activeTab === 'lec' ? 'active' : ''}`} onClick={() => setActiveTab('lec')}>
+                  Lecture ({loading ? '...' : lecture.length})
+                </button>
+                <button className={`room-tab ${activeTab === 'lab' ? 'active' : ''}`} onClick={() => setActiveTab('lab')}>
+                  Laboratory ({loading ? '...' : lab.length})
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Dirty count badge + Save */}
-        {!loading && (
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            {dirtyKeys.length > 0 && (
-              <span className="cp-dirty-badge" title={`${dirtyKeys.length} unsaved change${dirtyKeys.length !== 1 ? 's' : ''}`}>
-                {dirtyKeys.length}
-              </span>
-            )}
-            <SaveBtn
-              saving={saving}
-              saved={saved}
-              onClick={handleSave}
-              disabled={dirtyKeys.length === 0}
+        <div style={{ padding: '16px 20px', background: G.surface }}>
+          {activeTab === 'lec' ? (
+            <RoomChipList 
+              rooms={lecture} setRooms={setLecture} 
+              type="lec" loading={loading} 
+              inputValue={newLec} setInputValue={setNewLec} onAdd={addLecture}
             />
-          </div>
-        )}
-      </div>
-
-      {/* Toolbar: search + program filter */}
-      <div style={{ padding:'10px 14px', borderBottom:'1px solid #F0EDF9', display:'flex', flexDirection:'column', gap:8 }}>
-
-        {/* Search */}
-        <div style={{ position:'relative' }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C0BBDC" strokeWidth="2.5"
-            style={{ position:'absolute', left:11, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}>
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          {loading
-            ? <Skel w="100%" h={34} r={9} />
-            : (
-              <input
-                className="cp-search"
-                placeholder="Search by course code or title…"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
-            )
-          }
+          ) : (
+            <RoomChipList 
+              rooms={lab} setRooms={setLab} 
+              type="lab" loading={loading} 
+              inputValue={newLab} setInputValue={setNewLab} onAdd={addLab}
+            />
+          )}
         </div>
-
-        {/* Program pills */}
-        {!loading && programs.length > 1 && (
-          <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-            {programs.map(p => (
-              <button
-                key={p}
-                className={`cp-prog-pill${progFilter === p ? ' active' : ''}`}
-                onClick={() => setProgFilter(p)}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-        )}
-        {loading && (
-          <div style={{ display:'flex', gap:6 }}>
-            {[80, 60, 70, 55].map((w, i) => <Skel key={i} w={w} h={26} r={20} />)}
-          </div>
-        )}
       </div>
 
-      {/* Legend */}
-      {!loading && (
-        <div style={{
-          display:'flex', gap:16, padding:'6px 14px',
-          borderBottom:'1px solid #F5F3FD', background:'#FAFAFE',
-        }}>
-          {[
-            { color:'#A09CC0', bg:'#F0EDF9', label:'No preference — scheduler decides' },
-            { color:'#7C6FCD', bg:'#EDE9FB', label:'Pinned to a lecture room' },
-            { color:'#D97706', bg:'#FEF3CD', label:'Pinned to a lab room' },
-          ].map(({ color, bg, label }) => (
-            <div key={label} style={{ display:'flex', alignItems:'center', gap:5 }}>
-              <div style={{ width:8, height:8, borderRadius:3, background:bg, border:`1.5px solid ${color}`, flexShrink:0 }} />
-              <span style={{ fontSize:10.5, color:'#8883B0' }}>{label}</span>
+      {/* ── Bottom Row: High-Density Course Assignments ── */}
+      <div className="room-card" style={{ position: 'relative' }}>
+        
+        {/* Course Assignment Header - Now with Save/Discard Controls */}
+        <div className="room-card-head" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: G.hover, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${G.border}` }}>
+            <img src={iconAssign} alt="Assignments" style={{ width: 22, height: 22, objectFit: 'contain' }} />
+          </div>
+          <div style={{ flex: 1, minWidth: '200px' }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: G.ink }}>Course Room Assignment Pool</div>
+            <div style={{ fontSize: 12.5, color: G.muted }}>
+              {loading ? <Skel w={240} h={12} /> : 'Assign a pool of specific rooms to a course. The scheduler will pick from this pool.'}
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Course list */}
-      <div style={{ maxHeight: 420, overflowY: 'auto' }}>
-        {loading ? (
-          <div style={{ display:'flex', flexDirection:'column' }}>
-            {[...Array(6)].map((_, i) => (
-              <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 14px', borderBottom:'1px solid #F5F3FD' }}>
-                <Skel w={52} h={20} r={6} />
-                <Skel w="40%" h={13} r={6} style={{ flex:1 }} />
-                <Skel w={50} h={13} r={6} />
-                <Skel w={160} h={28} r={8} />
-              </div>
-            ))}
           </div>
-        ) : visible.length === 0 ? (
-          <div className="cp-empty">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#D8D3F5" strokeWidth="1.5">
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <span style={{ fontSize:12, fontWeight:500 }}>No courses match your search</span>
-            {(search || progFilter !== 'All') && (
-              <button
-                onClick={() => { setSearch(''); setProgFilter('All') }}
-                style={{ fontSize:11, color:'#7C6FCD', background:'none', border:'none', cursor:'pointer', fontFamily:'Poppins,sans-serif', padding:0 }}
-              >
-                Clear filters
-              </button>
+          
+          {/* Header Save Bar Logic for Assignments */}
+          {!loading && dirtyKeys.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: '#FFFBEB', padding: '8px 16px', borderRadius: '10px', border: '1px solid #FDE68A', animation: 'fadeIn 0.2s ease-out' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 24, height: 24, borderRadius: 6, background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #FCD34D' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <span style={{ fontSize: 13, color: G.ink, fontWeight: 600, fontFamily: "'Inter', sans-serif" }}>
+                  <strong style={{ color: '#D97706' }}>{dirtyKeys.length}</strong> unsaved change{dirtyKeys.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn-outline" onClick={resetDirty} disabled={savingAssigns} style={{ padding: '6px 12px' }}>Discard</button>
+                <button className="btn-primary" onClick={handleSaveAssignments} disabled={savingAssigns} style={{ padding: '6px 12px' }}>
+                  {savingAssigns ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation:'spin-r .8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                  )}
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Filters */}
+        <div style={{ padding: '14px 20px', borderBottom: `1px solid ${G.borderLight}`, display: 'flex', flexDirection: 'column', gap: 12, background: '#fff' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 160 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={G.muted2} strokeWidth="2.5" style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              {loading ? <Skel w="100%" h={36} r={8} /> : <input className="cp-search" placeholder="Search course code or title…" value={search} onChange={e => setSearch(e.target.value)} />}
+            </div>
+            
+            {!loading && (
+              <div style={{ display: 'flex', gap: 4, background: G.hover, padding: 4, borderRadius: 9, border: `1px solid ${G.border}` }}>
+                {['All', 'Assigned', 'Unassigned'].map(status => (
+                  <button key={status} onClick={() => { setStatusFilter(status); setSelected(new Set()) }} 
+                    style={{ padding: '6px 14px', borderRadius: 7, fontSize: 12, fontWeight: statusFilter === status ? 700 : 600, background: statusFilter === status ? '#fff' : 'transparent', color: statusFilter === status ? G.meadowDeep : G.muted, border: 'none', cursor: 'pointer', boxShadow: statusFilter === status ? '0 1px 3px rgba(0,0,0,0.04)' : 'none', transition: 'all .15s', fontFamily: "'Inter', sans-serif" }}>
+                    {status}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
-        ) : (
-          visible.map(course => {
-            const key        = `${course.courseCode}_${course.program}`
-            const roomValue  = assignments[key] || ''
-            const isDirty    = assignments[key] !== original[key]
-            const isLab      = labRooms.includes(roomValue)
+          
+          {!loading && programs.length > 1 && (
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems: 'center' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', marginRight: 4 }}>Program Filter:</span>
+              {programs.map(p => (
+                <button key={p} 
+                  onClick={() => { setProgFilter(p); setSelected(new Set()) }}
+                  style={{ padding: '5px 12px', borderRadius: 99, fontSize: 11.5, fontWeight: progFilter === p ? 700 : 600, background: progFilter === p ? G.meadowSoft : '#fff', color: progFilter === p ? G.meadowDeep : G.muted, border: `1px solid ${progFilter === p ? G.meadowBorder : G.border}`, cursor: 'pointer', transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
-            // Row accent based on assigned room type
-            const rowBorderColor = roomValue
-              ? (isLab ? '#FCD34D' : '#A99BE8')
-              : 'transparent'
-
-            return (
-              <div
-                key={key}
-                className="cp-course-row"
-                style={{ borderLeft: `3px solid ${rowBorderColor}` }}
-              >
-                {/* Code badge */}
-                <div style={{
-                  padding:'3px 8px', borderRadius:6,
-                  background: roomValue ? (isLab ? '#FFFBEB' : '#F0EDF9') : '#F5F3FD',
-                  border:`1px solid ${roomValue ? (isLab ? '#FCD34D' : '#D8D3F5') : '#E8E4F8'}`,
-                  flexShrink: 0, minWidth: 60, textAlign:'center',
-                }}>
-                  <span style={{ fontSize:10.5, fontWeight:700, color: isLab ? '#B45309' : '#5B50A8', letterSpacing:'0.02em' }}>
-                    {course.courseCode}
-                  </span>
-                </div>
-
-                {/* Title + meta */}
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:12, fontWeight:600, color:'#1a1a2e', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                    {course.title}
-                  </div>
-                  <div style={{ fontSize:10.5, color:'#A09CC0', marginTop:1, display:'flex', gap:6 }}>
-                    <span>{course.program}</span>
-                    <span>·</span>
-                    <span>Yr {course.yearLevel}</span>
-                    {course.unitsLecture > 0 && <span>· {course.unitsLecture}u Lec</span>}
-                    {course.unitsLab > 0      && <span>· {course.unitsLab}u Lab</span>}
-                  </div>
-                </div>
-
-                {/* Dirty indicator dot */}
-                {isDirty && (
-                  <div style={{
-                    width:6, height:6, borderRadius:'50%', background:'#7C6FCD', flexShrink:0,
-                  }} title="Unsaved change" />
-                )}
-
-                {/* Room dropdown */}
-                <RoomDropdown
-                  value={roomValue}
-                  onChange={val => setAssignment(key, val)}
-                  lectureRooms={lectureRooms}
-                  labRooms={labRooms}
-                />
-              </div>
-            )
-          })
+        {/* Bulk Action Bar */}
+        {selected.size > 0 && (
+          <div style={{ background: `linear-gradient(135deg,${G.meadowDeep},${G.inkMid})`, padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 14, animation: 'fadeIn 0.15s ease' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#fff', flex: 1 }}>{selected.size} course{selected.size !== 1 ? 's' : ''} selected</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button onClick={() => setSelected(new Set())} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>Deselect</button>
+              <button onClick={openBulkModal} style={{ background: '#fff', color: G.meadowDeep, border: 'none', fontSize: 12, fontWeight: 700, padding: '6px 14px', borderRadius: 6, cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>Bulk Assign Rooms</button>
+            </div>
+          </div>
         )}
+
+        {/* High-Density Data Table */}
+        <div style={{ maxHeight: 550, overflowY: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 5, background: '#fff' }}>
+              <tr>
+                <th style={{ width: 48, padding: '12px 20px', borderBottom: `1.5px solid ${G.border}`, background: G.hover }}>
+                  <div style={{ display: 'flex', justifyContent: 'center' }}><Checkbox checked={allSel} indeterminate={someSel} onChange={togAll}/></div>
+                </th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: G.muted2, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: '.6px', borderBottom: `1.5px solid ${G.border}`, background: G.hover }}>Course Details</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: G.muted2, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: '.6px', borderBottom: `1.5px solid ${G.border}`, background: G.hover, width: 140 }}>Units</th>
+                <th style={{ padding: '12px 20px', textAlign: 'left', fontWeight: 700, color: G.muted2, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: '.6px', borderBottom: `1.5px solid ${G.border}`, background: G.hover, width: '40%' }}>Assigned Room Pool</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                [...Array(6)].map((_, i) => (
+                  <tr key={i} style={{ borderBottom: `1px solid ${G.borderLight}` }}>
+                    <td style={{ padding: '12px 20px' }}><Skel w={18} h={18} r={4} /></td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <Skel w={100} h={20} r={4} style={{ marginBottom: 6 }} />
+                      <Skel w="60%" h={14} r={4} />
+                    </td>
+                    <td style={{ padding: '12px 16px' }}><Skel w={70} h={16} r={4} /></td>
+                    <td style={{ padding: '12px 20px' }}><Skel w={120} h={28} r={6} /></td>
+                  </tr>
+                ))
+              ) : visibleCourses.length === 0 ? (
+                <tr>
+                  <td colSpan={4} style={{ padding: '80px 20px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: G.muted }}>No courses match your filters</div>
+                    <button onClick={() => { setSearch(''); setProgFilter('All'); setStatusFilter('All') }} style={{ fontSize: 12.5, color: G.meadow, background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Inter', sans-serif", padding: 0, marginTop: 8, fontWeight: 600 }}>Clear all filters</button>
+                  </td>
+                </tr>
+              ) : (
+                visibleCourses.map((course, i) => {
+                  const key = `${course.courseCode}_${course.program}`
+                  const isSel = selected.has(key)
+                  const roomsArr = assignments[key] || []
+                  const isDirty = assignments[key].join(',') !== original[key].join(',')
+
+                  return (
+                    <tr key={key} className="cp-tr-hover" onClick={() => togOne(key)} style={{ background: isSel ? G.meadowSoft : 'transparent', borderBottom: i < visibleCourses.length - 1 ? `1px solid ${G.borderLight}` : 'none', cursor: 'pointer', transition: 'background .15s' }}>
+                      <td style={{ padding: '12px 20px', textAlign: 'center', verticalAlign: 'middle' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'center' }}><Checkbox checked={isSel} onChange={() => togOne(key)}/></div>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ padding: '3px 8px', background: G.hover, color: G.ink, borderRadius: 6, fontSize: 12.5, fontWeight: 800, border: `1px solid ${G.border}` }}>{course.courseCode}</span>
+                            <span style={{ fontWeight: 600, color: G.ink, fontSize: 13.5 }}>{course.title}</span>
+                            {isDirty && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#D97706', flexShrink: 0, boxShadow: '0 0 0 2px #FEF3C7' }} title="Unsaved change" />}
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 11.5, color: G.muted2, fontWeight: 600 }}>
+                            <span style={{ color: G.muted }}>{course.program}</span>
+                            <span style={{ width: 4, height: 4, borderRadius: '50%', background: G.muted2 }} />
+                            <span>Yr {course.yearLevel}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          {course.unitsLecture > 0 && <span style={{ color: G.meadowDeep, fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}><div style={{width:8,height:8,borderRadius:2,background:G.meadowSoft,border:`1px solid ${G.meadowBorder}`}}/> {course.unitsLecture}L</span>}
+                          {course.unitsLab > 0 && <span style={{ color: '#0369A1', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}><div style={{width:8,height:8,borderRadius:2,background:'#E0F2FE',border:`1px solid #BAE6FD`}}/> {course.unitsLab}L</span>}
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px 20px', verticalAlign: 'middle' }} onClick={e => e.stopPropagation()}>
+                        {roomsArr.length === 0 ? (
+                          <button className="assign-trigger" onClick={() => openSingleModal(key, `${course.courseCode} - ${course.title}`, roomsArr)}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            Assign Pool
+                          </button>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                            {roomsArr.slice(0, 4).map(r => <span key={r} className="assigned-pill">{r}</span>)}
+                            {roomsArr.length > 4 && <span style={{ fontSize: 11.5, fontWeight: 800, color: G.muted }}>+{roomsArr.length - 4}</span>}
+                            <button onClick={() => openSingleModal(key, `${course.courseCode} - ${course.title}`, roomsArr)} style={{ border: '1px solid transparent', background: 'transparent', cursor: 'pointer', color: G.meadow, display: 'flex', alignItems: 'center', padding: '5px', marginLeft: '4px', borderRadius: '6px', transition: 'all 0.15s' }} onMouseOver={e => {e.currentTarget.style.background = G.meadowSoft; e.currentTarget.style.borderColor = G.meadowBorder}} onMouseOut={e => {e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'}} title="Edit Assigned Rooms">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Bottom save bar (shows only when there are dirty changes) */}
-      {!loading && dirtyKeys.length > 0 && (
-        <div className="cp-save-bar">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7C6FCD" strokeWidth="2.2">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          <span style={{ fontSize:11.5, color:'#6B66A0', flex:1 }}>
-            <strong style={{ color:'#7C6FCD' }}>{dirtyKeys.length}</strong> unsaved change{dirtyKeys.length !== 1 ? 's' : ''}
-          </span>
-          <button className="cp-reset-btn" onClick={resetDirty} disabled={saving}>
-            Discard
-          </button>
-          <SaveBtn saving={saving} saved={saved} onClick={handleSave} disabled={false} />
-        </div>
-      )}
-    </div>
-  )
-}
+      <RoomAssignModal 
+        isOpen={modalState.isOpen} 
+        onClose={() => setModalState(p => ({...p, isOpen: false}))} 
+        title={modalState.title} 
+        initialRooms={modalState.rooms} 
+        lectureRooms={lecture} 
+        labRooms={lab} 
+        onSave={handleModalSave} 
+      />
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
-
-export default function RoomsPage() {
-  const [loading, setLoading] = useState(true)
-  const [lecture, setLecture] = useState([])
-  const [lab,     setLab]     = useState([])
-  const [newLec,  setNewLec]  = useState('')
-  const [newLab,  setNewLab]  = useState('')
-  const [saving,  setSaving]  = useState(false)
-  const [saved,   setSaved]   = useState(false)
-  const [error,   setError]   = useState(null)
-
-  useEffect(() => {
-    getRooms()
-      .then(r => { setLecture(r.lecture || []); setLab(r.lab || []) })
-      .catch(async (err) => setError(await parseError(err, 'load rooms')))
-      .finally(() => setLoading(false))
-  }, [])
-
-  function addLecture() {
-    const v = newLec.trim(); if (!v) return
-    if (lecture.includes(v)) { setError({ title: 'Duplicate Room', message: `"${v}" already exists in Lecture Rooms.` }); return }
-    setLecture(l => [...l, v]); setNewLec(''); setError(null); setSaved(false)
-  }
-  function addLab() {
-    const v = newLab.trim(); if (!v) return
-    if (lab.includes(v)) { setError({ title: 'Duplicate Room', message: `"${v}" already exists in Lab Rooms.` }); return }
-    setLab(l => [...l, v]); setNewLab(''); setError(null); setSaved(false)
-  }
-
-  async function handleSave() {
-    setSaving(true); setError(null)
-    try { await saveRooms({ lecture, lab }); setSaved(true); setTimeout(() => setSaved(false), 2500) }
-    catch (err) { setError(await parseError(err, 'save rooms')) }
-    finally { setSaving(false) }
-  }
-
-  return (
-    <div className="page">
-      {error && (
-        <ErrorBanner error={error} onDismiss={() => setError(null)} />
-      )}
-
-      {/* ── Top row: Lecture + Lab room lists ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, alignItems:'start' }}>
-
-        {/* Lecture */}
-        <div className="card" style={{ padding:0, overflow:'hidden' }}>
-          <div className="room-card-head">
-            <div style={{ width:28, height:28, borderRadius:8, background:'#EDE9FB', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7C6FCD" strokeWidth="2">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                <polyline points="9 22 9 12 15 12 15 22"/>
-              </svg>
-            </div>
-            <div style={{ flex:1 }}>
-              <div style={{ fontSize:12.5, fontWeight:700, color:'#1a1a2e' }}>Lecture Rooms</div>
-              <div style={{ fontSize:11, color:'#8883B0' }}>
-                {loading ? <Skel w={100} h={11} style={{ marginTop: 2 }} /> : `${lecture.length} room${lecture.length!==1?'s':''} configured`}
-              </div>
-            </div>
-            {loading ? <Skel w={65} h={28} r={8} /> : <SaveBtn saving={saving} saved={saved} onClick={handleSave} />}
-          </div>
-          <div style={{ padding:'12px 14px' }}>
-            <RoomList rooms={lecture} setRooms={r => { setLecture(r); setSaved(false) }} type="lec" loading={loading} />
-            <AddRow value={newLec} onChange={setNewLec} onAdd={addLecture} placeholder="e.g. Room 101" loading={loading} />
-          </div>
-        </div>
-
-        {/* Lab */}
-        <div className="card" style={{ padding:0, overflow:'hidden' }}>
-          <div className="room-card-head">
-            <div style={{ width:28, height:28, borderRadius:8, background:'#FEF3CD', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2">
-                <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/>
-              </svg>
-            </div>
-            <div style={{ flex:1 }}>
-              <div style={{ fontSize:12.5, fontWeight:700, color:'#1a1a2e' }}>Lab Rooms</div>
-              <div style={{ fontSize:11, color:'#8883B0' }}>
-                {loading ? <Skel w={100} h={11} style={{ marginTop: 2 }} /> : `${lab.length} room${lab.length!==1?'s':''} configured`}
-              </div>
-            </div>
-            {loading ? <Skel w={65} h={28} r={8} /> : <SaveBtn saving={saving} saved={saved} onClick={handleSave} />}
-          </div>
-          <div style={{ padding:'12px 14px' }}>
-            <RoomList rooms={lab} setRooms={r => { setLab(r); setSaved(false) }} type="lab" loading={loading} />
-            <AddRow value={newLab} onChange={setNewLab} onAdd={addLab} placeholder="e.g. ICT Lab 1" loading={loading} />
-          </div>
-        </div>
-
-      </div>
-
-      {/* ── Course Room Assignment section ── */}
-      <CourseRoomAssignmentSection onError={setError} />
+      <ToastContainer toasts={toasts} />
     </div>
   )
 }

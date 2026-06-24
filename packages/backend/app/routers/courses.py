@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from app.core.auth import admin_only
+from app.core.auth import admin_only, any_authenticated
 from app.core.firebase import db, refresh_courses_cache
 from app.models.course import Course, CourseUpdate
 from google.cloud import firestore as fs
@@ -136,7 +136,7 @@ def _parse_excel(contents: bytes, sheet_name: str) -> list[dict]:
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
 @router.get("/")
-def get_all_courses(semester: str = None, user=Depends(admin_only)):
+def get_all_courses(semester: str = None, user=Depends(any_authenticated)):
     docs = db.collection("courses").stream()
     courses = [{**d.to_dict(), "id": d.id} for d in docs]
     if semester:

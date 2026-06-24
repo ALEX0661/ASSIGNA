@@ -146,6 +146,17 @@ export function programColor(program) {
   return PROGRAM_COLORS[key] ?? { bg: '#f3f4f6', text: '#374151', border: '#9ca3af' }
 }
 
+// ── Room helpers ──────────────────────────────────────────────────────────────
+/**
+ * Returns true for rooms that should never generate a "Room" conflict.
+ * Online/virtual rooms can host unlimited simultaneous sessions.
+ */
+export function isOnlineRoom(room) {
+  if (!room) return false
+  const r = room.trim().toLowerCase()
+  return r === 'online' || r === 'virtual' || r === 'online/virtual'
+}
+
 // ── Time helpers ──────────────────────────────────────────────────────────────
 export function parseTimeToMinutes(timeStr) {
   if (!timeStr) return 0
@@ -263,7 +274,9 @@ export function timeOverlaps(a, b) {
 
 export function getConflictTypes(ea, eb) {
   const types = []
-  if (ea.room && ea.room !== 'TBA' && eb.room && eb.room !== 'TBA' && ea.room === eb.room)
+  if (ea.room && ea.room !== 'TBA' && !isOnlineRoom(ea.room) &&
+      eb.room && eb.room !== 'TBA' && !isOnlineRoom(eb.room) &&
+      ea.room === eb.room)
     types.push('Room')
   if (ea.program && ea.year && ea.block &&
       ea.program === eb.program &&
@@ -317,7 +330,7 @@ export function findConflicts(allEvents, { evId, day, startMin, endMin, room, fa
     if (!r || !timeOverlaps(proposed, r)) continue
 
     const types = []
-    if (room    && room    !== 'TBA' && ev.room    === room)    types.push('Room')
+    if (room    && room    !== 'TBA' && !isOnlineRoom(room) && ev.room === room)    types.push('Room')
     if (faculty && faculty !== 'TBA' && ev.faculty === faculty) types.push('Faculty')
     if (program && year !== undefined && block &&
         ev.program === program &&

@@ -62,9 +62,10 @@ class FacultyAssigner:
         self.faculty_list: list[dict] = []
 
         # Runtime tracking (reset on each assign() call)
-        self._assigned_units:  dict[str, float]      = {}   # name → hours used
-        self._faculty_courses: dict[str, set[str]]   = defaultdict(set)
-        self._faculty_slots:   dict[str, list[tuple]] = defaultdict(list)
+        self._assigned_units:    dict[str, float]       = {}   # name → hours used
+        self._faculty_courses:   dict[str, set[str]]    = defaultdict(set)
+        self._faculty_slots:     dict[str, list[tuple]] = defaultdict(list)
+        self._course_title_map:  dict[str, str]         = {}   # courseCode.upper() → courseTitle
 
     # ── Data loading ──────────────────────────────────────────────────────────
 
@@ -107,16 +108,63 @@ class FacultyAssigner:
 
     # ── Eligibility ───────────────────────────────────────────────────────────
 
+    def _build_title_map(self) -> dict[str, str]:
+        """
+        Build a { courseCode.upper() → normalised courseTitle } lookup map
+        from the currently loaded course cache.
+
+        This is the bridge between the scheduler (which works in course codes)
+        and the specialization system (which now keys on course titles).
+        Called once per assign() run.
+        """
+        from app.core.firebase import get_courses
+        title_map: dict[str, str] = {}
+        for c in get_courses():
+            code  = (c.get("courseCode") or "").strip().upper()
+            title = (c.get("title")      or "").strip()
+            if code and title:
+                title_map[code] = title
+        return title_map
+
+    @staticmethod
+    def _normalise_title(t: str) -> str:
+        """Lowercase + strip for comparison so minor whitespace/case diffs don't break matches."""
+        return (t or "").strip().lower()
+
     def _has_specialization(self, faculty: dict, course_code: str) -> bool:
-        return any(
-            s.get("courseCode", "").upper() == course_code.upper()
-            for s in faculty.get("specializations", [])
-        )
+        """
+        Match by courseTitle (primary, stable across code changes).
+        Falls back to courseCode for legacy specialization entries that
+        predate the title-based system.
+
+        The course_code is resolved to a title via self._course_title_map,
+        which is built once per assign() run from the loaded course cache.
+        """
+        target_code  = course_code.upper().strip()
+        target_title = self._normalise_title(self._course_title_map.get(target_code, ""))
+
+        for s in faculty.get("specializations", []):
+            # Primary: match on courseTitle (new format)
+            stored_title = self._normalise_title(s.get("courseTitle", ""))
+            if stored_title and target_title and stored_title == target_title:
+                return True
+            # Fallback: match on courseCode (legacy entries without courseTitle)
+            if not s.get("courseTitle") and s.get("courseCode", "").upper().strip() == target_code:
+                return True
+
+        return False
 
     def _spec_rating(self, faculty: dict, course_code: str) -> int:
+        target_code  = course_code.upper().strip()
+        target_title = self._normalise_title(self._course_title_map.get(target_code, ""))
+
         for s in faculty.get("specializations", []):
-            if s.get("courseCode", "").upper() == course_code.upper():
+            stored_title = self._normalise_title(s.get("courseTitle", ""))
+            if stored_title and target_title and stored_title == target_title:
                 return int(s.get("rating", 1))
+            if not s.get("courseTitle") and s.get("courseCode", "").upper().strip() == target_code:
+                return int(s.get("rating", 1))
+
         return 0
 
     def _current_max(self, faculty: dict) -> float:
@@ -572,6 +620,17 @@ class FacultyAssigner:
         if not self.faculty_list:
             logger.warning("FacultyAssigner.assign() called before load_faculty(); loading now.")
             self.load_faculty()
+
+        # Build courseCode → courseTitle map from the live course cache.
+        # This is what makes specialization matching title-stable: even if a
+        # courseCode is reused for a different subject next year, the title
+        # lookup will point to the new subject, so only faculty specialised in
+        # THAT subject will be eligible.
+        self._course_title_map = self._build_title_map()
+        logger.info(
+            "FacultyAssigner: built title map for %d course codes",
+            len(self._course_title_map),
+        )
 
         self._reset_tracking()
         groups = self._group_events(schedule)

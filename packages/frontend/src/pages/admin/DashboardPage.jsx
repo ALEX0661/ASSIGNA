@@ -1,130 +1,287 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getFaculty, getCourses, getRooms, getWorkload, listSaved, loadSaved } from '../../services/api'
+import { useAuth } from '../../hooks/useAuth'
+import {
+  getDashboardStats, getWorkload, listSaved, loadSaved,
+  getAssignmentQuality, getScheduleDistribution,
+} from '../../services/api'
 import { useScheduleStore } from '../../store/scheduleStore'
 
-/* ── Shimmer keyframe injected once ── */
-const SHIMMER_STYLE = `
-  @keyframes spin { to { transform: rotate(360deg) } }
+/* ─── Global keyframes & utility classes ─────────────────────────────────── */
+const DASH_STYLE = `
   @keyframes shimmer {
-    0%   { background-position: -400px 0 }
-    100% { background-position:  400px 0 }
+    0%   { background-position: -600px 0 }
+    100% { background-position:  600px 0 }
   }
-  .skeleton {
-    background: linear-gradient(90deg, #F0EDF9 25%, #E4DEFC 50%, #F0EDF9 75%);
-    background-size: 800px 100%;
+  @keyframes barIn { from { width: 0 } }
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(10px) }
+    to   { opacity:1; transform:translateY(0) }
+  }
+  @keyframes countUp {
+    from { opacity:0; transform:translateY(6px) }
+    to   { opacity:1; transform:translateY(0) }
+  }
+  @keyframes spin { to { transform:rotate(360deg) } }
+  @keyframes pulseGlow {
+    0%,100% { box-shadow: 0 0 0 0 rgba(110,231,183,0.4) }
+    50%     { box-shadow: 0 0 0 6px rgba(110,231,183,0) }
+  }
+  .skel {
+    background: linear-gradient(90deg,#EBF4EF 25%,#D8EEE3 50%,#EBF4EF 75%);
+    background-size: 600px 100%;
     animation: shimmer 1.4s ease-in-out infinite;
     border-radius: 7px;
   }
-  .hover-row {
-    cursor: pointer;
-    transition: background 0.15s ease;
+  .d-card {
+    background: var(--surface);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 12px rgba(10,46,28,0.07);
+    animation: fadeUp .35s ease both;
   }
-  .hover-row:hover {
-    background: #FAFAFE;
+  .d-row { cursor:pointer; transition:background 0.13s; }
+  .d-row:hover { background: var(--hover) !important; }
+  .stat-card {
+    background: var(--surface);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 6px rgba(10,46,28,0.06);
+    padding: 20px 22px 18px;
+    transition: box-shadow .18s, transform .18s;
+    animation: fadeUp .3s ease both;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .stat-card:hover {
+    box-shadow: 0 6px 22px rgba(10,46,28,0.11);
+    transform: translateY(-2px);
+  }
+  .suggestion-card {
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    animation: fadeUp .3s ease both;
+    cursor: default;
+    transition: transform .15s, box-shadow .15s;
+    border: 1px solid transparent;
+  }
+  .suggestion-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(10,46,28,0.1);
   }
 `
 
-/* ── Error helpers ── */
-async function parseError(err, action) {
-  let title   = `Failed to ${action}`
-  let message = 'An unexpected error occurred. Please try again.'
-  let code    = null
-
-  if (err instanceof Response || err?.status) {
-    code = err.status ?? null
-    const causeMap = {
-      400: `Failed to ${action} — invalid data sent`,
-      401: `Failed to ${action} — not authenticated`,
-      403: `Failed to ${action} — access denied`,
-      404: `Failed to ${action} — endpoint not found`,
-      408: `Failed to ${action} — request timed out`,
-      500: `Failed to ${action} — backend error`,
-      502: `Failed to ${action} — bad gateway`,
-      503: `Failed to ${action} — server unavailable`,
-      504: `Failed to ${action} — gateway timeout`,
-    }
-    title = causeMap[code] ?? `Failed to ${action} — server error (${code})`
-    const detailMap = {
-      400: 'The request was rejected as invalid. Check that all inputs are correct.',
-      401: 'Your session may have expired. Please refresh the page and log in again.',
-      403: 'You don\'t have the required permissions to view this data.',
-      404: 'The server endpoint could not be found. The API may have changed.',
-      408: 'The server took too long to respond. Check your connection and retry.',
-      500: 'An internal server error occurred on the backend. Try again shortly.',
-      502: 'The server returned an invalid response. The service may be restarting.',
-      503: 'The server is temporarily unavailable. Try again in a few moments.',
-      504: 'The gateway did not receive a timely response from the backend.',
-    }
-    message = detailMap[code] ?? `The server responded with an unexpected status (${code}).`
-    try {
-      const body = await (err.json?.() ?? Promise.resolve(null))
-      if (body?.detail)                                       message = body.detail
-      else if (body?.message)                                 message = body.message
-      else if (typeof body === 'string' && body.length < 200) message = body
-    } catch { /* ignore */ }
-  } else if (err instanceof TypeError && err.message.includes('fetch')) {
-    title   = `Failed to ${action} — no connection`
-    message = 'Could not reach the server. Check your internet connection and try again.'
-  } else if (err instanceof Error && err.message) {
-    title   = `Failed to ${action} — unexpected error`
-    message = err.message
-  }
-
-  return { title, message, code }
+/* ─── Helpers ─────────────────────────────────────────────────────────────── */
+function Skel({ w = '100%', h = 14, r = 7, style = {} }) {
+  return <div className="skel" style={{ width:w, height:h, borderRadius:r, flexShrink:0, ...style }} />
 }
 
-function ErrorBanner({ error, onDismiss, onRetry }) {
-  if (!error) return null
+function SectionHeader({ title, sub, right }) {
   return (
-    <div style={{
-      display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 14,
-      padding: '11px 14px', borderRadius: 10,
-      background: '#FFF5F5', border: '1px solid #FECACA',
-    }}>
-      <div style={{
-        width: 28, height: 28, borderRadius: 8, background: '#FEE2E2',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1,
-      }}>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
+    <div style={{ padding:'14px 18px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
+      <div>
+        <div style={{ fontSize:13, fontWeight:700, color:'var(--ink)' }}>{title}</div>
+        {sub && <div style={{ fontSize:11, color:'var(--muted2)', marginTop:1 }}>{sub}</div>}
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3 }}>
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: '#B91C1C' }}>{error.title}</span>
-          {error.code && (
-            <span style={{
-              fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 20,
-              background: '#FEE2E2', color: '#DC2626', border: '1px solid #FECACA',
-            }}>
-              {error.code}
-            </span>
-          )}
+      {right && <div style={{ flexShrink:0 }}>{right}</div>}
+    </div>
+  )
+}
+
+function Badge({ label, color, bg }) {
+  return (
+    <span style={{ fontSize:10.5, fontWeight:700, padding:'3px 9px', borderRadius:99, background:bg||'var(--hover)', color:color||'var(--muted)' }}>
+      {label}
+    </span>
+  )
+}
+
+/* ─── Animated counter ───────────────────────────────────────────────────── */
+function AnimatedNumber({ value, duration = 800 }) {
+  const [display, setDisplay] = useState(0)
+  const raf = useRef(null)
+  useEffect(() => {
+    if (value === '—' || value == null) { setDisplay(value); return }
+    const num = parseInt(value, 10)
+    if (isNaN(num)) { setDisplay(value); return }
+    const start = performance.now()
+    const tick = (now) => {
+      const pct = Math.min(1, (now - start) / duration)
+      const ease = 1 - Math.pow(1 - pct, 3)
+      setDisplay(Math.round(ease * num))
+      if (pct < 1) raf.current = requestAnimationFrame(tick)
+    }
+    raf.current = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf.current)
+  }, [value])
+  return <>{display}</>
+}
+
+/* ─── Donut chart (pure SVG) ─────────────────────────────────────────────── */
+function DonutChart({ segments, size = 120, stroke = 22, label, sublabel }) {
+  const r = (size - stroke) / 2
+  const circ = 2 * Math.PI * r
+  const total = segments.reduce((s, x) => s + (x.value||0), 0) || 1
+  let offset = 0
+  return (
+    <div style={{ position:'relative', width:size, height:size, flexShrink:0 }}>
+      <svg width={size} height={size} style={{ transform:'rotate(-90deg)' }}>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--hover)" strokeWidth={stroke}/>
+        {segments.map((seg, i) => {
+          const dash = (seg.value / total) * circ
+          const gap  = circ - dash
+          const arc = (
+            <circle key={i} cx={size/2} cy={size/2} r={r} fill="none"
+              stroke={seg.color} strokeWidth={stroke}
+              strokeDasharray={`${dash} ${gap}`} strokeDashoffset={-offset}
+              strokeLinecap="butt"
+              style={{ transition:'stroke-dasharray 0.9s cubic-bezier(.4,0,.15,1)' }}
+            />
+          )
+          offset += dash
+          return arc
+        })}
+      </svg>
+      <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
+        <span style={{ fontSize:22, fontWeight:800, color:'var(--ink)', lineHeight:1, fontFamily:"'Sora',sans-serif" }}>{label}</span>
+        {sublabel && <span style={{ fontSize:9.5, color:'var(--muted2)', marginTop:2, fontWeight:600 }}>{sublabel}</span>}
+      </div>
+    </div>
+  )
+}
+
+/* ─── Horizontal bar (courses / programs) ───────────────────────────────── */
+function HorizBar({ label, value, max, color, pct: pctProp }) {
+  const pct = pctProp ?? (max > 0 ? Math.round(value / max * 100) : 0)
+  return (
+    <div style={{ marginBottom:10 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+        <span style={{ fontSize:11.5, fontWeight:600, color:'var(--ink)' }}>{label}</span>
+        <span style={{ fontSize:11, fontWeight:700, color }}>
+          {value} <span style={{ fontWeight:400, color:'var(--muted2)' }}>({pct}%)</span>
+        </span>
+      </div>
+      <div style={{ height:8, borderRadius:99, background:'var(--hover)', overflow:'hidden' }}>
+        <div style={{ height:'100%', borderRadius:99, width:`${pct}%`, background:color, animation:'barIn .8s cubic-bezier(.4,0,.15,1) both' }}/>
+      </div>
+    </div>
+  )
+}
+
+/* ─── Mini workload bar ─────────────────────────────────────────────────── */
+function MiniBar({ label, value, max, onClick, tier }) {
+  const pct  = Math.min(100, Math.round((value / Math.max(max, 1)) * 100))
+  const over = value > max
+  const warn = pct >= 85 && !over
+  const c = over ? '#C0392B' : warn ? '#D97706' : '#15803D'
+  const b = over ? '#FFE8E8' : warn ? '#FEF3CD' : '#E6FAF3'
+  return (
+    <div className="d-row" onClick={onClick}
+      style={{ display:'flex', alignItems:'center', gap:12, padding:'9px 16px', borderBottom:'1px solid var(--border)' }}>
+      <div style={{ width:30, height:30, borderRadius:8, background:b, color:c, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9.5, fontWeight:800, flexShrink:0, fontFamily:"'Sora',sans-serif" }}>
+        {label.split(' ').map(n=>n[0]).join('').slice(0,2)}
+      </div>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:5 }}>
+          <span style={{ fontSize:12, fontWeight:600, color:'var(--ink)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1, marginRight:8 }}>{label}</span>
+          <div style={{ display:'flex', alignItems:'center', gap:5, flexShrink:0 }}>
+            {tier && <span style={{ fontSize:9, fontWeight:600, color:'var(--muted2)', background:'var(--hover)', padding:'1px 6px', borderRadius:4 }}>{tier}</span>}
+            <span style={{ fontSize:10.5, fontWeight:700, color:c }}>{value}/{max}u</span>
+          </div>
         </div>
-        <div style={{ fontSize: 12, color: '#C0392B', lineHeight: 1.5 }}>{error.message}</div>
+        <div style={{ height:5, borderRadius:99, background:'var(--hover)', overflow:'hidden' }}>
+          <div style={{ height:'100%', borderRadius:99,
+            background: over ? 'linear-gradient(90deg,#EF4444,#C0392B)' : warn ? 'linear-gradient(90deg,#FBBF24,#D97706)' : `linear-gradient(90deg,#6EE7B7,${c})`,
+            width:`${pct}%`, animation:'barIn 0.8s cubic-bezier(.4,0,.15,1) both' }}/>
+        </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginTop: 2 }}>
-        {onRetry && (
-          <button onClick={onRetry} style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            color: '#B91C1C', fontWeight: 700, fontSize: 12,
-            fontFamily: "'Poppins',sans-serif", padding: '2px 4px',
-          }}>Retry</button>
-        )}
-        {onDismiss && (
-          <button onClick={onDismiss} style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            color: '#EF9999', padding: 2, lineHeight: 0, borderRadius: 4,
-          }}
-            onMouseEnter={e => e.currentTarget.style.color = '#DC2626'}
-            onMouseLeave={e => e.currentTarget.style.color = '#EF9999'}
-            title="Dismiss"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
+    </div>
+  )
+}
+
+/* ─── Day heatmap cell ──────────────────────────────────────────────────── */
+function HeatCell({ count, max, label }) {
+  const intensity = max > 0 ? count / max : 0
+  const bg = intensity === 0 ? 'var(--hover)' : `rgba(21,128,61,${0.12 + intensity * 0.75})`
+  const textColor = intensity > 0.5 ? '#fff' : 'var(--ink)'
+  return (
+    <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
+      <div style={{ width:'100%', height:52, borderRadius:10, background:bg, display:'flex', alignItems:'center', justifyContent:'center', transition:'background .3s' }}>
+        <span style={{ fontSize:16, fontWeight:800, color:textColor, fontFamily:"'Sora',sans-serif" }}>{count}</span>
+      </div>
+      <span style={{ fontSize:9.5, fontWeight:600, color:'var(--muted2)' }}>{label}</span>
+    </div>
+  )
+}
+
+/* ─── Score ring ─────────────────────────────────────────────────────────── */
+function ScoreRing({ score, label, color = '#15803D' }) {
+  const size = 76; const stroke = 9
+  const r = (size - stroke) / 2
+  const circ = 2 * Math.PI * r
+  const filled = (score / 100) * circ
+  return (
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
+      <div style={{ position:'relative', width:size, height:size }}>
+        <svg width={size} height={size} style={{ transform:'rotate(-90deg)' }}>
+          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--hover)" strokeWidth={stroke}/>
+          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
+            strokeDasharray={`${filled} ${circ-filled}`} strokeLinecap="round"
+            style={{ transition:'stroke-dasharray 1s cubic-bezier(.4,0,.15,1)' }}/>
+        </svg>
+        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <span style={{ fontSize:15, fontWeight:800, color:'var(--ink)', fontFamily:"'Sora',sans-serif" }}>{score}%</span>
+        </div>
+      </div>
+      <span style={{ fontSize:10, fontWeight:600, color:'var(--muted2)', textAlign:'center', lineHeight:1.3 }}>{label}</span>
+    </div>
+  )
+}
+
+/* ─── Suggestion card ────────────────────────────────────────────────────── */
+const SUGGESTION_STYLES = {
+  error:   { bg:'#FFF5F5', border:'#FECACA', icon:'#DC2626', dot:'#EF4444', label:'Critical' },
+  warning: { bg:'#FFFBEB', border:'#FDE68A', icon:'#D97706', dot:'#F59E0B', label:'Warning'  },
+  info:    { bg:'#EFF6FF', border:'#BFDBFE', icon:'#2563EB', dot:'#3B82F6', label:'Info'     },
+  success: { bg:'#F0FDF4', border:'#BBF7D0', icon:'#15803D', dot:'#22C55E', label:'Good'     },
+}
+
+const SUGGESTION_ICONS = {
+  error: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+  warning: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+  info: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>,
+  success: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>,
+}
+
+function SuggestionCard({ suggestion, onAction, delay = 0 }) {
+  const navigate = useNavigate()
+  const s = SUGGESTION_STYLES[suggestion.type] || SUGGESTION_STYLES.info
+  return (
+    <div className="suggestion-card"
+      style={{ background:s.bg, borderColor:s.border, animationDelay:`${delay}s` }}>
+      <div style={{ width:28, height:28, borderRadius:8, background: suggestion.type === 'error' ? '#FECACA' : suggestion.type === 'warning' ? '#FDE68A' : suggestion.type === 'success' ? '#BBF7D0' : '#BFDBFE',
+        color:s.icon, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:1 }}>
+        {SUGGESTION_ICONS[suggestion.type]}
+      </div>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
+          <span style={{ fontSize:12, fontWeight:700, color:'var(--ink)' }}>{suggestion.title}</span>
+          <span style={{ fontSize:9.5, fontWeight:700, padding:'1px 7px', borderRadius:99, background:s.dot, color:'#fff' }}>{s.label}</span>
+        </div>
+        <p style={{ fontSize:11, color:'var(--muted)', margin:0, lineHeight:1.5 }}>{suggestion.body}</p>
+        {suggestion.action && (
+          <button onClick={() => navigate(suggestion.action.href)}
+            style={{ marginTop:6, padding:'4px 11px', borderRadius:7, border:'none', fontSize:10.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif',
+              background: s.icon, color:'#fff', transition:'opacity .15s' }}
+            onMouseEnter={e => e.currentTarget.style.opacity='.85'}
+            onMouseLeave={e => e.currentTarget.style.opacity='1'}>
+            {suggestion.action.label} →
           </button>
         )}
       </div>
@@ -132,379 +289,648 @@ function ErrorBanner({ error, onDismiss, onRetry }) {
   )
 }
 
-/* ── Skeleton block helper ── */
-function Skel({ w = '100%', h = 14, r = 7, style = {} }) {
-  return (
-    <div className="skeleton" style={{ width: w, height: h, borderRadius: r, flexShrink: 0, ...style }} />
-  )
-}
+/* ─── PROGRAM COLORS ─────────────────────────────────────────────────────── */
+const PROG_COLORS = ['#15803D','#2563EB','#7C3AED','#D97706','#0891B2','#DC2626','#0F766E','#9333EA']
 
-/* ── Stat card — real or skeleton ── */
-function StatCard({ label, value, icon, color, bg, loading }) {
-  const [hov, setHov] = useState(false)
-  return (
-    <div
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        background: '#fff', borderRadius: 13, padding: '14px 18px',
-        border: '1px solid #E8E4F8', display: 'flex', alignItems: 'center', gap: 14,
-        boxShadow: hov && !loading
-          ? '0 6px 20px rgba(124,111,205,0.14)'
-          : '0 2px 8px rgba(124,111,205,0.06)',
-        transform: hov && !loading ? 'translateY(-1px)' : 'none',
-        transition: 'all 0.18s ease',
-      }}
-    >
-      {/* Icon area */}
-      <div style={{
-        width: 42, height: 42, borderRadius: 11, background: loading ? '#F0EDF9' : bg,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color, flexShrink: 0,
-        ...(loading ? {} : {}),
-      }}>
-        {loading
-          ? <Skel w={42} h={42} r={11} />
-          : <div style={{ color }}>{icon}</div>}
-      </div>
-
-      {/* Value + label */}
-      <div style={{ flex: 1 }}>
-        {loading
-          ? <>
-              <Skel w={48} h={26} r={6} style={{ marginBottom: 6 }} />
-              <Skel w={80} h={11} r={5} />
-            </>
-          : <>
-              <div style={{ fontSize: 26, fontWeight: 700, color: '#1a1a2e', lineHeight: 1 }}>{value}</div>
-              <div style={{ fontSize: 11.5, color: '#8883B0', marginTop: 3, fontWeight: 500 }}>{label}</div>
-            </>
-        }
-      </div>
-    </div>
-  )
-}
-
-/* ── Quick action item ── */
-function ActionItem({ label, desc, color, bg, href, icon }) {
-  const [hov, setHov] = useState(false)
-  const navigate = useNavigate()
-  return (
-    <div
-      onClick={() => navigate(href)}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 11,
-        padding: '9px 12px', borderRadius: 10,
-        border: `1px solid ${hov ? color + '35' : '#F0EDF9'}`,
-        cursor: 'pointer',
-        background: hov ? bg : '#fff',
-        transition: 'all 0.15s ease',
-      }}
-    >
-      <div style={{
-        width: 32, height: 32, borderRadius: 9, background: bg, color,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-      }}>
-        {icon}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12.5, fontWeight: 600, color: '#1a1a2e' }}>{label}</div>
-        <div style={{ fontSize: 11, color: '#8883B0', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{desc}</div>
-      </div>
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={hov ? color : '#C0BBDC'} strokeWidth="2.5" style={{ transition: 'stroke 0.13s', flexShrink: 0 }}>
-        <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-      </svg>
-    </div>
-  )
-}
-
-/* ── Workload row skeleton ── */
-function WorkloadSkel() {
-  return (
-    <>
-      {[1, 2, 3].map(i => (
-        <div key={i} style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '10px 16px',
-          borderBottom: i < 3 ? '1px solid #F5F4FB' : 'none',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-            <Skel w={28} h={28} r={99} />
-            <div>
-              <Skel w={110} h={12} r={5} style={{ marginBottom: 5 }} />
-              <Skel w={70} h={9} r={4} />
-            </div>
-          </div>
-          <Skel w={72} h={22} r={99} />
-        </div>
-      ))}
-    </>
-  )
-}
-
-const QUICK_ACTIONS = [
-  {
-    label: 'Run Scheduler',
-    desc: 'Generate a new schedule automatically',
-    color: '#7C6FCD', bg: '#EEEAFB',
-    href: '/dashboard/scheduler',
-    icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
-  },
-  {
-    label: 'Manage Faculty',
-    desc: 'Add, edit, or review faculty members',
-    color: '#2563EB', bg: '#EBF0FF',
-    href: '/dashboard/faculty',
-    icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
-  },
-  {
-    label: 'Manage Courses',
-    desc: 'Add, filter, or remove course records',
-    color: '#059669', bg: '#E6FAF3',
-    href: '/dashboard/courses',
-    icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>,
-  },
-  {
-    label: 'Room Settings',
-    desc: 'Configure lecture & lab room availability',
-    color: '#D97706', bg: '#FEF3CD',
-    href: '/dashboard/rooms',
-    icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
-  },
-]
-
+/* ─── Main Page ──────────────────────────────────────────────────────────── */
 export default function DashboardPage() {
+  const { user }  = useAuth()
   const { scheduleName, setName, clearSchedule } = useScheduleStore()
-  const navigate = useNavigate()
+  const navigate  = useNavigate()
 
-  const [stats,          setStats]          = useState(null)
-  const [overloaded,     setOverloaded]     = useState(null)
-  const [scheduleSource, setScheduleSource] = useState(null)
-  const [savedList,      setSavedList]      = useState([])
-  const [facultyList,    setFacultyList]    = useState([])
-  const [workloadLoading, setWorkloadLoading] = useState(true)
-  const [error,          setError]          = useState(null)
+  // Data states
+  const [dashStats,    setDashStats]    = useState(null)   // from /analytics/dashboard-stats
+  const [workload,     setWorkload]     = useState(null)
+  const [savedList,    setSavedList]    = useState([])
+  const [distribution, setDistribution] = useState(null)
+  const [quality,      setQuality]      = useState(null)
+  const [suggestions,  setSuggestions]  = useState([])
+
+  // Loading states
+  const [statsLoading, setStatsLoading] = useState(true)
+  const [wlLoading,    setWlLoading]    = useState(true)
+  const [distLoading,  setDistLoading]  = useState(true)
+  const [showAllWl,    setShowAllWl]    = useState(false)
+  const [error,        setError]        = useState(null)
 
   useEffect(() => {
     let cancelled = false
-
     async function load() {
+      // Core stats — single aggregated call
       try {
-        // Stats and saved list — load together
-        const [fac, crs, rms, saved] = await Promise.all([
-          getFaculty(), getCourses(), getRooms(), listSaved().catch(() => []),
+        const [stats, saved] = await Promise.all([
+          getDashboardStats(),
+          listSaved().catch(() => []),
         ])
         if (cancelled) return
-
-        setStats({
-          faculty: fac.length,
-          courses: crs.length,
-          rooms: (rms.lecture?.length || 0) + (rms.lab?.length || 0),
-        })
-
-        // Save full faculty list to use for matching IDs later
-        setFacultyList(fac)
-
-        const names = Array.isArray(saved) ? saved : (saved?.schedules ?? [])
-        setSavedList(names)
-
-        // Workload — separate so it resolves independently
-        const wl = await getWorkload()
-        if (!cancelled) setOverloaded(wl.workload.filter(f => f.overloaded))
+        setDashStats(stats)
+        setSuggestions(stats.suggestions || [])
+        setSavedList(Array.isArray(saved) ? saved : (saved?.schedules ?? []))
       } catch (err) {
-        // Surface a real error message instead of silently zeroing stats
-        if (!cancelled) {
-          const parsed = await parseError(err, 'load dashboard data')
-          setError(parsed)
-          setStats(prev => prev ?? { faculty: 0, courses: 0, rooms: 0 })
-          setOverloaded(prev => prev ?? [])
-        }
+        if (!cancelled) setError({ title:'Failed to load stats', message: err?.response?.data?.detail || err.message || 'Server unreachable.' })
       } finally {
-        if (!cancelled) setWorkloadLoading(false)
+        if (!cancelled) setStatsLoading(false)
       }
-    }
 
+      // Workload
+      try {
+        const wl = await getWorkload()
+        if (!cancelled) setWorkload(wl.workload)
+      } catch {}
+      finally { if (!cancelled) setWlLoading(false) }
+
+      // Distribution + quality (schedule-dependent)
+      try {
+        const [dist, qual] = await Promise.allSettled([getScheduleDistribution(), getAssignmentQuality()])
+        if (!cancelled) {
+          if (dist.status === 'fulfilled') setDistribution(dist.value)
+          if (qual.status === 'fulfilled') setQuality(qual.value)
+        }
+      } catch {}
+      finally { if (!cancelled) setDistLoading(false) }
+    }
     load()
     return () => { cancelled = true }
   }, [])
 
-  const statsLoading = stats === null
-  const workloadReady = overloaded !== null
+  async function loadSchedule(name) {
+    setWlLoading(true); setDistLoading(true)
+    try {
+      await loadSaved(name); setName(name)
+      const [wl, dist, qual, stats] = await Promise.allSettled([
+        getWorkload(), getScheduleDistribution(), getAssignmentQuality(), getDashboardStats(),
+      ])
+      if (wl.status    === 'fulfilled') setWorkload(wl.value.workload)
+      if (dist.status  === 'fulfilled') setDistribution(dist.value)
+      if (qual.status  === 'fulfilled') setQuality(qual.value)
+      if (stats.status === 'fulfilled') {
+        setDashStats(stats.value)
+        setSuggestions(stats.value.suggestions || [])
+      }
+    } catch (err) {
+      setError({ title:`Failed to load "${name}"`, message: err?.response?.data?.detail || err.message })
+    }
+    finally { setWlLoading(false); setDistLoading(false) }
+  }
+
+  /* ── Derived ── */
+  const wlRows   = workload ? [...workload].sort((a,b)=>(b.assigned/Math.max(b.max_units,1))-(a.assigned/Math.max(a.max_units,1))) : []
+  const overList = wlRows.filter(f => f.overloaded)
+  const atRisk   = wlRows.filter(f => !f.overloaded && (f.assigned/Math.max(f.max_units,1)) >= 0.85)
+  const ok       = wlRows.filter(f => !f.overloaded && (f.assigned/Math.max(f.max_units,1)) < 0.85)
+  const visWl    = showAllWl ? wlRows : wlRows.slice(0, 8)
+
+  const donutSegs = [
+    { label:'Over cap',  value: overList.length, color:'#EF4444' },
+    { label:'Near cap',  value: atRisk.length,   color:'#F59E0B' },
+    { label:'Healthy',   value: ok.length,        color:'#22C55E' },
+  ]
+
+  const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat']
+  const dayData = distribution?.byDay || []
+  const dayCounts = DAYS.map(short => {
+    const full = { Mon:'Monday', Tue:'Tuesday', Wed:'Wednesday', Thu:'Thursday', Fri:'Friday', Sat:'Saturday' }[short]
+    const row = dayData.find(d => d.day === full)
+    return row ? row.sessions : 0
+  })
+  const maxDay = Math.max(...dayCounts, 1)
+
+  const specScore  = quality?.pctInWindow     ?? null
+  const balScore   = quality?.autoAssignPct   ?? null
+  const coverScore = quality?.pctOnPreferredDays ?? null
+
+  const hr = new Date().getHours()
+  const greeting     = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening'
+  const displayName  = (user?.email?.split('@')[0] ?? 'Admin').replace(/^./, c => c.toUpperCase())
+
+  // Courses breakdown
+  const crs    = dashStats?.courses || {}
+  const bySem  = crs.bySemester  || {}
+  const byProg = crs.byProgram   || {}
+  const semTotal   = Object.values(bySem).reduce((s, v) => s + v, 0) || 1
+  const progTotal  = Object.values(byProg).reduce((s, v) => s + v, 0) || 1
+  const progEntries = Object.entries(byProg).sort((a, b) => b[1] - a[1])
+
+  // Stat cards config
+  const fac  = dashStats?.faculty  || {}
+  const rms  = dashStats?.rooms    || {}
+  const sch  = dashStats?.scheduleHealth || {}
 
   const STAT_CARDS = [
-    { label: 'Total Faculty',   value: stats?.faculty,  color: '#7C6FCD', bg: '#EEEAFB',
-      icon: <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
-    { label: 'Active Courses',  value: stats?.courses,  color: '#2563EB', bg: '#EBF0FF',
-      icon: <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> },
-    { label: 'Available Rooms', value: stats?.rooms,    color: '#059669', bg: '#E6FAF3',
-      icon: <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
+    {
+      label:'Total Faculty', color:'#15803D', bg:'#DCFCE7',
+      value: statsLoading ? null : fac.total ?? '—',
+      sub: fac.total > 0 ? `${fac.fullTime||0} full-time · ${fac.partTime||0} part-time` : null,
+      subColor:'var(--muted2)',
+      icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <circle cx="9" cy="8" r="3.5" fill="currentColor" opacity="0.18"/>
+        <circle cx="9" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.8"/>
+        <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+        <path d="M15.5 5.2c1.6.4 2.8 1.9 2.8 3.6 0 1.7-1.2 3.2-2.8 3.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" opacity="0.65"/>
+        <path d="M16 14.3c2.5.6 4.3 2.8 4.5 5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" opacity="0.65"/>
+      </svg>,
+    },
+    {
+      label:'Total Courses', color:'#2563EB', bg:'#DBEAFE',
+      value: statsLoading ? null : crs.total ?? '—',
+      sub: (bySem['1st Semester']||bySem['2nd Semester']||bySem['Midyear'])
+        ? `${bySem['1st Semester']||0} 1st · ${bySem['2nd Semester']||0} 2nd · ${bySem['Midyear']||0} Mid`
+        : null,
+      subColor:'var(--muted2)',
+      icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15.5a1.5 1.5 0 0 1-1.5 1.5H6.5A2.5 2.5 0 0 1 4 17.5z" fill="currentColor" opacity="0.16"/>
+        <path d="M4 17.5A2.5 2.5 0 0 1 6.5 15H19" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+        <path d="M6.5 3H19v15.5a1.5 1.5 0 0 1-1.5 1.5H6.5A2.5 2.5 0 0 1 4 17.5v-12A2.5 2.5 0 0 1 6.5 3z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+        <path d="M8 7.5h7M8 10.5h4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity="0.7"/>
+      </svg>,
+    },
+    {
+      label:'Rooms',         color:'#7C3AED', bg:'#EDE9FE',
+      value: statsLoading ? null : rms.total ?? '—',
+      sub: rms.total > 0 ? `${rms.lecture||0} lecture · ${rms.lab||0} lab` : null,
+      subColor:'var(--muted2)',
+      icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="currentColor" opacity="0.16"/>
+        <path d="M3 11 12 4l9 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+        <path d="M9 21v-6h6v6" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+      </svg>,
+    },
+    {
+      label:'With Specializations', color:'#0891B2', bg:'#E0F2FE',
+      value: statsLoading ? null : fac.withSpecializations ?? '—',
+      sub: fac.total > 0
+        ? (fac.withoutSpecializations > 0
+            ? `${fac.withoutSpecializations} missing — won't auto-assign`
+            : 'All faculty have specializations')
+        : null,
+      subColor: fac.withoutSpecializations > 0 ? '#D97706' : '#15803D',
+      icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="9.5" fill="currentColor" opacity="0.14"/>
+        <circle cx="12" cy="12" r="9.5" stroke="currentColor" strokeWidth="1.8"/>
+        <path d="M8 12.3l2.6 2.6L16.2 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>,
+    },
+    {
+      label:'Saved Schedules', color:'#D97706', bg:'#FEF3CD',
+      value: statsLoading ? null : savedList.length,
+      sub: scheduleName ? `Active: ${scheduleName}` : 'None loaded',
+      subColor: scheduleName ? '#D97706' : 'var(--muted2)',
+      icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <rect x="3.5" y="4.5" width="17" height="16" rx="2.5" fill="currentColor" opacity="0.14"/>
+        <rect x="3.5" y="4.5" width="17" height="16" rx="2.5" stroke="currentColor" strokeWidth="1.8"/>
+        <path d="M3.5 9.5h17" stroke="currentColor" strokeWidth="1.8"/>
+        <path d="M8 2.5v4M16 2.5v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+        <path d="M7.5 13.2l1.4 1.4 2.4-2.6M14 13.5h3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" opacity="0.8"/>
+      </svg>,
+    },
   ]
 
   return (
-    <div style={{ padding: '20px 28px', fontFamily: "'Poppins',sans-serif", display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <style>{SHIMMER_STYLE}</style>
+    <div style={{ padding:'22px 28px 40px', fontFamily:"'Inter',sans-serif", display:'flex', flexDirection:'column', gap:18, background:'var(--bg)', minHeight:'100%' }}>
+      <style>{DASH_STYLE}</style>
 
+      {/* ── Row 1: Header ── */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12 }}>
+        <div>
+          <h1 style={{ fontSize:22, fontWeight:800, color:'var(--ink)', letterSpacing:'-.4px', fontFamily:"'Sora',sans-serif", lineHeight:1.15, margin:0 }}>
+            {greeting}, {displayName}.
+          </h1>
+        </div>
+        <button onClick={() => navigate('/dashboard/scheduler')}
+          style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#15803D,#0F5C2C)', color:'#fff', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 4px 14px rgba(15,92,44,0.28)', transition:'opacity .15s' }}
+          onMouseEnter={e=>e.currentTarget.style.opacity='.9'}
+          onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Run Scheduler
+        </button>
+      </div>
+
+      {/* Error banner */}
       {error && (
-        <ErrorBanner error={error} onDismiss={() => setError(null)} onRetry={() => { setError(null); window.location.reload() }} />
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:10, background:'#FFF5F5', border:'1px solid #FECACA' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span style={{ fontSize:12.5, color:'#B91C1C', flex:1 }}><b>{error.title}</b> — {error.message}</span>
+          <button onClick={() => setError(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'#EF9999', padding:2 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
       )}
 
-      {/* Stat cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
-        {STAT_CARDS.map(c => (
-          <StatCard key={c.label} {...c} loading={statsLoading} />
+      {/* ── Row 2: Primary Stat Cards (5-column) ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12 }}>
+        {STAT_CARDS.map((c, i) => (
+          <div key={c.label} className="stat-card" style={{ animationDelay:`${i*0.06}s` }}>
+            {/* top row: label + icon */}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <span style={{ fontSize:11.5, fontWeight:600, color:'var(--muted2)', letterSpacing:'.1px' }}>{c.label}</span>
+              <div style={{ width:32, height:32, borderRadius:9, background: statsLoading ? 'var(--hover)' : c.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                {!statsLoading && <div style={{ color:c.color }}>{c.icon}</div>}
+              </div>
+            </div>
+            {/* main number */}
+            {statsLoading ? (
+              <Skel w={64} h={36} r={8}/>
+            ) : (
+              <div style={{ fontSize:36, fontWeight:800, color:'var(--ink)', lineHeight:1, fontFamily:"'Sora',sans-serif", letterSpacing:'-1px' }}>
+                <AnimatedNumber value={c.value}/>
+              </div>
+            )}
+            {/* sub line */}
+            {statsLoading ? (
+              <Skel w='80%' h={10} r={4}/>
+            ) : c.sub ? (
+              <div style={{ fontSize:11, color:c.subColor||'var(--muted2)', fontWeight:500, lineHeight:1.4 }}>{c.sub}</div>
+            ) : (
+              <div style={{ height:14 }}/>
+            )}
+          </div>
         ))}
       </div>
 
-      {/* Bottom row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-
-        {/* Workload alerts */}
-        <div style={{ background: '#fff', borderRadius: 13, border: '1px solid #E8E4F8', boxShadow: '0 2px 8px rgba(124,111,205,0.06)', overflow: 'hidden' }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid #F0EDF9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e' }}>Workload Alerts</div>
-              <div style={{ fontSize: 11, color: '#8883B0', marginTop: 1 }}>Faculty exceeding their unit cap</div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 99, background: '#F5F4FB', border: '1px solid #E8E4F8' }}>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#8883B0" strokeWidth="2.5" style={{ flexShrink: 0 }}>
-                  <rect x="3" y="4" width="18" height="18" rx="2"/>
-                  <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-                  <line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
-                {workloadLoading ? (
-                  <Skel w={90} h={10} r={5} />
-                ) : savedList.length > 0 ? (
-                  <select
-                    value={scheduleSource || '__current__'}
-                    onChange={async (e) => {
-                      const newSchedule = e.target.value;
-                      const isPinned = newSchedule !== '__current__';
-                      setScheduleSource(isPinned ? newSchedule : null);
-                      setWorkloadLoading(true);
-                      try {
-                        if (isPinned) {
-                          await loadSaved(newSchedule);
-                          // Sync global store so Analytics and ScheduleView
-                          // know what the backend currently has in memory
-                          setName(newSchedule);
-                        } else {
-                          // Switching back to current — clear the pinned name
-                          clearSchedule();
-                        }
-                        const wl = await getWorkload();
-                        setOverloaded(wl.workload.filter(f => f.overloaded));
-                      } catch (err) {
-                        const parsed = await parseError(err, `load schedule "${newSchedule}"`)
-                        setError(parsed)
-                      } finally {
-                        setWorkloadLoading(false);
-                      }
-                    }}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      outline: 'none',
-                      fontSize: 10.5,
-                      fontWeight: 600,
-                      color: '#8883B0',
-                      cursor: 'pointer',
-                      maxWidth: 130,
-                      fontFamily: 'inherit',
-                      padding: 0
-                    }}
-                  >
-                    <option value="__current__">
-                      {scheduleName ? `Current (${scheduleName})` : 'Current (in memory)'}
-                    </option>
-                    {savedList.map((name) => (
-                      <option key={name} value={name}>{name}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <span style={{ fontSize: 10.5, fontWeight: 600, color: '#8883B0', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    No saved schedules
-                  </span>
-                )}
+      {/* ── Setup Status / Next Steps — replaces redundant quick-action tiles ── */}
+      {(() => {
+        const fHas = (fac.total||0) > 0
+        const cHas = (crs.total||0) > 0
+        const rHas = (rms.total||0) > 0
+        const sHas = !!scheduleName
+        const steps = [
+          { done: fHas, label: 'Load faculty', desc: 'Upload the specialization matrix so the scheduler knows who can teach what.', href:'/dashboard/faculty',
+            icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <circle cx="9" cy="8" r="3.5" fill="currentColor" opacity="0.18"/>
+              <circle cx="9" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.8"/>
+              <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+              <path d="M15.5 5.2c1.6.4 2.8 1.9 2.8 3.6 0 1.7-1.2 3.2-2.8 3.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" opacity="0.65"/>
+            </svg> },
+          { done: cHas, label: 'Load courses', desc: 'Import the course list with units and semester assignments before scheduling.', href:'/dashboard/courses',
+            icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path d="M6.5 3H19v15.5a1.5 1.5 0 0 1-1.5 1.5H6.5A2.5 2.5 0 0 1 4 17.5v-12A2.5 2.5 0 0 1 6.5 3z" fill="currentColor" opacity="0.16"/>
+              <path d="M4 17.5A2.5 2.5 0 0 1 6.5 15H19" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+              <path d="M6.5 3H19v15.5a1.5 1.5 0 0 1-1.5 1.5H6.5A2.5 2.5 0 0 1 4 17.5v-12A2.5 2.5 0 0 1 6.5 3z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+            </svg> },
+          { done: rHas, label: 'Configure rooms', desc: 'Add lecture and lab rooms so the scheduler can assign venues correctly.', href:'/dashboard/settings',
+            icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="currentColor" opacity="0.16"/>
+              <path d="M3 11 12 4l9 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+            </svg> },
+          { done: fHas && cHas && rHas, label: 'Run scheduler', desc: 'Generate the timetable — the solver assigns faculty, rooms, and time slots automatically.', href:'/dashboard/scheduler',
+            icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9.5" fill="currentColor" opacity="0.14"/>
+              <circle cx="12" cy="12" r="9.5" stroke="currentColor" strokeWidth="1.8"/>
+              <path d="M10 8.5l5 3.5-5 3.5z" fill="currentColor" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+            </svg> },
+          { done: sHas, label: 'Review schedule', desc: 'Inspect, override, or merge sessions before finalizing and sharing the schedule.', href:'/dashboard/schedule',
+            icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <rect x="3.5" y="3.5" width="17" height="17" rx="2.5" fill="currentColor" opacity="0.14"/>
+              <rect x="3.5" y="3.5" width="17" height="17" rx="2.5" stroke="currentColor" strokeWidth="1.8"/>
+              <path d="M7.5 9.3l1.4 1.4 2.4-2.6M7.5 15.3l1.4 1.4 2.4-2.6M14 9.6h3M14 15.6h3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg> },
+        ]
+        const allDone = steps.every(s => s.done)
+        return (
+          <div className="d-card" style={{ padding:'16px 18px', animationDelay:'.09s' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+              <div>
+                <div style={{ fontSize:13, fontWeight:700, color:'var(--ink)' }}>Setup Checklist</div>
+                <div style={{ fontSize:11, color:'var(--muted2)', marginTop:1 }}>
+                  {allDone ? 'All steps complete — you\'re ready.' : `${steps.filter(s=>s.done).length} of ${steps.length} steps done`}
+                </div>
               </div>
-              {workloadReady && overloaded.length > 0 && (
-                <span style={{ background: overloaded.some(f => !f.parttime_exceeded) ? '#FFE8E8' : '#FEF3CD', color: overloaded.some(f => !f.parttime_exceeded) ? '#C0392B' : '#D97706', fontSize: 10.5, fontWeight: 700, padding: '3px 9px', borderRadius: 99 }}>
-                  {overloaded.length} over cap
-                </span>
-              )}
+              {allDone && <span style={{ fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:99, background:'#DCFCE7', color:'#15803D' }}>✓ Ready</span>}
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:8 }}>
+              {steps.map((step, i) => (
+                <div key={step.label} onClick={() => !statsLoading && navigate(step.href)}
+                  style={{ padding:'12px 13px', borderRadius:10,
+                    background: step.done ? '#F0FDF4' : 'var(--hover)',
+                    border: `1px solid ${step.done ? '#BBF7D0' : 'var(--border)'}`,
+                    cursor: statsLoading ? 'default' : 'pointer',
+                    transition:'all .15s', opacity: statsLoading ? .6 : 1,
+                    display:'flex', flexDirection:'column', gap:8 }}
+                  onMouseEnter={e=>{ if(!statsLoading){ e.currentTarget.style.boxShadow='0 3px 10px rgba(10,46,28,0.1)'; e.currentTarget.style.transform='translateY(-1px)' }}}
+                  onMouseLeave={e=>{ e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform='none' }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                    <div style={{ width:26, height:26, borderRadius:7, background: step.done ? '#DCFCE7' : 'var(--surface)', border:`1px solid ${step.done?'#BBF7D0':'var(--border)'}`, display:'flex', alignItems:'center', justifyContent:'center', color: step.done ? '#15803D' : 'var(--muted2)', flexShrink:0 }}>
+                      {step.icon}
+                    </div>
+                    {step.done
+                      ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                      : <div style={{ width:7, height:7, borderRadius:'50%', background:'var(--border)' }}/>
+                    }
+                  </div>
+                  <div>
+                    <div style={{ fontSize:11.5, fontWeight:700, color: step.done ? '#15803D' : 'var(--ink)', marginBottom:3 }}>{i+1}. {step.label}</div>
+                    <div style={{ fontSize:10.5, color:'var(--muted2)', lineHeight:1.45 }}>{step.desc}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
+        )
+      })()}
 
+      {/* ── Schedule Health ── */}
+      <div className="d-card" style={{ padding:'16px 18px', animationDelay:'.12s' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14, flexWrap:'wrap', gap:8 }}>
           <div>
-            {/* While loading — show 3 skeleton rows */}
-            {!workloadReady && <WorkloadSkel />}
-
-            {/* Loaded, no issues */}
-            {workloadReady && overloaded.length === 0 && (
-              <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#E6FAF3', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--ink)' }}>Schedule Health</div>
+            <div style={{ fontSize:11, color:'var(--muted2)', marginTop:1 }}>
+              {scheduleName ? `Based on loaded schedule: ${scheduleName}` : 'No schedule loaded — run the scheduler to see health data'}
+            </div>
+          </div>
+          {scheduleName && (
+            <button onClick={() => navigate('/dashboard/schedule')}
+              style={{ padding:'5px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--hover)', color:'var(--muted)', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', transition:'all .15s' }}>
+              View Schedule →
+            </button>
+          )}
+        </div>
+        {!scheduleName ? (
+          <div style={{ display:'flex', alignItems:'center', gap:14, padding:'12px 14px', borderRadius:10, background:'var(--hover)', border:'1px solid var(--border)' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted2)" strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span style={{ fontSize:12, color:'var(--muted2)' }}>
+              Go to the <button onClick={() => navigate('/dashboard/scheduler')} style={{ background:'none', border:'none', color:'var(--meadow)', fontWeight:700, cursor:'pointer', fontSize:12, padding:0, fontFamily:'Inter,sans-serif' }}>Scheduler</button> to generate a timetable, then load it here to see health metrics.
+            </span>
+          </div>
+        ) : (
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }}>
+            {[
+              {
+                label: 'Coverage',
+                value: distLoading ? '…' : `${sch.coveragePct ?? 0}%`,
+                sub: distLoading ? '' : `${sch.tbaSessions ?? 0} TBA sessions`,
+                color: (sch.coveragePct ?? 0) >= 95 ? '#15803D' : (sch.coveragePct ?? 0) >= 80 ? '#D97706' : '#C0392B',
+                bg: (sch.coveragePct ?? 0) >= 95 ? '#F0FDF4' : (sch.coveragePct ?? 0) >= 80 ? '#FFFBEB' : '#FFF5F5',
+                icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>,
+              },
+              {
+                label: 'Conflicts',
+                value: distLoading ? '…' : (sch.conflictCount ?? 0),
+                sub: (sch.conflictCount ?? 0) === 0 ? 'None detected' : 'Need resolution',
+                color: (sch.conflictCount ?? 0) === 0 ? '#15803D' : '#C0392B',
+                bg: (sch.conflictCount ?? 0) === 0 ? '#F0FDF4' : '#FFF5F5',
+                icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+              },
+              {
+                label: 'Overloaded Faculty',
+                value: wlLoading ? '…' : overList.length,
+                sub: overList.length === 0 ? 'All within cap' : `${overList.length} over unit cap`,
+                color: overList.length === 0 ? '#15803D' : '#C0392B',
+                bg: overList.length === 0 ? '#F0FDF4' : '#FFF5F5',
+                icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>,
+              },
+              {
+                label: 'Near Cap',
+                value: wlLoading ? '…' : atRisk.length,
+                sub: atRisk.length === 0 ? 'No one near limit' : 'At ≥85% capacity',
+                color: atRisk.length === 0 ? '#15803D' : '#D97706',
+                bg: atRisk.length === 0 ? '#F0FDF4' : '#FFFBEB',
+                icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>,
+              },
+            ].map(item => (
+              <div key={item.label} style={{ padding:'12px 13px', borderRadius:10, background:item.bg, border:`1px solid ${item.bg === '#F0FDF4' ? '#BBF7D0' : item.bg === '#FFFBEB' ? '#FDE68A' : '#FECACA'}`, display:'flex', flexDirection:'column', gap:6 }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                  <span style={{ fontSize:11, fontWeight:600, color:'var(--muted2)' }}>{item.label}</span>
+                  <div style={{ color:item.color, opacity:.7 }}>{item.icon}</div>
                 </div>
-                <span style={{ fontSize: 12.5, color: '#8883B0' }}>All faculty are within their unit limits.</span>
+                <div style={{ fontSize:24, fontWeight:800, color:item.color, fontFamily:"'Sora',sans-serif", lineHeight:1 }}>{item.value}</div>
+                <div style={{ fontSize:10.5, color:'var(--muted2)', fontWeight:500 }}>{item.sub}</div>
               </div>
-            )}
-
-            {/* Loaded, has overloaded faculty */}
-            {workloadReady && overloaded.map((f, i) => {
-              const isAmber = f.parttime_exceeded
+            ))}
+          </div>
+        )}
+        {/* Saved schedule selector — compact, below health metrics */}
+        {savedList.length > 0 && (
+          <div style={{ marginTop:12, paddingTop:12, borderTop:'1px solid var(--border)', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+            <span style={{ fontSize:11, fontWeight:600, color:'var(--muted2)', flexShrink:0 }}>Saved:</span>
+            {savedList.map(name => {
+              const isActive = scheduleName === name
               return (
-                <div 
-                  key={f.name} 
-                  className="hover-row"
-                  onClick={() => {
-                    // Find the actual faculty ID using the name
-                    const targetId = f.id || facultyList.find(fac => fac.name === f.name)?.id;
-                    if (targetId) {
-                      navigate(`/dashboard/faculty/${targetId}`);
-                    } else {
-                      navigate('/dashboard/faculty'); // Fallback just in case
-                    }
-                  }}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '9px 16px',
-                    borderBottom: i < overloaded.length - 1 ? '1px solid #F5F4FB' : 'none',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: isAmber ? '#FEF3CD' : '#FFE8E8', color: isAmber ? '#D97706' : '#C0392B', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9.5, fontWeight: 700, flexShrink: 0 }}>
-                      {f.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <span style={{ fontSize: 12.5, fontWeight: 500, color: '#1a1a2e', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
-                      {f.tier_label && (
-                        <span style={{ fontSize: 10, color: '#B0ABCC', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.tier_label}</span>
-                      )}
-                    </div>
-                  </div>
-                  <span style={{ background: isAmber ? '#FEF3CD' : '#FFE8E8', color: isAmber ? '#D97706' : '#C0392B', fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 99, flexShrink: 0, marginLeft: 8 }}>
-                    {f.assigned} / {f.max_units} units
-                  </span>
-                </div>
+                <button key={name} onClick={() => loadSchedule(name)}
+                  style={{ padding:'4px 11px', borderRadius:7, border:`1.5px solid ${isActive?'#15803D':'var(--border)'}`, background:isActive?'#DCFCE7':'var(--hover)', color:isActive?'#15803D':'var(--muted)', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', transition:'all .15s', display:'flex', alignItems:'center', gap:4 }}>
+                  {isActive && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+                  {name}
+                </button>
               )
             })}
+            {scheduleName && (
+              <button onClick={() => clearSchedule()}
+                style={{ padding:'4px 11px', borderRadius:7, border:'1.5px solid #FECACA', background:'#FFF5F5', color:'#C0392B', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
+                Clear
+              </button>
+            )}
           </div>
-        </div>
-
-        {/* Quick actions — always visible, no loading state needed */}
-        <div style={{ background: '#fff', borderRadius: 13, border: '1px solid #E8E4F8', boxShadow: '0 2px 8px rgba(124,111,205,0.06)', overflow: 'hidden' }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid #F0EDF9' }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e' }}>Quick Actions</div>
-            <div style={{ fontSize: 11, color: '#8883B0', marginTop: 1 }}>Jump to common tasks</div>
-          </div>
-          <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {QUICK_ACTIONS.map(a => <ActionItem key={a.label} {...a} />)}
-          </div>
-        </div>
-
+        )}
       </div>
+
+      {/* ── Row 3: Insights & Suggestions ── */}
+      {scheduleName && (
+        <div className="d-card" style={{ animationDelay:'.14s' }}>
+          <SectionHeader
+            title="Insights & Recommendations"
+            sub={
+              <span>
+                Based on loaded schedule:&nbsp;
+                <span style={{ fontWeight:700, color:'var(--meadow)', background:'#DCFCE7', padding:'1px 8px', borderRadius:99, fontSize:10.5 }}>
+                  {scheduleName}
+                </span>
+              </span>
+            }
+            right={
+              suggestions.length > 0 && (
+                <div style={{ display:'flex', gap:5 }}>
+                  {suggestions.some(s=>s.type==='error') && <Badge label={`${suggestions.filter(s=>s.type==='error').length} critical`} color="#C0392B" bg="#FFE8E8"/>}
+                  {suggestions.some(s=>s.type==='warning') && <Badge label={`${suggestions.filter(s=>s.type==='warning').length} warnings`} color="#D97706" bg="#FEF3CD"/>}
+                  {suggestions.some(s=>s.type==='success') && <Badge label="✓ healthy" color="#15803D" bg="#DCFCE7"/>}
+                </div>
+              )
+            }
+          />
+          <div style={{ padding:'14px 16px' }}>
+            {wlLoading ? (
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10 }}>
+                {[1,2,3,4].map(i=><div key={i} style={{ display:'flex', gap:10, padding:'12px 14px', borderRadius:12, background:'var(--hover)' }}><Skel w={28} h={28} r={8}/><div style={{ flex:1 }}><Skel w={160} h={11} r={5} style={{ marginBottom:6 }}/><Skel w={220} h={9} r={4}/></div></div>)}
+              </div>
+            ) : suggestions.length === 0 ? (
+              <div style={{ textAlign:'center', padding:'20px 0', color:'var(--muted2)', fontSize:13 }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ display:'block', margin:'0 auto 8px' }}><polyline points="20 6 9 17 4 12"/></svg>
+                No issues found for this schedule.
+              </div>
+            ) : (
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10 }}>
+                {suggestions.map((s, i) => <SuggestionCard key={s.id} suggestion={s} delay={i * 0.04}/>)}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Row 4: Course Breakdowns (2 columns) ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+
+        {/* Left: Courses by Semester */}
+        <div className="d-card" style={{ padding:'18px', animationDelay:'.16s' }}>
+          <div style={{ fontSize:13, fontWeight:700, color:'var(--ink)', marginBottom:2 }}>Courses by Semester</div>
+          <div style={{ fontSize:11, color:'var(--muted2)', marginBottom:16 }}>Distribution across the academic year</div>
+          {statsLoading ? (
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              {[1,2,3].map(i=><div key={i}><Skel w={120} h={10} r={4} style={{ marginBottom:5 }}/><Skel w='100%' h={8} r={99}/></div>)}
+            </div>
+          ) : Object.keys(bySem).length === 0 ? (
+            <div style={{ textAlign:'center', color:'var(--muted2)', fontSize:12, padding:'16px 0' }}>No courses loaded yet.</div>
+          ) : (
+            <>
+              {[
+                { key:'1st Semester', color:'#15803D' },
+                { key:'2nd Semester', color:'#2563EB' },
+                { key:'Midyear',      color:'#D97706' },
+              ].filter(x => bySem[x.key] > 0).map(x => (
+                <HorizBar key={x.key} label={x.key} value={bySem[x.key]||0} max={semTotal} color={x.color} pct={Math.round((bySem[x.key]||0)/semTotal*100)}/>
+              ))}
+              <div style={{ display:'flex', gap:10, marginTop:12, paddingTop:12, borderTop:'1px solid var(--border)' }}>
+                <div style={{ flex:1, textAlign:'center' }}>
+                  <div style={{ fontSize:11, color:'var(--muted2)', marginBottom:2 }}>With Lab</div>
+                  <div style={{ fontSize:18, fontWeight:800, color:'#7C3AED', fontFamily:"'Sora',sans-serif" }}>{crs.coursesWithLab||0}</div>
+                </div>
+                <div style={{ width:1, background:'var(--border)' }}/>
+                <div style={{ flex:1, textAlign:'center' }}>
+                  <div style={{ fontSize:11, color:'var(--muted2)', marginBottom:2 }}>Lecture Only</div>
+                  <div style={{ fontSize:18, fontWeight:800, color:'#15803D', fontFamily:"'Sora',sans-serif" }}>{crs.coursesLectureOnly||0}</div>
+                </div>
+                <div style={{ width:1, background:'var(--border)' }}/>
+                <div style={{ flex:1, textAlign:'center' }}>
+                  <div style={{ fontSize:11, color:'var(--muted2)', marginBottom:2 }}>Total Units</div>
+                  <div style={{ fontSize:18, fontWeight:800, color:'#0891B2', fontFamily:"'Sora',sans-serif" }}>{crs.totalUnits||0}</div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Right: Courses by Program (donut + legend) */}
+        <div className="d-card" style={{ padding:'18px', animationDelay:'.18s' }}>
+          <div style={{ fontSize:13, fontWeight:700, color:'var(--ink)', marginBottom:2 }}>Courses by Program</div>
+          <div style={{ fontSize:11, color:'var(--muted2)', marginBottom:16 }}>Program-level course distribution</div>
+          {statsLoading ? (
+            <div style={{ display:'flex', gap:18, alignItems:'center' }}>
+              <Skel w={120} h={120} r={60}/>
+              <div style={{ flex:1, display:'flex', flexDirection:'column', gap:8 }}>
+                {[1,2,3,4].map(i=><Skel key={i} w='100%' h={9} r={4}/>)}
+              </div>
+            </div>
+          ) : progEntries.length === 0 ? (
+            <div style={{ textAlign:'center', color:'var(--muted2)', fontSize:12, padding:'16px 0' }}>No courses loaded yet.</div>
+          ) : (
+            <div style={{ display:'flex', gap:18, alignItems:'center' }}>
+              <DonutChart
+                segments={progEntries.map(([, v], i) => ({ value:v, color:PROG_COLORS[i % PROG_COLORS.length] }))}
+                size={120} stroke={22} label={crs.total||0} sublabel="courses"
+              />
+              <div style={{ flex:1 }}>
+                {progEntries.map(([prog, count], i) => (
+                  <div key={prog} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:7 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                      <div style={{ width:9, height:9, borderRadius:2, background:PROG_COLORS[i % PROG_COLORS.length], flexShrink:0 }}/>
+                      <span style={{ fontSize:12, fontWeight:600, color:'var(--ink)' }}>{prog}</span>
+                    </div>
+                    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                      <span style={{ fontSize:11, color:'var(--muted2)' }}>{Math.round(count/progTotal*100)}%</span>
+                      <span style={{ fontSize:12, fontWeight:700, color:PROG_COLORS[i % PROG_COLORS.length] }}>{count}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Row 5: Data snapshot (year level + faculty composition) ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 340px', gap:14 }}>
+
+        {/* Courses by Year Level */}
+        <div className="d-card" style={{ padding:'18px', animationDelay:'.20s' }}>
+          <div style={{ fontSize:13, fontWeight:700, color:'var(--ink)', marginBottom:2 }}>Courses by Year Level</div>
+          <div style={{ fontSize:11, color:'var(--muted2)', marginBottom:14 }}>How the curriculum is distributed across years</div>
+          {statsLoading ? (
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {[1,2,3,4].map(i=><Skel key={i} w='100%' h={8} r={99}/>)}
+            </div>
+          ) : Object.keys(crs.byYearLevel||{}).length === 0 ? (
+            <div style={{ textAlign:'center', color:'var(--muted2)', fontSize:11.5, padding:'8px 0' }}>No course data loaded.</div>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:9 }}>
+              {Object.entries(crs.byYearLevel||{}).map(([yr, count], i) => {
+                const total = Object.values(crs.byYearLevel||{}).reduce((s,v)=>s+v,0)||1
+                const pct   = Math.round(count/total*100)
+                const yearColors = ['#15803D','#2563EB','#7C3AED','#D97706']
+                const color = yearColors[i % yearColors.length]
+                return (
+                  <div key={yr}>
+                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+                      <span style={{ fontSize:11.5, fontWeight:600, color:'var(--ink)' }}>Year {yr}</span>
+                      <span style={{ fontSize:11, fontWeight:700, color }}>{count} <span style={{ fontWeight:400, color:'var(--muted2)' }}>({pct}%)</span></span>
+                    </div>
+                    <div style={{ height:7, borderRadius:99, background:'var(--hover)', overflow:'hidden' }}>
+                      <div style={{ height:'100%', borderRadius:99, width:`${pct}%`, background:color, animation:'barIn .7s ease both' }}/>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Faculty Composition */}
+        <div className="d-card" style={{ padding:'16px', animationDelay:'.22s' }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--ink)', marginBottom:2 }}>Faculty Composition</div>
+            <div style={{ fontSize:11, color:'var(--muted2)', marginBottom:14 }}>Full-time vs. part-time breakdown</div>
+            {statsLoading ? (
+              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                <Skel w={120} h={120} r={60} style={{ margin:'0 auto' }}/>
+                {[1,2].map(i=><Skel key={i} w='100%' h={32} r={7}/>)}
+              </div>
+            ) : fac.total === 0 ? (
+              <div style={{ textAlign:'center', color:'var(--muted2)', fontSize:11.5, padding:'8px 0' }}>No faculty loaded.</div>
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                <DonutChart
+                  segments={[
+                    { label:'Full-time', value: fac.fullTime || 0, color:'#2563EB' },
+                    { label:'Part-time', value: fac.partTime || 0, color:'#15803D' },
+                  ]}
+                  size={120} stroke={20} label={fac.total || 0} sublabel="faculty"
+                />
+                {[
+                  {
+                    label: 'Full-time',
+                    val: fac.fullTime || 0,
+                    total: fac.total || 1,
+                    color: '#2563EB', bg: '#DBEAFE',
+                  },
+                  {
+                    label: 'Part-time',
+                    val: fac.partTime || 0,
+                    total: fac.total || 1,
+                    color: '#15803D', bg: '#DCFCE7',
+                  },
+                ].map(row => {
+                  const pct = Math.round(row.val / row.total * 100)
+                  return (
+                    <div key={row.label} style={{ display:'flex', alignItems:'center', gap:9 }}>
+                      <div style={{ width:9, height:9, borderRadius:2, background:row.color, flexShrink:0 }}/>
+                      <span style={{ fontSize:11.5, fontWeight:600, color:'var(--ink)', flex:1 }}>{row.label}</span>
+                      <span style={{ fontSize:11, color:'var(--muted2)' }}>{pct}%</span>
+                      <span style={{ fontSize:13, fontWeight:800, color:row.color, fontFamily:"'Sora',sans-serif", minWidth:20, textAlign:'right' }}>{row.val}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
     </div>
   )
 }

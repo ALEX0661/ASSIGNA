@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
+import { useSolverPolling } from './hooks/useSolverPolling'
 
 import LoginPage        from './pages/LoginPage'
 import DashboardPage    from './pages/admin/DashboardPage'
@@ -15,6 +16,7 @@ import FacultySchedulePage from './pages/faculty/FacultySchedulePage'
 import FacultyProfilePage  from './pages/faculty/FacultyProfilePage'   // ← new unified profile
 import AdminLayout      from './components/admin/AdminLayout'
 import FacultyLayout    from './components/faculty/FacultyLayout'
+import SolverStatusWidget from './components/SolverStatusWidget'
 
 function LoadingScreen() {
   return (
@@ -51,32 +53,65 @@ function RequireFaculty({ children }) {
   return children
 }
 
+function RequireCoordinator({ children }) {
+  const { user, role, isCoordinator, loading } = useAuth()
+  if (loading) return <LoadingScreen />
+  // Coordinators have faculty role + isCoordinator flag
+  if (!user || role !== 'faculty' || !isCoordinator) return <Navigate to="/login" replace />
+  return children
+}
+
 export default function App() {
+  // Keeps polling the solver in the background regardless of which page is
+  // mounted, so a solve started from the Scheduler page keeps progressing
+  // even after navigating elsewhere.
+  useSolverPolling()
+
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
+    <>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
 
-      {/* Admin routes */}
-      <Route path="/dashboard" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
-        <Route index                  element={<DashboardPage />} />
-        <Route path="faculty"         element={<FacultyListPage />} />
-        <Route path="faculty/:id"     element={<FacultyDetailPage />} />
-        <Route path="courses"         element={<CourseListPage />} />
-        <Route path="rooms"           element={<RoomsPage />} />
-        <Route path="settings"        element={<SettingsPage />} />
-        <Route path="scheduler"       element={<SchedulerPage />} />
-        <Route path="schedule/:name"  element={<ScheduleViewPage />} />
-        <Route path="schedule"        element={<ScheduleViewPage />} />
-        <Route path="analytics"       element={<AnalyticsPage />} />
-      </Route>
+        {/* Admin routes */}
+        <Route path="/dashboard" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
+          <Route index                  element={<DashboardPage />} />
+          <Route path="faculty"         element={<FacultyListPage />} />
+          <Route path="faculty/:id"     element={<FacultyDetailPage />} />
+          <Route path="courses"         element={<CourseListPage />} />
+          <Route path="rooms"           element={<RoomsPage />} />
+          <Route path="settings"        element={<SettingsPage />} />
+          <Route path="scheduler"       element={<SchedulerPage />} />
+          <Route path="schedule/:name"  element={<ScheduleViewPage />} />
+          <Route path="schedule"        element={<ScheduleViewPage />} />
+          <Route path="analytics"       element={<AnalyticsPage />} />
+        </Route>
 
-      {/* Faculty routes */}
-      <Route element={<RequireFaculty><FacultyLayout /></RequireFaculty>}>
-        <Route path="/schedule"    element={<FacultySchedulePage />} />
-        <Route path="/profile"     element={<FacultyProfilePage />} />   {/* ← replaces /preferences */}
-      </Route>
+        {/* Faculty routes */}
+        <Route element={<RequireFaculty><FacultyLayout /></RequireFaculty>}>
+          <Route path="/schedule"    element={<FacultySchedulePage />} />
+          <Route path="/profile"     element={<FacultyProfilePage />} />   {/* ← replaces /preferences */}
+        </Route>
 
-      <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
+        {/* Coordinator routes - placeholder for now, uses admin layout */}
+        <Route path="/coordinator" element={<RequireCoordinator><AdminLayout /></RequireCoordinator>}>
+          <Route index element={<DashboardPage />} />
+          <Route path="faculty"         element={<FacultyListPage />} />
+          <Route path="faculty/:id"     element={<FacultyDetailPage />} />
+          <Route path="courses"         element={<CourseListPage />} />
+          <Route path="rooms"           element={<RoomsPage />} />
+          <Route path="settings"        element={<SettingsPage />} />
+          <Route path="scheduler"       element={<SchedulerPage />} />
+          <Route path="schedule/:name"  element={<ScheduleViewPage />} />
+          <Route path="schedule"        element={<ScheduleViewPage />} />
+          <Route path="analytics"       element={<AnalyticsPage />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+
+      {/* Persists across every route — shows solve progress no matter where
+          the user navigates to while a schedule is being generated. */}
+      <SolverStatusWidget />
+    </>
   )
 }

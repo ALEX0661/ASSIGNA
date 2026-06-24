@@ -295,6 +295,15 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
     findConflicts(allEvents, { evId, day:newDay, startMin:newStart, endMin:newEnd, room:newRoom, faculty:newFaculty, program:event.program, year:event.year, block:event.block }),
   [allEvents, evId, newDay, newStart, newEnd, newRoom, newFaculty, event.program, event.year, event.block])
 
+  /* ── Merge-partner predicate (hoisted so totalConflicts and JSX can share it) */
+  // A merge partner shares courseCode / program / year but a different block —
+  // their room overlap is intentional, not a real scheduling conflict.
+  const isMergePartner = c =>
+    c.courseCode === event.courseCode &&
+    String(c.year) === String(event.year) &&
+    c.program     === event.program &&
+    c.block       !== event.block
+
   /* ── Room + time conflict maps ──────────────────────────────────────────── */
   const timeOptions  = TIME_SLOTS.filter(s => s.startMinutes <= DAY_END_HOUR * 60 - duration)
   const allFacNames  = [...new Set([...masterFacultyList.map(f => f.name), event.faculty])].filter(n => n && n !== 'TBA').sort()
@@ -1016,14 +1025,6 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
               <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
                 {(() => {
                   // Split currentConflicts into merge-partner vs real conflicts.
-                  // A merge partner shares the same courseCode + program + year but a
-                  // different block — their room overlap is intentional, not an error.
-                  const isMergePartner = c =>
-                    c.courseCode === event.courseCode &&
-                    String(c.year) === String(event.year) &&
-                    c.program === event.program &&
-                    c.block !== event.block
-
                   const currentMerge = currentConflicts.filter(isMergePartner)
                   const currentReal  = currentConflicts.filter(c => !isMergePartner(c))
                   const previewMerge = previewConflicts.filter(isMergePartner)
@@ -1508,11 +1509,6 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                 )}
 
                 {(() => {
-                  const isMergePartner = c =>
-                    c.courseCode === event.courseCode &&
-                    String(c.year) === String(event.year) &&
-                    c.program === event.program &&
-                    c.block !== event.block
                   const realPreviewConflicts = previewConflicts.filter(c => !isMergePartner(c))
                   const mergePreviewConflicts = previewConflicts.filter(isMergePartner)
                   return (
@@ -1545,11 +1541,6 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
 
                 <div style={{ display:'flex', gap:8 }}>
                   {(() => {
-                    const isMergePartner = c =>
-                      c.courseCode === event.courseCode &&
-                      String(c.year) === String(event.year) &&
-                      c.program === event.program &&
-                      c.block !== event.block
                     const realConflicts = previewConflicts.filter(c => !isMergePartner(c))
                     const hasRealConflicts = realConflicts.length > 0
                     return (

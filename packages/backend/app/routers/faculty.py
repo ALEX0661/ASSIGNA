@@ -52,12 +52,13 @@ def _parse_faculty_matrix(contents: bytes, sheet_names: list) -> list:
             and "INSTRUCTION" not in s
             and "LAST NAME" not in s
             and "FIRST NAME" not in s
+            and "TITLE" not in s
+            and "DESC" not in s
         )
 
     for sheet_name in sheet_names:
         status = "part-time" if "part" in sheet_name.lower() else "full-time"
 
-        # ── Read without any header so we can detect structure ourselves ──────
         try:
             df_raw = pd.read_excel(io.BytesIO(contents), sheet_name=sheet_name, header=None)
         except Exception:
@@ -66,33 +67,41 @@ def _parse_faculty_matrix(contents: bytes, sheet_names: list) -> list:
         if df_raw.shape[0] < 2 or df_raw.shape[1] < 3:
             continue
 
-        # ── Find the row where col A says "COURSES CODE" (or similar) ─────────
+        # ── 1. Dynamically find column indices (Protected Search) ───────────────
         header_row_idx = None
-        for i in range(min(6, len(df_raw))):
-            val = str(df_raw.iloc[i, 0]).strip().upper()
-            if "COURSE" in val and "CODE" in val:
-                header_row_idx = i
+        code_col_idx   = 0
+        title_col_idx  = 1
+        
+        for i in range(min(15, len(df_raw))):
+            row_strs = [str(x).strip().upper() for x in df_raw.iloc[i]]
+            found_code = False
+            for col_i, val in enumerate(row_strs):
+                
+                # Protect against placeholders hijacking the column index
+                is_placeholder = "LAST" in val or "FIRST" in val or "FACULTY" in val
+                
+                if "CODE" in val and not is_placeholder:
+                    header_row_idx = i
+                    code_col_idx = col_i
+                    found_code = True
+                    
+                elif ("TITLE" in val or "DESC" in val or "NAME" in val) and not is_placeholder:
+                    title_col_idx = col_i
+            
+            if found_code:
                 break
 
         if header_row_idx is None:
             continue
+            
+        # Faculty names start after the code and title columns
+        faculty_start_idx = max(code_col_idx, title_col_idx) + 1
 
-        # ── Detect which of the two known layouts this sheet uses ─────────────
-        #
-        # Layout A  (actual filled file)
-        #   row header_row_idx - 1 : last names in cols 2+
-        #   row header_row_idx     : "COURSES CODE" | "COURSES NAME" | first names in cols 2+
-        #   row header_row_idx + 1+: course data
-        #
-        # Layout B  (template-style file)
-        #   row header_row_idx     : "COURSES CODE" | "COURSES NAME" | last names in cols 2+
-        #   row header_row_idx + 1 : NaN | "↳ FULL-TIME FACULTY" | first names in cols 2+
-        #   row header_row_idx + 2+: course data
-
+        # ── 2. Detect layout ──────────────────────────────────────────────────
         layout_a = (
             header_row_idx > 0
-            and df_raw.shape[1] > 2
-            and _is_name_cell(df_raw.iloc[header_row_idx - 1, 2])
+            and df_raw.shape[1] > faculty_start_idx
+            and _is_name_cell(df_raw.iloc[header_row_idx - 1, faculty_start_idx])
         )
 
         if layout_a:
@@ -100,13 +109,10 @@ def _parse_faculty_matrix(contents: bytes, sheet_names: list) -> list:
             first_names_series = df_raw.iloc[header_row_idx]
             course_start       = header_row_idx + 1
         else:
-            # Layout B: check if the row after the header is the first-names label row
             last_names_series = df_raw.iloc[header_row_idx]
             if header_row_idx + 1 < len(df_raw):
-                next_b = str(df_raw.iloc[header_row_idx + 1, 1]).strip().upper()
-                has_faculty_label = (
-                    "FACULTY" in next_b or "FULL" in next_b or "PART" in next_b
-                )
+                next_b = str(df_raw.iloc[header_row_idx + 1, title_col_idx]).strip().upper()
+                has_faculty_label = ("FACULTY" in next_b or "FULL" in next_b or "PART" in next_b)
             else:
                 has_faculty_label = False
 
@@ -117,8 +123,8 @@ def _parse_faculty_matrix(contents: bytes, sheet_names: list) -> list:
                 first_names_series = None
                 course_start       = header_row_idx + 1
 
-        # ── Iterate over faculty columns (index 2 onward) ─────────────────────
-        for col_idx in range(2, df_raw.shape[1]):
+        # ── 3. Parse Faculty and Ratings ──────────────────────────────────────
+        for col_idx in range(faculty_start_idx, df_raw.shape[1]):
             raw_last = re.sub(r"\.\d+$", "", str(last_names_series.iloc[col_idx])).rstrip(",").strip().upper()
 
             if _is_placeholder(raw_last) or raw_last == "NAN":
@@ -139,31 +145,29 @@ def _parse_faculty_matrix(contents: bytes, sheet_names: list) -> list:
                     "specializations": [],
                 }
 
-            # ── Collect course ratings ─────────────────────────────────────
             for row_idx in range(course_start, len(df_raw)):
-                raw_code    = df_raw.iloc[row_idx, 0]
-                course_code = str(raw_code).strip() if raw_code is not None else ""
+                raw_code    = df_raw.iloc[row_idx, code_col_idx]
+                course_code = str(raw_code).strip() if pd.notna(raw_code) else ""
                 if not course_code or course_code.lower() == "nan":
                     continue
 
-                # Col 1 holds the course title/name when present
-                raw_title   = df_raw.iloc[row_idx, 1] if df_raw.shape[1] > 1 else None
-                course_title = str(raw_title).strip() if raw_title is not None and str(raw_title).strip().lower() not in ("", "nan") else None
+                raw_title    = df_raw.iloc[row_idx, title_col_idx] if df_raw.shape[1] > title_col_idx else None
+                course_title = str(raw_title).strip() if pd.notna(raw_title) and str(raw_title).strip().lower() != "nan" else ""
 
                 try:
                     cell_val = df_raw.iloc[row_idx, col_idx]
-                    if isinstance(cell_val, float) and math.isnan(cell_val):
+                    if pd.isna(cell_val):
                         continue
                     rating = int(float(cell_val))
                 except (ValueError, TypeError):
                     continue
 
-                # ── Strict 1–5 enforcement: skip 0 and out-of-range ───────
                 if rating < 1 or rating > 5:
                     continue
 
                 spec_entry = {"courseCode": course_code, "rating": rating}
                 if course_title:
+                    spec_entry["courseTitle"] = course_title
                     spec_entry["title"] = course_title
 
                 faculty_map[full_name]["specializations"].append(spec_entry)
@@ -171,10 +175,6 @@ def _parse_faculty_matrix(contents: bytes, sheet_names: list) -> list:
     return list(faculty_map.values())
 
 
-# ── FIX 1: Filter archived faculty from the list by default ──────────────────
-# Added `include_archived` query param (defaults False).
-# Admins can pass ?include_archived=true to see the full roster (e.g. for an
-# "Archived" management view). All other callers get only active faculty.
 @router.get("/")
 def get_all_faculty(include_archived: bool = False, user=Depends(any_authenticated)):
     role = user.get("role")
@@ -241,16 +241,11 @@ def add_faculty(data: dict, user=Depends(admin_only)):
         firebase_auth.delete_user(uid)
         raise HTTPException(500, f"Could not set role claim: {exc}")
 
-    # ── Derive initial max_units from status before any schedule exists ───────
     status      = data.get("status", "full-time")
-    initial_max = compute_effective_max_units(status, 0)  # 0 courses assigned yet
+    initial_max = compute_effective_max_units(status, 0)
 
     faculty_data = {k: v for k, v in data.items() if k != "initial_password"}
-    faculty_data["max_units"] = initial_max   # store the correct starting cap
-
-    # ── FIX 2: Guarantee archived is always stored on new documents ───────────
-    # The endpoint accepts a raw dict so callers may omit the field.
-    # setdefault leaves an explicit `archived: true` from the payload intact.
+    faculty_data["max_units"] = initial_max
     faculty_data.setdefault("archived", False)
 
     db.collection("faculty").document(uid).set(faculty_data)
@@ -266,19 +261,23 @@ def add_faculty(data: dict, user=Depends(admin_only)):
 
 
 @router.put("/update/{faculty_id}")
-def update_faculty(faculty_id: str, data: FacultyUpdate, user=Depends(admin_only)):
+def update_faculty(faculty_id: str, data: FacultyUpdate, user=Depends(any_authenticated)):
+    role       = user.get("role")
+    caller_uid = user.get("uid") or user.get("user_id")
+
+    if role != "admin" and caller_uid != faculty_id:
+        raise HTTPException(403, "You can only update your own profile.")
+    # -------------------------------
+
     doc_ref = db.collection("faculty").document(faculty_id)
     doc     = doc_ref.get()
     if not doc.exists:
         raise HTTPException(404, "Faculty not found")
 
-    # `archived=False` is intentional (False is not None), so this filter is safe.
     update_data = {k: v for k, v in data.dict().items() if v is not None}
 
-    # ── Auto-derive composite `name` from firstName / lastName ────────────────
-    # When either name part is updated, re-compose the canonical display name
-    # as "LASTNAME, FIRSTNAME" (uppercase). If only one part is sent, read the
-    # other from the existing Firestore document so we never lose half the name.
+    
+
     if "firstName" in update_data or "lastName" in update_data:
         existing   = doc.to_dict() or {}
         first_name = update_data.get("firstName", existing.get("firstName", "")).strip().upper()
@@ -290,12 +289,9 @@ def update_faculty(faculty_id: str, data: FacultyUpdate, user=Depends(admin_only
         elif first_name:
             update_data["name"] = first_name
 
-    # If status is changing, recompute the effective max_units so it doesn't
-    # stay stale (the scheduler will fine-tune it further post-solve).
     if "status" in update_data:
         existing   = doc.to_dict() or {}
         new_status = update_data["status"]
-        # Reuse the existing course count if the schedule is live; fall back to 0
         load_map     = build_faculty_load_map(schedule_dict)
         course_count = load_map.get(existing.get("name", ""), {}).get("course_count", 0)
         update_data["max_units"] = compute_effective_max_units(new_status, course_count)
@@ -377,18 +373,12 @@ def assign_faculty(data: dict, user=Depends(admin_only)):
 
 
 def _recalculate_units(faculty_name: str, faculty_id: str):
-    """
-    Recount lecture units for *faculty_name* from the live schedule, derive the
-    effective max cap from their status + distinct-course count, and persist
-    both values to Firestore.
-    """
     load_map = build_faculty_load_map(schedule_dict)
     load     = load_map.get(faculty_name, {"assigned_units": 0, "course_count": 0})
 
     assigned_units = load["assigned_units"]
     course_count   = load["course_count"]
 
-    # Read current status from Firestore so we apply the right tier
     try:
         doc    = db.collection("faculty").document(faculty_id).get()
         status = doc.to_dict().get("status", "full-time") if doc.exists else "full-time"
@@ -449,9 +439,11 @@ def link_existing_auth_user(data: dict, user=Depends(admin_only)):
 
 @router.post("/upload")
 async def upload_faculty_excel(file: UploadFile = File(...), user=Depends(admin_only)):
-    if not file.filename.lower().endswith((".xlsx", ".xls")):
+    if not file.filename or not file.filename.lower().endswith((".xlsx", ".xls")):
         raise HTTPException(400, "Please upload an .xlsx or .xls file.")
 
+    # Guard against pointer issues reading stream content
+    await file.seek(0)
     contents = await file.read()
 
     try:
@@ -511,20 +503,14 @@ def commit_faculty_upload(data: dict, user=Depends(admin_only)):
         doc_id = re.sub(r"[^A-Z0-9]", "_", name.upper())[:120]
         ref    = db.collection("faculty").document(doc_id)
 
-        # Compute the correct starting cap (no courses assigned yet at upload time)
         initial_max = compute_effective_max_units(status, 0)
 
-        # ── FIX 3: Include `archived` in every bulk-imported document ─────────
-        # Without this, batch-uploaded faculty had no archived field in Firestore,
-        # meaning they could never be filtered out by the GET / endpoint.
-        # `merge=True` means this will not overwrite a pre-existing archived=True
-        # on a subsequent re-import of the same faculty member.
         batch.set(
             ref,
             {
                 "name":               name,
                 "status":             status,
-                "specializations":    f.get("specializations", []),   # each entry may include {courseCode, title, rating}
+                "specializations":    f.get("specializations", []),
                 "units":              0.0,
                 "max_units":          initial_max,
                 "preferredDays":      [],
@@ -548,15 +534,6 @@ def commit_faculty_upload(data: dict, user=Depends(admin_only)):
 
 @router.put("/credentials/{faculty_id}")
 def update_faculty_credentials(faculty_id: str, data: dict, user=Depends(admin_only)):
-    """
-    Set or update Firebase Auth credentials for a faculty member.
-
-    Two cases:
-      - Auth user already exists (faculty_id == Firebase UID) → update in place.
-      - No Auth user yet (bulk-imported, name-based doc ID) → create Auth account,
-        migrate Firestore doc to new UID, return migrated=True + new_id so the
-        frontend can redirect.
-    """
     email    = (data.get("email")    or "").strip()
     password = (data.get("password") or "").strip()
 
@@ -572,7 +549,6 @@ def update_faculty_credentials(faculty_id: str, data: dict, user=Depends(admin_o
 
     faculty_data = doc.to_dict() or {}
 
-    # ── Case 1: Firebase Auth account already exists with this UID ────────────
     try:
         firebase_auth.get_user(faculty_id)
         update_kwargs = {}
@@ -589,9 +565,8 @@ def update_faculty_credentials(faculty_id: str, data: dict, user=Depends(admin_o
         return {"updated": faculty_id, "migrated": False}
 
     except firebase_auth.UserNotFoundError:
-        pass  # Fall through — bulk-imported faculty with no Auth account yet
+        pass 
 
-    # ── Case 2: No Auth account — bulk-imported faculty ───────────────────────
     if not email:
         raise HTTPException(
             400,
@@ -599,7 +574,6 @@ def update_faculty_credentials(faculty_id: str, data: dict, user=Depends(admin_o
             "An email address is required to create one."
         )
 
-    # Use admin-supplied password or generate a safe default
     auto_generated   = not password
     display_password = password or _default_password(faculty_data.get("name", "Faculty"))
 
@@ -621,7 +595,6 @@ def update_faculty_credentials(faculty_id: str, data: dict, user=Depends(admin_o
         firebase_auth.delete_user(new_uid)
         raise HTTPException(500, f"Could not assign faculty role: {exc}")
 
-    # Migrate Firestore: copy old (name-keyed) doc → new (UID-keyed) doc, delete old
     new_data = {**faculty_data, "email": email}
     db.collection("faculty").document(new_uid).set(new_data)
     doc_ref.delete()
