@@ -1,6 +1,6 @@
 from ortools.sat.python import cp_model
 from collections import defaultdict
-from app.core.globals import schedule_dict, progress_state
+from app.core.globals import schedule_dict, progress_state, running_processes, cancel_flags, failure_details, phase_state
 from app.core.firebase import get_courses, get_rooms, get_time, get_days, load_all_caches
 from app.core.faculty_assigner import FacultyAssigner
 import logging
@@ -58,6 +58,19 @@ class HierarchicalScheduler:
         if self.process_id:
             progress_state[self.process_id] = value
 
+    def update_phase(self, phase_index, total_phases, phase_name):
+        if self.process_id:
+            phase_state[self.process_id] = {
+                "phase": phase_index,
+                "totalPhases": total_phases,
+                "phaseName": phase_name,
+            }
+
+    def is_cancelled(self):
+        """Checked between phases so a Stop click actually halts the solve
+        loop instead of merely hiding it from the frontend poller."""
+        return self.process_id is not None and self.process_id in cancel_flags
+
     def load_data(self, semester_filter=None):
         self.update_progress(5)
         # Ensure caches are fresh
@@ -82,6 +95,49 @@ class HierarchicalScheduler:
         self.update_progress(35)
         self.time_settings = get_time()
         
+        self.update_progress(45)
+        self.days = get_days()
+        self.setup_time_parameters()
+        self.update_progress(50)
+
+    def load_data_for_program(self, program, selected_rooms, semester_filter=None):
+        """Load data scoped to a single program with coordinator-selected rooms.
+        
+        Parameters
+        ----------
+        program : str
+            The program code (e.g., 'BSIT', 'BSCS').
+        selected_rooms : dict
+            Coordinator-selected rooms, e.g. {"lecture": ["CL1","CL2"], "lab": ["Lab1"]}.
+        semester_filter : str, optional
+            Filter courses by semester name.
+        """
+        self.update_progress(5)
+        load_all_caches()
+
+        courses = get_courses()
+
+        # Filter to this program only
+        courses = [c for c in courses if c.get('program') == program]
+        logger.info(f"Coordinator solve: {len(courses)} courses for program {program}")
+
+        if semester_filter:
+            courses = [c for c in courses if c.get('semester', '1st Semester') == semester_filter]
+            logger.info(f"Filtered to {len(courses)} courses for semester: {semester_filter}")
+
+        self.all_courses = self.prioritize_and_partition_courses(courses)
+
+        self.update_progress(15)
+        # Use coordinator-selected rooms instead of global rooms
+        self.rooms = selected_rooms if selected_rooms else get_rooms()
+        self.normalized_rooms = {}
+        for k, v in self.rooms.items():
+            self.normalized_rooms[k.lower()] = v if isinstance(v, list) else []
+            random.shuffle(self.normalized_rooms[k.lower()])
+
+        self.update_progress(35)
+        self.time_settings = get_time()
+
         self.update_progress(45)
         self.days = get_days()
         self.setup_time_parameters()
@@ -145,6 +201,46 @@ class HierarchicalScheduler:
             self.lunch_slots = {lunch_start_idx, lunch_start_idx + 1} 
         else:
             self.lunch_slots = set()
+
+    def _analyze_phase_failure(self, phase, courses):
+        """Analyzes why a specific phase failed to generate and returns a diagnostic payload."""
+        phase_name = phase.name
+        total_sections = sum(int(c.get('blocks', 1)) for c in courses)
+        lec_rooms = len(self.rooms.get('lecture', []))
+        lab_rooms = len(self.rooms.get('lab', []))
+        
+        reasons = []
+        suggestions = []
+        
+        if phase_name == "GEC_MAT":
+            reasons.append(f"GEC/MAT courses require strict Mon-Thu paired time slots across {total_sections} section block(s).")
+            if lec_rooms <= 2:
+                suggestions.append(f"You currently have only {lec_rooms} lecture room(s) assigned. Add at least 2-3 more lecture rooms.")
+            suggestions.append("Check if GEC/MAT courses have duplicate block entries or tight time settings.")
+
+        elif phase_name == "NSTP":
+            reasons.append("NSTP courses are restricted strictly to Friday and Saturday time slots.")
+            suggestions.append("Add more lecture rooms or ensure Friday/Saturday hours are not blocked.")
+
+        elif "MAJORS" in phase_name:
+            reasons.append(f"{phase_name} has {total_sections} major section(s) competing for limited specialized rooms.")
+            if lab_rooms == 0:
+                suggestions.append("No lab rooms are selected. Select dedicated lab rooms for major courses.")
+            else:
+                suggestions.append("Select additional lecture/lab rooms to resolve section scheduling collisions.")
+
+        else:
+            reasons.append(f"Could not find valid non-overlapping time slots for {len(courses)} courses in {phase_name}.")
+            suggestions.append("Increase operating hours in Settings or add more available rooms.")
+
+        return {
+            "status": "failed",
+            "failed_phase": phase_name,
+            "course_count": len(courses),
+            "section_count": total_sections,
+            "reasons": reasons,
+            "suggestions": suggestions
+        }
             
     def solve(self):
         self.update_progress(52)
@@ -158,10 +254,15 @@ class HierarchicalScheduler:
         total_p = len(sorted_phases)
         
         for i, phase in enumerate(sorted_phases, 1):
+            if self.is_cancelled():
+                logger.info(f"Solve {self.process_id} cancelled before phase check — stopping.")
+                return "cancelled"
+
             p_courses = phases[phase]
             if not p_courses: continue
             
             logger.info(f"Starting Phase {phase.name}: {len(p_courses)} courses")
+            self.update_phase(i, total_p, phase.name)
             
             # Dynamic timeouts based on phase complexity
             base_timeout = 30 + (len(p_courses) * 2)
@@ -173,7 +274,7 @@ class HierarchicalScheduler:
             
             if p_sched is None:
                 logger.error(f"Failed Phase {phase.name}")
-                return "impossible"
+                return self._analyze_phase_failure(phase, p_courses)
                 
             combined_schedule.extend(p_sched)
             self.update_progress(50 + int((i / total_p) * 45))
@@ -671,12 +772,57 @@ class HierarchicalScheduler:
                 self.occupied_slots[(e['_room_type'], e['_room_idx'])].update(slots)
 
 def generate_schedule(process_id=None, semester=None):
+    if process_id:
+        running_processes.add(process_id)
     try:
         s = HierarchicalScheduler(process_id)
+
+        if s.is_cancelled():
+            if process_id: progress_state[process_id] = -2
+            return "cancelled"
+
         s.load_data(semester_filter=semester)
+        
+        # Add diagnostic logging
+        logger.info(f"Loaded data: {len(s.all_courses)} courses, {len(s.rooms)} room types, {len(s.days)} days")
+        
+        # Check for common issues that cause infeasibility
+        if not s.all_courses:
+            logger.error("No courses found - check course data and semester filter")
+            if process_id: progress_state[process_id] = -1
+            return "impossible"
+            
+        if not s.rooms:
+            logger.error("No rooms configured - check room settings")
+            if process_id: progress_state[process_id] = -1
+            return "impossible"
+            
+        total_room_count = sum(len(rooms) for rooms in s.rooms.values())
+        if total_room_count == 0:
+            logger.error("No actual rooms available in any category")
+            if process_id: progress_state[process_id] = -1
+            return "impossible"
+            
+        logger.info(f"Starting solver with {total_room_count} total rooms available")
+        
         res = s.solve()
+        if res == "cancelled":
+            logger.info(f"Solve {process_id} stopped after cancel request.")
+            if process_id: progress_state[process_id] = -2
+            return "cancelled"
+            
+        if isinstance(res, dict) and res.get("status") == "failed":
+            # progress_state must stay numeric (the /generate "already
+            # running" check and get_status()'s == comparisons depend on
+            # it) — the diagnostic payload goes in its own dict instead.
+            if process_id:
+                failure_details[process_id] = res
+                progress_state[process_id] = -1
+            return "impossible"
+            
         if res == "impossible": 
-            logger.error("Schedule generation failed: Impossible Constraints")
+            logger.error("Schedule generation failed: Impossible Constraints - try reducing course load or adding more rooms/time slots")
+            if process_id: progress_state[process_id] = -1
             return "impossible"
 
         # --- Faculty Assignment ---
@@ -715,3 +861,240 @@ def generate_schedule(process_id=None, semester=None):
         if process_id: 
             progress_state[process_id] = -1
         return "impossible"
+    finally:
+        if process_id:
+            running_processes.discard(process_id)
+            cancel_flags.discard(process_id)
+
+
+# ── Coordinator-scoped generation ──────────────────────────────────────────────
+
+def _parse_time_str(time_str):
+    """Parse a time string like '7:00 AM' or '12:30 PM' to float hours.
+    Returns float, e.g. 7.0, 12.5, 13.0."""
+    time_str = time_str.strip()
+    parts = time_str.split()
+    if len(parts) != 2:
+        return 0.0
+    time_part, ampm = parts
+    h, m = time_part.split(':')
+    h, m = int(h), int(m)
+    if ampm.upper() == 'PM' and h != 12:
+        h += 12
+    if ampm.upper() == 'AM' and h == 12:
+        h = 0
+    return h + m / 60.0
+
+
+def events_to_pre_bookings(events, rooms_config, days, time_settings):
+    """Convert persisted schedule events into occupied_slots, section_occupied,
+    and faculty_bookings for injection into HierarchicalScheduler.
+
+    Parameters
+    ----------
+    events : list[dict]
+        Saved event objects with 'day', 'period', 'room', 'program', 'year',
+        'block', 'assigned_faculty' fields.
+    rooms_config : dict
+        Global rooms dict, e.g. {"lecture": ["CL1","CL2"], "lab": ["Lab1"]}.
+    days : list[str]
+        Active days list, e.g. ["Monday", "Tuesday", ...].
+    time_settings : dict
+        {"start_time": 7, "end_time": 21}.
+
+    Returns
+    -------
+    tuple of (occupied_slots, section_occupied, faculty_bookings)
+        occupied_slots: defaultdict(set) — (room_type, room_idx) → set of slot indices
+        section_occupied: defaultdict(set) — (program, year, block) → set of slot indices
+        faculty_bookings: defaultdict(list) — faculty_name → list of (start, end) tuples
+    """
+    occupied_slots = defaultdict(set)
+    section_occupied = defaultdict(set)
+    faculty_bookings = defaultdict(list)
+
+    # Build room → (type, index) lookup from global rooms config
+    room_lookup = {}
+    for rtype, room_list in rooms_config.items():
+        for idx, name in enumerate(room_list):
+            room_lookup[name] = (rtype.lower(), idx)
+
+    # Build day → day_index lookup
+    day_indices = {d: i for i, d in enumerate(days)}
+
+    start_t = float(time_settings.get("start_time", 7))
+    inc_hr = 0.5
+    slots_per_day = int((float(time_settings.get("end_time", 21)) - start_t) / inc_hr)
+
+    for ev in events:
+        day_name = ev.get('day', '')
+        period = ev.get('period', '')
+        room_name = ev.get('room', '')
+
+        if not day_name or not period or day_name not in day_indices:
+            continue
+
+        # Parse period "7:00 AM - 8:30 AM" → start_hour, end_hour
+        period_parts = period.split(' - ')
+        if len(period_parts) != 2:
+            continue
+
+        start_hour = _parse_time_str(period_parts[0])
+        end_hour = _parse_time_str(period_parts[1])
+
+        day_idx = day_indices[day_name]
+
+        # Convert to slot indices (same formula as HierarchicalScheduler)
+        time_slot_start = int((start_hour - start_t) / inc_hr)
+        time_slot_end = int((end_hour - start_t) / inc_hr)
+        duration = time_slot_end - time_slot_start
+
+        if time_slot_start < 0 or duration <= 0:
+            continue
+
+        global_start = day_idx * slots_per_day + time_slot_start
+
+        # Room booking
+        room_key = room_lookup.get(room_name)
+        if room_key:
+            for s in range(global_start, global_start + duration):
+                occupied_slots[room_key].add(s)
+
+        # Section booking
+        sk = (ev.get('program', ''), ev.get('year', ''), ev.get('block', ''))
+        for s in range(global_start, global_start + duration):
+            section_occupied[sk].add(s)
+
+        # Faculty booking (skip GEC/unassigned)
+        faculty = ev.get('assigned_faculty')
+        code = ev.get('courseCode', '')
+        if faculty and faculty != 'TBA' and not code.upper().startswith('GEC'):
+            faculty_bookings[faculty].append((global_start, global_start + duration))
+
+    logger.info(
+        "Pre-bookings extracted: %d room keys, %d section keys, %d faculty",
+        len(occupied_slots), len(section_occupied), len(faculty_bookings)
+    )
+    return occupied_slots, section_occupied, faculty_bookings
+
+
+def generate_coordinator_schedule(
+    process_id, program, semester, selected_rooms, pre_booked_events
+):
+    """Generate a schedule scoped to one program, respecting previously
+    approved schedules as pre-booked constraints.
+
+    Parameters
+    ----------
+    process_id : str
+        UUID for progress tracking.
+    program : str
+        Program code (e.g., 'BSIT').
+    semester : str or None
+        Semester filter.
+    selected_rooms : dict
+        Coordinator-selected rooms {"lecture": [...], "lab": [...]}.
+    pre_booked_events : list[dict]
+        Events from all previously approved coordinator schedules.
+    """
+    if process_id:
+        running_processes.add(process_id)
+    try:
+        s = HierarchicalScheduler(process_id)
+
+        if s.is_cancelled():
+            if process_id: progress_state[process_id] = -2
+            return "cancelled"
+
+        s.load_data_for_program(program, selected_rooms, semester_filter=semester)
+
+        # --- Inject pre-bookings from approved schedules ---
+        if pre_booked_events:
+            rooms_config = get_rooms()  # Global rooms for slot-index mapping
+            days = get_days()
+            time_cfg = get_time()
+
+            occ_slots, sec_occ, fac_bookings = events_to_pre_bookings(
+                pre_booked_events, rooms_config, days, time_cfg
+            )
+
+            # Merge into scheduler's occupancy state
+            for key, slots in occ_slots.items():
+                s.occupied_slots[key].update(slots)
+            for key, slots in sec_occ.items():
+                s.section_occupied[key].update(slots)
+
+            logger.info(
+                "Injected %d pre-booked room keys and %d section keys",
+                len(occ_slots), len(sec_occ)
+            )
+
+        res = s.solve()
+        if res == "cancelled":
+            logger.info(f"Coordinator solve {process_id} stopped after cancel request.")
+            if process_id:
+                progress_state[process_id] = -2
+            return "cancelled"
+            
+        if isinstance(res, dict) and res.get("status") == "failed":
+            # Same rule as generate_schedule(): progress_state stays
+            # numeric; the diagnostic dict is tracked separately.
+            if process_id:
+                failure_details[process_id] = res
+                progress_state[process_id] = -1
+            return "impossible"
+            
+        if res == "impossible":
+            logger.error("Coordinator schedule generation failed: Impossible Constraints")
+            if process_id:
+                progress_state[process_id] = -1
+            return "impossible"
+
+        # --- Faculty Assignment ---
+        s.update_progress(97)
+        assigner = FacultyAssigner()
+        assigner.load_faculty()
+
+        # Pre-populate faculty slots from approved schedules to prevent
+        # cross-program double-booking
+        if pre_booked_events:
+            rooms_config = get_rooms()
+            days = get_days()
+            time_cfg = get_time()
+            _, _, fac_bookings = events_to_pre_bookings(
+                pre_booked_events, rooms_config, days, time_cfg
+            )
+            assigner.inject_pre_booked_faculty(fac_bookings)
+
+        res = assigner.assign(res)
+
+        # Log summary
+        for row in assigner.load_summary():
+            logger.debug(
+                "Faculty load – %s (%s): %.1f / %.0f units | courses: %d%s",
+                row["name"], row["status"],
+                row["assigned_units"], row["effective_max"],
+                row["course_count"],
+                "  *** OVERLOADED ***" if row["overloaded"] else "",
+            )
+
+        # Strip internal tracking keys
+        for event in res:
+            for k in ('_start_slot', '_duration', '_room_type', '_room_idx'):
+                event.pop(k, None)
+
+        schedule_dict.clear()
+        schedule_dict.update({str(e['schedule_id']): e for e in res})
+
+        if process_id:
+            progress_state[process_id] = 100
+        return res
+    except Exception as e:
+        logger.exception(e)
+        if process_id:
+            progress_state[process_id] = -1
+        return "impossible"
+    finally:
+        if process_id:
+            running_processes.discard(process_id)
+            cancel_flags.discard(process_id)

@@ -1,15 +1,15 @@
 import { useState, useMemo } from 'react'
 import { programColor, sectionColor, PROGRAM_SHADE_PALETTE } from './svHelpers'
 
-// ── Lavender theme tokens (mirrors AdminLayout CSS vars) ──────────────────────
+// ── Green theme tokens (unified with other pages) ──────────────────────
 export const TV = {
-  deep:   '#7C6FCD',
-  mid:    '#A99BE8',
-  light:  '#D8D3F5',
-  pale:   '#EEEAFB',
-  border: '#E8E4F8',
-  text:   '#1a1a2e',
-  muted:  '#8883B0',
+  deep:   '#15803D',
+  mid:    '#6EE7B7',
+  light:  '#BBF7D0',
+  pale:   '#DCFCE7',
+  border: '#D8E8DF',
+  text:   '#0E2A20',
+  muted:  '#4B7060',
 }
 
 // ── Modal overlay ─────────────────────────────────────────────────────────────
@@ -20,7 +20,7 @@ export function ModalOverlay({ onClose, children }) {
       onClick={e => e.target === e.currentTarget && onClose()}
       style={{
         position: 'fixed', inset: 0,
-        background: 'rgba(30,24,60,.55)',
+        background: 'rgba(10,30,18,.55)',
         backdropFilter: 'blur(3px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         zIndex: 9999,
@@ -62,9 +62,9 @@ export function ModalFooter({ selectedCount, onClose }) {
         onClick={onClose}
         style={{
           padding: '7px 18px', fontSize: 12.5, fontWeight: 600,
-          background: 'linear-gradient(135deg,#7C6FCD,#5a4fbf)',
+          background: 'linear-gradient(135deg,#15803D,#0F5C2C)',
           color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer',
-          fontFamily: 'Poppins, sans-serif',
+          fontFamily: 'Inter, sans-serif',
         }}
       >Done</button>
     </div>
@@ -86,7 +86,7 @@ export function Chip({ label, active, color, onClick }) {
         background: active ? activeBg  : '#fff',
         color:      active ? activeText : TV.muted,
         transition: 'all .15s', whiteSpace: 'nowrap',
-        fontFamily: 'Poppins, sans-serif',
+        fontFamily: 'Inter, sans-serif',
       }}
     >
       {label}
@@ -104,7 +104,7 @@ export function FilterButton({ active, count, onClick }) {
         color:      active ? TV.deep   : TV.muted,
         border:     `1px solid ${active ? TV.light : TV.border}`,
         fontWeight: active ? 600 : 400,
-        fontFamily: 'Poppins, sans-serif',
+        fontFamily: 'Inter, sans-serif',
         transition: 'all .15s',
       }}
     >
@@ -151,7 +151,7 @@ export function MergedBadge() {
   return (
     <span style={{
       fontSize: 9.5, fontWeight: 700,
-      background: '#EDE9FB', color: TV.deep,
+      background: '#D1FAE5', color: TV.deep,
       border: `1px solid ${TV.light}`,
       borderRadius: 4, padding: '1px 6px', whiteSpace: 'nowrap',
     }}>
@@ -255,7 +255,7 @@ export function ProgramLegend({ events = [] }) {
     <div style={{
       background: '#fff', border: `1px solid ${TV.border}`,
       borderRadius: 10, overflow: 'hidden', marginBottom: 10,
-      fontFamily: 'Poppins, sans-serif',
+      fontFamily: 'Inter, sans-serif',
     }}>
       {/* ── Header ── */}
       <div style={{
@@ -417,7 +417,7 @@ export function Toast({ message, type, onDismiss }) {
         boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
         animation: 'svSlideIn .25s ease',
         display: 'flex', alignItems: 'center', gap: 8, maxWidth: 380,
-        fontFamily: 'Poppins, sans-serif',
+        fontFamily: 'Inter, sans-serif',
       }}
     >
       <span>{isErr ? '⚠' : '✓'}</span>
@@ -469,7 +469,7 @@ export function RoomChip({ room, selected, hasRoomConflict, hasMergePreview = fa
   } else if (selected && hasMergePreview) {
     bg = '#1d4ed8'; border = '#1d4ed8'; color = '#fff'; shadow = '0 0 0 2px rgba(37,99,235,.22)'
   } else if (selected) {
-    bg = TV.deep; border = TV.deep; color = '#fff'; shadow = `0 0 0 2px rgba(124,111,205,.2)`
+    bg = TV.deep; border = TV.deep; color = '#fff'; shadow = `0 0 0 2px rgba(21,128,61,.2)`
   } else if (hasRoomConflict) {
     bg = '#fef2f2'; border = '#fca5a5'; color = '#b91c1c'; shadow = 'none'
   } else if (hasMergePreview) {
@@ -491,7 +491,7 @@ export function RoomChip({ room, selected, hasRoomConflict, hasMergePreview = fa
         background: bg, border: `1.5px solid ${border}`, color,
         cursor: 'pointer', transition: 'all .12s',
         whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3,
-        boxShadow: shadow, fontFamily: 'Poppins, sans-serif',
+        boxShadow: shadow, fontFamily: 'Inter, sans-serif',
       }}
     >
       {hasRoomConflict && <span style={{ fontSize: 9 }}>⚠</span>}
@@ -526,7 +526,7 @@ export function PendingChangesBar({ pendingOverrides, onSave, onRevertAll, savin
       background: 'linear-gradient(135deg,#fffbeb,#fff7d6)',
       border: '1px solid #fcd34d',
       borderRadius: 10, padding: '8px 14px', marginBottom: 10,
-      fontFamily: 'Poppins, sans-serif',
+      fontFamily: 'Inter, sans-serif',
     }}>
       {/* Icon + count */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -574,7 +574,7 @@ export function PendingChangesBar({ pendingOverrides, onSave, onRevertAll, savin
             background: '#fff', color: '#92400e',
             border: '1.5px solid #fcd34d', borderRadius: 7,
             cursor: saving ? 'not-allowed' : 'pointer',
-            fontFamily: 'Poppins, sans-serif', opacity: saving ? .5 : 1,
+            fontFamily: 'Inter, sans-serif', opacity: saving ? .5 : 1,
             transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 4,
           }}
         >
@@ -593,7 +593,7 @@ export function PendingChangesBar({ pendingOverrides, onSave, onRevertAll, savin
               : 'linear-gradient(135deg,#d97706,#b45309)',
             color: '#fff', border: 'none', borderRadius: 7,
             cursor: saving ? 'not-allowed' : 'pointer',
-            fontFamily: 'Poppins, sans-serif',
+            fontFamily: 'Inter, sans-serif',
             boxShadow: '0 3px 8px rgba(180,83,9,.30)',
             display: 'flex', alignItems: 'center', gap: 5,
             transition: 'all .15s',

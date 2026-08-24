@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from app.core.auth import admin_only, any_authenticated
+from app.core.auth import admin_only, any_authenticated  # admin_only kept for any route that stays admin-exclusive
 from app.core.firebase import db, refresh_courses_cache
 from app.models.course import Course, CourseUpdate
 from google.cloud import firestore as fs
@@ -58,6 +58,23 @@ def _safe_str(value, default="") -> str:
         return str(value).strip()
     except (TypeError, ValueError):
         return default
+
+
+# ─── Access control: admins can touch any program, coordinators only theirs ───
+
+def _require_program_access(user: dict, program: str):
+    """
+    Raise 403 unless the caller is an admin, or is a coordinator whose
+    coordinatorProgram claim matches the program being written to.
+    Mirrors the ownership check pattern used in coordinator.py.
+    """
+    if user.get("isAdmin"):
+        return
+    coord_program = user.get("coordinatorProgram")
+    if not coord_program:
+        raise HTTPException(403, "Not authorized to manage courses.")
+    if program != coord_program:
+        raise HTTPException(403, f"You can only manage courses for {coord_program}.")
 
 def _detect_template_format(contents: bytes, sheet_name: str) -> bool:
     """
@@ -145,7 +162,8 @@ def get_all_courses(semester: str = None, user=Depends(any_authenticated)):
 
 
 @router.post("/add")
-def add_course(data: Course, user=Depends(admin_only)):
+def add_course(data: Course, user=Depends(any_authenticated)):
+    _require_program_access(user, data.program)
     doc_id = f"{data.courseCode}_{data.program}"
     ref = db.collection("courses").document(doc_id)
     if ref.get().exists:
@@ -156,7 +174,9 @@ def add_course(data: Course, user=Depends(admin_only)):
 
 
 @router.put("/update/{course_code}/{program}")
-def update_course(course_code: str, program: str, data: CourseUpdate, user=Depends(admin_only)):
+def update_course(course_code: str, program: str, data: CourseUpdate, user=Depends(any_authenticated)):
+    _require_program_access(user, program)
+
     doc_id  = f"{course_code}_{program}"
     doc_ref = db.collection("courses").document(doc_id)
     if not doc_ref.get().exists:
@@ -179,6 +199,11 @@ def update_course(course_code: str, program: str, data: CourseUpdate, user=Depen
         elif v is not None:
             update_data[k] = v
 
+    # Coordinators may not move a course to a different program via update —
+    # only admins can re-assign programs.
+    if not user.get("isAdmin") and "program" in update_data and update_data["program"] != program:
+        raise HTTPException(403, "You can't change a course's program.")
+
     if not update_data:
         # Nothing actually changed — return success without hitting Firestore.
         return {"updated": doc_id}
@@ -189,7 +214,9 @@ def update_course(course_code: str, program: str, data: CourseUpdate, user=Depen
 
 
 @router.delete("/delete/{course_code}/{program}")
-def delete_course(course_code: str, program: str, user=Depends(admin_only)):
+def delete_course(course_code: str, program: str, user=Depends(any_authenticated)):
+    _require_program_access(user, program)
+
     doc_id  = f"{course_code}_{program}"
     doc_ref = db.collection("courses").document(doc_id)
     if not doc_ref.get().exists:
@@ -205,12 +232,15 @@ def delete_course(course_code: str, program: str, user=Depends(admin_only)):
 
 
 @router.post("/upload")
-async def upload_courses_excel(file: UploadFile = File(...), user=Depends(admin_only)):
+async def upload_courses_excel(file: UploadFile = File(...), user=Depends(any_authenticated)):
     """
     Accepts the official CCS Course List template (.xlsx).
     Validates that every sheet in the file belongs to the known template sheets,
     then returns the valid sheet list and a base64-encoded copy of the file.
     """
+    if not user.get("isAdmin") and not user.get("coordinatorProgram"):
+        raise HTTPException(403, "Not authorized to upload courses.")
+
     if not file.filename.lower().endswith((".xlsx", ".xls")):
         raise HTTPException(400, "Please upload an .xlsx or .xls file.")
 
@@ -250,11 +280,14 @@ async def upload_courses_excel(file: UploadFile = File(...), user=Depends(admin_
 
 
 @router.post("/upload/extract")
-def extract_selected_sheet(data: dict, user=Depends(admin_only)):
+def extract_selected_sheet(data: dict, user=Depends(any_authenticated)):
     """
     Takes the base64 encoded file and the selected sheet name, 
     then parses the courses from that specific sheet.
     """
+    if not user.get("isAdmin") and not user.get("coordinatorProgram"):
+        raise HTTPException(403, "Not authorized to upload courses.")
+
     sheet_name = data.get("sheetName")
     file_data  = data.get("fileData")
 
@@ -274,18 +307,32 @@ def extract_selected_sheet(data: dict, user=Depends(admin_only)):
     except Exception as exc:
         raise HTTPException(400, f"Failed to extract data: {exc}")
 
+    # Coordinators only ever see their own program's rows, even if the sheet
+    # contains other programs — this mirrors the frontend's lockedProgram
+    # filter but is enforced here so it can't be bypassed by calling the
+    # API directly.
+    if not user.get("isAdmin"):
+        coord_program = user.get("coordinatorProgram")
+        courses = [c for c in courses if c.get("program") == coord_program]
+
     return {"preview": courses, "count": len(courses)}
 
 
 @router.post("/upload/commit")
-def commit_uploaded_courses(data: dict, user=Depends(admin_only)):
+def commit_uploaded_courses(data: dict, user=Depends(any_authenticated)):
     """
     Bulk upsert courses from the upload preview.
     Returns per-course success/failure so the frontend can surface partial errors.
     """
+    if not user.get("isAdmin") and not user.get("coordinatorProgram"):
+        raise HTTPException(403, "Not authorized to upload courses.")
+
     courses = data.get("courses", [])
     if not courses:
         raise HTTPException(400, "No courses provided.")
+
+    is_admin      = user.get("isAdmin", False)
+    coord_program = user.get("coordinatorProgram")
 
     saved  = 0
     failed = []
@@ -297,6 +344,12 @@ def commit_uploaded_courses(data: dict, user=Depends(admin_only)):
 
         if not code or not program:
             failed.append({"course": c, "reason": "Missing courseCode or program"})
+            continue
+
+        # A coordinator can only ever commit rows for their own program —
+        # enforced here regardless of what the client sent.
+        if not is_admin and program != coord_program:
+            failed.append({"course": c, "reason": f"Not authorized for program {program}"})
             continue
 
         doc_id = f"{code}_{program}"

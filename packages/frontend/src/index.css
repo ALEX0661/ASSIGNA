@@ -96,13 +96,15 @@ button {
   font-size: 13px; font-weight: 500; cursor: pointer;
   background: var(--surface); color: var(--ink); transition: all 0.15s;
 }
-button:hover { background: var(--hover); }
+/* Only apply the global hover to truly plain buttons — those with no class.
+   All component-level buttons define their own hover via their CSS class. */
+button:not([class]):hover { background: var(--hover); }
 button.primary {
   background: linear-gradient(135deg, var(--meadow), var(--meadow-deep));
   color: #fff; border-color: transparent;
   box-shadow: 0 3px 12px rgba(15,92,44,0.28);
 }
-button.primary:hover { opacity: .9; }
+button.primary:hover { background: linear-gradient(135deg, var(--meadow-mid), var(--meadow-deep)); }
 button.danger { background: #FFF0F0; color: #C0392B; border-color: #FECACA; }
 button.danger:hover { background: #FFE0E0; }
 .error-msg { color: #C0392B; font-size: 12px; }

@@ -135,6 +135,7 @@ def _count_conflicts(events: list) -> int:
     from collections import defaultdict
     room_sessions:    dict = defaultdict(list)
     faculty_sessions: dict = defaultdict(list)
+    section_sessions: dict = defaultdict(list)
     conflict_ids:     set  = set()
 
     for e in events:
@@ -148,11 +149,22 @@ def _count_conflicts(events: list) -> int:
         slot = (e.get("period", "") or e.get("timeSlot", "") or e.get("time", "") or "").strip()
         room = (e.get("room",   "") or "").strip()
         fac  = (e.get("faculty","") or "").strip()
+        prog = e.get("program", "")
+        year = str(e.get("year", ""))
+        block = e.get("block", "")
         parsed = _parse_slot(slot)
-        if room and room.upper() != "TBA":
+        
+        # Room conflicts (skip online/virtual rooms)
+        if room and room.upper() not in ("TBA", "ONLINE", "VIRTUAL", "ONLINE/VIRTUAL"):
             room_sessions[(day, room)].append((parsed, slot, eid, e))
+        
+        # Faculty conflicts    
         if fac and fac.upper() != "TBA":
             faculty_sessions[(day, fac)].append((parsed, slot, eid, e))
+        
+        # Section conflicts (same program + year + block)
+        if prog and year and block:
+            section_sessions[(day, prog, year, block)].append((parsed, slot, eid, e))
 
     def _mark_conflicts(sessions_map: dict) -> None:
         for sessions in sessions_map.values():
@@ -176,6 +188,7 @@ def _count_conflicts(events: list) -> int:
 
     _mark_conflicts(room_sessions)
     _mark_conflicts(faculty_sessions)
+    _mark_conflicts(section_sessions)
     return len(conflict_ids)
 
 

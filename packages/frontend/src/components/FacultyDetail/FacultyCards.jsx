@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { ACADEMIC_RANKS, DEPARTMENTS, ALL_DAYS, RATING_COLORS, RATING_LABELS, SPECS_PREVIEW, fmtHour, FormField, SectionSaveBtn, StarRating } from './fdShared'
+import { ACADEMIC_RANKS, DEPARTMENTS, ALL_DAYS, RATING_COLORS, RATING_LABELS, fmtHour, FormField, SectionSaveBtn, StarRating } from './fdShared'
 
 // Add spin animation
 if (!document.getElementById('role-spin-animation')) {
@@ -9,116 +9,97 @@ if (!document.getElementById('role-spin-animation')) {
   document.head.appendChild(style)
 }
 
-// ─── Theme Tokens (Lavender & White) ──────────────────────────────────────────
+// ─── Theme Tokens (Green — matches admin theme) ───────────────────────────────
 const T = {
-  purple:       '#7C6FCD',
-  purpleDeep:   '#5a4fbf',
-  purpleSoft:   '#EEEAFB',
-  purpleBorder: '#D8D3F5',
-  textMain:     '#1a1a2e',
-  textMid:      '#4a4a6a',
-  textMuted:    '#8883B0',
-  textLight:    '#B0ABCC',
-  border:       '#E8E4F8',
-  borderLight:  '#F5F4FB',
+  green:        '#15803D',
+  greenDeep:    '#0F5C2C',
+  greenMid:     '#166534',
+  greenSoft:    '#DCFCE7',
+  greenBorder:  '#BBF7D0',
+  textMain:     '#0E2A20',
+  textMid:      '#1C3D2A',
+  textMuted:    '#4B7060',
+  textLight:    '#6B8C7A',
+  border:       '#D8E8DF',
+  borderLight:  '#EBF4EF',
   bg:           '#FFFFFF',
-  bgAlt:        '#FAFAFE',
+  bgAlt:        '#F2F7F4',
   danger:       '#EF4444',
   dangerSoft:   '#FEF2F2',
-};
-
-// ─── MiniStar (internal to SpecsGrid) ────────────────────────────────────────
-function MiniStar({ filled }) {
-  return (
-    <svg width="10" height="10" viewBox="0 0 24 24" fill={filled ? T.purple : 'none'} stroke={filled ? T.purple : T.purpleBorder} strokeWidth="2">
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-    </svg>
-  )
+  // card header — soft green tint, not dark
+  headerBg:     '#F0FDF4',
+  headerBorder: '#BBF7D0',
+  headerText:   '#0E2A20',
+  headerMuted:  '#4B7060',
+  headerIcon:   '#15803D',
 }
 
-// ─── SpecsGrid (internal to ProfileCard) ─────────────────────────────────────
-function SpecsGrid({ specs, preview, expanded, onToggle }) {
-  const [sortBy, setSortBy] = useState('rating-desc')
-  const sorted = useMemo(() => {
-    const copy = [...specs]
-    if (sortBy === 'code-asc')    copy.sort((a,b) => ((typeof a==='object' ? a.courseCode : a)||'').localeCompare((typeof b==='object' ? b.courseCode : b)||''))
-    if (sortBy === 'rating-desc') copy.sort((a,b) => ((typeof b==='object' ? b.rating : 3)||3) - ((typeof a==='object' ? a.rating : 3)||3))
-    if (sortBy === 'rating-asc')  copy.sort((a,b) => ((typeof a==='object' ? a.rating : 3)||3) - ((typeof b==='object' ? b.rating : 3)||3))
-    return copy
-  }, [specs, sortBy])
-  const visible   = expanded ? sorted : sorted.slice(0, preview)
-  const remaining = specs.length - preview
-  
+// Reusable card header — soft green tint, no icon
+function CardHeader({ title, right, sub }) {
   return (
-    <div style={{ fontFamily: "'Poppins', sans-serif" }}>
-      <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:10 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-          <span style={{ fontSize:11, color:T.textLight, fontWeight:600 }}>Sort:</span>
-          {[{key:'rating-desc',label:'Best first'},{key:'code-asc',label:'A – Z'},{key:'rating-asc',label:'Lowest'}].map(opt => (
-            <button key={opt.key} type="button" onClick={() => setSortBy(opt.key)} style={{ 
-              padding:'4px 10px', borderRadius:'8px', fontSize:11, fontWeight:600, 
-              background:sortBy===opt.key ? T.purpleSoft : 'transparent', 
-              color:sortBy===opt.key ? T.purpleDeep : T.textMuted, 
-              border:sortBy===opt.key ? `1px solid ${T.purpleBorder}` : '1px solid transparent', 
-              cursor:'pointer', transition: 'all 0.2s', fontFamily:"'Poppins',sans-serif" 
-            }}>
-              {opt.label}
-            </button>
-          ))}
-        </div>
+    <div style={{
+      padding:'14px 20px',
+      background: T.headerBg,
+      borderBottom:`1.5px solid ${T.headerBorder}`,
+      display:'flex', alignItems:'center', gap:12,
+    }}>
+      <div style={{ flex:1, minWidth:0 }}>
+        <span style={{ fontSize:13.5, fontWeight:700, color:T.headerText, display:'block', fontFamily:"'Sora',sans-serif" }}>{title}</span>
+        {sub && <span style={{ fontSize:11, color:T.headerMuted, marginTop:1, display:'block' }}>{sub}</span>}
       </div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(168px,1fr))', gap:10 }}>
-        {visible.map((spec,i) => {
-          const code   = typeof spec==='object' ? spec.courseCode : spec
-          const rating = typeof spec==='object' ? (spec.rating||3) : 3
-          const title  = typeof spec==='object' ? (spec.title||'') : ''
-          return (
-            <div key={i} style={{ padding:'10px 14px', borderRadius:'10px', background:T.bgAlt, border:`1px solid ${T.border}`, display:'flex', flexDirection:'column', gap:4 }}>
-              {title
-                ? <span style={{ fontSize:12, fontWeight:700, color:T.textMain, lineHeight:1.3 }}>{title}</span>
-                : <span style={{ fontSize:12, fontWeight:700, color:T.purpleDeep }}>{code}</span>
-              }
-              {title && (
-                <span style={{ fontFamily:'monospace', fontSize:10, fontWeight:600, color:T.purpleDeep, background:T.purpleSoft, padding:'1px 6px', borderRadius:4, alignSelf:'flex-start' }}>{code}</span>
-              )}
-              <div style={{ display:'flex', alignItems:'center', gap:3, marginTop:2 }}>
-                {[1,2,3,4,5].map(s => <MiniStar key={s} filled={s<=rating}/>)}
-                <span style={{ fontSize:10, color:RATING_COLORS[rating]||T.textMuted, fontWeight:700, marginLeft:4 }}>{RATING_LABELS[rating]||''}</span>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-      {specs.length > preview && (
-        <button type="button" onClick={onToggle} style={{ marginTop:12, display:'flex', alignItems:'center', gap:6, background:'none', border:'none', cursor:'pointer', padding:0, fontSize:12, fontWeight:600, color:T.purple, fontFamily:"'Poppins',sans-serif" }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ transform:expanded?'rotate(180deg)':'none', transition:'transform 0.2s' }}><polyline points="6 9 12 15 18 9"/></svg>
-          {expanded ? 'Show less' : `Show ${remaining} more`}
-        </button>
-      )}
+      {right && <div style={{ flexShrink:0 }}>{right}</div>}
     </div>
   )
 }
 
 // ─── ProfileCard ──────────────────────────────────────────────────────────────
-export function ProfileCard({ form, isNew, isOverloaded, avInitials, avFg, avBg, statusBg, statusCl, uniqueSpecs, specsExpanded, setSpecsExpanded, specCount, onOpenSpecModal }) {
+export function ProfileCard({ form, isNew, isOverloaded, avInitials, avFg, avBg, statusBg, statusCl, specCount, onOpenSpecModal }) {
   return (
-    <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(124,111,205,0.04)', fontFamily: "'Poppins', sans-serif" }}>
-      <div style={{ padding:'28px 24px 24px', display:'flex', flexDirection:'column', alignItems:'center', gap:16 }}>
-        <div style={{ width:80, height:80, borderRadius:'50%', background:`linear-gradient(135deg,${avBg},${avBg}cc)`, color:avFg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, fontWeight:700, border:`4px solid ${avFg}15` }}>{avInitials}</div>
-        <div style={{ textAlign:'center' }}>
-          <div style={{ fontSize:16, fontWeight:700, color:T.textMain, lineHeight:1.2, marginBottom:4, textTransform:'uppercase' }}>{form.name||(isNew?'New Faculty':'—')}</div>
-          {form.AcademicRank && <div style={{ fontSize:13, color:T.textMuted, fontWeight:500 }}>{form.AcademicRank}</div>}
-          {form.Department   && <div style={{ fontSize:12, color:T.textLight, fontWeight:500, marginTop:2 }}>{form.Department}</div>}
+    <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(10,46,28,0.08)', fontFamily:"'Inter',sans-serif" }}>
+
+      {/* Avatar header — gradient green, not full dark */}
+      <div style={{ background:`linear-gradient(160deg,#166534 0%,#0F5C2C 100%)`, padding:'28px 24px 20px', display:'flex', flexDirection:'column', alignItems:'center', gap:12, position:'relative', overflow:'hidden' }}>
+        <div style={{ position:'absolute', top:-30, right:-30, width:100, height:100, borderRadius:'50%', background:'rgba(255,255,255,0.05)', pointerEvents:'none' }}/>
+        <div style={{ position:'absolute', bottom:-20, left:-14, width:72, height:72, borderRadius:'50%', background:'rgba(255,255,255,0.04)', pointerEvents:'none' }}/>
+
+        {/* Avatar */}
+        <div style={{ width:72, height:72, borderRadius:'50%', background:`linear-gradient(135deg,${avBg},${avBg}bb)`, color:avFg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, fontWeight:700, border:`3px solid rgba(255,255,255,0.3)`, fontFamily:"'Sora',sans-serif", position:'relative', zIndex:1, boxShadow:'0 4px 16px rgba(0,0,0,0.2)' }}>
+          {avInitials}
         </div>
-        <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'center' }}>
-          <span style={{ padding:'4px 12px', borderRadius:'99px', fontSize:11, fontWeight:600, background:statusBg, color:statusCl, textTransform:'capitalize' }}>{form.status}</span>
-          {!isNew && form.archived  && <span style={{ padding:'4px 12px', borderRadius:'99px', fontSize:11, fontWeight:600, background:'#FFFBEB', color:'#B45309', border:'1px solid #FEF3C7' }}>Archived</span>}
-          {!isNew && isOverloaded   && <span style={{ padding:'4px 12px', borderRadius:'99px', fontSize:11, fontWeight:600, background:T.dangerSoft, color:T.danger, border:`1px solid #FECACA` }}>Overloaded</span>}
+
+        {/* Name */}
+        <div style={{ textAlign:'center', position:'relative', zIndex:1, maxWidth:'100%' }}>
+          <div style={{ fontSize:15, fontWeight:700, color:'#fff', lineHeight:1.25, marginBottom:3, textTransform:'uppercase', fontFamily:"'Sora',sans-serif", letterSpacing:'0.5px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:220 }}>
+            {form.name||(isNew?'New Faculty':'—')}
+          </div>
+          {form.AcademicRank && <div style={{ fontSize:12, color:'rgba(255,255,255,0.78)', fontWeight:500 }}>{form.AcademicRank}</div>}
+          {form.Department   && <div style={{ fontSize:11, color:'rgba(255,255,255,0.55)', fontWeight:400, marginTop:2 }}>{form.Department}</div>}
         </div>
-        <button type="button" onClick={onOpenSpecModal} style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'8px 16px', borderRadius:'8px', background:T.bgAlt, color:T.purpleDeep, border:`1px solid ${T.border}`, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'Poppins',sans-serif", marginTop:4, transition: 'all 0.2s' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-          Manage Specializations
-          {specCount > 0 && <span style={{ padding:'2px 8px', borderRadius:'99px', background:T.purpleSoft, color:T.purpleDeep, fontSize:10, fontWeight:700 }}>{specCount}</span>}
+
+        {/* Status badges */}
+        <div style={{ display:'flex', gap:6, flexWrap:'wrap', justifyContent:'center', position:'relative', zIndex:1 }}>
+          <span style={{ padding:'3px 10px', borderRadius:'99px', fontSize:10.5, fontWeight:600, background:'rgba(255,255,255,0.16)', color:'#fff', textTransform:'capitalize', border:'1px solid rgba(255,255,255,0.22)' }}>{form.status}</span>
+          {!isNew && form.archived  && <span style={{ padding:'3px 10px', borderRadius:'99px', fontSize:10.5, fontWeight:600, background:'#FEF3CD', color:'#B45309' }}>Archived</span>}
+          {!isNew && isOverloaded   && <span style={{ padding:'3px 10px', borderRadius:'99px', fontSize:10.5, fontWeight:600, background:'#FFE8E8', color:'#C0392B' }}>Overloaded</span>}
+        </div>
+      </div>
+
+      {/* Manage Specializations button */}
+      <div style={{ padding:'16px 20px' }}>
+        <button type="button" onClick={onOpenSpecModal}
+          style={{ display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', padding:'10px 14px', borderRadius:'10px', background:T.bgAlt, color:T.greenDeep, border:`1.5px solid ${T.border}`, fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif", transition:'all 0.2s' }}
+          onMouseEnter={e => { e.currentTarget.style.background=T.greenSoft; e.currentTarget.style.borderColor=T.greenBorder }}
+          onMouseLeave={e => { e.currentTarget.style.background=T.bgAlt; e.currentTarget.style.borderColor=T.border }}>
+          <span style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            Manage Specializations
+          </span>
+          <span style={{ display:'flex', alignItems:'center', gap:6 }}>
+            {specCount > 0 && (
+              <span style={{ padding:'2px 8px', borderRadius:'99px', background:T.greenSoft, color:T.greenDeep, fontSize:10.5, fontWeight:700, border:`1px solid ${T.greenBorder}` }}>{specCount}</span>
+            )}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </span>
         </button>
       </div>
     </div>
@@ -135,44 +116,41 @@ const CLEAN_CAP_RULES = [
 
 export function UnitLoadCard({ displayUnits, effectiveCap, isOverloaded, loadPct, tierLabel, scheduleUnits, barBg }) {
   return (
-    <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(124,111,205,0.04)', fontFamily: "'Poppins', sans-serif" }}>
-      {/* Header */}
-      <div style={{ padding:'16px 20px', borderBottom:`1px solid ${T.borderLight}`, display:'flex', alignItems:'center', gap:10, background:T.bgAlt }}>
-        <div style={{ width:30, height:30, borderRadius:'8px', background:isOverloaded?T.dangerSoft:T.purpleSoft, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isOverloaded?T.danger:T.purple} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        </div>
-        <span style={{ fontSize:14, fontWeight:700, color:T.textMain, flex:1 }}>Unit Load</span>
-        {scheduleUnits !== null && (
-          <span style={{ fontSize:11, color:T.purpleDeep, fontWeight:600, display:'flex', alignItems:'center', gap:5, background:T.purpleSoft, padding:'4px 10px', borderRadius:'99px' }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: T.purpleDeep }}></span>
-            Live Schedule
+    <div style={{ flex:1, background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(10,46,28,0.08)', fontFamily:"'Inter',sans-serif" }}>
+      <CardHeader
+        title={isOverloaded ? 'Unit Load — Over Cap' : 'Unit Load'}
+        sub={isOverloaded ? `${displayUnits} units assigned — exceeds cap of ${effectiveCap}` : `${displayUnits} / ${effectiveCap} units`}
+        right={scheduleUnits !== null ? (
+          <span style={{ fontSize:11, color:'rgba(255,255,255,0.85)', fontWeight:600, display:'flex', alignItems:'center', gap:5, background:'rgba(255,255,255,0.18)', padding:'3px 10px', borderRadius:'99px', border:'1px solid rgba(255,255,255,0.25)' }}>
+            <span style={{ width:6, height:6, borderRadius:'50%', background:'#86EFAC' }}/>
+            Live
           </span>
-        )}
-      </div>
+        ) : undefined}
+      />
 
       {/* Body */}
       <div style={{ padding:'24px 20px', display:'flex', flexDirection:'column', gap:20 }}>
         {/* Number Display */}
         <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between' }}>
           <div style={{ display:'flex', alignItems:'baseline', gap:6 }}>
-            <span style={{ fontSize:36, fontWeight:700, color:isOverloaded?T.danger:T.textMain, lineHeight:1 }}>{displayUnits}</span>
+            <span style={{ fontSize:36, fontWeight:800, color:isOverloaded?T.danger:T.textMain, lineHeight:1, fontFamily:"'Sora',sans-serif" }}>{displayUnits}</span>
             <span style={{ fontSize:14, color:T.textMuted, fontWeight:500 }}>/ {effectiveCap} <span style={{ fontSize: 12 }}>units</span></span>
           </div>
           {isOverloaded
             ? <span style={{ fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:'6px', background:T.dangerSoft, color:T.danger }}>Over Cap</span>
-            : <span style={{ fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:'6px', background:T.purpleSoft, color:T.purpleDeep }}>{Math.round(loadPct)}%</span>
+            : <span style={{ fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:'6px', background:T.greenSoft, color:T.greenDeep }}>{Math.round(loadPct)}%</span>
           }
         </div>
         
         {/* Progress Bar */}
         <div>
           <div style={{ height:6, borderRadius:99, background:T.borderLight, overflow:'hidden', marginBottom: 8 }}>
-            <div style={{ height:'100%', borderRadius:99, transition:'width 0.5s ease', width:`${Math.min(loadPct, 100)}%`, background: isOverloaded ? T.danger : T.purple }}/>
+            <div style={{ height:'100%', borderRadius:99, transition:'width 0.5s ease', width:`${Math.min(loadPct, 100)}%`, background: isOverloaded ? T.danger : T.green }}/>
           </div>
           <div style={{ fontSize:12, color:T.textMuted, fontWeight:500 }}>{tierLabel}</div>
         </div>
 
-        {/* Clean Auto Cap Rules (Replaces the messy rainbow pills) */}
+        {/* Auto Cap Rules */}
         <div style={{ marginTop: 4, paddingTop: 20, borderTop: `1px solid ${T.borderLight}` }}>
           <div style={{ fontSize:11, fontWeight:700, color:T.textLight, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:12 }}>
             Auto Cap Limits
@@ -181,7 +159,7 @@ export function UnitLoadCard({ displayUnits, effectiveCap, isOverloaded, loadPct
             {CLEAN_CAP_RULES.map(r => (
               <div key={r.label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <span style={{ fontSize:12, color:T.textMid, fontWeight: 500 }}>{r.label}</span>
-                <span style={{ fontSize:12, fontWeight:600, color:T.purpleDeep }}>{r.cap}</span>
+                <span style={{ fontSize:12, fontWeight:600, color:T.green }}>{r.cap}</span>
               </div>
             ))}
           </div>
@@ -194,18 +172,43 @@ export function UnitLoadCard({ displayUnits, effectiveCap, isOverloaded, loadPct
 // ─── BasicInfoCard ────────────────────────────────────────────────────────────
 export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, infoSaved, infoError, onSaveInfo, password, setPassword, showPassword, setShowPassword, facultyId }) {
   // Role management state (only for existing faculty)
+  // Roles are independent toggles now — a user can be Admin, Faculty, or both at once.
+  // Valid combos: Admin, Faculty, Admin+Faculty, Faculty+Coordinator.
+  // Invalid: Coordinator alone, Admin+Coordinator, Admin+Faculty+Coordinator.
   const [roleLoading, setRoleLoading] = useState(!isNew)
   const [roleSaving, setRoleSaving] = useState(false)
-  const [currentRole, setCurrentRole] = useState(null)
+  const [currentIsAdmin, setCurrentIsAdmin] = useState(false)
+  const [currentIsFaculty, setCurrentIsFaculty] = useState(true)
   const [isCoordinator, setIsCoordinator] = useState(false)
   const [coordinatorProgram, setCoordinatorProgram] = useState('')
-  const [selectedRole, setSelectedRole] = useState('faculty')
+  const [selectedIsAdmin, setSelectedIsAdmin] = useState(false)
+  const [selectedIsFaculty, setSelectedIsFaculty] = useState(true)
   const [selectedCoordinator, setSelectedCoordinator] = useState(false)
   const [selectedProgram, setSelectedProgram] = useState('')
   const [roleError, setRoleError] = useState('')
   const [roleSuccess, setRoleSuccess] = useState('')
 
-  const PROGRAMS = ['BSCS', 'BSIT', 'BSEMC', 'ACT']
+  const PROGRAMS = ['BSCS', 'BSIT', 'BSEMC-GD', 'BSEMC-DAT']
+  // Deans/Assistant Deans usually also hold Admin access — surfaced as a one-click
+  // suggestion in the Role & Permissions section, never applied automatically.
+  const rankSuggestsAdmin = form.AcademicRank === 'Dean' || form.AcademicRank === 'Assistant Dean'
+
+  // Derive isAdmin/isFaculty from whatever shape the API returns (explicit booleans,
+  // an array of roles, or a legacy single 'admin'/'faculty' string).
+  function parseRoleData(data) {
+    if (typeof data.isAdmin === 'boolean' || typeof data.isFaculty === 'boolean') {
+      return { isAdmin: !!data.isAdmin, isFaculty: !!data.isFaculty }
+    }
+    const roleVal = data.role
+    if (Array.isArray(roleVal)) {
+      return { isAdmin: roleVal.includes('admin'), isFaculty: roleVal.includes('faculty') }
+    }
+    if (typeof roleVal === 'string' && roleVal.includes(',')) {
+      const parts = roleVal.split(',').map(s => s.trim())
+      return { isAdmin: parts.includes('admin'), isFaculty: parts.includes('faculty') }
+    }
+    return { isAdmin: roleVal === 'admin', isFaculty: roleVal === 'faculty' || roleVal == null }
+  }
 
   // Load role for existing faculty
   useEffect(() => {
@@ -215,19 +218,16 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
       try {
         const { getFacultyRole } = await import('../../services/api')
         const data = await getFacultyRole(facultyId)
-        setCurrentRole(data.role)
-        setIsCoordinator(data.isCoordinator || false)
-        setCoordinatorProgram(data.coordinatorProgram || '')
-        setSelectedRole(data.role || 'faculty')
-        setSelectedCoordinator(data.isCoordinator || false)
-        setSelectedProgram(data.coordinatorProgram || '')
+        const { isAdmin, isFaculty } = parseRoleData(data)
+        setCurrentIsAdmin(isAdmin); setSelectedIsAdmin(isAdmin)
+        setCurrentIsFaculty(isFaculty); setSelectedIsFaculty(isFaculty)
+        setIsCoordinator(data.isCoordinator || false); setSelectedCoordinator(data.isCoordinator || false)
+        setCoordinatorProgram(data.coordinatorProgram || ''); setSelectedProgram(data.coordinatorProgram || '')
       } catch (err) {
-        setCurrentRole(null)
-        setIsCoordinator(false)
-        setCoordinatorProgram('')
-        setSelectedRole('faculty')
-        setSelectedCoordinator(false)
-        setSelectedProgram('')
+        setCurrentIsAdmin(false); setSelectedIsAdmin(false)
+        setCurrentIsFaculty(true); setSelectedIsFaculty(true)
+        setIsCoordinator(false); setSelectedCoordinator(false)
+        setCoordinatorProgram(''); setSelectedProgram('')
       } finally {
         setRoleLoading(false)
       }
@@ -235,14 +235,41 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
     loadRole()
   }, [facultyId, isNew])
 
-  const roleHasChanges = !isNew && (selectedRole !== currentRole || 
+  function toggleAdmin() {
+    const next = !selectedIsAdmin
+    setSelectedIsAdmin(next)
+    // Admin + Coordinator is not a valid combo — turning Admin on clears Coordinator.
+    if (next) { setSelectedCoordinator(false); setSelectedProgram('') }
+  }
+
+  function toggleFaculty() {
+    const next = !selectedIsFaculty
+    setSelectedIsFaculty(next)
+    // Coordinator requires Faculty — turning Faculty off clears Coordinator.
+    if (!next) { setSelectedCoordinator(false); setSelectedProgram('') }
+  }
+
+  const roleHasChanges = !isNew && (selectedIsAdmin !== currentIsAdmin ||
+                                     selectedIsFaculty !== currentIsFaculty ||
                                      selectedCoordinator !== isCoordinator ||
                                      selectedProgram !== coordinatorProgram)
 
   async function handleSaveRole() {
     setRoleError('')
     setRoleSuccess('')
-    
+
+    if (!selectedIsAdmin && !selectedIsFaculty) {
+      setRoleError('Select at least one role (Admin or Faculty).')
+      return
+    }
+    if (selectedCoordinator && selectedIsAdmin) {
+      setRoleError('Coordinator access cannot be combined with Admin.')
+      return
+    }
+    if (selectedCoordinator && !selectedIsFaculty) {
+      setRoleError('Coordinator access requires the Faculty role.')
+      return
+    }
     if (selectedCoordinator && !selectedProgram) {
       setRoleError('Please select a program for the coordinator.')
       return
@@ -251,8 +278,9 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
     setRoleSaving(true)
     try {
       const { setFacultyRole } = await import('../../services/api')
-      await setFacultyRole(facultyId, selectedRole, selectedCoordinator, selectedProgram || null)
-      setCurrentRole(selectedRole)
+      await setFacultyRole(facultyId, { isAdmin: selectedIsAdmin, isFaculty: selectedIsFaculty, isCoordinator: selectedCoordinator, coordinatorProgram: selectedProgram || null })
+      setCurrentIsAdmin(selectedIsAdmin)
+      setCurrentIsFaculty(selectedIsFaculty)
       setIsCoordinator(selectedCoordinator)
       setCoordinatorProgram(selectedProgram)
       setRoleSuccess(`Role updated${selectedCoordinator ? ` as ${selectedProgram} Coordinator` : ''}. User must log out and back in.`)
@@ -264,46 +292,52 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
     }
   }
 
+  function formatRoleBadge() {
+    const parts = []
+    if (currentIsAdmin) parts.push('Admin')
+    if (currentIsFaculty) parts.push('Faculty')
+    let label = parts.join(' + ') || 'No Role'
+    if (isCoordinator && coordinatorProgram) label += ` · ${coordinatorProgram} Coord.`
+    return label
+  }
+
   return (
     <>
-      <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(124,111,205,0.04)', fontFamily: "'Poppins', sans-serif" }}>
-        <div style={{ padding:'16px 20px', borderBottom:`1px solid ${T.borderLight}`, display:'flex', alignItems:'center', gap:10, background: T.bgAlt }}>
-          <div style={{ width:30, height:30, borderRadius:'8px', background:T.purpleSoft, display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.purple} strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          </div>
-          <span style={{ fontSize:14, fontWeight:700, color:T.textMain, flex:1 }}>Basic Information</span>
-          {!isNew && (infoChanged||infoSaving||infoSaved) && <SectionSaveBtn saving={infoSaving} saved={infoSaved} onClick={onSaveInfo}/>}
-        </div>
+      <div style={{ flex:1, background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(10,46,28,0.08)', fontFamily: "'Inter', sans-serif" }}>
+        <CardHeader
+          title="Basic Information"
+          right={!isNew && (infoChanged||infoSaving||infoSaved) ? <SectionSaveBtn saving={infoSaving} saved={infoSaved} onClick={onSaveInfo}/> : undefined}
+        />
         <div style={{ padding:'24px 20px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px 24px' }}>
           <FormField label="Last Name" required>
-            <input value={form.lastName||''} onChange={e => { const v = e.target.value.toUpperCase(); setForm(f => { const ln = v, fn = f.firstName||''; return {...f, lastName:ln, name: ln && fn ? `${ln}, ${fn}` : ln || fn }})}} required style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Poppins',sans-serif", width:'100%', boxSizing:'border-box', textTransform:'uppercase', outline:'none' }}/>
+            <input value={form.lastName||''} onChange={e => { const v = e.target.value.toUpperCase(); setForm(f => { const ln = v, fn = f.firstName||''; return {...f, lastName:ln, name: ln && fn ? `${ln}, ${fn}` : ln || fn }})}} required style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Inter',sans-serif", width:'100%', boxSizing:'border-box', textTransform:'uppercase', outline:'none', background:T.bg, color:T.textMain }}/>
           </FormField>
           <FormField label="First Name" required>
-            <input value={form.firstName||''} onChange={e => { const v = e.target.value.toUpperCase(); setForm(f => { const fn = v, ln = f.lastName||''; return {...f, firstName:fn, name: ln && fn ? `${ln}, ${fn}` : ln || fn }})}} required style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Poppins',sans-serif", width:'100%', boxSizing:'border-box', textTransform:'uppercase', outline:'none' }}/>
+            <input value={form.firstName||''} onChange={e => { const v = e.target.value.toUpperCase(); setForm(f => { const fn = v, ln = f.lastName||''; return {...f, firstName:fn, name: ln && fn ? `${ln}, ${fn}` : ln || fn }})}} required style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Inter',sans-serif", width:'100%', boxSizing:'border-box', textTransform:'uppercase', outline:'none', background:T.bg, color:T.textMain }}/>
           </FormField>
           <FormField label="Academic Rank">
-            <select value={form.AcademicRank||''} onChange={e => setForm(f => ({...f, AcademicRank:e.target.value}))} style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Poppins',sans-serif", background:T.bg, width:'100%', boxSizing:'border-box', outline:'none', color: T.textMain }}>
+            <select value={form.AcademicRank||''} onChange={e => setForm(f => ({...f, AcademicRank:e.target.value}))} style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Inter',sans-serif", background:T.bg, width:'100%', boxSizing:'border-box', outline:'none', color: T.textMain }}>
               <option value="">Select rank...</option>
               {ACADEMIC_RANKS.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </FormField>
           <FormField label="Employment Status">
-            <select value={form.status} onChange={e => setForm(f => ({...f, status:e.target.value}))} style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Poppins',sans-serif", background:T.bg, width:'100%', boxSizing:'border-box', outline:'none', color: T.textMain }}>
+            <select value={form.status} onChange={e => setForm(f => ({...f, status:e.target.value}))} style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Inter',sans-serif", background:T.bg, width:'100%', boxSizing:'border-box', outline:'none', color: T.textMain }}>
               <option value="full-time">Full-time</option>
               <option value="part-time">Part-time</option>
             </select>
           </FormField>
           <FormField label="Department">
-            <select value={form.Department||''} onChange={e => setForm(f => ({...f, Department:e.target.value}))} style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Poppins',sans-serif", background:T.bg, width:'100%', boxSizing:'border-box', outline:'none', color: T.textMain }}>
+            <select value={form.Department||''} onChange={e => setForm(f => ({...f, Department:e.target.value}))} style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Inter',sans-serif", background:T.bg, width:'100%', boxSizing:'border-box', outline:'none', color: T.textMain }}>
               <option value="">Select department...</option>
               {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
           </FormField>
           <FormField label="Educational Attainment" hint="e.g. Master's Degree, PhD">
-            <input type="text" value={form.Educational_attainment||''} onChange={e => setForm(f => ({...f, Educational_attainment:e.target.value}))} placeholder="Enter degree..." style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Poppins',sans-serif", width:'100%', boxSizing:'border-box', outline:'none' }}/>
+            <input type="text" value={form.Educational_attainment||''} onChange={e => setForm(f => ({...f, Educational_attainment:e.target.value}))} placeholder="Enter degree..." style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Inter',sans-serif", width:'100%', boxSizing:'border-box', outline:'none', background:T.bg, color:T.textMain }}/>
           </FormField>
           <FormField label="Sex at Birth">
-            <select value={form.SexAtBirth||''} onChange={e => setForm(f => ({...f, SexAtBirth:e.target.value}))} style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Poppins',sans-serif", background:T.bg, width:'100%', boxSizing:'border-box', outline:'none', color: T.textMain }}>
+            <select value={form.SexAtBirth||''} onChange={e => setForm(f => ({...f, SexAtBirth:e.target.value}))} style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Inter',sans-serif", background:T.bg, width:'100%', boxSizing:'border-box', outline:'none', color: T.textMain }}>
               <option value="">Select...</option>
               <option value="Male">Male</option>
               <option value="Female">Female</option>
@@ -314,16 +348,16 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
 
         {/* ── Role & Permissions — edit mode only ── */}
         {!isNew && (
-          <div style={{ margin:'0 20px', paddingTop:20, borderTop:`1px solid ${T.borderLight}`, marginTop:20 }}>
+          <div style={{ margin:'0 20px', paddingTop:20, borderTop:`1px solid ${T.borderLight}`, marginBottom:20 }}>
             {/* Sub-header */}
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
-              <div style={{ width:26, height:26, borderRadius:'7px', background:T.purpleSoft, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.purple} strokeWidth="2.2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              <div style={{ width:28, height:28, borderRadius:'7px', background:`linear-gradient(135deg,${T.green},${T.greenDeep})`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
               </div>
               <span style={{ fontSize:13, fontWeight:700, color:T.textMain, flex:1 }}>Role & Permissions</span>
-              {!roleLoading && currentRole && (
-                <span style={{ fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background: currentRole==='admin' ? '#FEF3CD' : isCoordinator ? T.purpleSoft : '#F0FDF4', color: currentRole==='admin' ? '#B45309' : isCoordinator ? T.purpleDeep : '#166534' }}>
-                  {currentRole==='admin' ? 'Admin' : isCoordinator ? `${coordinatorProgram} Coordinator` : 'Faculty'}
+              {!roleLoading && (currentIsAdmin || currentIsFaculty) && (
+                <span style={{ fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background: currentIsAdmin ? '#FEF3CD' : T.greenSoft, color: currentIsAdmin ? '#B45309' : T.greenDeep, border:`1px solid ${currentIsAdmin?'#FDE68A':T.greenBorder}` }}>
+                  {formatRoleBadge()}
                 </span>
               )}
             </div>
@@ -332,43 +366,64 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
               <div style={{ padding:'8px 0 4px', color:T.textMuted, fontSize:12 }}>Loading...</div>
             ) : (
               <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-                {/* Role toggle */}
+                {/* Role toggle — Admin and Faculty are independent, not mutually exclusive */}
                 <div>
                   <div style={{ fontSize:11, fontWeight:600, color:T.textMuted, letterSpacing:'.3px', marginBottom:7, textTransform:'uppercase' }}>System Role</div>
                   <div style={{ display:'flex', gap:8 }}>
                     {[
-                      { value:'faculty', label:'Faculty', icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
-                      { value:'admin',   label:'Admin',   icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg> },
-                    ].map(opt => {
-                      const active = selectedRole === opt.value
-                      return (
-                        <button key={opt.value} type="button"
-                          onClick={() => { setSelectedRole(opt.value); if (opt.value==='admin') setSelectedCoordinator(false) }}
-                          style={{ flex:1, padding:'9px 12px', borderRadius:'9px', fontSize:12.5, fontFamily:"'Poppins',sans-serif", background: active ? 'linear-gradient(135deg,#7C6FCD,#5a4fbf)' : T.bgAlt, color: active ? '#fff' : T.textMuted, border: active ? 'none' : `1.5px solid ${T.border}`, cursor:'pointer', fontWeight:600, transition:'all 0.18s', display:'flex', alignItems:'center', justifyContent:'center', gap:7, boxShadow: active ? '0 3px 10px rgba(124,111,205,0.3)' : 'none' }}
+                      { key:'faculty', label:'Faculty', active:selectedIsFaculty, onClick:toggleFaculty, icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+                      { key:'admin',   label:'Admin',   active:selectedIsAdmin,   onClick:toggleAdmin,   icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg> },
+                    ].map(opt => (
+                        <button key={opt.key} type="button"
+                          onClick={opt.onClick}
+                          style={{ flex:1, padding:'9px 12px', borderRadius:'9px', fontSize:12.5, fontFamily:"'Inter',sans-serif", background: opt.active ? `linear-gradient(135deg,${T.green},${T.greenDeep})` : T.bgAlt, color: opt.active ? '#fff' : T.textMuted, border: opt.active ? 'none' : `1.5px solid ${T.border}`, cursor:'pointer', fontWeight:600, transition:'all 0.18s', display:'flex', alignItems:'center', justifyContent:'center', gap:7, boxShadow: opt.active ? `0 3px 10px rgba(15,92,44,0.28)` : 'none' }}
                         >
                           {opt.icon}{opt.label}
                         </button>
-                      )
-                    })}
+                      ))}
                   </div>
+                  <div style={{ fontSize:10.5, color:T.textMuted, marginTop:6 }}>Both can be selected at once — Admin+Faculty is allowed.</div>
                 </div>
 
-                {/* Coordinator toggle */}
-                {selectedRole === 'faculty' && (
+                {/* Rank-based suggestion — never auto-applied, just a one-click nudge */}
+                {rankSuggestsAdmin && !selectedIsAdmin && (
+                  <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:'9px', background:'#FEFBEB', border:'1px solid #FDE68A' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2" style={{ flexShrink:0 }}><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>
+                    <div style={{ flex:1, fontSize:11.5, color:'#92400E', lineHeight:1.4 }}><strong>{form.AcademicRank}</strong> usually comes with Admin access.</div>
+                    <button type="button" onClick={() => setSelectedIsAdmin(true)}
+                      style={{ flexShrink:0, padding:'6px 12px', borderRadius:'7px', border:'1px solid #D97706', background:'#fff', color:'#B45309', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}
+                    >Apply</button>
+                  </div>
+                )}
+
+                {/* Coordinator toggle — only for Faculty, never combined with Admin */}
+                {selectedIsFaculty && !selectedIsAdmin && (
                   <div>
                     <div style={{ fontSize:11, fontWeight:600, color:T.textMuted, letterSpacing:'.3px', marginBottom:7, textTransform:'uppercase' }}>Coordinator Access</div>
-                    <label style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:'9px', background: selectedCoordinator ? T.purpleSoft : T.bgAlt, border: selectedCoordinator ? `1.5px solid ${T.purpleBorder}` : `1.5px solid ${T.border}`, cursor:'pointer', transition:'all 0.18s' }}>
-                      <input type="checkbox" checked={selectedCoordinator} onChange={e => setSelectedCoordinator(e.target.checked)} style={{ width:15, height:15, cursor:'pointer', accentColor:T.purple }} />
+                    <label style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:'9px', background: selectedCoordinator ? T.greenSoft : T.bgAlt, border: selectedCoordinator ? `1.5px solid ${T.greenBorder}` : `1.5px solid ${T.border}`, cursor:'pointer', transition:'all 0.18s' }}>
+                      <input type="checkbox" checked={selectedCoordinator} onChange={e => setSelectedCoordinator(e.target.checked)} style={{ width:15, height:15, cursor:'pointer', accentColor:T.green }} />
                       <div style={{ flex:1 }}>
-                        <div style={{ fontSize:12.5, fontWeight:600, color: selectedCoordinator ? T.purpleDeep : T.textMain }}>Program Coordinator</div>
+                        <div style={{ fontSize:12.5, fontWeight:600, color: selectedCoordinator ? T.greenDeep : T.textMain }}>Program Coordinator</div>
                         <div style={{ fontSize:10.5, color:T.textMuted, marginTop:1 }}>Can log in as Coordinator or Faculty</div>
                       </div>
                     </label>
                   </div>
                 )}
+                {selectedIsAdmin && (
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:600, color:T.textMuted, letterSpacing:'.3px', marginBottom:7, textTransform:'uppercase' }}>Coordinator Access</div>
+                    <div style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:'9px', background:T.bgAlt, border:`1.5px dashed ${T.border}` }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={T.textMuted} strokeWidth="2" style={{ flexShrink:0 }}><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:12.5, fontWeight:600, color:T.textMuted }}>Not available with Admin</div>
+                        <div style={{ fontSize:10.5, color:T.textMuted, marginTop:1 }}>Remove Admin to grant Coordinator access</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Program pills */}
-                {selectedRole === 'faculty' && selectedCoordinator && (
+                {selectedIsFaculty && !selectedIsAdmin && selectedCoordinator && (
                   <div>
                     <div style={{ fontSize:11, fontWeight:600, color:T.textMuted, letterSpacing:'.3px', marginBottom:7, textTransform:'uppercase' }}>Assigned Program</div>
                     <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
@@ -376,7 +431,7 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
                         const active = selectedProgram === prog
                         return (
                           <button key={prog} type="button" onClick={() => setSelectedProgram(prog)}
-                            style={{ padding:'7px 16px', borderRadius:'99px', fontSize:12, fontFamily:"'Poppins',sans-serif", background: active ? T.purpleDeep : T.bgAlt, color: active ? '#fff' : T.textMuted, border: active ? 'none' : `1.5px solid ${T.border}`, cursor:'pointer', fontWeight:600, transition:'all 0.18s', boxShadow: active ? '0 2px 8px rgba(90,79,191,0.3)' : 'none' }}
+                            style={{ padding:'7px 16px', borderRadius:'99px', fontSize:12, fontFamily:"'Inter',sans-serif", background: active ? T.greenDeep : T.bgAlt, color: active ? '#fff' : T.textMuted, border: active ? 'none' : `1.5px solid ${T.border}`, cursor:'pointer', fontWeight:600, transition:'all 0.18s', boxShadow: active ? `0 2px 8px rgba(15,92,44,0.28)` : 'none' }}
                           >
                             {prog}
                           </button>
@@ -403,7 +458,7 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
                 {/* Save */}
                 {roleHasChanges && (
                   <button type="button" onClick={handleSaveRole} disabled={roleSaving}
-                    style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:'9px', border:'none', background: roleSaving ? T.borderLight : 'linear-gradient(135deg,#7C6FCD,#5a4fbf)', color:'#fff', fontSize:12.5, fontWeight:600, cursor: roleSaving ? 'default' : 'pointer', fontFamily:"'Poppins',sans-serif", boxShadow: roleSaving ? 'none' : '0 3px 12px rgba(124,111,205,0.32)', opacity: roleSaving ? 0.7 : 1, transition:'all 0.2s', width:'fit-content' }}
+                    style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:'9px', border:'none', background: roleSaving ? T.borderLight : `linear-gradient(135deg,${T.green},${T.greenDeep})`, color:'#fff', fontSize:12.5, fontWeight:600, cursor: roleSaving ? 'default' : 'pointer', fontFamily:"'Inter',sans-serif", boxShadow: roleSaving ? 'none' : `0 3px 12px rgba(15,92,44,0.28)`, opacity: roleSaving ? 0.7 : 1, transition:'all 0.2s', width:'fit-content' }}
                   >
                     {roleSaving
                       ? <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation:'spin .8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Saving...</>
@@ -424,26 +479,20 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
       </div>
 
       {isNew && (
-        <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(124,111,205,0.04)', fontFamily: "'Poppins', sans-serif" }}>
-          <div style={{ padding:'16px 20px', borderBottom:`1px solid ${T.borderLight}`, display:'flex', alignItems:'center', gap:10, background:T.bgAlt }}>
-            <div style={{ width:30, height:30, borderRadius:'8px', background:T.purpleSoft, display:'flex', alignItems:'center', justifyContent:'center' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.purple} strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            </div>
-            <span style={{ fontSize:14, fontWeight:700, color:T.textMain, flex:1 }}>Login Credentials</span>
-          </div>
-          <div style={{ padding:'14px 20px', background:'#F8FAFC', borderBottom:`1px solid ${T.borderLight}`, display:'flex', gap:10, alignItems:'flex-start' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" style={{ flexShrink:0, marginTop:2 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            <span style={{ fontSize:12, color:'#334155', lineHeight:1.5 }}>These credentials will be used to log in. Password defaults to <strong>[LastName]GC2026</strong> if left blank.</span>
-          </div>
+        <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(10,46,28,0.08)', fontFamily:"'Inter',sans-serif" }}>
+          <CardHeader
+            title="Login Credentials"
+            sub="Password defaults to [LastName]GC2026 if left blank"
+          />
           <div style={{ padding:'24px 20px', display:'flex', flexDirection:'column', gap:20 }}>
             <FormField label="Login Email" required hint="Used as the faculty member's login">
-              <input type="email" value={form.email||''} onChange={e => setForm(f => ({...f, email:e.target.value}))} autoComplete="off" required style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Poppins',sans-serif", width:'100%', boxSizing:'border-box', outline:'none' }}/>
+              <input type="email" value={form.email||''} onChange={e => setForm(f => ({...f, email:e.target.value}))} autoComplete="off" required style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Inter',sans-serif", width:'100%', boxSizing:'border-box', outline:'none', background:T.bg, color:T.textMain }}/>
             </FormField>
             <FormField label="Password" hint="Leave blank to use [LastName]GC2026">
               <div style={{ display:'flex', gap:8 }}>
-                <input type={showPassword?'text':'password'} value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" placeholder="Default: [LastName]GC2026" style={{ flex:1, padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Poppins',sans-serif", outline:'none' }}/>
-                <button type="button" onClick={() => setShowPassword(v => !v)} style={{ padding:'10px 16px', borderRadius:'8px', border:`1px solid ${T.border}`, background:T.bgAlt, color:T.textMuted, fontSize:12, fontWeight: 600, cursor:'pointer', fontFamily:"'Poppins',sans-serif", transition: 'all 0.2s' }}>{showPassword?'Hide':'Show'}</button>
-                <button type="button" onClick={() => { const ln=(form.name||'').trim().split(/\s+/).pop()||'faculty'; setPassword(ln+'GC2026'); setShowPassword(true) }} style={{ padding:'10px 16px', borderRadius:'8px', border:`1px solid ${T.purpleBorder}`, background:T.purpleSoft, color:T.purpleDeep, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'Poppins',sans-serif", whiteSpace:'nowrap', transition: 'all 0.2s' }}>Generate</button>
+                <input type={showPassword?'text':'password'} value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" placeholder="Default: [LastName]GC2026" style={{ flex:1, padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Inter',sans-serif", outline:'none', background:T.bg, color:T.textMain }}/>
+                <button type="button" onClick={() => setShowPassword(v => !v)} style={{ padding:'10px 16px', borderRadius:'8px', border:`1px solid ${T.border}`, background:T.bgAlt, color:T.textMuted, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif", transition:'all 0.2s' }}>{showPassword?'Hide':'Show'}</button>
+                <button type="button" onClick={() => { const ln=(form.name||'').trim().split(/\s+/).pop()||'faculty'; setPassword(ln+'GC2026'); setShowPassword(true) }} style={{ padding:'10px 16px', borderRadius:'8px', border:`1px solid ${T.greenBorder}`, background:T.greenSoft, color:T.greenDeep, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif", whiteSpace:'nowrap', transition:'all 0.2s' }}>Generate</button>
               </div>
             </FormField>
           </div>
@@ -454,39 +503,108 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
 }
 
 // ─── SchedulePrefsCard ────────────────────────────────────────────────────────
+// ── Time options: 6:00 AM → 9:30 PM in 30-min steps, formatted as 12h AM/PM ──
+const TIME_OPTIONS = (() => {
+  const opts = []
+  for (let h = 6; h <= 21.5; h += 0.5) {
+    const hh   = Math.floor(h)
+    const mm   = h % 1 === 0.5 ? '30' : '00'
+    const ampm = hh >= 12 ? 'PM' : 'AM'
+    const disp = hh > 12 ? hh - 12 : (hh === 0 ? 12 : hh)
+    opts.push({ value: h, label: `${disp}:${mm} ${ampm}` })
+  }
+  return opts
+})()
+
 export function SchedulePrefsCard({ form, setForm, isNew, prefsChanged, prefSaving, prefSaved, prefError, onSavePrefs }) {
   const toggleDay = day => setForm(f => ({ ...f, preferredDays: f.preferredDays.includes(day) ? f.preferredDays.filter(d => d!==day) : [...f.preferredDays, day] }))
   return (
-    <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(124,111,205,0.04)', fontFamily: "'Poppins', sans-serif" }}>
-      <div style={{ padding:'16px 20px', borderBottom:`1px solid ${T.borderLight}`, display:'flex', alignItems:'center', gap:10, background:T.bgAlt }}>
-        <div style={{ width:30, height:30, borderRadius:'8px', background:T.purpleSoft, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.purple} strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        </div>
-        <span style={{ fontSize:14, fontWeight:700, color:T.textMain, flex:1 }}>Schedule Preferences</span>
-        {!isNew && (prefsChanged||prefSaving||prefSaved) && <SectionSaveBtn saving={prefSaving} saved={prefSaved} onClick={onSavePrefs}/>}
-      </div>
-      <div style={{ padding:'24px 20px', display:'flex', flexDirection:'column', gap:24 }}>
-        <FormField label="Preferred Teaching Days">
-          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:4 }}>
+    <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(10,46,28,0.08)', fontFamily:"'Inter',sans-serif" }}>
+      <CardHeader
+        title="Schedule Preferences"
+        sub="Set preferred teaching days and hours"
+        right={!isNew && (prefsChanged||prefSaving||prefSaved) ? <SectionSaveBtn saving={prefSaving} saved={prefSaved} onClick={onSavePrefs}/> : undefined}
+      />
+
+      <div style={{ padding:'20px 24px', display:'flex', gap:32, flexWrap:'wrap', alignItems:'flex-start' }}>
+
+        {/* Days — takes most of the space */}
+        <div style={{ flex:'1 1 380px' }}>
+          <div style={{ fontSize:11, fontWeight:700, color:T.textMuted, textTransform:'uppercase', letterSpacing:'.6px', marginBottom:10 }}>
+            Preferred Teaching Days
+          </div>
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
             {ALL_DAYS.map(day => {
               const active = form.preferredDays.includes(day)
-              return <button key={day} type="button" onClick={() => toggleDay(day)} style={{ padding:'6px 16px', fontSize:12, borderRadius:'99px', fontFamily:"'Poppins',sans-serif", background:active?T.purpleSoft:T.bgAlt, color:active?T.purpleDeep:T.textMuted, border:active?`1px solid ${T.purpleBorder}`:`1px solid ${T.border}`, cursor:'pointer', fontWeight:600, transition: 'all 0.2s' }}>{day.slice(0,3)}</button>
+              return (
+                <button key={day} type="button" onClick={() => toggleDay(day)} style={{
+                  padding:'7px 18px', fontSize:12.5, borderRadius:'99px', fontFamily:"'Inter',sans-serif",
+                  background:active ? T.green : T.bgAlt,
+                  color:active ? '#fff' : T.textMuted,
+                  border:active ? `1.5px solid transparent` : `1.5px solid ${T.border}`,
+                  cursor:'pointer', fontWeight:active ? 700 : 500,
+                  transition:'all 0.15s',
+                  boxShadow: active ? '0 2px 8px rgba(21,128,61,0.28)' : 'none',
+                }}>
+                  {day.slice(0,3)}
+                </button>
+              )
             })}
           </div>
-        </FormField>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px 24px' }}>
-          {[['Preferred Start','preferredTimeStart',6,20],['Preferred End','preferredTimeEnd',7,21]].map(([label,key,min,max]) => (
-            <FormField key={key} label={label}>
+          <div style={{ marginTop:8, fontSize:11.5, color:T.textLight }}>
+            {form.preferredDays.length === 0
+              ? 'No days selected'
+              : `${form.preferredDays.length} day${form.preferredDays.length !== 1 ? 's' : ''} selected`}
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div style={{ width:1, background:T.borderLight, alignSelf:'stretch', flexShrink:0, minHeight:60 }}/>
+
+        {/* Time range */}
+        <div style={{ flex:'0 0 auto', display:'flex', gap:20, alignItems:'flex-end' }}>
+          {[
+            { label:'Start Time', key:'preferredTimeStart' },
+            { label:'End Time',   key:'preferredTimeEnd'   },
+          ].map(({ label, key }) => (
+            <div key={key} style={{ display:'flex', flexDirection:'column', gap:6 }}>
+              <label style={{ fontSize:11, fontWeight:700, color:T.textMuted, textTransform:'uppercase', letterSpacing:'.6px' }}>
+                {label}
+              </label>
               <div style={{ position:'relative' }}>
-                <input type="number" min={min} max={max} step={0.5} value={form[key]} onChange={e => setForm(f => ({...f,[key]:Number(e.target.value)}))} style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Poppins',sans-serif", width:'100%', boxSizing:'border-box', outline:'none' }}/>
-                <span style={{ position:'absolute', right:14, top:'50%', transform:'translateY(-50%)', fontSize:11, color:T.textLight, pointerEvents:'none', fontWeight:600 }}>{fmtHour(form[key])}</span>
+                <select
+                  value={form[key]}
+                  onChange={e => setForm(f => ({ ...f, [key]: Number(e.target.value) }))}
+                  style={{
+                    appearance:'none',
+                    padding:'9px 36px 9px 14px',
+                    borderRadius:'8px',
+                    border:`1.5px solid ${T.border}`,
+                    fontSize:13, fontWeight:600,
+                    fontFamily:"'Inter',sans-serif",
+                    background:T.bg, color:T.textMain,
+                    cursor:'pointer', outline:'none',
+                    width:130,
+                    transition:'border-color .15s',
+                  }}
+                  onFocus={e => e.target.style.borderColor = T.green}
+                  onBlur={e => e.target.style.borderColor = T.border}
+                >
+                  {TIME_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                <div style={{ position:'absolute', right:11, top:'50%', transform:'translateY(-50%)', pointerEvents:'none', color:T.green }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
               </div>
-            </FormField>
+            </div>
           ))}
         </div>
       </div>
+
       {prefError && !isNew && (
-        <div style={{ margin:'0 20px 20px', padding:'10px 14px', borderRadius:'8px', background:T.dangerSoft, border:'1px solid #FECACA', display:'flex', gap:8, alignItems:'center' }}>
+        <div style={{ margin:'0 24px 20px', padding:'10px 14px', borderRadius:'8px', background:T.dangerSoft, border:'1px solid #FECACA', display:'flex', gap:8, alignItems:'center' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.danger} strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
           <span style={{ fontSize:12, color:T.danger, fontWeight:500 }}>{prefError}</span>
         </div>
@@ -499,17 +617,16 @@ export function SchedulePrefsCard({ form, setForm, isNew, prefsChanged, prefSavi
 export function CredentialsCard({ form, credEmail, setCredEmail, credPassword, setCredPassword, credConfirm, setCredConfirm, showCredPwd, setShowCredPwd, credSaving, credError, credSuccess, onSave }) {
   const generate = () => { const ln=(form.name||'').trim().split(/\s+/).pop()||'faculty'; setCredPassword(ln+'GC2026'); setCredConfirm(ln+'GC2026'); setShowCredPwd(true) }
   return (
-    <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(124,111,205,0.04)', fontFamily: "'Poppins', sans-serif" }}>
-      <div style={{ padding:'16px 20px', borderBottom:`1px solid ${T.borderLight}`, display:'flex', alignItems:'center', gap:10, background:T.bgAlt }}>
-        <div style={{ width:30, height:30, borderRadius:'8px', background:T.purpleSoft, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.purple} strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        </div>
-        <span style={{ fontSize:14, fontWeight:700, color:T.textMain, flex:1 }}>Login Credentials</span>
-        {form.email
-          ? <span style={{ fontSize:11, fontWeight:700, padding:'4px 12px', borderRadius:'99px', background:'#F0FDF4', color:'#166534' }}>Active Account</span>
-          : <span style={{ fontSize:11, fontWeight:700, padding:'4px 12px', borderRadius:'99px', background:T.dangerSoft, color:T.danger }}>Not Activated</span>
+    <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(10,46,28,0.08)', fontFamily:"'Inter',sans-serif" }}>
+      <CardHeader
+        title="Login Credentials"
+        sub={form.email ? undefined : 'No account activated yet'}
+        right={
+          form.email
+            ? <span style={{ fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background:'rgba(134,239,172,0.25)', color:'#86EFAC', border:'1px solid rgba(134,239,172,0.4)' }}>Active</span>
+            : <span style={{ fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background:'rgba(239,68,68,0.2)', color:'#FCA5A5', border:'1px solid rgba(239,68,68,0.3)' }}>Not Activated</span>
         }
-      </div>
+      />
       {!form.email && (
         <div style={{ margin:'20px 20px 0', padding:'12px 16px', borderRadius:'8px', background:'#FFFBEB', border:'1px solid #FEF3C7', display:'flex', gap:10, alignItems:'flex-start' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" style={{ flexShrink:0, marginTop:2 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -518,24 +635,24 @@ export function CredentialsCard({ form, credEmail, setCredEmail, credPassword, s
       )}
       <div style={{ padding:'24px 20px', display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'20px 24px', alignItems:'start' }}>
         <FormField label="Login Email" hint={form.email?'Change the email used to sign in':'Required — will be used as login'}>
-          <input type="email" value={credEmail} onChange={e => setCredEmail(e.target.value)} autoComplete="off" style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Poppins',sans-serif", width:'100%', boxSizing:'border-box', outline:'none' }}/>
+          <input type="email" value={credEmail} onChange={e => setCredEmail(e.target.value)} autoComplete="off" style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Inter',sans-serif", width:'100%', boxSizing:'border-box', outline:'none', background:T.bg, color:T.textMain }}/>
         </FormField>
         <FormField label="New Password" hint={form.email?'Leave blank to keep current':'Auto-generated if blank'}>
           <div style={{ display:'flex', gap:8 }}>
-            <input type={showCredPwd?'text':'password'} value={credPassword} onChange={e => setCredPassword(e.target.value)} autoComplete="new-password" placeholder={form.email?'Leave blank to keep current':'Auto-generated if blank'} style={{ flex:1, padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Poppins',sans-serif", minWidth:0, outline:'none' }}/>
-            <button type="button" onClick={() => setShowCredPwd(v => !v)} style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, background:T.bgAlt, color:T.textMuted, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'Poppins',sans-serif", flexShrink:0, transition: 'all 0.2s' }}>{showCredPwd?'Hide':'Show'}</button>
-            <button type="button" onClick={generate} style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.purpleBorder}`, background:T.purpleSoft, color:T.purpleDeep, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'Poppins',sans-serif", flexShrink:0, whiteSpace:'nowrap', transition: 'all 0.2s' }}>Generate</button>
+            <input type={showCredPwd?'text':'password'} value={credPassword} onChange={e => setCredPassword(e.target.value)} autoComplete="new-password" placeholder={form.email?'Leave blank to keep current':'Auto-generated if blank'} style={{ flex:1, padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Inter',sans-serif", minWidth:0, outline:'none', background:T.bg, color:T.textMain }}/>
+            <button type="button" onClick={() => setShowCredPwd(v => !v)} style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, background:T.bgAlt, color:T.textMuted, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif", flexShrink:0, transition:'all 0.2s' }}>{showCredPwd?'Hide':'Show'}</button>
+            <button type="button" onClick={generate} style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.greenBorder}`, background:T.greenSoft, color:T.greenDeep, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif", flexShrink:0, whiteSpace:'nowrap', transition:'all 0.2s' }}>Generate</button>
           </div>
         </FormField>
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
           {credPassword && (
             <FormField label="Confirm Password">
-              <input type={showCredPwd?'text':'password'} value={credConfirm} onChange={e => setCredConfirm(e.target.value)} autoComplete="new-password" placeholder="Re-enter password" style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${credConfirm&&credConfirm!==credPassword?'#FECACA':T.border}`, fontSize:13, fontFamily:"'Poppins',sans-serif", width:'100%', boxSizing:'border-box', outline:'none' }}/>
+              <input type={showCredPwd?'text':'password'} value={credConfirm} onChange={e => setCredConfirm(e.target.value)} autoComplete="new-password" placeholder="Re-enter password" style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${credConfirm&&credConfirm!==credPassword?'#FECACA':T.border}`, fontSize:13, fontFamily:"'Inter',sans-serif", width:'100%', boxSizing:'border-box', outline:'none', background:T.bg, color:T.textMain }}/>
               {credConfirm && credConfirm!==credPassword && <span style={{ fontSize:11, color:T.danger, marginTop:4, display:'block', fontWeight: 500 }}>Passwords do not match</span>}
             </FormField>
           )}
           <div style={{ paddingTop:credPassword?0:24 }}>
-            <button type="button" onClick={onSave} disabled={credSaving} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8, padding:'12px 24px', borderRadius:'8px', border:'none', fontFamily:"'Poppins',sans-serif", fontSize:13, fontWeight:600, cursor:credSaving?'default':'pointer', background:T.purple, color:'#fff', boxShadow:'0 4px 14px rgba(124,111,205,0.25)', opacity:credSaving?0.7:1, whiteSpace:'nowrap', width: '100%', transition: 'all 0.2s' }}>
+            <button type="button" onClick={onSave} disabled={credSaving} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8, padding:'12px 24px', borderRadius:'8px', border:'none', fontFamily:"'Inter',sans-serif", fontSize:13, fontWeight:600, cursor:credSaving?'default':'pointer', background:`linear-gradient(135deg,${T.green},${T.greenDeep})`, color:'#fff', boxShadow:`0 4px 14px rgba(15,92,44,0.25)`, opacity:credSaving?0.7:1, whiteSpace:'nowrap', width:'100%', transition:'all 0.2s' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               {credSaving?'Saving...':(form.email?'Update Credentials':'Activate Account')}
             </button>
@@ -551,19 +668,41 @@ export function CredentialsCard({ form, credEmail, setCredEmail, credPassword, s
 
 // ─── RoleManagementCard ───────────────────────────────────────────────────────
 export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
+  // Roles are independent toggles — a user can be Admin, Faculty, or both.
+  // Valid combos: Admin, Faculty, Admin+Faculty, Faculty+Coordinator.
+  // Invalid: Coordinator alone, Admin+Coordinator, Admin+Faculty+Coordinator.
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [currentRole, setCurrentRole] = useState(null)
+  const [currentIsAdmin, setCurrentIsAdmin] = useState(false)
+  const [currentIsFaculty, setCurrentIsFaculty] = useState(true)
   const [isCoordinator, setIsCoordinator] = useState(false)
   const [coordinatorProgram, setCoordinatorProgram] = useState('')
-  const [selectedRole, setSelectedRole] = useState('faculty')
+  const [selectedIsAdmin, setSelectedIsAdmin] = useState(false)
+  const [selectedIsFaculty, setSelectedIsFaculty] = useState(true)
   const [selectedCoordinator, setSelectedCoordinator] = useState(false)
   const [selectedProgram, setSelectedProgram] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
   // Available programs
-  const PROGRAMS = ['BSCS', 'BSIT', 'BSEMC', 'ACT']
+  const PROGRAMS = ['BSCS', 'BSIT', 'BSEMC-GD', 'BSEMC-DAT']
+
+  // Derive isAdmin/isFaculty from whatever shape the API returns (explicit booleans,
+  // an array of roles, or a legacy single 'admin'/'faculty' string).
+  function parseRoleData(data) {
+    if (typeof data.isAdmin === 'boolean' || typeof data.isFaculty === 'boolean') {
+      return { isAdmin: !!data.isAdmin, isFaculty: !!data.isFaculty }
+    }
+    const roleVal = data.role
+    if (Array.isArray(roleVal)) {
+      return { isAdmin: roleVal.includes('admin'), isFaculty: roleVal.includes('faculty') }
+    }
+    if (typeof roleVal === 'string' && roleVal.includes(',')) {
+      const parts = roleVal.split(',').map(s => s.trim())
+      return { isAdmin: parts.includes('admin'), isFaculty: parts.includes('faculty') }
+    }
+    return { isAdmin: roleVal === 'admin', isFaculty: roleVal === 'faculty' || roleVal == null }
+  }
 
   // Load current role on mount
   useEffect(() => {
@@ -571,20 +710,17 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
       try {
         const { getFacultyRole } = await import('../../services/api')
         const data = await getFacultyRole(facultyId)
-        setCurrentRole(data.role)
-        setIsCoordinator(data.isCoordinator || false)
-        setCoordinatorProgram(data.coordinatorProgram || '')
-        setSelectedRole(data.role || 'faculty')
-        setSelectedCoordinator(data.isCoordinator || false)
-        setSelectedProgram(data.coordinatorProgram || '')
+        const { isAdmin, isFaculty } = parseRoleData(data)
+        setCurrentIsAdmin(isAdmin); setSelectedIsAdmin(isAdmin)
+        setCurrentIsFaculty(isFaculty); setSelectedIsFaculty(isFaculty)
+        setIsCoordinator(data.isCoordinator || false); setSelectedCoordinator(data.isCoordinator || false)
+        setCoordinatorProgram(data.coordinatorProgram || ''); setSelectedProgram(data.coordinatorProgram || '')
       } catch (err) {
         // If no role set yet, default to faculty
-        setCurrentRole(null)
-        setIsCoordinator(false)
-        setCoordinatorProgram('')
-        setSelectedRole('faculty')
-        setSelectedCoordinator(false)
-        setSelectedProgram('')
+        setCurrentIsAdmin(false); setSelectedIsAdmin(false)
+        setCurrentIsFaculty(true); setSelectedIsFaculty(true)
+        setIsCoordinator(false); setSelectedCoordinator(false)
+        setCoordinatorProgram(''); setSelectedProgram('')
       } finally {
         setLoading(false)
       }
@@ -592,15 +728,39 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
     loadRole()
   }, [facultyId])
 
-  const hasChanges = selectedRole !== currentRole || 
+  function toggleAdmin() {
+    const next = !selectedIsAdmin
+    setSelectedIsAdmin(next)
+    if (next) { setSelectedCoordinator(false); setSelectedProgram('') }
+  }
+
+  function toggleFaculty() {
+    const next = !selectedIsFaculty
+    setSelectedIsFaculty(next)
+    if (!next) { setSelectedCoordinator(false); setSelectedProgram('') }
+  }
+
+  const hasChanges = selectedIsAdmin !== currentIsAdmin ||
+                     selectedIsFaculty !== currentIsFaculty ||
                      selectedCoordinator !== isCoordinator ||
                      selectedProgram !== coordinatorProgram
 
   async function handleSave() {
     setError('')
     setSuccess('')
-    
-    // Validate coordinator program
+
+    if (!selectedIsAdmin && !selectedIsFaculty) {
+      setError('Select at least one role (Admin or Faculty).')
+      return
+    }
+    if (selectedCoordinator && selectedIsAdmin) {
+      setError('Coordinator access cannot be combined with Admin.')
+      return
+    }
+    if (selectedCoordinator && !selectedIsFaculty) {
+      setError('Coordinator access requires the Faculty role.')
+      return
+    }
     if (selectedCoordinator && !selectedProgram) {
       setError('Please select a program for the coordinator.')
       return
@@ -609,12 +769,13 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
     setSaving(true)
     try {
       const { setFacultyRole } = await import('../../services/api')
-      await setFacultyRole(facultyId, selectedRole, selectedCoordinator, selectedProgram || null)
-      setCurrentRole(selectedRole)
+      await setFacultyRole(facultyId, { isAdmin: selectedIsAdmin, isFaculty: selectedIsFaculty, isCoordinator: selectedCoordinator, coordinatorProgram: selectedProgram || null })
+      setCurrentIsAdmin(selectedIsAdmin)
+      setCurrentIsFaculty(selectedIsFaculty)
       setIsCoordinator(selectedCoordinator)
       setCoordinatorProgram(selectedProgram)
       setSuccess(`Role updated successfully${selectedCoordinator ? ` as ${selectedProgram} Coordinator` : ''}. User must log out and back in for changes to take effect.`)
-      if (onRoleUpdated) onRoleUpdated(selectedRole, selectedCoordinator, selectedProgram)
+      if (onRoleUpdated) onRoleUpdated(selectedIsAdmin, selectedIsFaculty, selectedCoordinator, selectedProgram)
       setTimeout(() => setSuccess(''), 5000)
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to update role.')
@@ -623,33 +784,37 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
     }
   }
 
+  function formatRoleBadge() {
+    const parts = []
+    if (currentIsAdmin) parts.push('Admin')
+    if (currentIsFaculty) parts.push('Faculty')
+    let label = parts.join(' + ') || 'No Role'
+    if (isCoordinator && coordinatorProgram) label += ` · ${coordinatorProgram} Coord.`
+    return label
+  }
+
   if (loading) {
     return (
-      <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(124,111,205,0.04)', fontFamily: "'Poppins', sans-serif" }}>
-        <div style={{ padding:'16px 20px', borderBottom:`1px solid ${T.borderLight}`, display:'flex', alignItems:'center', gap:10, background:T.bgAlt }}>
-          <div style={{ width:30, height:30, borderRadius:'8px', background:T.purpleSoft, display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.purple} strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-          </div>
-          <span style={{ fontSize:14, fontWeight:700, color:T.textMain, flex:1 }}>Role & Permissions</span>
-        </div>
+      <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(10,46,28,0.08)', fontFamily:"'Inter',sans-serif" }}>
+        <CardHeader title="Role & Permissions" />
         <div style={{ padding:'24px 20px', textAlign:'center', color:T.textMuted }}>Loading role information...</div>
       </div>
     )
   }
 
+  const roleBadge = (currentIsAdmin || currentIsFaculty)
+    ? <span style={{ fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background: currentIsAdmin?'rgba(251,191,36,0.25)':'rgba(134,239,172,0.25)', color: currentIsAdmin?'#FCD34D':'#86EFAC', border:`1px solid ${currentIsAdmin?'rgba(251,191,36,0.4)':'rgba(134,239,172,0.4)'}` }}>
+        {formatRoleBadge()}
+      </span>
+    : undefined
+
   return (
-    <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(124,111,205,0.04)', fontFamily: "'Poppins', sans-serif" }}>
-      <div style={{ padding:'16px 20px', borderBottom:`1px solid ${T.borderLight}`, display:'flex', alignItems:'center', gap:10, background:T.bgAlt }}>
-        <div style={{ width:30, height:30, borderRadius:'8px', background:T.purpleSoft, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.purple} strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-        </div>
-        <span style={{ fontSize:14, fontWeight:700, color:T.textMain, flex:1 }}>Role & Permissions</span>
-        {currentRole && (
-          <span style={{ fontSize:11, fontWeight:700, padding:'4px 12px', borderRadius:'99px', background: currentRole === 'admin' ? '#FEF3CD' : '#E6FAF3', color: currentRole === 'admin' ? '#B45309' : '#059669' }}>
-            {currentRole === 'admin' ? 'Admin' : isCoordinator ? `${coordinatorProgram || ''} Coordinator`.trim() : 'Faculty'}
-          </span>
-        )}
-      </div>
+    <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(10,46,28,0.08)', fontFamily:"'Inter',sans-serif" }}>
+      <CardHeader
+        title="Role & Permissions"
+        sub="Controls which portal the user can access"
+        right={roleBadge}
+      />
 
       {!facultyEmail && (
         <div style={{ margin:'20px 20px 0', padding:'12px 16px', borderRadius:'8px', background:'#FFFBEB', border:'1px solid #FEF3C7', display:'flex', gap:10, alignItems:'flex-start' }}>
@@ -659,17 +824,17 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
       )}
 
       <div style={{ padding:'24px 20px', display:'flex', flexDirection:'column', gap:20 }}>
-        <FormField label="System Role" hint="Determines which panel the user can access">
+        <FormField label="System Role" hint="Both can be selected at once — Admin+Faculty is allowed">
           <div style={{ display:'flex', gap:8 }}>
             <button
               type="button"
-              onClick={() => { setSelectedRole('faculty'); if (selectedRole === 'admin') setSelectedCoordinator(false) }}
+              onClick={toggleFaculty}
               disabled={!facultyEmail}
               style={{
-                flex:1, padding:'10px 14px', borderRadius:'8px', fontSize:13, fontFamily:"'Poppins',sans-serif",
-                background: selectedRole === 'faculty' ? T.purpleSoft : T.bgAlt,
-                color: selectedRole === 'faculty' ? T.purpleDeep : T.textMuted,
-                border: selectedRole === 'faculty' ? `1.5px solid ${T.purpleBorder}` : `1px solid ${T.border}`,
+                flex:1, padding:'10px 14px', borderRadius:'8px', fontSize:13, fontFamily:"'Inter',sans-serif",
+                background: selectedIsFaculty ? T.greenSoft : T.bgAlt,
+                color: selectedIsFaculty ? T.greenDeep : T.textMuted,
+                border: selectedIsFaculty ? `1.5px solid ${T.greenBorder}` : `1px solid ${T.border}`,
                 cursor: facultyEmail ? 'pointer' : 'not-allowed',
                 fontWeight:600, transition: 'all 0.2s',
                 opacity: facultyEmail ? 1 : 0.5
@@ -682,13 +847,13 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
             </button>
             <button
               type="button"
-              onClick={() => setSelectedRole('admin')}
+              onClick={toggleAdmin}
               disabled={!facultyEmail}
               style={{
-                flex:1, padding:'10px 14px', borderRadius:'8px', fontSize:13, fontFamily:"'Poppins',sans-serif",
-                background: selectedRole === 'admin' ? T.purpleSoft : T.bgAlt,
-                color: selectedRole === 'admin' ? T.purpleDeep : T.textMuted,
-                border: selectedRole === 'admin' ? `1.5px solid ${T.purpleBorder}` : `1px solid ${T.border}`,
+                flex:1, padding:'10px 14px', borderRadius:'8px', fontSize:13, fontFamily:"'Inter',sans-serif",
+                background: selectedIsAdmin ? T.greenSoft : T.bgAlt,
+                color: selectedIsAdmin ? T.greenDeep : T.textMuted,
+                border: selectedIsAdmin ? `1.5px solid ${T.greenBorder}` : `1px solid ${T.border}`,
                 cursor: facultyEmail ? 'pointer' : 'not-allowed',
                 fontWeight:600, transition: 'all 0.2s',
                 opacity: facultyEmail ? 1 : 0.5
@@ -702,7 +867,7 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
           </div>
         </FormField>
 
-        {selectedRole === 'faculty' && (
+        {selectedIsFaculty && !selectedIsAdmin && (
           <>
             <FormField label="Coordinator Access" hint="Grants access to program coordinator panel">
               <label style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderRadius:'8px', background:T.bgAlt, border:`1px solid ${T.border}`, cursor: facultyEmail ? 'pointer' : 'not-allowed', opacity: facultyEmail ? 1 : 0.5 }}>
@@ -728,7 +893,7 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
                   disabled={!facultyEmail}
                   style={{
                     padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`,
-                    fontSize:13, fontFamily:"'Poppins',sans-serif", background:T.bg,
+                    fontSize:13, fontFamily:"'Inter',sans-serif", background:T.bg,
                     width:'100%', boxSizing:'border-box', outline:'none', color: T.textMain,
                     cursor: facultyEmail ? 'pointer' : 'not-allowed',
                     opacity: facultyEmail ? 1 : 0.5
@@ -742,6 +907,17 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
               </FormField>
             )}
           </>
+        )}
+        {selectedIsAdmin && (
+          <FormField label="Coordinator Access" hint="Grants access to program coordinator panel">
+            <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderRadius:'8px', background:T.bgAlt, border:`1.5px dashed ${T.border}` }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.textMuted} strokeWidth="2" style={{ flexShrink:0 }}><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:13, fontWeight:600, color:T.textMuted }}>Not available with Admin</div>
+                <div style={{ fontSize:11, color:T.textMuted, marginTop:2 }}>Remove Admin to grant Coordinator access</div>
+              </div>
+            </div>
+          </FormField>
         )}
 
         {success && (
@@ -766,11 +942,11 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
             style={{
               display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8,
               padding:'10px 18px', borderRadius:'10px', border:'none',
-              background: saving ? T.borderLight : 'linear-gradient(135deg,#7C6FCD,#5a4fbf)',
+              background: saving ? T.borderLight : `linear-gradient(135deg,${T.green},${T.greenDeep})`,
               color:'#fff', fontSize:13, fontWeight:600,
               cursor: saving ? 'default' : 'pointer',
-              fontFamily:"'Poppins',sans-serif",
-              boxShadow: saving ? 'none' : '0 3px 12px rgba(124,111,205,0.32)',
+              fontFamily:"'Inter',sans-serif",
+              boxShadow: saving ? 'none' : `0 3px 12px rgba(15,92,44,0.28)`,
               opacity: saving ? 0.7 : 1,
               transition: 'all 0.2s'
             }}

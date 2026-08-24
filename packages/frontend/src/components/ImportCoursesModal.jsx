@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { uploadCourses, extractSheet, commitCourses } from '../services/api'
 import courseListTemplate from '../assets/templates/CCS_COURSE_LIST_Template.xlsx';
 
@@ -332,7 +332,7 @@ function detectSemester(sheetName) {
 }
 
 /* ─── Step 2: Sheet Selection ───────────────────────────────────────────── */
-function SheetSelectionStep({ sheets, fileData, onParsed, onBack }) {
+function SheetSelectionStep({ sheets, fileData, lockedProgram, onParsed, onBack }) {
   const [loading, setLoading] = useState(false)
   const [active,  setActive]  = useState(null)
   const [error,   setError]   = useState('')
@@ -348,7 +348,13 @@ function SheetSelectionStep({ sheets, fileData, onParsed, onBack }) {
         setError(`No valid courses found in sheet "${sheetName}". Check column headers.`)
         setLoading(false); setActive(null); return
       }
-      onParsed(res.preview.map(c => ({ ...c, semester: sem })))
+      const rows = res.preview.map(c => ({ ...c, semester: sem }))
+      const scoped = lockedProgram ? rows.filter(c => c.program === lockedProgram) : rows
+      if (lockedProgram && scoped.length === 0) {
+        setError(`No ${lockedProgram} courses found in sheet "${sheetName}". This sheet may only contain other programs.`)
+        setLoading(false); setActive(null); return
+      }
+      onParsed(scoped)
     } catch(err) {
       setError(err.response?.data?.detail || 'Error extracting data from this sheet.')
       setLoading(false); setActive(null)
@@ -366,11 +372,14 @@ function SheetSelectionStep({ sheets, fileData, onParsed, onBack }) {
           allCourses = allCourses.concat(res.preview.map(c => ({ ...c, semester: sem })))
         }
       }
-      if (allCourses.length === 0) {
-        setError('No valid courses found in any sheet. Check column headers.')
+      const scoped = lockedProgram ? allCourses.filter(c => c.program === lockedProgram) : allCourses
+      if (scoped.length === 0) {
+        setError(lockedProgram
+          ? `No ${lockedProgram} courses found in any sheet. This file may only contain other programs.`
+          : 'No valid courses found in any sheet. Check column headers.')
         setLoading(false); setActive(null); return
       }
-      onParsed(allCourses)
+      onParsed(scoped)
     } catch(err) {
       setError(err.response?.data?.detail || 'Error extracting data.')
       setLoading(false); setActive(null)
@@ -381,6 +390,7 @@ function SheetSelectionStep({ sheets, fileData, onParsed, onBack }) {
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
       <p style={{ fontSize:13, color:'#5C8A6E', margin:0 }}>
         Select the sheet(s) that contain course data. You can import all at once.
+        {lockedProgram && <> Only <strong style={{ color:'#0E2A20' }}>{lockedProgram}</strong> courses will be pulled in — other programs in the sheet are skipped automatically.</>}
       </p>
 
       {sheets.length > 1 && (
@@ -599,7 +609,7 @@ function BlockConfigStep({ courses, onBack, onSubmit }) {
 }
 
 /* ─── Editable row ──────────────────────────────────────────────────────── */
-function EditableRow({ course, invalid, onEdit, onRemove }) {
+function EditableRow({ course, invalid, lockedProgram, onEdit, onRemove }) {
   const [editing, setEditing] = useState(false)
   const [draft,   setDraft]   = useState({...course})
 
@@ -618,10 +628,16 @@ function EditableRow({ course, invalid, onEdit, onRemove }) {
       <td style={{ padding:'6px 8px' }}>{cellInp('courseCode')}</td>
       <td style={{ padding:'6px 8px' }}>{cellInp('title',{wide:true})}</td>
       <td style={{ padding:'6px 8px' }}>
-        <select value={draft.program} onChange={e=>setDraft(d=>({...d,program:e.target.value}))} onClick={e=>e.stopPropagation()}
-          style={{ fontSize:12, padding:'3px 6px', borderRadius:6, border:'1.5px solid #9EDDB7', fontFamily:'Poppins,sans-serif', outline:'none' }}>
-          {PROGRAMS.map(p => <option key={p} value={p}>{p}</option>)}
-        </select>
+        {lockedProgram ? (
+          <span style={{ display:'inline-block', padding:'3px 8px', background:'#DCF3E4', color:'#1F7A45', borderRadius:6, fontSize:11.5, fontWeight:700 }} title="Locked to your program">
+            {draft.program}
+          </span>
+        ) : (
+          <select value={draft.program} onChange={e=>setDraft(d=>({...d,program:e.target.value}))} onClick={e=>e.stopPropagation()}
+            style={{ fontSize:12, padding:'3px 6px', borderRadius:6, border:'1.5px solid #9EDDB7', fontFamily:'Poppins,sans-serif', outline:'none' }}>
+            {PROGRAMS.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+        )}
       </td>
       <td style={{ padding:'6px 8px' }}>{cellInp('yearLevel',{number:true,min:1})}</td>
       <td style={{ padding:'6px 8px' }}>{cellInp('unitsLecture',{number:true,min:0})}</td>
@@ -667,7 +683,7 @@ function EditableRow({ course, invalid, onEdit, onRemove }) {
 }
 
 /* ─── Step 4: Review ────────────────────────────────────────────────────── */
-function ReviewStep({ courses, onBack, onCommit, onRemove, onEdit, onImported }) {
+function ReviewStep({ courses, lockedProgram, onBack, onCommit, onRemove, onEdit, onImported }) {
   const [saving,  setSaving]  = useState(false)
   const [results, setResults] = useState(null)
 
@@ -798,7 +814,7 @@ function ReviewStep({ courses, onBack, onCommit, onRemove, onEdit, onImported })
           </thead>
           <tbody>
             {displayed.map((c,i) => (
-              <EditableRow key={`${c.courseCode}_${c.semester}_${i}`} course={c} invalid={!isValid(c)} onEdit={u=>onEdit(c,u)} onRemove={()=>onRemove(c)} />
+              <EditableRow key={`${c.courseCode}_${c.semester}_${i}`} course={c} invalid={!isValid(c)} lockedProgram={lockedProgram} onEdit={u=>onEdit(c,u)} onRemove={()=>onRemove(c)} />
             ))}
           </tbody>
         </table>
@@ -828,15 +844,28 @@ function ReviewStep({ courses, onBack, onCommit, onRemove, onEdit, onImported })
 }
 
 /* ─── Main Modal ────────────────────────────────────────────────────────── */
-export default function ImportCoursesModal({ onClose, onImported }) {
+export default function ImportCoursesModal({ onClose, onImported, lockedProgram }) {
   const [step,     setStep]     = useState(1)
   const [sheets,   setSheets]   = useState([])
   const [fileData, setFileData] = useState(null)
   const [parsed,   setParsed]   = useState([])
   const [courses,  setCourses]  = useState([])
+  const [ready,    setReady]    = useState(false)
+
+  // Delay backdrop-close activation to prevent accidental closes on mount
+  useEffect(() => {
+    const t = setTimeout(() => setReady(true), 200)
+    return () => clearTimeout(t)
+  }, [])
 
   function handleUploaded(s, b) { setSheets(s); setFileData(b); setStep(2) }
-  function handleParsed(p)      { setParsed(p); setStep(3) }
+  function handleParsed(p) {
+    // Coordinators are locked to their own program — the sheet may contain
+    // courses for every program, so only the coordinator's rows go through.
+    const rows = lockedProgram ? p.filter(c => c.program === lockedProgram) : p
+    setParsed(rows)
+    setStep(3)
+  }
   function handleBlockConfig(blocksMap) {
     setCourses(parsed.map(c => { const sem=c.semester||'1st Semester'; const key=`${c.program}_${c.yearLevel}_${sem}`; return {...c,blocks:Number(blocksMap[key])||0} }))
     setStep(4)
@@ -865,15 +894,18 @@ export default function ImportCoursesModal({ onClose, onImported }) {
   return (
     <div
       style={{ position:'fixed', inset:0, background:'rgba(14,42,32,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, backdropFilter:'blur(4px)', animation:'imFadeIn 0.18s ease' }}
-      onClick={e=>e.target===e.currentTarget&&onClose()}
+      onClick={e => { if (ready && e.target === e.currentTarget) onClose() }}
     >
-      <div style={{
-        background:'#fff', borderRadius:18, padding:'26px 28px',
-        width: step === 4 ? 760 : step === 3 ? 700 : 540, maxWidth:'95vw', maxHeight:'90vh',
-        overflowY:'auto', fontFamily:"'Poppins',sans-serif",
-        boxShadow:'0 24px 64px rgba(14,42,32,0.24),0 4px 16px rgba(46,158,91,0.12)',
-        transition:'width 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-      }}>
+      <div
+        style={{
+          background:'#fff', borderRadius:18, padding:'26px 28px',
+          width: step === 4 ? 760 : step === 3 ? 700 : 540, maxWidth:'95vw', maxHeight:'90vh',
+          overflowY:'auto', fontFamily:"'Poppins',sans-serif",
+          boxShadow:'0 24px 64px rgba(14,42,32,0.24),0 4px 16px rgba(46,158,91,0.12)',
+          transition:'width 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
         {/* Header */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:22 }}>
           <div>
@@ -888,6 +920,7 @@ export default function ImportCoursesModal({ onClose, onImported }) {
             </div>
             <p style={{ fontSize:11.5, color:'#7DAB8E', margin:0, marginLeft:44 }}>
               Step {step} of 4 · Upload → Sheet → Sections → Review
+              {lockedProgram && <span style={{ marginLeft:8, display:'inline-block', padding:'1px 8px', background:'#E5F9EC', color:'#2E9E5B', borderRadius:99, fontSize:10.5, fontWeight:700 }}>Scoped to {lockedProgram}</span>}
             </p>
           </div>
           <button className="im-close" onClick={onClose} aria-label="Close">
@@ -901,9 +934,9 @@ export default function ImportCoursesModal({ onClose, onImported }) {
         <Steps current={step} />
 
         {step===1 && <UploadStep onUploaded={handleUploaded} />}
-        {step===2 && <SheetSelectionStep sheets={sheets} fileData={fileData} onParsed={handleParsed} onBack={()=>setStep(1)} />}
+        {step===2 && <SheetSelectionStep sheets={sheets} fileData={fileData} lockedProgram={lockedProgram} onParsed={handleParsed} onBack={()=>setStep(1)} />}
         {step===3 && <BlockConfigStep courses={parsed} onBack={()=>setStep(2)} onSubmit={handleBlockConfig} />}
-        {step===4 && <ReviewStep courses={courses} onBack={()=>setStep(3)} onCommit={handleCommit} onRemove={handleRemove} onEdit={handleEdit} onImported={onImported} />}
+        {step===4 && <ReviewStep courses={courses} lockedProgram={lockedProgram} onBack={()=>setStep(3)} onCommit={handleCommit} onRemove={handleRemove} onEdit={handleEdit} onImported={onImported} />}
       </div>
     </div>
   )

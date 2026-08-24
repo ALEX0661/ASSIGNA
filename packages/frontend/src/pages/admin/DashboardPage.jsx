@@ -14,14 +14,6 @@ const DASH_STYLE = `
     100% { background-position:  600px 0 }
   }
   @keyframes barIn { from { width: 0 } }
-  @keyframes fadeUp {
-    from { opacity:0; transform:translateY(10px) }
-    to   { opacity:1; transform:translateY(0) }
-  }
-  @keyframes countUp {
-    from { opacity:0; transform:translateY(6px) }
-    to   { opacity:1; transform:translateY(0) }
-  }
   @keyframes spin { to { transform:rotate(360deg) } }
   @keyframes pulseGlow {
     0%,100% { box-shadow: 0 0 0 0 rgba(110,231,183,0.4) }
@@ -34,39 +26,44 @@ const DASH_STYLE = `
     border-radius: 7px;
   }
   .d-card {
-    background: var(--surface);
-    border-radius: 16px;
-    border: 1px solid var(--border);
-    box-shadow: 0 2px 12px rgba(10,46,28,0.07);
-    animation: fadeUp .35s ease both;
+    background: #ffffff;
+    border-radius: 14px;
+    border: 1px solid #D8E8DF;
+    box-shadow: 0 1px 8px rgba(10,46,28,0.06);
   }
   .d-row { cursor:pointer; transition:background 0.13s; }
-  .d-row:hover { background: var(--hover) !important; }
+  .d-row:hover { background: #EBF4EF !important; }
   .stat-card {
-    background: var(--surface);
+    background: #ffffff;
     border-radius: 14px;
-    border: 1px solid var(--border);
-    box-shadow: 0 1px 6px rgba(10,46,28,0.06);
-    padding: 20px 22px 18px;
+    border: 1px solid #D8E8DF;
+    box-shadow: 0 1px 8px rgba(10,46,28,0.06);
+    padding: 18px 20px 16px;
     transition: box-shadow .18s, transform .18s;
-    animation: fadeUp .3s ease both;
-    position: relative;
-    overflow: hidden;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 10px;
   }
   .stat-card:hover {
-    box-shadow: 0 6px 22px rgba(10,46,28,0.11);
+    box-shadow: 0 4px 18px rgba(10,46,28,0.1);
     transform: translateY(-2px);
   }
+  .setup-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 18px;
+    cursor: pointer;
+    background: #ffffff;
+    transition: background 0.12s;
+  }
+  .setup-row:hover { background: #EBF4EF; }
   .suggestion-card {
     border-radius: 12px;
     padding: 12px 14px;
     display: flex;
     align-items: flex-start;
     gap: 11px;
-    animation: fadeUp .3s ease both;
     cursor: default;
     transition: transform .15s, box-shadow .15s;
     border: 1px solid transparent;
@@ -74,6 +71,19 @@ const DASH_STYLE = `
   .suggestion-card:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 14px rgba(10,46,28,0.1);
+  }
+
+  /* ── Responsive grid ── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+  }
+  @media (max-width: 1024px) {
+    .stat-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
   }
 `
 
@@ -289,6 +299,121 @@ function SuggestionCard({ suggestion, onAction, delay = 0 }) {
   )
 }
 
+/* ─── Setup Checklist ─────────────────────────────────────────────────────
+   Self-contained component: always mounted, manages its own open/close
+   state, and always renders SOMETHING (never returns null) so it can never
+   be mistaken for "not there." Pass it `steps: [{done,title,desc,cta,href}]`.
+──────────────────────────────────────────────────────────────────────────── */
+function SetupChecklist({ steps, onNavigate, loading }) {
+  const [open, setOpen] = useState(false)
+
+  if (loading) {
+    return (
+      <div style={{ background:'#ffffff', borderRadius:12, border:'1px solid #D8E8DF', padding:'14px 18px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 6px rgba(10,46,28,0.05)' }}>
+        <Skel w={30} h={30} r={99}/>
+        <Skel w={180} h={12} r={4}/>
+      </div>
+    )
+  }
+
+  const total     = steps.length
+  const doneCount = steps.filter(s => s.done).length
+  const nextIdx   = steps.findIndex(s => !s.done)
+  const allDone   = nextIdx === -1
+
+  if (allDone) {
+    return (
+      <div style={{ background:'#F0FDF4', borderRadius:12, border:'1px solid #BBF7D0', display:'flex', alignItems:'center', gap:12, padding:'12px 18px', boxShadow:'0 1px 6px rgba(10,46,28,0.05)' }}>
+        <div style={{ width:26, height:26, borderRadius:'50%', flexShrink:0, background:'#15803D', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div style={{ fontSize:12.5, fontWeight:700, color:'#0E2A20' }}>Setup complete — everything is loaded and ready to schedule.</div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ background:'#ffffff', borderRadius:12, border:'1px solid #D8E8DF', boxShadow:'0 1px 6px rgba(10,46,28,0.05)', width:'100%' }}>
+      {/* ── Toggle header ── */}
+      <div
+        onClick={() => setOpen(v => !v)}
+        style={{ display:'flex', alignItems:'center', gap:12, padding:'13px 16px', background:'#F0FDF4', cursor:'pointer', borderBottom: open ? '1px solid #DCFCE7' : 'none', userSelect:'none', borderRadius: open ? '12px 12px 0 0' : 12 }}
+      >
+        {/* Done counter badge */}
+        <div style={{ width:30, height:30, borderRadius:'50%', flexShrink:0, background:'#15803D', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, fontFamily:"'Sora',sans-serif" }}>
+          {doneCount}/{total}
+        </div>
+
+        {/* Title + subtitle */}
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontSize:13, fontWeight:800, color:'#0E2A20', fontFamily:"'Sora',sans-serif" }}>Setup Checklist</div>
+          <div style={{ fontSize:11, color:'#15803D', fontWeight:600, marginTop:1 }}>
+            {open ? 'Click to collapse' : `Next: ${steps[nextIdx]?.label}`}
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div style={{ width:80, height:5, borderRadius:99, background:'#BBF7D0', overflow:'hidden', flexShrink:0 }}>
+          <div style={{ height:'100%', borderRadius:99, width:`${(doneCount/total)*100}%`, background:'#15803D', transition:'width .4s ease' }}/>
+        </div>
+
+        {/* Chevron */}
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2.5"
+          style={{ transform: open ? 'rotate(180deg)' : 'none', transition:'transform .2s', flexShrink:0 }}>
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+
+      {/* ── Step rows ── */}
+      {open && (
+        <div style={{ borderRadius:'0 0 12px 12px', overflow:'hidden' }}>
+          {steps.map((step, i) => (
+            <div key={step.label}
+              style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderBottom: i < steps.length - 1 ? '1px solid #EBF4EF' : 'none', background: step.done ? '#F8FBF9' : i === nextIdx ? '#F0FDF4' : '#ffffff' }}
+            >
+              {/* Circle */}
+              <div style={{
+                width:24, height:24, borderRadius:'50%', flexShrink:0,
+                display:'flex', alignItems:'center', justifyContent:'center',
+                fontSize:10.5, fontWeight:800, fontFamily:"'Sora',sans-serif",
+                background: step.done ? '#15803D' : i === nextIdx ? '#DCFCE7' : '#EBF4EF',
+                color:      step.done ? '#ffffff' : i === nextIdx ? '#15803D' : '#6B8C7A',
+                border: i === nextIdx && !step.done ? '2px solid #15803D' : '2px solid transparent',
+              }}>
+                {step.done
+                  ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                  : i + 1}
+              </div>
+
+              {/* Text */}
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:12.5, fontWeight:700, color: step.done ? '#6B8C7A' : '#0E2A20', marginBottom:2, textDecoration: step.done ? 'line-through' : 'none' }}>
+                  {step.label}
+                </div>
+                <div style={{ fontSize:11, color:'#6B8C7A', lineHeight:1.45 }}>
+                  {step.desc}
+                </div>
+              </div>
+
+              {/* CTA button */}
+              {!step.done && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onNavigate(step.href) }}
+                  style={{ flexShrink:0, padding:'6px 13px', borderRadius:8, border:'none', background:'#15803D', color:'#fff', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif", whiteSpace:'nowrap' }}
+                  onMouseEnter={e => e.currentTarget.style.background='#0F5C2C'}
+                  onMouseLeave={e => e.currentTarget.style.background='#15803D'}
+                >
+                  {step.cta} →
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /* ─── PROGRAM COLORS ─────────────────────────────────────────────────────── */
 const PROG_COLORS = ['#15803D','#2563EB','#7C3AED','#D97706','#0891B2','#DC2626','#0F766E','#9333EA']
 
@@ -416,74 +541,56 @@ export default function DashboardPage() {
   const rms  = dashStats?.rooms    || {}
   const sch  = dashStats?.scheduleHealth || {}
 
+  // Stat cards — clean left-accent design, no icons
   const STAT_CARDS = [
     {
-      label:'Total Faculty', color:'#15803D', bg:'#DCFCE7',
-      value: statsLoading ? null : fac.total ?? '—',
+      label: 'Total Faculty',
+      color: '#15803D',
+      value: statsLoading ? null : (fac.total ?? '—'),
       sub: fac.total > 0 ? `${fac.fullTime||0} full-time · ${fac.partTime||0} part-time` : null,
-      subColor:'var(--muted2)',
-      icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <circle cx="9" cy="8" r="3.5" fill="currentColor" opacity="0.18"/>
-        <circle cx="9" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.8"/>
-        <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-        <path d="M15.5 5.2c1.6.4 2.8 1.9 2.8 3.6 0 1.7-1.2 3.2-2.8 3.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" opacity="0.65"/>
-        <path d="M16 14.3c2.5.6 4.3 2.8 4.5 5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" opacity="0.65"/>
-      </svg>,
+      subColor: 'var(--muted2)',
     },
     {
-      label:'Total Courses', color:'#2563EB', bg:'#DBEAFE',
-      value: statsLoading ? null : crs.total ?? '—',
+      label: 'Total Courses',
+      color: '#2563EB',
+      value: statsLoading ? null : (crs.total ?? '—'),
       sub: (bySem['1st Semester']||bySem['2nd Semester']||bySem['Midyear'])
         ? `${bySem['1st Semester']||0} 1st · ${bySem['2nd Semester']||0} 2nd · ${bySem['Midyear']||0} Mid`
         : null,
-      subColor:'var(--muted2)',
-      icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15.5a1.5 1.5 0 0 1-1.5 1.5H6.5A2.5 2.5 0 0 1 4 17.5z" fill="currentColor" opacity="0.16"/>
-        <path d="M4 17.5A2.5 2.5 0 0 1 6.5 15H19" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-        <path d="M6.5 3H19v15.5a1.5 1.5 0 0 1-1.5 1.5H6.5A2.5 2.5 0 0 1 4 17.5v-12A2.5 2.5 0 0 1 6.5 3z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
-        <path d="M8 7.5h7M8 10.5h4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity="0.7"/>
-      </svg>,
+      subColor: 'var(--muted2)',
     },
     {
-      label:'Rooms',         color:'#7C3AED', bg:'#EDE9FE',
-      value: statsLoading ? null : rms.total ?? '—',
+      label: 'Rooms',
+      color: '#7C3AED',
+      value: statsLoading ? null : (rms.total ?? '—'),
       sub: rms.total > 0 ? `${rms.lecture||0} lecture · ${rms.lab||0} lab` : null,
-      subColor:'var(--muted2)',
-      icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="currentColor" opacity="0.16"/>
-        <path d="M3 11 12 4l9 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
-        <path d="M9 21v-6h6v6" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
-      </svg>,
+      subColor: 'var(--muted2)',
     },
     {
-      label:'With Specializations', color:'#0891B2', bg:'#E0F2FE',
-      value: statsLoading ? null : fac.withSpecializations ?? '—',
+      label: 'With Specializations',
+      color: '#0891B2',
+      value: statsLoading ? null : (fac.withSpecializations ?? '—'),
       sub: fac.total > 0
-        ? (fac.withoutSpecializations > 0
-            ? `${fac.withoutSpecializations} missing — won't auto-assign`
-            : 'All faculty have specializations')
+        ? (fac.withoutSpecializations > 0 ? `${fac.withoutSpecializations} missing` : 'All covered')
         : null,
       subColor: fac.withoutSpecializations > 0 ? '#D97706' : '#15803D',
-      icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="9.5" fill="currentColor" opacity="0.14"/>
-        <circle cx="12" cy="12" r="9.5" stroke="currentColor" strokeWidth="1.8"/>
-        <path d="M8 12.3l2.6 2.6L16.2 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>,
     },
     {
-      label:'Saved Schedules', color:'#D97706', bg:'#FEF3CD',
+      label: 'Saved Schedules',
+      color: '#D97706',
       value: statsLoading ? null : savedList.length,
       sub: scheduleName ? `Active: ${scheduleName}` : 'None loaded',
       subColor: scheduleName ? '#D97706' : 'var(--muted2)',
-      icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <rect x="3.5" y="4.5" width="17" height="16" rx="2.5" fill="currentColor" opacity="0.14"/>
-        <rect x="3.5" y="4.5" width="17" height="16" rx="2.5" stroke="currentColor" strokeWidth="1.8"/>
-        <path d="M3.5 9.5h17" stroke="currentColor" strokeWidth="1.8"/>
-        <path d="M8 2.5v4M16 2.5v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-        <path d="M7.5 13.2l1.4 1.4 2.4-2.6M14 13.5h3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" opacity="0.8"/>
-      </svg>,
     },
+  ]
+
+  // ── Setup checklist steps ──
+  const obSteps = [
+    { done: (fac.total||0) > 0,                                                label: 'Load Faculty',    desc: 'Add faculty members and assign their course specializations so the solver knows who can teach what.',       cta: 'Go to Faculty',   href: '/dashboard/faculty'   },
+    { done: (crs.total||0) > 0,                                                label: 'Load Courses',    desc: 'Import the course catalog with codes, units, and semester info before generating a schedule.',              cta: 'Go to Courses',   href: '/dashboard/courses'   },
+    { done: (rms.total||0) > 0,                                                label: 'Configure Rooms', desc: 'Add lecture and lab rooms. The solver needs these to assign a venue to every class.',                       cta: 'Go to Settings',  href: '/dashboard/settings'  },
+    { done: (fac.total||0)>0 && (crs.total||0)>0 && (rms.total||0)>0,         label: 'Run Scheduler',   desc: 'Go to the Scheduler, select a semester, check Readiness, then click Start Solver to generate the timetable.', cta: 'Go to Scheduler', href: '/dashboard/scheduler' },
+    { done: !!scheduleName,                                                    label: 'Review Schedule', desc: 'Inspect the generated timetable, override any assignments, then save it.',                                  cta: 'View Schedule',   href: scheduleName ? `/dashboard/schedule/${encodeURIComponent(scheduleName)}` : '/dashboard/schedule'  },
   ]
 
   return (
@@ -506,6 +613,9 @@ export default function DashboardPage() {
         </button>
       </div>
 
+      {/* ── Setup Checklist — always mounted; renders its own empty/complete state ── */}
+      <SetupChecklist steps={obSteps} onNavigate={navigate} loading={statsLoading} />
+
       {/* Error banner */}
       {error && (
         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:10, background:'#FFF5F5', border:'1px solid #FECACA' }}>
@@ -517,118 +627,29 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── Row 2: Primary Stat Cards (5-column) ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12 }}>
+      {/* ── Row 2: Primary Stat Cards ── */}
+      <div className="stat-grid">
         {STAT_CARDS.map((c, i) => (
-          <div key={c.label} className="stat-card" style={{ animationDelay:`${i*0.06}s` }}>
-            {/* top row: label + icon */}
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-              <span style={{ fontSize:11.5, fontWeight:600, color:'var(--muted2)', letterSpacing:'.1px' }}>{c.label}</span>
-              <div style={{ width:32, height:32, borderRadius:9, background: statsLoading ? 'var(--hover)' : c.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                {!statsLoading && <div style={{ color:c.color }}>{c.icon}</div>}
-              </div>
+          <div key={c.label} className="stat-card" style={{ borderLeft:`3px solid ${c.color}`, gap:8 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+              <span style={{ width:6, height:6, borderRadius:'50%', background:c.color, flexShrink:0 }}/>
+              <span style={{ fontSize:10.5, fontWeight:700, color:'#6B8C7A', letterSpacing:'.5px', textTransform:'uppercase', lineHeight:1.3 }}>{c.label}</span>
             </div>
-            {/* main number */}
-            {statsLoading ? (
-              <Skel w={64} h={36} r={8}/>
-            ) : (
-              <div style={{ fontSize:36, fontWeight:800, color:'var(--ink)', lineHeight:1, fontFamily:"'Sora',sans-serif", letterSpacing:'-1px' }}>
-                <AnimatedNumber value={c.value}/>
-              </div>
-            )}
-            {/* sub line */}
-            {statsLoading ? (
-              <Skel w='80%' h={10} r={4}/>
-            ) : c.sub ? (
-              <div style={{ fontSize:11, color:c.subColor||'var(--muted2)', fontWeight:500, lineHeight:1.4 }}>{c.sub}</div>
-            ) : (
-              <div style={{ height:14 }}/>
-            )}
+            {statsLoading
+              ? <Skel w={56} h={32} r={6}/>
+              : <div style={{ fontSize:32, fontWeight:800, color:'#0E2A20', lineHeight:1, fontFamily:"'Sora',sans-serif", letterSpacing:'-1px' }}>
+                  <AnimatedNumber value={c.value}/>
+                </div>
+            }
+            {statsLoading
+              ? <Skel w='75%' h={9} r={4}/>
+              : c.sub
+                ? <div style={{ fontSize:10.5, color:c.subColor||'#6B8C7A', fontWeight:500, lineHeight:1.4 }}>{c.sub}</div>
+                : <div style={{ height:10 }}/>
+            }
           </div>
         ))}
       </div>
-
-      {/* ── Setup Status / Next Steps — replaces redundant quick-action tiles ── */}
-      {(() => {
-        const fHas = (fac.total||0) > 0
-        const cHas = (crs.total||0) > 0
-        const rHas = (rms.total||0) > 0
-        const sHas = !!scheduleName
-        const steps = [
-          { done: fHas, label: 'Load faculty', desc: 'Upload the specialization matrix so the scheduler knows who can teach what.', href:'/dashboard/faculty',
-            icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-              <circle cx="9" cy="8" r="3.5" fill="currentColor" opacity="0.18"/>
-              <circle cx="9" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.8"/>
-              <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-              <path d="M15.5 5.2c1.6.4 2.8 1.9 2.8 3.6 0 1.7-1.2 3.2-2.8 3.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" opacity="0.65"/>
-            </svg> },
-          { done: cHas, label: 'Load courses', desc: 'Import the course list with units and semester assignments before scheduling.', href:'/dashboard/courses',
-            icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-              <path d="M6.5 3H19v15.5a1.5 1.5 0 0 1-1.5 1.5H6.5A2.5 2.5 0 0 1 4 17.5v-12A2.5 2.5 0 0 1 6.5 3z" fill="currentColor" opacity="0.16"/>
-              <path d="M4 17.5A2.5 2.5 0 0 1 6.5 15H19" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-              <path d="M6.5 3H19v15.5a1.5 1.5 0 0 1-1.5 1.5H6.5A2.5 2.5 0 0 1 4 17.5v-12A2.5 2.5 0 0 1 6.5 3z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
-            </svg> },
-          { done: rHas, label: 'Configure rooms', desc: 'Add lecture and lab rooms so the scheduler can assign venues correctly.', href:'/dashboard/settings',
-            icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-              <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" fill="currentColor" opacity="0.16"/>
-              <path d="M3 11 12 4l9 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
-            </svg> },
-          { done: fHas && cHas && rHas, label: 'Run scheduler', desc: 'Generate the timetable — the solver assigns faculty, rooms, and time slots automatically.', href:'/dashboard/scheduler',
-            icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="9.5" fill="currentColor" opacity="0.14"/>
-              <circle cx="12" cy="12" r="9.5" stroke="currentColor" strokeWidth="1.8"/>
-              <path d="M10 8.5l5 3.5-5 3.5z" fill="currentColor" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-            </svg> },
-          { done: sHas, label: 'Review schedule', desc: 'Inspect, override, or merge sessions before finalizing and sharing the schedule.', href:'/dashboard/schedule',
-            icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-              <rect x="3.5" y="3.5" width="17" height="17" rx="2.5" fill="currentColor" opacity="0.14"/>
-              <rect x="3.5" y="3.5" width="17" height="17" rx="2.5" stroke="currentColor" strokeWidth="1.8"/>
-              <path d="M7.5 9.3l1.4 1.4 2.4-2.6M7.5 15.3l1.4 1.4 2.4-2.6M14 9.6h3M14 15.6h3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg> },
-        ]
-        const allDone = steps.every(s => s.done)
-        return (
-          <div className="d-card" style={{ padding:'16px 18px', animationDelay:'.09s' }}>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-              <div>
-                <div style={{ fontSize:13, fontWeight:700, color:'var(--ink)' }}>Setup Checklist</div>
-                <div style={{ fontSize:11, color:'var(--muted2)', marginTop:1 }}>
-                  {allDone ? 'All steps complete — you\'re ready.' : `${steps.filter(s=>s.done).length} of ${steps.length} steps done`}
-                </div>
-              </div>
-              {allDone && <span style={{ fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:99, background:'#DCFCE7', color:'#15803D' }}>✓ Ready</span>}
-            </div>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:8 }}>
-              {steps.map((step, i) => (
-                <div key={step.label} onClick={() => !statsLoading && navigate(step.href)}
-                  style={{ padding:'12px 13px', borderRadius:10,
-                    background: step.done ? '#F0FDF4' : 'var(--hover)',
-                    border: `1px solid ${step.done ? '#BBF7D0' : 'var(--border)'}`,
-                    cursor: statsLoading ? 'default' : 'pointer',
-                    transition:'all .15s', opacity: statsLoading ? .6 : 1,
-                    display:'flex', flexDirection:'column', gap:8 }}
-                  onMouseEnter={e=>{ if(!statsLoading){ e.currentTarget.style.boxShadow='0 3px 10px rgba(10,46,28,0.1)'; e.currentTarget.style.transform='translateY(-1px)' }}}
-                  onMouseLeave={e=>{ e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform='none' }}>
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                    <div style={{ width:26, height:26, borderRadius:7, background: step.done ? '#DCFCE7' : 'var(--surface)', border:`1px solid ${step.done?'#BBF7D0':'var(--border)'}`, display:'flex', alignItems:'center', justifyContent:'center', color: step.done ? '#15803D' : 'var(--muted2)', flexShrink:0 }}>
-                      {step.icon}
-                    </div>
-                    {step.done
-                      ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                      : <div style={{ width:7, height:7, borderRadius:'50%', background:'var(--border)' }}/>
-                    }
-                  </div>
-                  <div>
-                    <div style={{ fontSize:11.5, fontWeight:700, color: step.done ? '#15803D' : 'var(--ink)', marginBottom:3 }}>{i+1}. {step.label}</div>
-                    <div style={{ fontSize:10.5, color:'var(--muted2)', lineHeight:1.45 }}>{step.desc}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      })()}
 
       {/* ── Schedule Health ── */}
       <div className="d-card" style={{ padding:'16px 18px', animationDelay:'.12s' }}>
@@ -640,7 +661,7 @@ export default function DashboardPage() {
             </div>
           </div>
           {scheduleName && (
-            <button onClick={() => navigate('/dashboard/schedule')}
+            <button onClick={() => navigate(`/dashboard/schedule/${encodeURIComponent(scheduleName)}`)}
               style={{ padding:'5px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--hover)', color:'var(--muted)', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', transition:'all .15s' }}>
               View Schedule →
             </button>
@@ -704,13 +725,21 @@ export default function DashboardPage() {
         {savedList.length > 0 && (
           <div style={{ marginTop:12, paddingTop:12, borderTop:'1px solid var(--border)', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
             <span style={{ fontSize:11, fontWeight:600, color:'var(--muted2)', flexShrink:0 }}>Saved:</span>
-            {savedList.map(name => {
-              const isActive = scheduleName === name
+            {savedList.map(s => {
+              const sName = typeof s === 'string' ? s : (s.name || s.id || '')
+              const sFinalized = typeof s === 'object' ? !!s.finalized : false
+              const isActive = scheduleName === sName
               return (
-                <button key={name} onClick={() => loadSchedule(name)}
+                <button key={sName} onClick={() => loadSchedule(sName)}
                   style={{ padding:'4px 11px', borderRadius:7, border:`1.5px solid ${isActive?'#15803D':'var(--border)'}`, background:isActive?'#DCFCE7':'var(--hover)', color:isActive?'#15803D':'var(--muted)', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', transition:'all .15s', display:'flex', alignItems:'center', gap:4 }}>
                   {isActive && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
-                  {name}
+                  {sName}
+                  {sFinalized && (
+                    <span style={{ display:'inline-flex', alignItems:'center', gap:2, padding:'0px 5px', borderRadius:99, fontSize:9, fontWeight:700, background:'#DCFCE7', color:'#15803D', border:'1px solid #BBF7D0', marginLeft:2 }}>
+                      <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                      Final
+                    </span>
+                  )}
                 </button>
               )
             })}

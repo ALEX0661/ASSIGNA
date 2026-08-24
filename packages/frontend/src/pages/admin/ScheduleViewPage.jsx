@@ -1,13 +1,18 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useParams, useLocation } from 'react-router-dom'
 import { useScheduleStore } from '../../store/scheduleStore'
-import { getSchedules, getRooms, getFaculty, saveSchedule } from '../../services/api'
+import { getSchedules, getRooms, getFaculty, saveSchedule, finalizeSchedule, unfinalizeSchedule, updateScheduleMeta } from '../../services/api'
 import { buildConflictMap, DAYS, getEventId, getMergedIds } from '../../components/ScheduleView/svHelpers'
 import { TV, ConflictSummaryBar, Toast, FilterButton, FilterRow, PendingChangesBar, ProgramLegend, ModalOverlay, ModalHeader } from '../../components/ScheduleView/svPrimitives'
 import { useFilters, useDragDrop } from '../../components/ScheduleView/svHooks'
 import { FilterModal, FacultyFilterModal, RoomFilterModal, OverrideConfirmModal } from '../../components/ScheduleView/FilterModals'
 import TimeGrid from '../../components/ScheduleView/TimeGrid'
 import SessionModal from '../../components/ScheduleView/SessionModal'
+import VersionHistoryModal from '../../components/VersionHistoryModal'
 import { exportScheduleToExcel } from '../../utils/exportScheduleToExcel'
+import { exportAvailableRoomsToExcel } from '../../utils/exportAvailableRoomsToExcel'
+import { computeRoomAvailability } from '../../utils/roomAvailability'
+import scheduleImage from '../../assets/SCHEDULE.png'
 
 
 /* ── Page-scoped styles ────────────────────────────────────────────────────── */
@@ -24,95 +29,266 @@ if (!document.getElementById('sv-page-style')) {
 
     .sv-day-btn {
       padding:6px 13px; border-radius:20px; font-size:12px; font-weight:500;
-      cursor:pointer; border:1px solid #E8E4F8; background:#fff; color:#8883B0;
-      transition:all .15s; font-family:'Poppins',sans-serif; white-space:nowrap;
+      cursor:pointer; border:1px solid #D8E8DF; background:#fff; color:#4B7060;
+      transition:all .15s; font-family:'Inter',sans-serif; white-space:nowrap;
     }
-    .sv-day-btn:hover  { background:#F5F4FB; color:#5a4fbf; }
+    .sv-day-btn:hover  { background:#EBF4EF; color:#0F5C2C; }
     .sv-day-btn.active {
-      background:linear-gradient(135deg,#7C6FCD,#5a4fbf); color:#fff;
-      border-color:transparent; box-shadow:0 2px 8px rgba(124,111,205,.3);
+      background:linear-gradient(135deg,#15803D,#0F5C2C); color:#fff;
+      border-color:transparent; box-shadow:0 2px 8px rgba(21,128,61,.3);
     }
 
     .sv-icon-btn {
       display:inline-flex; align-items:center; justify-content:center;
-      width:30px; height:30px; border-radius:8px; border:1px solid #E8E4F8;
-      background:#fff; color:#8883B0; cursor:pointer; transition:all .15s;
+      width:30px; height:30px; border-radius:8px; border:1px solid #D8E8DF;
+      background:#fff; color:#4B7060; cursor:pointer; transition:all .15s;
       flex-shrink:0; padding:0;
     }
-    .sv-icon-btn:hover:not(:disabled)  { background:#EEEAFB; color:#7C6FCD; border-color:#C5BBEF; }
-    .sv-icon-btn.active { background:#EEEAFB; border-color:#A99BE8; color:#5a4fbf; }
+    .sv-icon-btn:hover:not(:disabled)  { background:#DCFCE7; color:#15803D; border-color:#BBF7D0; }
+    .sv-icon-btn.active { background:#DCFCE7; border-color:#6EE7B7; color:#0F5C2C; }
 
     .sv-search {
-      padding:7px 12px 7px 32px; border-radius:20px; border:1px solid #E8E4F8;
-      font-size:12.5px; font-family:'Poppins',sans-serif; color:#1a1a2e;
+      padding:7px 12px 7px 32px; border-radius:20px; border:1px solid #D8E8DF;
+      font-size:12.5px; font-family:'Inter',sans-serif; color:#0E2A20;
       background:#fff; outline:none; width:190px; transition:all .15s;
     }
-    .sv-search:focus { border-color:#A99BE8; box-shadow:0 0 0 3px rgba(169,155,232,.12); width:220px; }
-    .sv-search::placeholder { color:#C0BBDC; }
+    .sv-search:focus { border-color:#6EE7B7; box-shadow:0 0 0 3px rgba(21,128,61,.12); width:220px; }
+    .sv-search::placeholder { color:#6B8C7A; }
 
     .sv-chip {
       padding:3px 10px; border-radius:20px; font-size:11px; cursor:pointer;
-      border:1px solid #E8E4F8; background:#fff; color:#8883B0; font-weight:400;
-      font-family:'Poppins',sans-serif; transition:all .15s; white-space:nowrap;
+      border:1px solid #D8E8DF; background:#fff; color:#4B7060; font-weight:400;
+      font-family:'Inter',sans-serif; transition:all .15s; white-space:nowrap;
     }
-    .sv-chip:hover  { background:#F5F4FB; color:#5a4fbf; border-color:#C5BBEF; }
-    .sv-chip.active { border-color:#A99BE8; background:#EEEAFB; color:#3D3580; font-weight:600; }
+    .sv-chip:hover  { background:#EBF4EF; color:#0F5C2C; border-color:#BBF7D0; }
+    .sv-chip.active { border-color:#6EE7B7; background:#DCFCE7; color:#0E2A20; font-weight:600; }
 
     .sv-sched-wrap { position:relative; display:inline-flex; align-items:center; }
     .sv-sched-select {
       appearance:none; -webkit-appearance:none;
-      padding:7px 32px 7px 34px; border-radius:9px;
-      border:1.5px solid #E8E4F8; font-size:12.5px;
-      font-family:'Poppins',sans-serif; color:#3D3580;
+      padding:6px 28px 6px 30px; border-radius:9px;
+      border:1.5px solid #D8E8DF; font-size:12px;
+      font-family:'Inter',sans-serif; color:#0E2A20;
       background:#fff; cursor:pointer; outline:none;
       font-weight:500; transition:border-color .15s, box-shadow .15s;
-      min-width:180px; max-width:270px;
+      min-width:140px; max-width:210px;
     }
-    .sv-sched-select:hover  { border-color:#C5BBEF; }
-    .sv-sched-select:focus  { border-color:#A99BE8; box-shadow:0 0 0 3px rgba(169,155,232,.12); }
+    .sv-sched-select:hover  { border-color:#BBF7D0; }
+    .sv-sched-select:focus  { border-color:#6EE7B7; box-shadow:0 0 0 3px rgba(21,128,61,.12); }
     .sv-sched-select:disabled { opacity:.6; cursor:default; }
 
     .sv-save-btn {
-      display:inline-flex; align-items:center; gap:6px;
-      padding:7px 14px; border-radius:9px; border:1.5px solid #E8E4F8;
-      background:#fff; color:#3D3580; font-size:12.5px; font-weight:600;
-      font-family:'Poppins',sans-serif; cursor:pointer; transition:all .2s;
+      display:inline-flex; align-items:center; gap:5px;
+      padding:6px 10px; border-radius:9px; border:1.5px solid #D8E8DF;
+      background:#fff; color:#0E2A20; font-size:12px; font-weight:600;
+      font-family:'Inter',sans-serif; cursor:pointer; transition:all .2s;
       white-space:nowrap; flex-shrink:0;
     }
-    .sv-save-btn:hover:not(:disabled) { background:#EEEAFB; border-color:#A99BE8; }
+    .sv-save-btn:hover:not(:disabled) { background:#DCFCE7; border-color:#6EE7B7; }
     .sv-save-btn:disabled { opacity:.65; cursor:default; }
     .sv-save-btn.saved  { background:#ecfdf5; border-color:#6ee7b7; color:#059669; }
     .sv-save-btn.failed { background:#fff8f8; border-color:#fca5a5; color:#dc2626; }
+    .sv-save-btn.unsaved { background:#fffbeb; border-color:#fde68a; color:#d97706; }
 
-    .sv-view-group { display:flex; border:1px solid #E8E4F8; border-radius:8px; overflow:hidden; background:#fff; }
+    .sv-view-group { display:flex; border:1px solid #D8E8DF; border-radius:8px; overflow:hidden; background:#fff; }
     .sv-view-btn {
       display:flex; align-items:center; gap:5px; padding:5px 11px;
-      font-size:11.5px; font-family:'Poppins',sans-serif;
+      font-size:11.5px; font-family:'Inter',sans-serif;
       border:none; cursor:pointer; transition:all .15s; white-space:nowrap;
     }
-    .sv-view-btn.active { background:#EEEAFB; color:#3D3580; font-weight:700; }
-    .sv-view-btn:not(.active) { background:transparent; color:#8883B0; font-weight:400; }
-    .sv-view-btn:not(.active):hover { background:#F5F4FB; color:#5a4fbf; }
+    .sv-view-btn.active { background:#DCFCE7; color:#0E2A20; font-weight:700; }
+    .sv-view-btn:not(.active) { background:transparent; color:#4B7060; font-weight:400; }
+    .sv-view-btn:not(.active):hover { background:#EBF4EF; color:#0F5C2C; }
 
     .sv-shimmer {
-      background: linear-gradient(90deg,#f0eef8 25%,#e8e4f8 50%,#f0eef8 75%);
+      background: linear-gradient(90deg,#EBF4EF 25%,#D8E8DF 50%,#EBF4EF 75%);
       background-size: 400px 100%;
       animation: svShimmer 1.2s ease-in-out infinite;
       border-radius:6px;
     }
 
     .sv-stats-row {
-      display:flex; background:#fff; border:1px solid #E8E4F8;
+      display:flex; background:#fff; border:1px solid #D8E8DF;
       border-radius:10px; overflow:hidden;
-      box-shadow:0 1px 4px rgba(124,111,205,.06);
+      box-shadow:0 1px 4px rgba(10,46,28,.06);
       margin-bottom:14px;
     }
     .sv-stat-cell {
       flex:1; padding:9px 14px; min-width:0;
-      border-right:1px solid #E8E4F8;
+      border-right:1px solid #D8E8DF;
       display:flex; flex-direction:column; gap:1px;
     }
     .sv-stat-cell:last-child { border-right:none; }
+
+    .sv-save-status-saved { background:#ecfdf5; border-color:#6ee7b7; }
+    .sv-save-status-saving { background:#fffbeb; border-color:#fde68a; }
+    .sv-save-status-unsaved { background:#fef2f2; border-color:#fecaca; }
+    .sv-save-status-ready { background:#f9fafb; border-color:#d1d5db; }
+    
+    /* Smart save button styles */
+    .sv-smart-save-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 9px;
+      border: 1.5px solid;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      white-space: nowrap;
+      flex-shrink: 0;
+      min-width: auto;
+    }
+    .sv-smart-save-btn:disabled {
+      opacity: .65;
+      cursor: default;
+    }
+    .sv-smart-save-btn.sv-save-status-saved {
+      background: #ecfdf5;
+      border-color: #6ee7b7;
+      color: #059669;
+    }
+    .sv-smart-save-btn.sv-save-status-saving {
+      background: #fffbeb;
+      border-color: #fde68a;
+      color: #d97706;
+    }
+    .sv-smart-save-btn.sv-save-status-unsaved {
+      background: #fef2f2;
+      border-color: #fecaca;
+      color: #dc2626;
+    }
+    .sv-smart-save-btn.sv-save-status-ready {
+      background: #fff;
+      border-color: #d1d5db;
+      color: #374151;
+    }
+    .sv-smart-save-btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .sv-smart-save-icon {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+    }
+    .sv-smart-save-text {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      min-width: 0;
+    }
+    .sv-smart-save-label {
+      font-weight: 600;
+      line-height: 1;
+    }
+    .sv-smart-save-subtitle {
+      font-size: 10px;
+      opacity: 0.7;
+      font-weight: 500;
+      line-height: 1;
+    }
+    
+    /* Version History Modal */
+    .sv-version-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      animation: svFadeIn 0.2s ease;
+    }
+    .sv-version-content {
+      background: white;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 400px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+      animation: svSlideIn 0.25s ease;
+    }
+    .sv-version-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .sv-version-header h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      color: #111827;
+    }
+    .sv-version-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #6b7280;
+      padding: 4px;
+      line-height: 1;
+    }
+    .sv-version-close:hover {
+      color: #111827;
+    }
+    .sv-version-list {
+      overflow-y: auto;
+      flex: 1;
+      padding: 8px 20px 20px;
+    }
+    .sv-version-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .sv-version-item:last-child {
+      border-bottom: none;
+    }
+    .sv-version-item.current {
+      background: rgba(34, 197, 94, 0.05);
+      margin: 0 -20px 8px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      border-bottom: 1px solid #bbf7d0;
+    }
+    .sv-version-badge {
+      background: #f3f4f6;
+      color: #6b7280;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: monospace;
+      flex-shrink: 0;
+    }
+    .sv-version-item.current .sv-version-badge {
+      background: #22c55e;
+      color: white;
+    }
+    .sv-version-details {
+      flex: 1;
+      min-width: 0;
+    }
+    .sv-version-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #111827;
+    }
+    .sv-version-meta {
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 2px;
+    }
   `
   document.head.appendChild(s)
 }
@@ -123,7 +299,7 @@ function Spinner({ full = false }) {
     <svg
       width={full ? 30 : 14} height={full ? 30 : 14}
       viewBox="0 0 24 24" fill="none"
-      stroke={full ? '#7C6FCD' : TV.deep} strokeWidth="2.2"
+      stroke={full ? '#15803D' : TV.deep} strokeWidth="2.2"
       style={{ animation: 'svSpinAnim .75s linear infinite', flexShrink: 0 }}
     >
       <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
@@ -133,7 +309,7 @@ function Spinner({ full = false }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', minHeight:300, gap:12 }}>
       {svg}
-      <span style={{ fontSize:13, color:TV.muted, fontFamily:'Poppins,sans-serif' }}>Loading schedule…</span>
+      <span style={{ fontSize:13, color:TV.muted, fontFamily:'Inter,sans-serif' }}>Loading schedule…</span>
     </div>
   )
 }
@@ -142,13 +318,8 @@ function Spinner({ full = false }) {
 function EmptyState({ hasFilters, onClear }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:280, gap:12 }}>
-      <div style={{ width:48, height:48, borderRadius:14, background:TV.pale, display:'flex', alignItems:'center', justifyContent:'center' }}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={TV.deep} strokeWidth="1.8">
-          <rect x="3" y="4" width="18" height="18" rx="2"/>
-          <line x1="16" y1="2" x2="16" y2="6"/>
-          <line x1="8" y1="2" x2="8" y2="6"/>
-          <line x1="3" y1="10" x2="21" y2="10"/>
-        </svg>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', marginBottom: 8 }}>
+        <img src={scheduleImage} alt="Empty Sessions" style={{ width: 80, height: 'auto', opacity: 0.9 }} />
       </div>
       <div style={{ textAlign:'center' }}>
         <p style={{ fontSize:13.5, fontWeight:600, color:TV.text, marginBottom:4 }}>No sessions found</p>
@@ -157,7 +328,7 @@ function EmptyState({ hasFilters, onClear }) {
         </p>
       </div>
       {hasFilters && (
-        <button onClick={onClear} style={{ padding:'7px 16px', fontSize:12, fontWeight:600, borderRadius:8, border:`1px solid ${TV.border}`, background:'#fff', color:TV.deep, cursor:'pointer', fontFamily:'Poppins,sans-serif' }}>
+        <button onClick={onClear} style={{ padding:'7px 16px', fontSize:12, fontWeight:600, borderRadius:8, border:`1px solid ${TV.border}`, background:'#fff', color:TV.deep, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
           Clear Filters
         </button>
       )}
@@ -189,7 +360,19 @@ function StatsRow({ items }) {
 }
 
 /* ── Schedule dropdown ───────────────────────────────────────────────────── */
-function ScheduleDropdown({ names, activeName, loading, initLoading, onChange }) {
+function ScheduleDropdown({ names, activeName, loading, initLoading, onChange, schedulesMeta }) {
+  // Always work with plain strings to avoid [object Object] key errors
+  const toStr = (n) => typeof n === 'string' ? n : (n?.name || n?.id || String(n))
+
+  const getLabel = (n) => {
+    const sName = toStr(n)
+    const meta = (schedulesMeta || []).find(s => (s.id || s.name) === sName)
+    // Show the friendly name (meta.name), not the raw id/document key that
+    // sName resolves to for master-finalized schedules -- otherwise the
+    // dropdown shows a uuid instead of e.g. "1st Semester 2025-2026 - Final".
+    const label = meta?.name || sName
+    return meta?.finalized ? `${label} ★` : label
+  }
   return (
     <div className="sv-sched-wrap">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={TV.muted} strokeWidth="2"
@@ -210,7 +393,10 @@ function ScheduleDropdown({ names, activeName, loading, initLoading, onChange })
         ) : (
           <>
             {!activeName && <option value="">— Select schedule —</option>}
-            {names.map(n => <option key={n} value={n}>{n}</option>)}
+            {names.map(n => {
+              const sName = toStr(n)
+              return <option key={sName} value={sName}>{getLabel(n)}</option>
+            })}
           </>
         )}
       </select>
@@ -225,38 +411,226 @@ function ScheduleDropdown({ names, activeName, loading, initLoading, onChange })
   )
 }
 
-/* ── Save button ─────────────────────────────────────────────────────────── */
-function SaveButton({ state, onClick }) {
-  const map = {
-    idle:   { label:'Save',    icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>, cls: '' },
-    saving: { label:'Saving…', icon: <Spinner />, cls: '' },
-    saved:  { label:'Saved',   icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>, cls: 'saved' },
-    error:  { label:'Failed',  icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>, cls: 'failed' },
+/* ── Smart save component with integrated status ──────────────────────────── */
+function SmartSaveButton({ 
+  state, 
+  onClick, 
+  hasUnsavedChanges, 
+  scheduleMeta, 
+  activeName,
+  className = ""
+}) {
+  const getContent = () => {
+    switch (state) {
+      case 'saving':
+        return {
+          icon: <Spinner />,
+          label: 'Saving…',
+          subtitle: null,
+          bgClass: 'sv-save-status-saving',
+          disabled: true
+        }
+      case 'saved':
+        if (!hasUnsavedChanges) {
+          const lastSaved = scheduleMeta?.savedAt
+          const timeAgo = lastSaved ? formatTimeAgo(lastSaved) : null
+          return {
+            icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>,
+            label: 'Saved',
+            subtitle: timeAgo || null,
+            bgClass: 'sv-save-status-saved',
+            disabled: false
+          }
+        }
+        // Fall through to unsaved if there are changes
+      case 'idle':
+      default:
+        if (hasUnsavedChanges) {
+          return {
+            icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
+            label: 'Save Changes',
+            subtitle: 'Click to save',
+            bgClass: 'sv-save-status-unsaved',
+            disabled: false
+          }
+        } else {
+          // If we're viewing a restored preview, the doc's `version` field is
+          // stale (it still reflects the pre-restore save) — show the
+          // version that's actually loaded instead.
+          const version = scheduleMeta?.restoredFromVersion ?? scheduleMeta?.version
+          const lastSaved = scheduleMeta?.restoredAt ?? scheduleMeta?.savedAt
+          const timeAgo = lastSaved ? formatTimeAgo(lastSaved) : null
+          const sub = [version > 1 ? `v${version}` : null, timeAgo].filter(Boolean).join(' · ')
+          return {
+            icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
+            label: 'Save',
+            subtitle: sub || null,
+            bgClass: 'sv-save-status-ready',
+            disabled: false
+          }
+        }
+    }
   }
-  const { label, icon, cls } = map[state] || map.idle
+
+  const { icon, label, subtitle, bgClass, disabled } = getContent()
+
   return (
-    <button className={`sv-save-btn ${cls}`} onClick={onClick} disabled={state === 'saving'}>
-      {icon}{label}
+    <button
+      className={`sv-smart-save-btn ${bgClass} ${className}`}
+      onClick={onClick}
+      disabled={disabled}
+      title={hasUnsavedChanges ? 'You have unsaved changes' : 'Save schedule'}
+    >
+      <div className="sv-smart-save-icon">{icon}</div>
+      <div className="sv-smart-save-text">
+        <div className="sv-smart-save-label">{label}</div>
+        {subtitle && <div className="sv-smart-save-subtitle">{subtitle}</div>}
+      </div>
     </button>
   )
 }
 
-/* ── Export button ───────────────────────────────────────────────────────── */
-function ExportButton({ onClick, disabled }) {
+/* ── Version History Component ──────────────────────────────────────────── */
+function VersionHistory({ versionHistory, currentVersion, onClose }) {
+  if (!versionHistory || versionHistory.length === 0) {
+    return (
+      <div className="sv-version-modal">
+        <div className="sv-version-content">
+          <div className="sv-version-header">
+            <h3>Version History</h3>
+            <button onClick={onClose} className="sv-version-close">×</button>
+          </div>
+          <div style={{ padding: '20px', textAlign: 'center', color: TV.muted }}>
+            No previous versions found
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <button
-      className="sv-save-btn"
-      onClick={onClick}
-      disabled={disabled}
-      title="Export schedule to Excel"
-    >
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-        <polyline points="7 10 12 15 17 10"/>
-        <line x1="12" y1="15" x2="12" y2="3"/>
-      </svg>
-      Export
-    </button>
+    <div className="sv-version-modal" onClick={onClose}>
+      <div className="sv-version-content" onClick={e => e.stopPropagation()}>
+        <div className="sv-version-header">
+          <h3>Version History</h3>
+          <button onClick={onClose} className="sv-version-close">×</button>
+        </div>
+        <div className="sv-version-list">
+          {/* Current version */}
+          <div className="sv-version-item current">
+            <div className="sv-version-badge">v{currentVersion}</div>
+            <div className="sv-version-details">
+              <div className="sv-version-label">Current Version</div>
+              <div className="sv-version-meta">Active • In memory</div>
+            </div>
+          </div>
+          
+          {/* Previous versions */}
+          {versionHistory.map((version, index) => (
+            <div key={index} className="sv-version-item">
+              <div className="sv-version-badge">v{version.version}</div>
+              <div className="sv-version-details">
+                <div className="sv-version-label">
+                  Saved {formatTimeAgo(version.savedAt)}
+                </div>
+                <div className="sv-version-meta">
+                  {new Date(version.savedAt).toLocaleString('en-PH', { timeZone:'Asia/Manila', month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true })}
+                  {version.eventCount ? ` · ${version.eventCount} events` : ''}
+                  {version.user ? ` · ${version.user}` : ''}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+function formatTimeAgo(dateInput) {
+  if (!dateInput) return null
+  // Always parse from the raw value — backend sends UTC ISO strings
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput
+  const diff = Date.now() - date.getTime()
+  const seconds = Math.floor(diff / 1000)
+  const minutes = Math.floor(diff / (1000 * 60))
+  const hours   = Math.floor(diff / (1000 * 60 * 60))
+  const days    = Math.floor(diff / (1000 * 60 * 60 * 24))
+
+  if (seconds < 10) return 'just now'
+  if (seconds < 60) return `${seconds}s ago`
+  if (minutes === 1) return '1 min ago'
+  if (minutes < 60) return `${minutes}m ago`
+  if (hours === 1)  return '1 hr ago'
+  if (hours < 24)   return `${hours}h ago`
+  if (days === 1)   return '1 day ago'
+  if (days < 7)     return `${days}d ago`
+  return date.toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' })
+}
+
+/* ── Export menu button — one button, choice of what to export ─────────────── */
+function ExportMenuButton({ onExportSchedule, onExportRooms, disabled }) {
+  const [open, setOpen] = useState(false)
+  const itemStyle = {
+    display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+    padding: '9px 14px', fontSize: 12.5, fontWeight: 600, color: '#0E2A20',
+    background: '#fff', border: 'none', cursor: 'pointer',
+    fontFamily: 'Inter, sans-serif', textAlign: 'left',
+  }
+  return (
+    <div style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        className="sv-save-btn"
+        onClick={() => setOpen(o => !o)}
+        disabled={disabled}
+        title="Export"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Export
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          style={{ marginLeft: 1, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}>
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      {open && (
+        <>
+          {/* Click-outside catcher */}
+          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 998 }} />
+          <div style={{
+            position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 999,
+            background: '#fff', border: '1px solid #D8E8DF', borderRadius: 10,
+            boxShadow: '0 12px 32px rgba(10,46,28,.16)', minWidth: 210, overflow: 'hidden',
+          }}>
+            <button
+              onClick={() => { setOpen(false); onExportSchedule() }}
+              style={{ ...itemStyle, borderBottom: '1px solid #EEF3F0' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#F0FDF4'}
+              onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Schedule (.xlsx)
+            </button>
+            <button
+              onClick={() => { setOpen(false); onExportRooms() }}
+              style={itemStyle}
+              onMouseEnter={e => e.currentTarget.style.background = '#F0FDF4'}
+              onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/>
+                <path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/>
+              </svg>
+              Available Rooms (.xlsx)
+            </button>
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 
@@ -273,6 +647,8 @@ function svIsOtherDept(courseCode = "") {
    Main page
    ════════════════════════════════════════════════════════════════════════════ */
 export default function ScheduleViewPage() {
+  const { name: urlName } = useParams()
+  const location = useLocation()
   const { events:storeEvents, scheduleName:storeName, setEvents, setName } = useScheduleStore()
 
   const [localEvents,       setLocalEvents]   = useState(storeEvents)
@@ -281,6 +657,7 @@ export default function ScheduleViewPage() {
   const [masterRooms,       setMasterRooms]   = useState({ lecture:[], lab:[] })
   const [masterFacultyList, setMasterFaculty] = useState([])
   const [savedNames,        setSavedNames]    = useState([])
+  const [schedulesMeta,     setSchedulesMeta] = useState([])
   const [activeName,        setActiveName]    = useState(storeName)
   const [isEditingName,     setIsEditingName] = useState(false)
   const [tempName,          setTempName]      = useState('')
@@ -298,6 +675,35 @@ export default function ScheduleViewPage() {
   const [filterMerged,      setFilterMerged]  = useState(false)
   const [filterLec,         setFilterLec]     = useState(false)
   const [filterLab,         setFilterLab]     = useState(false)
+  const [showAvailableOnly, setShowAvailableOnly] = useState(false)
+
+  /* ── Schedule metadata (AY / Semester / Finalized) ─────────────────────── */
+  const [schedAY,           setSchedAY]       = useState('')
+  const [schedSem,          setSchedSem]      = useState('')
+  const [schedFinalized,    setSchedFinalized]= useState(false)
+  const [scheduleMeta,      setScheduleMeta]  = useState(null)  // New: full metadata
+  const [finalizingState,   setFinalizingState]= useState('idle') // 'idle' | 'working' | 'done' | 'error'
+  const [showFinalizeModal, setShowFinalizeModal] = useState(false)
+  const [metaDirty,         setMetaDirty]     = useState(false)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [copyToast,         setCopyToast]   = useState(null)
+  const [showVersionHistory, setShowVersionHistory] = useState(false)
+
+  /* ── Handle passed metadata from SchedulerPage ─────────────────────────── */
+  useEffect(() => {
+    const passedMetadata = location.state
+    if (passedMetadata && passedMetadata.academicYear && passedMetadata.semester) {
+      // Set metadata from the passed state
+      setSchedAY(passedMetadata.academicYear)
+      setSchedSem(passedMetadata.semester)
+      if (passedMetadata.scheduleName) {
+        setActiveName(passedMetadata.scheduleName)
+        setName(passedMetadata.scheduleName)
+      }
+      // If this schedule is marked as unsaved, set the flag
+      setHasUnsavedChanges(passedMetadata.isUnsaved || false)
+    }
+  }, [location.state, setName])
 
   /* ── Bootstrap ──────────────────────────────────────────────────────────── */
   useEffect(() => {
@@ -305,35 +711,210 @@ export default function ScheduleViewPage() {
       .then(([r, f]) => { setMasterRooms(r); setMasterFaculty(f) })
       .catch(() => {})
     getSchedules()
-      .then(r => setSavedNames(r.names || []))
+      .then(r => {
+        setSavedNames(r.names || [])
+        setSchedulesMeta(r.schedules || [])
+      })
       .catch(() => {})
       .finally(() => setInitLoading(false))
   }, [])
 
   /* ── Load schedule ──────────────────────────────────────────────────────── */
-  async function loadSchedule(name) {
-    if (!name || name === activeName) return
+  async function loadSchedule(name, { force = false } = {}) {
+    if (!name || (!force && name === activeName)) return
     setLoading(true); setError(null); setSaveState('idle')
     try {
       const data = await getSchedules(name)
       setLocalEvents(data.events); setEvents(data.events)
       setPast([]); setFuture([])
       setActiveName(name); setName(name)
+      setSchedAY(data.academicYear || ''); setSchedSem(data.semester || '')
+      setSchedFinalized(data.finalized || false); setMetaDirty(false)
+      setHasUnsavedChanges(false) // Clear unsaved changes when loading
+      
+      // Set full metadata for the smart save component
+      setScheduleMeta({
+        version: data.version || 1,
+        createdAt: data.createdAt,
+        lastModified: data.lastModified,
+        savedAt: data.savedAt,
+        eventCount: data.eventCount || (data.events ? data.events.length : 0),
+        versionHistory: data.versionHistory || [],
+        // When the live doc is a restored preview (see POST /restore/{version}
+        // on the backend), these tell us the loaded content is NOT actually
+        // the doc's nominal `version` — it's an older snapshot. Cleared
+        // automatically once a real Save happens (the backend's /save does a
+        // full doc overwrite that drops these fields).
+        restoredFromVersion: data.restoredFromVersion || null,
+        restoredAt: data.restoredAt || null,
+      })
     } catch { setError(`Failed to load "${name}".`) }
     finally   { setLoading(false) }
   }
 
+  /* ── Auto-load from URL param ────────────────────────────────────────────── */
+  useEffect(() => {
+    if (!initLoading && urlName) {
+      const decoded = decodeURIComponent(urlName)
+      // Always force-load from API so metadata (AY, semester, finalized) is
+      // always populated — even when the store already has the same name set.
+      loadSchedule(decoded, { force: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initLoading, urlName])
+
   /* ── Save schedule ──────────────────────────────────────────────────────── */
+  
+  // Smart naming to prevent overwrites (copied from SchedulerPage)
+  function generateUniqueName(baseName) {
+    const existingNames = savedNames.map(s => typeof s === 'string' ? s : s.name)
+    
+    if (!existingNames.includes(baseName)) {
+      return baseName
+    }
+    
+    // Find next available number
+    let counter = 1
+    let uniqueName
+    do {
+      uniqueName = `${baseName} (${counter})`
+      counter++
+    } while (existingNames.includes(uniqueName))
+    
+    return uniqueName
+  }
+
   async function handleSave() {
     if (!activeName || saveState === 'saving') return
     setSaveState('saving')
+
     try {
-      await saveSchedule(activeName)
+      // Moves made via drag-and-drop are queued locally and only reach the
+      // backend's schedule_dict after a 5s auto-save or the PendingChangesBar's
+      // own Save button (see useDragDrop in svHooks.js). This button creates a
+      // new numbered version by snapshotting whatever is CURRENTLY in
+      // schedule_dict server-side — so if there are still unsynced moves
+      // sitting in dd.pendingOverrides, we have to push them first, or the
+      // new version silently won't contain the moves you just made.
+      if (dd.pendingOverrides && dd.pendingOverrides.size > 0) {
+        const { failed } = await dd.saveAllOverrides()
+        if (failed && failed.length > 0) {
+          setSaveState('error')
+          setTimeout(() => setSaveState('idle'), 2200)
+          return
+        }
+      }
+
+      // Check if this is an existing schedule or a new one
+      const isExistingSchedule = savedNames.some(s => {
+        const sName = typeof s === 'string' ? s : s.name
+        return sName === activeName
+      })
+      
+      let finalName = activeName.trim()
+      
+      // Only generate unique name if this is NOT an existing schedule
+      // This allows updating existing schedules without creating duplicates
+      if (!isExistingSchedule) {
+        finalName = generateUniqueName(finalName)
+      }
+      
+      const response = await saveSchedule(finalName, { academicYear: schedAY, semester: schedSem }, allEvents)
+      
+      // Update the name if it was auto-renamed (only for new schedules)
+      if (finalName !== activeName && !isExistingSchedule) {
+        setActiveName(finalName)
+        setName(finalName)
+        window.history.replaceState(null, '', `/dashboard/schedule/${encodeURIComponent(finalName)}`)
+        setSavedNames(prev => [...prev, finalName])
+      }
+
+      // Reload the full schedule from backend so metadata + versionHistory
+      // are always the authoritative backend copy — never duplicated client-side
+      if (response) {
+        const fresh = await getSchedules(finalName)
+        setScheduleMeta({
+          version:        fresh.version        || response.version || 1,
+          createdAt:      fresh.createdAt,
+          lastModified:   fresh.lastModified   || response.savedAt,
+          savedAt:        fresh.savedAt        || response.savedAt,
+          eventCount:     fresh.eventCount     || allEvents.length,
+          versionHistory: fresh.versionHistory || [],
+        })
+      }
+
       setSaveState('saved')
+      setHasUnsavedChanges(false)
       setTimeout(() => setSaveState('idle'), 2500)
     } catch {
       setSaveState('error')
       setTimeout(() => setSaveState('idle'), 2200)
+    }
+  }
+
+  /* ── Save metadata ─────────────────────────────────────────────────────── */
+  async function handleSaveMeta() {
+    if (!activeName || !metaDirty) return
+    try {
+      await updateScheduleMeta(activeName, { academic_year: schedAY, semester: schedSem })
+      setMetaDirty(false)
+      // refresh metadata in the list
+      setSchedulesMeta(prev => prev.map(s => (s.id || s.name) === activeName ? { ...s, academicYear: schedAY, semester: schedSem } : s))
+    } catch {}
+  }
+
+  /* ── Finalize / Unfinalize ─────────────────────────────────────────────── */
+  function handleFinalizeClick() {
+    // Check if there's already a finalized schedule for the same AY+semester
+    const existingFinalized = schedulesMeta.find(s => 
+      s.academicYear === schedAY && 
+      s.semester === schedSem && 
+      s.finalized && 
+      (s.id || s.name) !== activeName
+    )
+    
+    if (existingFinalized) {
+      // Show modal with warning about existing finalized schedule
+      setShowFinalizeModal(true)
+    } else {
+      // No conflict, proceed directly
+      handleFinalize()
+    }
+  }
+
+  async function handleFinalize() {
+    if (!activeName) return
+    setFinalizingState('working')
+    try {
+      await finalizeSchedule(activeName)
+      setSchedFinalized(true)
+      setSchedulesMeta(prev => prev.map(s => {
+        if ((s.id || s.name) === activeName) return { ...s, finalized: true }
+        // un-finalize others with same AY+semester
+        if (s.academicYear === schedAY && s.semester === schedSem && s.finalized) return { ...s, finalized: false }
+        return s
+      }))
+      setFinalizingState('done')
+      setShowFinalizeModal(false)
+      setTimeout(() => setFinalizingState('idle'), 2500)
+    } catch {
+      setFinalizingState('error')
+      setTimeout(() => setFinalizingState('idle'), 2200)
+    }
+  }
+
+  async function handleUnfinalize() {
+    if (!activeName) return
+    setFinalizingState('working')
+    try {
+      await unfinalizeSchedule(activeName)
+      setSchedFinalized(false)
+      setSchedulesMeta(prev => prev.map(s => (s.id || s.name) === activeName ? { ...s, finalized: false } : s))
+      setFinalizingState('done')
+      setTimeout(() => setFinalizingState('idle'), 2500)
+    } catch {
+      setFinalizingState('error')
+      setTimeout(() => setFinalizingState('idle'), 2200)
     }
   }
 
@@ -343,10 +924,99 @@ export default function ScheduleViewPage() {
     setIsEditingName(false)
   }
 
+  /* ── Make a copy ────────────────────────────────────────────────────────── */
+  async function handleMakeCopy() {
+    if (!activeName || !allEvents.length) return
+    
+    // Generate a unique copy name
+    const baseName = `${activeName} - Copy`
+    const finalName = generateUniqueName(baseName)
+    
+    try {
+      // Save the current on-screen events as a new schedule
+      await saveSchedule(finalName, { academicYear: schedAY, semester: schedSem }, allEvents)
+      
+      // Update saved names list
+      setSavedNames(prev => [...prev, finalName])
+      
+      // Navigate to the new copy
+      setActiveName(finalName)
+      setName(finalName)
+      setHasUnsavedChanges(false)
+      
+      // Update URL
+      window.history.replaceState(null, '', `/dashboard/schedule/${encodeURIComponent(finalName)}`)
+      
+      setCopyToast({ type: 'success', message: `Schedule copied as "${finalName}"` })
+      setTimeout(() => setCopyToast(null), 3000)
+    } catch (err) {
+      console.error('Failed to copy schedule:', err)
+      setCopyToast({ type: 'error', message: 'Failed to create copy' })
+      setTimeout(() => setCopyToast(null), 3000)
+    }
+  }
+
+  /* ── Shared: apply active filters across ALL days (day filter intentionally excluded) ── */
+  function getFilteredExportEvents() {
+    const q = filters.searchQuery.trim().toLowerCase()
+    const exportEvents = allEvents.filter(ev => {
+      if (q) {
+        const ok = (ev.courseCode||'').toLowerCase().includes(q)
+          || (ev.block||'').toLowerCase().includes(q)
+          || (ev.faculty||'').toLowerCase().includes(q)
+          || (q.length >= 3 && (ev.title||'').toLowerCase().includes(q))
+        if (!ok) return false
+      }
+      if (filterFac.size      > 0 && !filterFac.has(ev.faculty))       return false
+      if (filterPrograms.size > 0 && !filterPrograms.has(ev.program))  return false
+      if (filterYears.size    > 0 && !filterYears.has(ev.year))        return false
+      if (filterRooms.size    > 0 && !filterRooms.has(ev.room))        return false
+      if (filterBlocks.size   > 0 && !filterBlocks.has(ev.block))      return false
+      if (filterSessions.size > 0 && !filterSessions.has(ev.session))  return false
+      if (filterConflicts && !buildConflictMap(allEvents.filter(e => e.day === ev.day)).has(
+        ev.schedule_id ?? `${ev.courseCode}-${ev.block}-${ev.session}-${ev.day}`
+      )) return false
+      if (filterUnassigned && (ev.faculty && ev.faculty !== 'TBA'))    return false
+      if (filterMerged && !mergedIds.has(getEventId(ev)))              return false
+      if (filterLec && !filterLab && ev.session?.toUpperCase().includes('LAB'))  return false
+      if (filterLab && !filterLec && !ev.session?.toUpperCase().includes('LAB')) return false
+      return true
+    })
+
+    // Build filter suffix for the file name
+    const filterParts = []
+    if (q)                  filterParts.push(q)
+    if (filterPrograms.size > 0) filterParts.push([...filterPrograms].join('-'))
+    if (filterYears.size    > 0) filterParts.push([...filterYears].map(y => `Y${y}`).join('-'))
+    if (filterBlocks.size   > 0) filterParts.push([...filterBlocks].join('-'))
+    if (filterFac.size      > 0) filterParts.push([...filterFac].map(f => f.split(' ').pop()).join('-'))
+    if (filterRooms.size    > 0) filterParts.push([...filterRooms].join('-'))
+    if (filterSessions.size > 0) filterParts.push([...filterSessions].join('-'))
+    if (filterLec && !filterLab) filterParts.push('LEC')
+    if (filterLab && !filterLec) filterParts.push('LAB')
+    if (filterMerged)       filterParts.push('Merged')
+    if (filterConflicts)    filterParts.push('Conflicts')
+    if (filterUnassigned)   filterParts.push('Unassigned')
+
+    const safePart = filterParts.join('_').replace(/[\\/:*?"<>|]+/g, '').trim()
+    const exportName = safePart ? `${activeName}_${safePart}` : activeName
+
+    return { exportEvents, exportName }
+  }
+
   /* ── Export to Excel ──────────────────────────────────────────────────────── */
-    async function handleExport() {
+  async function handleExport() {
     if (!allEvents.length) return
-    await exportScheduleToExcel(allEvents, activeName)
+    const { exportEvents, exportName } = getFilteredExportEvents()
+    await exportScheduleToExcel(exportEvents, exportName)
+  }
+
+  /* ── Export room availability ────────────────────────────────────────────── */
+  // Deliberately uses ALL events (unfiltered) — availability is a fact about
+  // the room, not about whatever section/faculty filters happen to be on.
+  async function handleExportAvailableRooms() {
+    if (!allEvents.length) return
+    await exportAvailableRoomsToExcel(allEvents, masterRooms, activeName)
   }
 
   /* ── Undo / Redo ────────────────────────────────────────────────────────── */
@@ -355,6 +1025,7 @@ export default function ScheduleViewPage() {
       setPast(p => [...p, prev])
       setFuture([])
       setEvents(updated)
+      setHasUnsavedChanges(true) // Mark as having unsaved changes
       return updated
     })
   }, [setEvents])
@@ -366,6 +1037,7 @@ export default function ScheduleViewPage() {
       setPast(past.slice(0, -1))
       setFuture([current, ...future])
       setEvents(previous)
+      setHasUnsavedChanges(true) // Mark as having unsaved changes
       return previous
     })
   }
@@ -377,6 +1049,7 @@ export default function ScheduleViewPage() {
       setFuture(future.slice(1))
       setPast([...past, current])
       setEvents(next)
+      setHasUnsavedChanges(true) // Mark as having unsaved changes
       return next
     })
   }
@@ -404,11 +1077,11 @@ export default function ScheduleViewPage() {
     return evs
   }, [rawDayEvents, filterMerged, filterLec, filterLab, mergedIds])
 
-  const localHasFilters = hasFilters || filterMerged || filterLec || filterLab
-  const handleClearAll  = () => { clearFilters(); setFilterMerged(false); setFilterLec(false); setFilterLab(false) }
+  const localHasFilters = hasFilters || filterMerged || filterLec || filterLab || showAvailableOnly
+  const handleClearAll  = () => { clearFilters(); setFilterMerged(false); setFilterLec(false); setFilterLab(false); setShowAvailableOnly(false) }
 
   /* ── Drag & drop — now with pending overrides + conflict ids ──────────── */
-  const dd = useDragDrop(allEvents, activeDay, syncLocalEvents, setEvents, storeEvents)
+  const dd = useDragDrop(allEvents, activeDay, syncLocalEvents, setEvents, storeEvents, schedFinalized)
 
   const allDayRooms = useMemo(() => {
     const occupied = new Set(dayEvents.map(e => e.room).filter(Boolean))
@@ -418,10 +1091,57 @@ export default function ScheduleViewPage() {
     return [...merged, ...extra].filter(r => r && r !== 'TBA')
   }, [dayEvents, masterRooms])
 
+  // Room availability is always computed from ALL events for the day (not
+  // dayEvents/allDayRooms, which reflect active filters) so "available"
+  // stays correct no matter what program/year/faculty filters are on.
+  const dayAvailability = useMemo(
+    () => computeRoomAvailability(allEvents, masterRooms, activeDay),
+    [allEvents, masterRooms, activeDay]
+  )
+  // "Available" = has at least one open gap today, not "empty the whole day".
+  // On a real schedule almost every room gets booked at some point, so
+  // requiring the room to be fully empty made this set (and the toggle
+  // below) come up empty basically always.
+  const availableRoomSet = useMemo(
+    () => new Set(dayAvailability.filter(r => r.free.length > 0).map(r => r.room)),
+    [dayAvailability]
+  )
+
+  // Room → true free ranges, for glowing actual open slots in the TimeGrid.
+  // Built from dayAvailability (already computed from unfiltered allEvents above),
+  // so the glow stays correct even while a session/program/faculty filter is
+  // hiding the event that's actually occupying a given slot.
+  const availabilityMap = useMemo(
+    () => new Map(dayAvailability.map(r => [r.room, r.free])),
+    [dayAvailability]
+  )
+
+  // Room → session count for the active day, unaffected by active filters
+  // (same "all events for the day" basis as availableRoomSet above), used
+  // to show a simple per-room session tally in the room filter modal.
+  const roomSessionCounts = useMemo(() => {
+    const counts = new Map()
+    for (const ev of allEvents) {
+      if (ev.day !== activeDay || !ev.room || ev.room === 'TBA') continue
+      counts.set(ev.room, (counts.get(ev.room) ?? 0) + 1)
+    }
+    return counts
+  }, [allEvents, activeDay])
+
   const visibleRooms = useMemo(() => {
-    if (filterRooms.size > 0) return allDayRooms.filter(r => filterRooms.has(r))
-    return allDayRooms
-  }, [allDayRooms, filterRooms])
+    let rooms
+    if (filterRooms.size > 0) {
+      // A room the user explicitly filtered for should always show as a
+      // column — even if it has zero sessions today — so start from the
+      // full known room list (options.allRooms) instead of allDayRooms,
+      // which only contains rooms that already have events on this day.
+      rooms = options.allRooms.filter(r => filterRooms.has(r))
+    } else {
+      rooms = allDayRooms
+    }
+    if (showAvailableOnly) rooms = rooms.filter(r => availableRoomSet.has(r))
+    return rooms
+  }, [allDayRooms, filterRooms, showAvailableOnly, availableRoomSet, options.allRooms])
 
   const dayCounts = useMemo(() => {
     const m = {}
@@ -435,7 +1155,7 @@ export default function ScheduleViewPage() {
 
   const statItems = [
     { label:'Sessions',      value: dayEvents.length,    sub: `on ${activeDay}` },
-    { label:'Total overall', value: allEvents.length,    sub: 'all days', accent: '#A99BE8' },
+    { label:'Total overall', value: allEvents.length,    sub: 'all days', accent: '#6EE7B7' },
     { label:'Conflicts',     value: conflictMap.size,    accent: conflictMap.size  > 0 ? '#ef4444' : TV.deep, sub: 'detected'   },
     { label:'Unassigned',    value: unassignedCount,     accent: unassignedCount   > 0 ? '#f59e0b' : TV.deep, sub: 'dept courses only' },
     { label:'Faculty',       value: new Set(dayEvents.map(e => e.faculty).filter(f => f && f !== 'TBA')).size, sub: 'teaching' },
@@ -448,49 +1168,115 @@ export default function ScheduleViewPage() {
 
   /* ════════════════════ RENDER ════════════════════════════════════════════ */
   return (
-    <div className="page" style={{ paddingBottom:40, overflowX:'hidden', width:'100%', minWidth:0 }}>
+    <div className="page" style={{ padding:'15px 15px 30px', overflowX:'hidden', width:'100%', minWidth:0 }}>
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap', marginBottom:20 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:20, minWidth:0 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0, flex:'1 1 0' }}>
           {isEditingName ? (
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
               <input
                 autoFocus value={tempName}
                 onChange={e => setTempName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSaveName()}
-                style={{ fontSize:20, fontWeight:700, padding:'4px 10px', borderRadius:8, border:`2px solid ${TV.mid}`, outline:'none', width:230, fontFamily:'Poppins,sans-serif' }}
+                style={{ fontSize:20, fontWeight:700, padding:'4px 10px', borderRadius:8, border:`2px solid ${TV.mid}`, outline:'none', width:230, fontFamily:'Inter,sans-serif' }}
               />
-              <button onClick={handleSaveName} style={{ padding:'6px 14px', background:TV.deep, color:'#fff', border:'none', borderRadius:8, fontWeight:600, cursor:'pointer', fontFamily:'Poppins,sans-serif' }}>Save</button>
-              <button onClick={() => setIsEditingName(false)} style={{ padding:'6px 14px', background:'#fff', border:`1px solid ${TV.border}`, borderRadius:8, fontWeight:600, cursor:'pointer', fontFamily:'Poppins,sans-serif' }}>Cancel</button>
+              <button onClick={handleSaveName} style={{ padding:'6px 14px', background:TV.deep, color:'#fff', border:'none', borderRadius:8, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>Save</button>
+              <button onClick={() => setIsEditingName(false)} style={{ padding:'6px 14px', background:'#fff', border:`1px solid ${TV.border}`, borderRadius:8, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>Cancel</button>
             </div>
           ) : (
-            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <h1 className="page-title" style={{ margin:0, fontSize:22 }}>
-                {activeName || 'Untitled Schedule'}
-              </h1>
-              {activeName && (
-                <button
-                  onClick={() => { setTempName(activeName); setIsEditingName(true) }}
-                  style={{ background:'transparent', border:'none', cursor:'pointer', color:TV.muted, display:'flex', alignItems:'center', padding:4, borderRadius:6 }}
-                  title="Rename"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                  </svg>
-                </button>
+            <div style={{ display:'flex', alignItems:'center', gap:16 }}>
+              <div>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <h1 className="page-title" style={{ margin:0, fontSize:18, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'28ch' }}>
+                    {activeName || 'Untitled Schedule'}
+                  </h1>
+                  {activeName && (
+                    <button
+                      onClick={() => { setTempName(activeName); setIsEditingName(true) }}
+                      style={{ background:'transparent', border:'none', cursor:'pointer', color:TV.muted, display:'flex', alignItems:'center', padding:4, borderRadius:6 }}
+                      title="Rename"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                
+                {/* Academic Year & Semester - under the name */}
+                {activeName && schedAY && schedSem && (
+                  <div style={{ fontSize:11.5, marginTop:2, display:'flex', alignItems:'center', gap:12, color:TV.muted2, fontWeight:500 }}>
+                    {schedAY} • {schedSem}
+                  </div>
+                )}
+              </div>
+              
+              {/* Finalize/Unfinalize - same row as title */}
+              {activeName && allEvents.length > 0 && (
+                schedFinalized ? (
+                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'#DCFCE7', color:'#15803D', border:'1px solid #BBF7D0' }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                      Finalized
+                    </span>
+                    <button onClick={handleUnfinalize} disabled={finalizingState === 'working'}
+                      style={{ padding:'3px 10px', borderRadius:7, border:'1px solid #fecaca', background:'#fff8f8', color:'#dc2626', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
+                      {finalizingState === 'working' ? 'Removing…' : 'Unfinalize'}
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={handleFinalizeClick} disabled={finalizingState === 'working'}
+                    style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 13px', borderRadius:8, border:'none', background:'linear-gradient(135deg,#15803D,#0F5C2C)', color:'#fff', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 2px 8px rgba(21,128,61,.25)' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    {finalizingState === 'working' ? 'Finalizing…' : 'Finalize'}
+                  </button>
+                )
               )}
             </div>
           )}
         </div>
         {!isEditingName && (
-          <div style={{ display:'flex', gap:8, alignItems:'center', flexShrink:0 }}>
+          <div style={{ display:'flex', gap:5, alignItems:'center', flexShrink:0 }}>
             {(initLoading || savedNames.length > 0) && (
-              <ScheduleDropdown names={savedNames} activeName={activeName} loading={loading} initLoading={initLoading} onChange={loadSchedule} />
+              <ScheduleDropdown names={savedNames} activeName={activeName} loading={loading} initLoading={initLoading} onChange={loadSchedule} schedulesMeta={schedulesMeta} />
             )}
-            {activeName && <SaveButton state={saveState} onClick={handleSave} />}
-            {allEvents.length > 0 && <ExportButton onClick={handleExport} />}
+            {activeName && !schedFinalized && <SmartSaveButton state={saveState} onClick={handleSave} hasUnsavedChanges={hasUnsavedChanges} scheduleMeta={scheduleMeta} activeName={activeName} />}
+            {/* Version History Button - only show if there are previous versions,
+                and never while finalized (restoring would overwrite the live
+                finalized state that's currently published to faculty) */}
+            {activeName && !schedFinalized && scheduleMeta && scheduleMeta.versionHistory && scheduleMeta.versionHistory.length > 0 && (
+              <button
+                onClick={() => setShowVersionHistory(true)}
+                className="sv-save-btn"
+                title={`View ${scheduleMeta.versionHistory.length} previous version${scheduleMeta.versionHistory.length !== 1 ? 's' : ''}`}
+                style={{ minWidth:'auto', padding:'6px 9px', fontSize:12 }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="1 4 1 10 7 10"/>
+                  <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                </svg>
+                <span>History ({scheduleMeta.versionHistory.length})</span>
+              </button>
+            )}
+            {/* Make a Copy Button — icon only to save space */}
+            {activeName && allEvents.length > 0 && (
+              <button
+                onClick={handleMakeCopy}
+                className="sv-save-btn"
+                title="Make a copy of this schedule"
+                style={{ minWidth:'auto', padding:'6px 8px' }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+              </button>
+            )}
+            {allEvents.length > 0 && (
+              <ExportMenuButton onExportSchedule={handleExport} onExportRooms={handleExportAvailableRooms} />
+            )}
           </div>
         )}
       </div>
@@ -500,13 +1286,15 @@ export default function ScheduleViewPage() {
 
       {/* ── Pending changes bar ───────────────────────────────────────────── */}
       {/* Appears below stats, above day selector — amber, prominent */}
-    <PendingChangesBar
-  pendingOverrides={dd.pendingOverrides}
-  onSave={dd.saveAllOverrides}
-  onRevertAll={dd.revertAllOverrides}
-  saving={dd.saving}
-  autoSaveIn={dd.autoSaveIn}
-/>
+    {!schedFinalized && (
+      <PendingChangesBar
+        pendingOverrides={dd.pendingOverrides}
+        onSave={dd.saveAllOverrides}
+        onRevertAll={dd.revertAllOverrides}
+        saving={dd.saving}
+        autoSaveIn={dd.autoSaveIn}
+      />
+    )}
  
 
        {/* ── Program color legend ─────────────────────────────────────────── */}
@@ -575,7 +1363,7 @@ export default function ScheduleViewPage() {
             <button onClick={toggles.conflicts} style={{
               display:'inline-flex', alignItems:'center', gap:4,
               padding:'3px 10px', borderRadius:20, fontSize:11, cursor:'pointer',
-              fontFamily:'Poppins,sans-serif', transition:'all .15s',
+              fontFamily:'Inter,sans-serif', transition:'all .15s',
               fontWeight: filterConflicts ? 700 : 400,
               border: `1px solid ${filterConflicts ? '#fca5a5' : TV.border}`,
               background: filterConflicts ? '#fef2f2' : '#fff',
@@ -590,7 +1378,7 @@ export default function ScheduleViewPage() {
             <button onClick={() => setFilterMerged(!filterMerged)} style={{
               display:'inline-flex', alignItems:'center', gap:4,
               padding:'3px 10px', borderRadius:20, fontSize:11, cursor:'pointer',
-              fontFamily:'Poppins,sans-serif', transition:'all .15s',
+              fontFamily:'Inter,sans-serif', transition:'all .15s',
               fontWeight: filterMerged ? 700 : 400,
               border: `1px solid ${filterMerged ? TV.light : TV.border}`,
               background: filterMerged ? TV.pale : '#fff',
@@ -605,7 +1393,7 @@ export default function ScheduleViewPage() {
             <button onClick={toggles.unassigned} style={{
               display:'inline-flex', alignItems:'center', gap:4,
               padding:'3px 10px', borderRadius:20, fontSize:11, cursor:'pointer',
-              fontFamily:'Poppins,sans-serif', transition:'all .15s',
+              fontFamily:'Inter,sans-serif', transition:'all .15s',
               fontWeight: filterUnassigned ? 700 : 400,
               border: `1px solid ${filterUnassigned ? '#fcd34d' : TV.border}`,
               background: filterUnassigned ? '#fffbeb' : '#fff',
@@ -616,11 +1404,28 @@ export default function ScheduleViewPage() {
               </svg>
               Unassigned
             </button>
+            <button
+              onClick={() => setShowAvailableOnly(v => !v)}
+              title="Show only rooms with open time today, and glow their genuinely free slots green — computed from every session, unaffected by other filters"
+              style={{
+                display:'inline-flex', alignItems:'center', gap:4,
+                padding:'3px 10px', borderRadius:20, fontSize:11, cursor:'pointer',
+                fontFamily:'Inter,sans-serif', transition:'all .15s',
+                fontWeight: showAvailableOnly ? 700 : 400,
+                border: `1px solid ${showAvailableOnly ? '#86EFAC' : TV.border}`,
+                background: showAvailableOnly ? '#F0FDF4' : '#fff',
+                color: showAvailableOnly ? '#15803D' : TV.muted,
+              }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 6 9 17l-5-5"/>
+              </svg>
+              Available Rooms
+            </button>
             {localHasFilters && (
               <button onClick={handleClearAll} style={{
                 fontSize:11.5, color:'#dc2626', background:'#fff8f8',
                 border:'1px solid #fecaca', borderRadius:8, padding:'4px 10px',
-                cursor:'pointer', fontFamily:'Poppins,sans-serif', fontWeight:600,
+                cursor:'pointer', fontFamily:'Inter,sans-serif', fontWeight:600,
                 flexShrink:0, marginLeft:'auto',
               }}>
                 ✕ Clear all
@@ -743,13 +1548,8 @@ export default function ScheduleViewPage() {
         <Spinner full />
       ) : hasNoSchedule ? (
         <div style={{ background:'#fff', border:`1px solid ${TV.border}`, borderRadius:14, padding:48, textAlign:'center' }}>
-          <div style={{ width:56, height:56, borderRadius:16, background:TV.pale, display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={TV.deep} strokeWidth="1.8">
-              <rect x="3" y="4" width="18" height="18" rx="2"/>
-              <line x1="16" y1="2" x2="16" y2="6"/>
-              <line x1="8" y1="2" x2="8" y2="6"/>
-              <line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
+            <img src={scheduleImage} alt="No Schedule Loaded" style={{ width: 120, height: 'auto' }} />
           </div>
           <p style={{ fontSize:15, fontWeight:700, color:TV.text, marginBottom:6 }}>No Schedule Loaded</p>
           <p style={{ fontSize:13, color:TV.muted }}>
@@ -773,7 +1573,7 @@ export default function ScheduleViewPage() {
           position: 'fixed', inset: 0, zIndex: 200,
           background: '#fff',
           display: 'flex', flexDirection: 'column',
-          fontFamily: 'Poppins, sans-serif',
+          fontFamily: 'Inter, sans-serif',
         }}>
 
           {/* ── Top bar: Unified Header (Name + Days + Controls) ── */}
@@ -782,7 +1582,7 @@ export default function ScheduleViewPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '0 16px', height: 56, // Slightly taller to comfortably fit day buttons
             borderBottom: `1px solid ${TV.border}`,
-            background: 'linear-gradient(to bottom,#F7F6FD,#FAFAFE)',
+            background: 'linear-gradient(to bottom,#F2F7F4,#F8FAF9)',
           }}>
             
             {/* Left: name + stats + conflict */}
@@ -859,7 +1659,7 @@ export default function ScheduleViewPage() {
                   background: localHasFilters ? TV.pale : '#fff',
                   color: localHasFilters ? TV.deep : TV.muted,
                   fontSize: 12, fontWeight: localHasFilters ? 700 : 500,
-                  cursor: 'pointer', fontFamily: 'Poppins, sans-serif',
+                  cursor: 'pointer', fontFamily: 'Inter, sans-serif',
                   transition: 'all .15s',
                 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -877,7 +1677,7 @@ export default function ScheduleViewPage() {
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   padding: '5px 12px', borderRadius: 8, border: `1px solid ${TV.border}`,
                   background: '#fff', color: TV.deep, fontSize: 12, fontWeight: 600,
-                  cursor: 'pointer', fontFamily: 'Poppins, sans-serif', transition: 'all .15s',
+                  cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all .15s',
                 }}
                 onMouseEnter={e => { e.currentTarget.style.background = TV.pale; e.currentTarget.style.borderColor = TV.mid }}
                 onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = TV.border }}>
@@ -892,7 +1692,7 @@ export default function ScheduleViewPage() {
 
           {/* ── Grid fills remaining space ── */}
           <div style={{ flex: 1, overflow: 'hidden', padding: '0 16px' }}>
-            {dayEvents.length === 0
+            {visibleRooms.length === 0
               ? <EmptyState hasFilters={localHasFilters} onClear={handleClearAll} />
               : (
                 <TimeGrid
@@ -900,12 +1700,15 @@ export default function ScheduleViewPage() {
                   draggedEvent={dd.draggedEvent} hoveredCell={dd.hoveredCell} getDropConflict={dd.getDropConflict}
                   onDragStart={dd.handleDragStart} onDragEnd={dd.handleDragEnd} onDragOver={dd.handleDragOver}
                   onDragLeave={dd.handleDragLeave} onDrop={dd.handleDrop} onCardClick={setSelectedEvent}
+                  locked={schedFinalized}
                   gridSize={maximizeDensity} fullscreen={true} conflictingDragIds={dd.conflictingDragIds}
                   ambientConflictIds={dd.ambientConflictIds}
                   ambientMergeIds={dd.ambientMergeIds}
                   dragConflictBands={dd.dragConflictBands}
                   mergedIds={mergedIds}
                   allEvents={allEvents}
+                  availabilityMap={availabilityMap}
+                  highlightAvailable={showAvailableOnly}
                 />
               )
             }
@@ -918,9 +1721,9 @@ export default function ScheduleViewPage() {
                 background: '#fff', borderRadius: 14,
                 width: 680, maxWidth: '94vw', maxHeight: '88vh',
                 display: 'flex', flexDirection: 'column',
-                boxShadow: '0 24px 64px rgba(61,53,128,0.22)',
+                boxShadow: '0 24px 64px rgba(10,46,28,0.22)',
                 border: `1px solid ${TV.border}`,
-                fontFamily: 'Poppins, sans-serif',
+                fontFamily: 'Inter, sans-serif',
                 overflow: 'hidden',
               }}>
                 <div style={{ padding: '16px 20px 0' }}>
@@ -949,25 +1752,32 @@ export default function ScheduleViewPage() {
                       <p style={{ fontSize: 9.5, fontWeight: 700, color: TV.muted, textTransform: 'uppercase', letterSpacing: '.7px', marginBottom: 6 }}>Quick Filters</p>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         <button onClick={toggles.conflicts} style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'Poppins,sans-serif', transition: 'all .15s',
+                          display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'Inter,sans-serif', transition: 'all .15s',
                           fontWeight: filterConflicts ? 700 : 400, border: `1px solid ${filterConflicts ? '#fca5a5' : TV.border}`, background: filterConflicts ? '#fef2f2' : '#fff', color: filterConflicts ? '#b91c1c' : TV.muted,
                         }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                           Conflicts only
                         </button>
                         <button onClick={() => setFilterMerged(!filterMerged)} style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'Poppins,sans-serif', transition: 'all .15s',
+                          display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'Inter,sans-serif', transition: 'all .15s',
                           fontWeight: filterMerged ? 700 : 400, border: `1px solid ${filterMerged ? TV.light : TV.border}`, background: filterMerged ? TV.pale : '#fff', color: filterMerged ? TV.deep : TV.muted,
                         }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                           Merged only
                         </button>
                         <button onClick={toggles.unassigned} style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'Poppins,sans-serif', transition: 'all .15s',
+                          display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'Inter,sans-serif', transition: 'all .15s',
                           fontWeight: filterUnassigned ? 700 : 400, border: `1px solid ${filterUnassigned ? '#fcd34d' : TV.border}`, background: filterUnassigned ? '#fffbeb' : '#fff', color: filterUnassigned ? '#92400e' : TV.muted,
                         }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/></svg>
                           Unassigned only
+                        </button>
+                        <button onClick={() => setShowAvailableOnly(v => !v)} style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'Inter,sans-serif', transition: 'all .15s',
+                          fontWeight: showAvailableOnly ? 700 : 400, border: `1px solid ${showAvailableOnly ? '#86EFAC' : TV.border}`, background: showAvailableOnly ? '#F0FDF4' : '#fff', color: showAvailableOnly ? '#15803D' : TV.muted,
+                        }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                          Available rooms only
                         </button>
                       </div>
                     </div>
@@ -1023,7 +1833,7 @@ export default function ScheduleViewPage() {
                 {/* Footer */}
                 <div style={{
                   flexShrink: 0, padding: '12px 20px', borderTop: `1px solid ${TV.border}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FAFAFE',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F8FAF9',
                 }}>
                   <span style={{ fontSize: 11.5, color: TV.muted, fontWeight: 500 }}>
                     {dayEvents.length} session{dayEvents.length !== 1 ? 's' : ''} shown
@@ -1033,7 +1843,7 @@ export default function ScheduleViewPage() {
                       <button onClick={() => { handleClearAll(); }} style={{
                         padding: '6px 14px', borderRadius: 8, fontSize: 11.5, fontWeight: 600,
                         border: '1px solid #fecaca', background: '#fff8f8', color: '#dc2626',
-                        cursor: 'pointer', fontFamily: 'Poppins,sans-serif',
+                        cursor: 'pointer', fontFamily: 'Inter,sans-serif',
                       }}>
                         ✕ Clear all
                       </button>
@@ -1041,7 +1851,7 @@ export default function ScheduleViewPage() {
                     <button onClick={() => setMaximizeFilterOpen(false)} style={{
                       padding: '6px 18px', borderRadius: 8, fontSize: 11.5, fontWeight: 600,
                       border: 'none', background: TV.deep, color: '#fff',
-                      cursor: 'pointer', fontFamily: 'Poppins,sans-serif',
+                      cursor: 'pointer', fontFamily: 'Inter,sans-serif',
                     }}>
                       Done
                     </button>
@@ -1054,12 +1864,12 @@ export default function ScheduleViewPage() {
       ) : (
         <div style={{
           background:'#fff', border:`1px solid ${TV.border}`, borderRadius:14,
-          overflow:'hidden', boxShadow:'0 1px 4px rgba(124,111,205,.07)',
+          overflow:'hidden', boxShadow:'0 1px 4px rgba(10,46,28,.07)',
           display:'flex', flexDirection:'column', width:'100%', minWidth:0,
           padding:'12px 14px 0',
         }}>
           <ConflictSummaryBar conflictMap={conflictMap} />
-          {dayEvents.length === 0
+          {visibleRooms.length === 0
             ? <EmptyState hasFilters={localHasFilters} onClear={handleClearAll} />
             : (
               <TimeGrid
@@ -1075,6 +1885,7 @@ export default function ScheduleViewPage() {
                 onDragLeave={dd.handleDragLeave}
                 onDrop={dd.handleDrop}
                 onCardClick={setSelectedEvent}
+                locked={schedFinalized}
                 gridSize={gridSize}
                 conflictingDragIds={dd.conflictingDragIds}
                 ambientConflictIds={dd.ambientConflictIds}
@@ -1082,6 +1893,8 @@ export default function ScheduleViewPage() {
                 dragConflictBands={dd.dragConflictBands}
                 mergedIds={mergedIds}
                 allEvents={allEvents}
+                availabilityMap={availabilityMap}
+                highlightAvailable={showAvailableOnly}
               />
             )
           }
@@ -1096,6 +1909,7 @@ export default function ScheduleViewPage() {
           onClose={() => setSelectedEvent(null)}
           masterRooms={masterRooms}
           masterFacultyList={masterFacultyList}
+          readOnly={schedFinalized}
           onSaved={(updates) => {
             setSelectedEvent(null)
             if (!updates) return
@@ -1119,8 +1933,41 @@ export default function ScheduleViewPage() {
       {openModal === 'room' && (
         <RoomFilterModal title="Filter by Room" options={options.allRooms}
           selectedSet={filterRooms} onToggle={toggles.room}
-          masterRooms={masterRooms} onClose={() => setOpenModal(null)} />
+          masterRooms={masterRooms} availableRooms={availableRoomSet}
+          sessionCounts={roomSessionCounts}
+          onClose={() => setOpenModal(null)} />
 
+      )}
+
+      {/* ── Finalize confirmation modal ───────────────────────────────────── */}
+      {showFinalizeModal && (
+        <ModalOverlay onClose={() => setShowFinalizeModal(false)}>
+          <div style={{ background:'#fff', borderRadius:16, width:420, padding:'28px 30px', boxShadow:'0 24px 60px rgba(10,46,28,0.25)', border:`1px solid ${TV.border}`, fontFamily:'Inter,sans-serif' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ display:'flex', alignItems:'flex-start', gap:14, marginBottom:20 }}>
+              <div style={{ width:40, height:40, borderRadius:11, background:'#DCFCE7', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div>
+                <h3 style={{ margin:0, fontSize:15, fontWeight:700, color:'#0E2A20' }}>Finalize Schedule</h3>
+                <p style={{ margin:'5px 0 0', fontSize:12.5, color:'#6B8C7A', lineHeight:1.5 }}>
+                  This will publish <strong>{activeName}</strong>{schedAY || schedSem ? ` (${[schedAY ? `A.Y. ${schedAY}` : '', schedSem].filter(Boolean).join(', ')})` : ''} to faculty.
+                  Any other finalized schedule for the same period will be replaced.
+                </p>
+              </div>
+            </div>
+            <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+              <button onClick={() => setShowFinalizeModal(false)}
+                style={{ padding:'8px 18px', borderRadius:9, border:`1.5px solid ${TV.border}`, background:'#fff', color:'#4B7060', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
+                Cancel
+              </button>
+              <button onClick={handleFinalize} disabled={finalizingState === 'working'}
+                style={{ padding:'8px 22px', borderRadius:9, border:'none', background:'linear-gradient(135deg,#15803D,#0F5C2C)', color:'#fff', fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 3px 12px rgba(15,92,44,0.25)', opacity: finalizingState === 'working' ? 0.7 : 1 }}>
+                {finalizingState === 'working' ? 'Finalizing…' : 'Yes, Finalize'}
+              </button>
+            </div>
+          </div>
+        </ModalOverlay>
       )}
 
       {/* ── Override confirmation modal ────────────────────────────────── */}
@@ -1155,6 +2002,43 @@ export default function ScheduleViewPage() {
           }
         />
       )}
+
+      {/* ── Version History Modal ─────────────────────────────────────────── */}
+      {showVersionHistory && (
+        <VersionHistoryModal
+          versionHistory={scheduleMeta?.versionHistory || []}
+          currentVersion={scheduleMeta?.restoredFromVersion ?? scheduleMeta?.version ?? 1}
+          currentSavedAt={scheduleMeta?.restoredAt ?? scheduleMeta?.savedAt}
+          isRestoredPreview={!!scheduleMeta?.restoredFromVersion}
+          scheduleName={activeName}
+          onClose={() => setShowVersionHistory(false)}
+          onRestore={async (restoreResult) => {
+            // A restore replaces the whole schedule — any local overrides
+            // still queued from drag-and-drop reference the pre-restore
+            // events and would otherwise sit around and get silently
+            // auto-saved on top of the restored data a few seconds later.
+            dd.revertAllOverrides()
+            // Reload events from Firestore (backend already swapped them)
+            await loadSchedule(activeName, { force: true })
+            // Mark as unsaved so the user decides whether to keep the restored state
+            setHasUnsavedChanges(true)
+            setCopyToast({
+              type: 'success',
+              message: `Loaded v${restoreResult.fromVersion} — review and save to keep it`
+            })
+            setTimeout(() => setCopyToast(null), 5000)
+          }}
+        />
+      )}
+
+      {/* ── Copy / restore toast ──────────────────────────────────────────── */}
+      {copyToast && (
+        <Toast
+          type={copyToast.type}
+          message={copyToast.message}
+          onDismiss={() => setCopyToast(null)}
+        />
+      )}
     </div>
   )
 }
@@ -1166,7 +2050,7 @@ function ListView({ dayEvents, conflictMap, hasFilters, clearFilters, onCardClic
     <div style={{ background:'#fff', border:`1px solid ${TV.border}`, borderRadius:14, overflow:'hidden' }}>
       <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12.5 }}>
         <thead>
-          <tr style={{ background:'#FAFAFE' }}>
+          <tr style={{ background:'#F8FAF9' }}>
             {['Time','Course','Section','Type','Faculty','Room','Status'].map(h => (
               <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:10.5, fontWeight:700, color:TV.muted, textTransform:'uppercase', letterSpacing:'.6px', borderBottom:`1px solid ${TV.border}`, whiteSpace:'nowrap' }}>
                 {h}
@@ -1186,9 +2070,9 @@ function ListView({ dayEvents, conflictMap, hasFilters, clearFilters, onCardClic
             return (
               <tr key={evId}
                 onClick={() => onCardClick(ev)}
-                style={{ borderBottom:`1px solid ${TV.border}`, cursor:'pointer', background:i%2===0?'#fff':'#FAFAFE', transition:'background .12s' }}
+                style={{ borderBottom:`1px solid ${TV.border}`, cursor:'pointer', background:i%2===0?'#fff':'#F8FAF9', transition:'background .12s' }}
                 onMouseEnter={e => e.currentTarget.style.background = TV.pale}
-                onMouseLeave={e => e.currentTarget.style.background = i%2===0?'#fff':'#FAFAFE'}
+                onMouseLeave={e => e.currentTarget.style.background = i%2===0?'#fff':'#F8FAF9'}
               >
                 <td style={{ padding:'10px 14px', whiteSpace:'nowrap', fontSize:11.5, color:TV.muted }}>{ev.period}</td>
                 <td style={{ padding:'10px 14px' }}>
@@ -1201,12 +2085,12 @@ function ListView({ dayEvents, conflictMap, hasFilters, clearFilters, onCardClic
                   </span>
                 </td>
                 <td style={{ padding:'10px 14px', whiteSpace:'nowrap' }}>
-                  <span style={{ fontSize:9, fontWeight:800, letterSpacing:'0.5px', color:isLab?TV.deep:TV.text, background:isLab?`rgba(124,111,205,.12)`:`rgba(0,0,0,.04)`, border:`1px solid ${isLab?TV.mid:TV.border}`, padding:'2px 6px', borderRadius:4 }}>
+                  <span style={{ fontSize:9, fontWeight:800, letterSpacing:'0.5px', color:isLab?TV.deep:TV.text, background:isLab?`rgba(21,128,61,.12)`:`rgba(0,0,0,.04)`, border:`1px solid ${isLab?TV.mid:TV.border}`, padding:'2px 6px', borderRadius:4 }}>
                     {sessionType}
                   </span>
                 </td>
                 <td style={{ padding:'10px 14px', fontSize:12, maxWidth:150, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                  {isExtManaged ? <span style={{ color:'#A99BE8', fontWeight:500 }}>Ext. managed</span> : noFaculty ? <span style={{ color:'#f59e0b', fontWeight:600 }}>Unassigned</span> : <span style={{ color:TV.text }}>{ev.faculty}</span>}
+                  {isExtManaged ? <span style={{ color:'#6EE7B7', fontWeight:500 }}>Ext. managed</span> : noFaculty ? <span style={{ color:'#f59e0b', fontWeight:600 }}>Unassigned</span> : <span style={{ color:TV.text }}>{ev.faculty}</span>}
                 </td>
                 <td style={{ padding:'10px 14px', fontSize:12, color:TV.text, whiteSpace:'nowrap' }}>
                   {ev.room && ev.room !== 'TBA' ? ev.room : <span style={{ color:TV.muted }}>TBA</span>}
@@ -1229,7 +2113,7 @@ function ListView({ dayEvents, conflictMap, hasFilters, clearFilters, onCardClic
                         Merge
                       </span>
                     )}
-                    {isExtManaged && <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:9.5, fontWeight:600, background:'#F0EDF9', color:'#7C6FCD', border:'1px solid #D8D3F5', borderRadius:4, padding:'2px 6px' }}>Ext. managed</span>}
+                    {isExtManaged && <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:9.5, fontWeight:600, background:'#E5F9EC', color:'#15803D', border:'1px solid #BBF7D0', borderRadius:4, padding:'2px 6px' }}>Ext. managed</span>}
                     {noFaculty && !isExtManaged && <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:9.5, fontWeight:700, background:'#fffbeb', color:'#92400e', border:'1px solid #fcd34d', borderRadius:4, padding:'2px 6px' }}>Unassigned</span>}
                     {!conf && !merged && !noFaculty && <span style={{ fontSize:9.5, color:TV.muted }}>—</span>}
                     {/* Edge case: merged but also has a real non-room conflict */}

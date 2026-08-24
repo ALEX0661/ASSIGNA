@@ -402,7 +402,9 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     listSaved().then(res => {
-      const names = Array.isArray(res) ? res : (res?.schedules ?? []);
+      const list = Array.isArray(res) ? res : (res?.schedules ?? []);
+      // listSaved() returns schedule objects, not plain name strings
+      const names = list.map(item => (typeof item === "string" ? item : item?.name)).filter(Boolean);
       setSavedList(names);
     }).catch(() => {});
   }, []);

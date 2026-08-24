@@ -1,0 +1,1656 @@
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { createPortal } from 'react-dom'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../hooks/useAuth'
+import {
+  coordCheckTurn, coordGenerate, coordCancelSolve,
+  coordSaveSchedule, coordListSchedules, coordDeleteSchedule,
+  coordRenameSchedule, coordDuplicateSchedule, coordSubmitSchedule, coordUnsubmitSchedule,
+  coordGetRooms, coordGetSelectedRooms, coordSelectRooms, coordGetCourses,
+  coordGetSettings
+} from '../../services/api'
+import { useCoordSolverStore } from '../../store/scheduleStore'
+import ScheduleGeneratorLoader from '../admin/ScheduleGeneratorLoader'
+import roomsIcon from '../../assets/ROOMS.png'
+
+/* ─────────────────────────── CONSTANTS & SETTINGS ─────────────────────────── */
+
+const G = {
+  meadow: '#15803D', meadowDeep: '#0F5C2C', meadowMid: '#166534',
+  meadowSoft: '#DCFCE7', meadowBorder: '#BBF7D0',
+  ink: '#0E2A20', inkMid: '#1C3D2A', muted: '#4B7060', muted2: '#6B8C7A',
+  border: '#D8E8DF', borderLight: '#EBF4EF', bg: '#F2F7F4',
+  surface: '#FFFFFF', hover: '#EBF4EF', amber: '#D97706',
+  amberSoft: '#FEF3C7', amberBorder: '#FDE68A',
+  blue: '#0369A1', blueSoft: '#E0F2FE', blueBorder: '#BAE6FD',
+  red: '#DC2626', redSoft: '#FEE2E2', redBorder: '#FECACA',
+}
+
+const PHASES = [
+  { label: 'NSTP',         short: 'NSTP' },
+  { label: 'GEC / MAT',    short: 'GEC'  },
+  { label: 'Year 4',       short: 'Y4'   },
+  { label: 'Year 3',       short: 'Y3'   },
+  { label: 'Year 2',       short: 'Y2'   },
+  { label: 'Year 1',       short: 'Y1'   },
+  { label: 'PE / PATHFIT', short: 'PE'   },
+]
+
+const VERDICT_META = {
+  feasible:        { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder, label: 'Feasible',           icon: '✓' },
+  likely_feasible: { color: '#0369A1',    bg: '#E0F2FE',    border: '#BAE6FD',      label: 'Likely Feasible',    icon: '~' },
+  tight:           { color: '#D97706',    bg: '#FEF3C7',    border: '#FDE68A',      label: 'Feasible but Tight', icon: '⚠' },
+  at_risk:         { color: '#DC2626',    bg: '#FEE2E2',    border: '#FECACA',      label: 'At Risk',            icon: '!' },
+  infeasible:      { color: '#991B1B',    bg: '#FEF2F2',    border: '#FECACA',      label: 'Likely Infeasible',  icon: '✕' },
+}
+
+const CHECK_META = {
+  pass: { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder, dot: G.meadow,  label: 'Pass' },
+  warn: { color: '#D97706',    bg: '#FFFBEB',    border: '#FDE68A',      dot: '#F59E0B', label: 'Warn' },
+  fail: { color: '#DC2626',    bg: '#FEE2E2',    border: '#FECACA',      dot: '#EF4444', label: 'Fail' },
+}
+
+const REC_META = {
+  blocker:    { color: '#DC2626',    bg: '#FEE2E2',    border: '#FECACA' },
+  warning:    { color: '#D97706',    bg: '#FFFBEB',    border: '#FDE68A' },
+  suggestion: { color: '#0369A1',    bg: '#E0F2FE',    border: '#BAE6FD' },
+  success:    { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder },
+}
+
+const Q_META = {
+  waiting:    { bg: '#F1F5F9', color: '#64748B', dot: '#94A3B8', label: 'Waiting' },
+  active:     { bg: G.meadowSoft, color: G.meadowDeep, dot: G.meadow, label: 'Their turn' },
+  generating: { bg: '#EFF6FF', color: '#1D4ED8', dot: '#3B82F6', label: 'Generating' },
+  submitted:  { bg: G.amberSoft, color: '#92400E', dot: G.amber, label: 'Submitted' },
+  approved:   { bg: G.meadowSoft, color: G.meadowDeep, dot: G.meadow, label: 'Approved' },
+  skipped:    { bg: '#FFF7ED', color: '#C2410C', dot: '#F97316', label: 'Skipped' },
+}
+
+const STATUS_COLORS = {
+  draft:     { bg: G.hover, color: G.muted, border: G.border, label: 'Draft' },
+  submitted: { bg: G.amberSoft, color: '#92400E', border: G.amberBorder, label: 'Submitted' },
+  approved:  { bg: G.meadowSoft, color: G.meadowDeep, border: G.meadowBorder, label: 'Approved' },
+  rejected:  { bg: '#FEE2E2', color: '#991B1B', border: '#FECACA', label: 'Rejected' },
+}
+
+const WIZ_STEPS = [
+  { n: 1, label: 'Setup' },
+  { n: 2, label: 'Readiness' },
+  { n: 3, label: 'Generate' },
+  { n: 4, label: 'Review & Save' },
+]
+
+/* ─────────────────────────── STYLES ─────────────────────────── */
+
+if (!document.getElementById('coord-scheduler-style')) {
+  const s = document.createElement('style')
+  s.id = 'coord-scheduler-style'
+  s.textContent = `
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap');
+    
+    .sch-root { display:flex; flex-direction:column; gap:0; padding:0; background:${G.bg}; min-height:100%; font-family:'Inter',sans-serif; overflow:hidden; }
+    .sch-wizard-shell { display:flex; flex-direction:column; height:100%; overflow:hidden; }
+
+    .wiz-topbar { display:flex; align-items:center; justify-content:center; padding:0; background:transparent; border:none; flex-shrink:0; z-index:10; }
+    .wiz-steps { display:flex; align-items:center; gap:4px; position:relative; background:#fff; padding:6px 12px; border-radius:99px; border:1px solid ${G.border}; box-shadow:0 2px 8px rgba(10,46,28,0.04); }
+    .wiz-step-node { display:flex; align-items:center; gap:6px; padding:4px 12px; border-radius:99px; transition:all .2s; }
+    .wiz-step-node.active { background:${G.meadowSoft}; }
+    .wiz-step-node.done { cursor:pointer; }
+    .wiz-step-node.done:hover { background:${G.hover}; }
+    .wiz-step-circle { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:800; flex-shrink:0; transition:all .2s; border:2px solid transparent; }
+    .wiz-step-circle.done   { background:${G.meadow}; color:#fff; }
+    .wiz-step-circle.active { background:${G.meadow}; color:#fff; border-color:${G.meadowBorder}; box-shadow:0 0 0 3px rgba(21,128,61,0.15); }
+    .wiz-step-circle.todo   { background:${G.hover}; color:${G.muted2}; border-color:${G.border}; }
+    .wiz-step-label { font-size:11.5px; font-weight:700; transition:color .2s; white-space:nowrap; }
+    .wiz-step-label.active { color:${G.meadowDeep}; }
+    .wiz-step-label.done   { color:${G.ink}; }
+    .wiz-step-label.todo   { color:${G.muted}; }
+    .wiz-step-div { width:16px; height:2px; background:${G.border}; border-radius:99px; flex-shrink:0; }
+    .wiz-step-div.done { background:${G.meadowBorder}; }
+
+    .wiz-body { flex:1; overflow:hidden; position:relative; }
+    .wiz-slide { position:absolute; inset:0; overflow-y:auto; padding:16px 28px 40px; display:flex; flex-direction:column; gap:14px; }
+    .wiz-slide-enter  { animation:wizSlideIn .32s cubic-bezier(0.16,1,0.3,1) both; }
+    .wiz-slide-back   { animation:wizSlideBack .32s cubic-bezier(0.16,1,0.3,1) both; }
+    @keyframes wizSlideIn  { from { opacity:0; transform:translateX(48px) scale(0.98); } to { opacity:1; transform:translateX(0) scale(1); } }
+    @keyframes wizSlideBack { from { opacity:0; transform:translateX(-48px) scale(0.98); } to { opacity:1; transform:translateX(0) scale(1); } }
+
+    .sch-card { background:#fff; border-radius:12px; border:1px solid ${G.border}; box-shadow:0 2px 12px rgba(10,46,28,0.03); overflow:hidden; }
+    .sch-card-header { display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid ${G.border}; }
+    .sch-card-title { font-size:15px; font-weight:800; color:${G.ink}; margin:0; letter-spacing:-0.1px; }
+    .sch-card-sub { font-size:11.5px; color:${G.muted}; margin-top:2px; font-weight:500; }
+    .sch-card-body { padding:16px 20px; }
+
+    /* Step 1's two-column layout (setup column + My Schedules rail) used a
+       hard 340px side column that had nowhere to go on a narrower window —
+       it either got squeezed illegibly thin or pushed off-screen. Below
+       980px it drops to a single stacked column instead.
+
+       On wider screens, step 1 no longer scrolls as a whole page — the
+       queue/room column is short enough to just fit, and "My Schedules"
+       already has its own internal scroll body, so letting the whole
+       slide scroll too just meant two scrollbars fighting for attention.
+       Above 980px the slide's own scroll is turned off and the grid is
+       height-locked to the available space so only the My Schedules list
+       scrolls. Below 980px (where content stacks and needs more room
+       than the screen has anyway) the normal whole-page scroll returns. */
+    .step1-grid { display:grid; grid-template-columns: 1fr 340px; gap:20px; align-items:start; }
+    @media (min-width: 980px) {
+      .wiz-slide.step1-slide { overflow-y:hidden; padding-bottom:16px; }
+      .step1-grid { flex:1; min-height:0; align-items:stretch; grid-template-rows:minmax(0,1fr); }
+    }
+    @media (max-width: 980px) {
+      .step1-grid { grid-template-columns: 1fr; }
+    }
+    .step1-col { display:flex; flex-direction:column; gap:16px; min-height:0; }
+
+    /* Queue status card — a small green header (same gradient as the
+       step header up top) always on, since "waiting your turn" and "your
+       turn now" are both normal, current states of one queue, not a
+       warning vs. an all-clear. The queue order rail is the card's main
+       content: it spreads across the full card width on its own equal-
+       width columns instead of being squeezed into a narrow strip. */
+    .queue-card { background:#fff; border-radius:12px; border:1px solid ${G.border}; box-shadow:0 1px 3px rgba(10,46,28,0.04); overflow:hidden; flex-shrink:0; }
+
+    .queue-head { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:9px 16px; background:linear-gradient(135deg, ${G.meadowDeep}, ${G.meadow}); color:#fff; }
+    .queue-head-title { font-size:12px; font-weight:800; letter-spacing:-.1px; line-height:1.3; }
+    .queue-head-sub { font-size:10.5px; font-weight:500; color:rgba(255,255,255,0.82); margin-top:1px; line-height:1.3; }
+    .queue-head-sub strong { color:#fff; font-weight:700; }
+    .queue-head-num { font-family:'IBM Plex Mono',monospace; font-size:15px; font-weight:800; flex-shrink:0; }
+    .queue-head-of { font-size:9px; font-weight:600; color:rgba(255,255,255,0.75); margin-left:2px; }
+
+    .qt-refresh { width:26px; height:26px; border-radius:7px; border:1px solid rgba(255,255,255,0.35); background:rgba(255,255,255,0.14); display:flex; align-items:center; justify-content:center; color:#fff; cursor:pointer; flex-shrink:0; padding:0; transition:background .15s; }
+    .qt-refresh:hover { background:rgba(255,255,255,0.26); }
+
+    .qt-rail-wrap { padding:10px 16px 12px; }
+    .qt-empty-note { padding:14px 16px; font-size:11.5px; color:${G.muted}; font-weight:500; }
+
+    .wiz-footer { position:sticky; bottom:0; display:flex; align-items:center; justify-content:space-between; padding:12px 28px; background:rgba(255,255,255,0.92); backdrop-filter:blur(12px); border-top:1px solid ${G.border}; z-index:40; flex-shrink:0; }
+    .wiz-nav-btn { display:inline-flex; align-items:center; gap:8px; padding:11px 24px; border-radius:10px; font-family:'Inter',sans-serif; font-size:13.5px; font-weight:700; cursor:pointer; transition:all .18s; }
+    .wiz-nav-btn.back { background:#fff; color:${G.muted}; border:1px solid ${G.border}; }
+    .wiz-nav-btn.back:hover { background:${G.hover}; color:${G.ink}; border-color:${G.meadowBorder}; }
+    .wiz-nav-btn.next { background:${G.meadow}; color:#fff; border:none; box-shadow:0 4px 14px rgba(21,128,61,0.2); }
+    .wiz-nav-btn.next:hover:not(:disabled) { background:${G.meadowDeep}; transform:translateY(-1px); box-shadow:0 6px 20px rgba(21,128,61,0.3); }
+    .wiz-nav-btn.next:disabled { opacity:.5; cursor:not-allowed; transform:none; box-shadow:none; }
+
+    .cp-inp, .cp-sel { padding:9px 12px; border-radius:10px; border:1px solid ${G.border}; font-family:'Inter',sans-serif; font-size:12.5px; color:${G.ink}; background:#fff; outline:none; transition:all .15s; width:100%; box-sizing:border-box; }
+    .cp-inp:focus, .cp-sel:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(21,128,61,0.1); }
+    
+    .btn-outline { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; border:1px solid ${G.border}; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; background:#fff; color:${G.muted}; transition:all .13s; }
+    .btn-outline:hover:not(:disabled) { background:${G.hover}; color:${G.ink}; border-color:${G.meadowBorder}; }
+    .btn-primary { display:inline-flex; align-items:center; gap:6px; padding:7px 16px; border-radius:8px; border:none; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; background:${G.meadow}; color:#fff; box-shadow:0 3px 10px rgba(21,128,61,0.25); }
+    .btn-primary:hover:not(:disabled) { background:${G.meadowDeep}; transform:translateY(-1px); }
+    .btn-danger { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; border:1px solid #FECACA; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; background:#fff; color:#DC2626; transition:all .13s; }
+    .btn-danger:hover:not(:disabled) { background:#FEF2F2; border-color:#DC2626; }
+    
+    .csh-prog-chip { display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:7px; font-size:11.5px; font-weight:700; border:1px solid transparent; }
+    
+    .csh-room-chip { display:inline-flex; align-items:center; justify-content:center; gap:4px; padding:3px 9px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid ${G.border}; background:#fff; color:${G.muted}; transition:all .13s; user-select:none; min-width: 40px; }
+    .csh-room-chip:hover { border-color:${G.meadowBorder}; background:${G.hover}; }
+    .csh-room-chip.picked { background:#DCFCE7; border-color:${G.meadow}; color:${G.meadowDeep}; }
+    
+    .saved-item { display:flex; align-items:flex-start; gap:12px; padding:16px 20px; border-bottom:1px solid ${G.borderLight}; background:#fff; transition:background .15s; }
+    .saved-item:last-child { border-bottom:none; }
+    .saved-item:hover { background:${G.hover}; }
+    .saved-name { font-size:13.5px; font-weight:700; color:${G.ink}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; }
+    .saved-sub { font-size:11.5px; color:${G.muted}; font-weight:500; margin-top:3px; display:block; }
+
+    .check-btn { display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:8px; border:1px solid ${G.border}; background:#fff; color:${G.ink}; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; transition:all .15s; box-shadow:0 1px 2px rgba(0,0,0,0.02); white-space:nowrap; }
+    .check-btn:hover:not(:disabled) { background:${G.hover}; color:${G.meadowDeep}; border-color:${G.meadowBorder}; }
+    
+    .diag-check-row { display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid ${G.borderLight}; }
+    .diag-check-row:last-child { border-bottom:none; }
+    .diag-rec { padding:12px 16px; border-radius:10px; display:flex; gap:12px; align-items:flex-start; border:1px solid transparent; transition:transform .15s; margin-bottom:12px; }
+    
+    .r-tab { display:inline-flex; align-items:center; gap:5px; padding:8px 16px; border-radius:8px; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; transition:all .15s; border:1px solid ${G.border}; background:#fff; color:${G.muted}; box-shadow:0 1px 2px rgba(0,0,0,0.02); }
+    .r-tab.active { background:${G.meadow}; color:#fff; border-color:${G.meadowDeep}; box-shadow:0 3px 10px rgba(21,128,61,0.25); }
+    .r-tab:hover:not(.active) { background:${G.hover}; border-color:${G.meadowBorder}; color:${G.ink}; }
+
+    .phase-track { display:flex; align-items:flex-start; gap:0; margin-top:12px; width: 100%; }
+    .phase-step  { flex:1; display:flex; flex-direction:column; align-items:center; position:relative; }
+    .phase-connector { position:absolute; top:10px; left:50%; width:100%; height:2px; transition:background .4s; z-index:0; }
+    .phase-dot   { width:22px; height:22px; border-radius:50%; z-index:1; display:flex; align-items:center; justify-content:center; transition:all .35s ease; }
+    .phase-label { font-size:10px; margin-top:5px; font-weight:700; text-align:center; letter-spacing:0.5px; transition:color .3s; text-transform:uppercase; }
+
+    .prog-bar-wrap { height:6px; background:${G.borderLight}; border-radius:99px; overflow:hidden; margin-top:10px; box-shadow:inset 0 1px 2px rgba(0,0,0,0.05); width: 100%; }
+    .prog-bar-fill { height:100%; border-radius:99px; transition:width .6s cubic-bezier(.4,0,.2,1); }
+
+    @keyframes spin-r { to{transform:rotate(360deg)} }
+    .qr-gen-spin { animation: spin-r .9s linear infinite; transform-origin: center; }
+    @keyframes cshShimmer { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
+    @keyframes cpToastIn { from{opacity:0;transform:scale(.96) translateY(12px)} to{opacity:1;transform:scale(1) translateY(0)} }
+    @keyframes cshFadeIn { from{opacity:0} to{opacity:1} }
+    @keyframes diag-bar { from { width:0 } }
+    
+    .csh-skeleton { background:linear-gradient(90deg,${G.hover} 25%,${G.borderLight} 50%,${G.hover} 75%); background-size:600px 100%; animation:cshShimmer 1.4s ease-in-out infinite; border-radius:7px; }
+    .cp-toast-wrap { position:fixed; bottom:24px; left:50%; z-index:9999; display:flex; flex-direction:column; gap:10px; align-items:center; pointer-events:none; transform:translateX(-50%); margin-left: 110px; }
+    .cp-toast { display:flex; align-items:center; gap:10px; padding:14px 22px; border-radius:12px; font-family:'Inter',sans-serif; font-size:13.5px; font-weight:600; animation:cpToastIn .25s cubic-bezier(.4,0,.2,1); white-space:nowrap; pointer-events:auto; box-shadow:0 8px 24px rgba(10,46,28,0.15); }
+    .cp-toast.success { background:${G.meadow}; color:#fff; border:1px solid ${G.meadowBorder}; }
+    .cp-toast.error { background:#fff; color:#DC2626; border:1px solid #FECACA; }
+    .cp-toast.info { background:#fff; color:${G.meadowDeep}; border:1px solid ${G.meadowBorder}; }
+    
+    .cp-tr-hover:nth-child(even) { background: #FAFDFB; }
+    .cp-tr-hover:hover { background: ${G.meadowSoft} !important; }
+
+    .csh-table-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
+    .csh-table-wrap::-webkit-scrollbar-track { background: transparent; }
+    .csh-table-wrap::-webkit-scrollbar-thumb { background: ${G.border}; border-radius: 8px; }
+    .csh-table-wrap::-webkit-scrollbar-thumb:hover { background: ${G.muted2}; }
+
+    /* Failure Result UI */
+    .solve-result { border-radius:12px; border:1px solid ${G.border}; overflow:hidden; }
+    .solve-result.failed { border-color:#FECACA; }
+    .solve-result-body { display:flex; align-items:flex-start; gap:14px; padding:18px 20px; }
+    .solve-result-body > div:last-child { flex:1; min-width:0; }
+    .solve-result-body p, .solve-result-body div { overflow-wrap:break-word; word-break:break-word; }
+    .solve-result-actions { display:flex; flex-wrap:wrap; gap:10px; padding:16px 28px; border-top:1px solid #FECACA; background:#FEF2F2; justify-content:flex-end; }
+    .solve-action-btn { display:inline-flex; align-items:center; gap:8px; padding:10px 20px; border-radius:9px; font-family:'Inter',sans-serif; font-size:13px; font-weight:700; cursor:pointer; transition:all .2s; }
+    .solve-action-btn.primary { background:${G.meadow}; color:#fff; border:none; box-shadow:0 4px 12px rgba(21,128,61,0.2); }
+    .solve-action-btn.primary:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 16px rgba(21,128,61,0.3); background:${G.meadowDeep}; }
+    .solve-action-btn.primary:disabled { opacity:.5; cursor:not-allowed; transform:none; box-shadow:none; }
+    .solve-action-btn.ghost { background:#fff; color:${G.ink}; border:1px solid ${G.border}; }
+    .solve-action-btn.ghost:hover { background:${G.bg}; border-color:${G.meadowBorder}; color:${G.meadowDeep}; }
+  `
+  document.head.appendChild(s)
+}
+
+/* ─────────────────────────── HELPERS ─────────────────────────── */
+
+function Skel({ w = '100%', h = 14, r = 7, style = {} }) {
+  return <div className="csh-skeleton" style={{ width: w, height: h, borderRadius: r, flexShrink: 0, ...style }} />
+}
+
+function useToast() {
+  const [toasts, setToasts] = useState([])
+  const toast = useCallback((msg, type = 'info', dur = 3000) => {
+    const id = Date.now() + Math.random()
+    setToasts(p => [...p, { id, message: msg, type }])
+    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), dur)
+  }, [])
+  return { toasts, toast }
+}
+
+function ToastContainer({ toasts }) {
+  const icons = {
+    success: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>,
+    error: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>,
+    info: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/></svg>,
+  }
+  return <div className="cp-toast-wrap">{toasts.map(t => <div key={t.id} className={`cp-toast ${t.type}`}>{icons[t.type]}{t.message}</div>)}</div>
+}
+
+function StatusBadge({ status }) {
+  const m = STATUS_COLORS[status] || STATUS_COLORS.draft
+  return <span style={{ padding: '3px 9px', borderRadius: 6, fontSize: 10.5, fontWeight: 700, background: m.bg, color: m.color, border: `1px solid ${m.border}` }}>{m.label}</span>
+}
+
+function RoundBadge({ semester, academicYear, light }) {
+  if (!semester) return null
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 13px',
+      borderRadius: 99, fontSize: 12, fontWeight: 700,
+      background: light ? 'rgba(255,255,255,0.2)' : G.hover,
+      color: light ? '#fff' : G.inkMid,
+      border: light ? '1px solid rgba(255,255,255,0.3)' : `1px solid ${G.border}`,
+    }}>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={light ? '#fff' : G.muted} strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
+      {semester}{academicYear ? ` · ${academicYear}` : ''}
+    </span>
+  )
+}
+
+function QueueRail({ queue, myProgram, currentProgram }) {
+  if (!queue || queue.length === 0) return null
+  const items = queue.map((item, i) => {
+    const prog = typeof item === 'string' ? item : item.program
+    const status = typeof item === 'object' ? (item.status || 'waiting') : (prog === currentProgram ? 'active' : 'waiting')
+    return { prog, status, meta: Q_META[status] || Q_META.waiting, isMine: prog === myProgram }
+  })
+  // Equal-width flex columns (not fixed px) so the rail spreads across
+  // the whole card instead of clumping on one side with the rest left
+  // empty. Each column holds both its circle and its label, so they
+  // can't drift apart the way they used to when the connector line and
+  // the circle shared one box. Connector segments are drawn separately,
+  // positioned in percent between circle centers, so they still land
+  // exactly regardless of how wide each column ends up.
+  const n = items.length
+  const CIRCLE = 24
+  const MIN_COL = 42
+  return (
+    <div style={{ width: '100%', overflowX: 'auto' }}>
+      <div style={{ position: 'relative', minWidth: n * MIN_COL }}>
+        {n > 1 && (
+          <div style={{ position: 'absolute', top: CIRCLE / 2 - 1, left: `${50 / n}%`, right: `${50 / n}%`, height: 2 }}>
+            {items.slice(0, -1).map((it, i) => (
+              <div key={it.prog} style={{
+                position: 'absolute', left: `${(i / (n - 1)) * 100}%`, width: `${100 / (n - 1)}%`, height: 2, borderRadius: 99,
+                background: (it.status === 'active' || it.status === 'approved') ? G.meadowBorder : G.border,
+              }} />
+            ))}
+          </div>
+        )}
+        <div style={{ display: 'flex', position: 'relative' }}>
+          {items.map(({ prog, status, meta, isMine }) => (
+            <div key={prog} style={{ flex: `1 1 0`, minWidth: MIN_COL, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{
+                width: CIRCLE, height: CIRCLE, borderRadius: '50%', flexShrink: 0,
+                background: status === 'active' ? G.meadow : meta.bg,
+                border: isMine ? `2.5px solid ${G.meadowDeep}` : `1.5px solid ${meta.dot}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: status === 'active' ? '0 0 0 4px rgba(21,128,61,0.15)' : isMine ? '0 0 0 3px rgba(21,128,61,0.12)' : 'none',
+                transition: 'all .25s',
+              }}>
+                {status === 'approved'
+                  ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={G.meadowDeep} strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                  : status === 'generating'
+                    ? <svg className="qr-gen-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" strokeWidth="3"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                    : status === 'active'
+                      ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                      : <span style={{ width: 6, height: 6, borderRadius: '50%', background: meta.dot }} />
+                }
+              </div>
+              <div style={{ marginTop: 6, textAlign: 'center' }}>
+                <div style={{ fontSize: 11, fontWeight: isMine ? 800 : 700, color: isMine ? G.meadowDeep : G.ink, whiteSpace: 'nowrap' }}>{prog}</div>
+                <div style={{ fontSize: 8.5, fontWeight: 800, color: isMine ? G.meadow : meta.color, letterSpacing: '.4px', textTransform: 'uppercase', whiteSpace: 'nowrap', marginTop: 2 }}>
+                  {isMine ? 'You' : meta.label}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function RoomGroup({ title, all, selected, onToggle, onSelectAll, onClear, compact }) {
+  if (!all || all.length === 0) {
+    return compact ? (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: G.hover, borderRadius: 8, border: `1px dashed ${G.border}` }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: G.muted2 }}>{title}:</span>
+        <span style={{ fontSize: 12, color: G.muted }}>None configured by the admin yet</span>
+      </div>
+    ) : (
+      <div style={{ flex: 1, minWidth: 220 }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: G.ink, marginBottom: 8 }}>{title}</div>
+        <div style={{ fontSize: 12, color: G.muted, padding: '10px 12px', background: G.hover, borderRadius: 8 }}>No {title.toLowerCase()} configured by the admin yet.</div>
+      </div>
+    )
+  }
+  const allPicked = selected.length === all.length
+  return (
+    <div style={{ flex: 1, minWidth: 220 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 800, color: G.ink }}>{title}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: G.meadowDeep, background: G.meadowSoft, padding: '1.5px 8px', borderRadius: 99 }}>{selected.length}/{all.length}</span>
+        </div>
+        <button
+          onClick={() => (allPicked ? onClear() : onSelectAll())}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11.5, fontWeight: 700, color: G.meadow, fontFamily: "'Inter',sans-serif", padding: 0 }}
+        >
+          {allPicked ? 'Clear' : 'Select all'}
+        </button>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+        {all.map(room => {
+          const picked = selected.includes(room)
+          return (
+            <span key={room} className={`csh-room-chip${picked ? ' picked' : ''}`} onClick={() => onToggle(room)}>
+              {picked && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+              {room}
+            </span>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function WizTopBar({ step, maxReached, onStepClick }) {
+  return (
+    <div className="wiz-topbar">
+      <div className="wiz-steps" style={{ animation: 'cshFadeIn .3s' }}>
+        {WIZ_STEPS.map((s, i) => {
+          const state = s.n < step ? 'done' : s.n === step ? 'active' : 'todo'
+          const clickable = s.n <= maxReached && s.n !== step
+          return (
+            <div key={s.n} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div className={`wiz-step-node ${state}`} onClick={() => clickable && onStepClick(s.n)} style={{ cursor: clickable ? 'pointer' : 'default' }}>
+                <div className={`wiz-step-circle ${state}`}>
+                  {state === 'done'
+                    ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                    : s.n}
+                </div>
+                <span className={`wiz-step-label ${state}`}>{s.label}</span>
+              </div>
+              {i < WIZ_STEPS.length - 1 && <div className={`wiz-step-div${state === 'done' ? ' done' : ''}`} />}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function StepHeader({ number, title, subtitle, badge }) {
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:14, padding:'16px 22px', borderRadius:14,
+      background: `linear-gradient(135deg, ${G.meadowDeep}, ${G.meadow})`, 
+      boxShadow: '0 4px 14px rgba(21,128,61,0.15)',
+      marginBottom:16, position:'relative', overflow:'hidden', flexShrink: 0 }}>
+      <div style={{ position:'absolute', top:-30, right:-20, width:100, height:100, borderRadius:'50%', background:'rgba(255,255,255,0.05)', pointerEvents:'none' }} />
+      <div style={{ width:32, height:32, borderRadius:'50%', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)',
+        display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color: '#fff', flexShrink:0, zIndex: 1 }}>
+        {number}
+      </div>
+      <div style={{ flex:1, minWidth:0, zIndex: 1 }}>
+        <div style={{ fontSize:16, fontWeight:800, color: '#fff', letterSpacing:'-0.3px', fontFamily:"'Poppins',sans-serif" }}>{title}</div>
+        <div style={{ fontSize:12.5, color: 'rgba(255,255,255,0.85)', fontWeight:500, marginTop:2 }}>{subtitle}</div>
+      </div>
+      <div style={{ zIndex: 1 }}>{badge}</div>
+    </div>
+  )
+}
+
+function PhaseTimeline({ currentPhaseIdx, status, progress }) {
+  const idle = status === 'idle', done = status === 'complete'
+  return (
+    <div className="fadein">
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+        <span style={{ fontSize:13.5, fontWeight:700, color: idle ? G.muted2 : G.ink }}>
+          {idle ? '7 scheduling phases' : done ? 'All phases complete' : `Phase ${Math.min(currentPhaseIdx + 1, 7)} of 7 — ${PHASES[Math.min(currentPhaseIdx, 6)]?.label}`}
+        </span>
+        <span style={{ fontSize:14, fontWeight:800, color: idle ? G.muted2 : done ? G.meadow : G.meadowDeep }}>{idle ? '—' : `${progress}%`}</span>
+      </div>
+      <div className="prog-bar-wrap">
+        <div className="prog-bar-fill" style={{ width:`${idle ? 0 : progress}%`, background: done ? `linear-gradient(90deg,${G.meadowSoft},${G.meadow})` : `linear-gradient(90deg,${G.meadowBorder},${G.meadowDeep})` }} />
+      </div>
+      <div className="phase-track">
+        {PHASES.map((ph, i) => {
+          const phaseDone = done || i < currentPhaseIdx, phaseActive = !done && !idle && i === currentPhaseIdx
+          return (
+            <div key={ph.label} className="phase-step">
+              {i < PHASES.length - 1 && <div className="phase-connector" style={{ background: (phaseDone && !idle) ? G.meadow : G.border }} />}
+              <div className="phase-dot" style={{ background: idle ? G.hover : phaseDone ? G.meadow : phaseActive ? '#fff' : G.bg, border: idle ? `2px solid ${G.border}` : phaseActive ? `2.5px solid ${G.meadowDeep}` : phaseDone ? 'none' : `2px solid ${G.border}`, boxShadow: phaseActive ? `0 0 0 4px rgba(21,128,61,0.15)` : 'none' }}>
+                {phaseDone && !idle ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                  : phaseActive ? <div style={{ width:10, height:10, borderRadius:'50%', background:G.meadowDeep }} /> : null}
+              </div>
+              <span className="phase-label" style={{ color: idle ? G.muted2 : phaseDone ? G.meadow : phaseActive ? G.ink : G.muted2 }}>{ph.short}</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function CoordinatorCheckPanel({ semester }) {
+  const [diag, setDiag] = useState(null)
+  const [diagLoading, setDiagLoading] = useState(false)
+  const [diagError, setDiagError] = useState(null)
+  const [diagTab, setDiagTab] = useState('checks')
+  const { coordinatorProgram } = useAuth()
+
+  async function runDiagnostic() {
+    setDiagLoading(true); setDiagError(null);
+    try {
+      const [courses, selectedRooms, settings] = await Promise.all([
+        coordGetCourses(),
+        coordGetSelectedRooms(),
+        coordGetSettings()
+      ]);
+
+      const checks = [];
+      const recs = [];
+      let failCount = 0;
+      let warnCount = 0;
+
+      const selectedLec = selectedRooms?.lecture || [];
+      const selectedLab = selectedRooms?.lab || [];
+      const courseList = courses || [];
+
+      // ── Per-Type Demand Math (lecture and lab are NOT interchangeable rooms) ──
+      // Mirrors the admin pre-diagnostic model:
+      //  - 1 lecture unit ≈ 1 contact hour/week
+      //  - 1 lab unit ≈ 3 contact hours/week (split into two sessions by the solver)
+      //  - NSTP/GEC blocks are merged in pairs by the solver — two blocks share
+      //    one room slot, so their real room demand is roughly half the naive total
+      let lecDemandHours = 0;
+      let labDemandHours = 0;
+      let incompleteCourses = 0;
+      courseList.forEach(c => {
+        const hasLecField = c.unitsLecture !== undefined && c.unitsLecture !== null;
+        const hasLabField = c.unitsLab !== undefined && c.unitsLab !== null;
+        if (!hasLecField && !hasLabField) incompleteCourses++;
+
+        const lec = Number(c.unitsLecture) || 0;
+        const lab = Number(c.unitsLab) || 0;
+        const blocks = Number(c.blocks) || 1;
+        const code = (c.courseCode || '').toUpperCase();
+        const isMergedType = code.includes('NSTP') || code.startsWith('GEC') || code.startsWith('MAT');
+        const lecBlocks = isMergedType ? Math.ceil(blocks / 2) : blocks;
+
+        lecDemandHours += lec * lecBlocks;
+        labDemandHours += (lab * 3) * blocks;
+      });
+
+      // Settings
+      const activeDays = (settings?.days || []).length || 6;
+      const startT = Number(settings?.time?.start_time) || 7;
+      const endT = Number(settings?.time?.end_time) || 21;
+      const hoursPerDay = endT - startT;
+
+      // ── Time Window Settings ──
+      if (!(settings?.days || []).length || hoursPerDay <= 0) {
+        checks.push({ id: 'time1', label: 'Time Window Settings', status: 'fail', detail: `Scheduling window looks misconfigured (${activeDays} day(s), ${hoursPerDay} hour(s)/day) — capacity can't be computed reliably.` });
+        failCount++;
+        recs.push({ type: 'blocker', title: 'Invalid Time Window', body: 'Ask the admin to double-check the configured operating days and start/end times before generating.' });
+      } else {
+        checks.push({ id: 'time1', label: 'Time Window Settings', status: 'pass', detail: `${activeDays} operating day(s), ${hoursPerDay} hour(s)/day (${startT}:00–${endT}:00).` });
+      }
+
+      // System-wide fallback counts, used only when the coordinator hasn't explicitly picked rooms of that type
+      const systemLecRooms = (settings?.rooms?.lecture || []).length;
+      const systemLabRooms = (settings?.rooms?.lab || []).length;
+      const effectiveLecRooms = selectedLec.length > 0 ? selectedLec.length : systemLecRooms;
+      const effectiveLabRooms = selectedLab.length > 0 ? selectedLab.length : systemLabRooms;
+      const lecCapacityHours = effectiveLecRooms * activeDays * hoursPerDay;
+      const labCapacityHours = effectiveLabRooms * activeDays * hoursPerDay;
+      const lecFallback = selectedLec.length === 0 && systemLecRooms > 0;
+      const labFallback = selectedLab.length === 0 && systemLabRooms > 0;
+
+      // ── Courses ──
+      if (courseList.length === 0) {
+        checks.push({ id: 'c1', label: 'Courses', status: 'fail', detail: `No courses found for ${coordinatorProgram} in ${semester}.` });
+        failCount++;
+        recs.push({ type: 'blocker', title: 'Missing Course Data', body: 'The admin has not uploaded courses for your program. Contact the administrator before generating.' });
+      } else {
+        checks.push({ id: 'c1', label: 'Courses', status: 'pass', detail: `${courseList.length} courses loaded for ${coordinatorProgram}.` });
+      }
+
+      // ── Course Data Completeness ──
+      if (incompleteCourses > 0) {
+        checks.push({ id: 'data1', label: 'Course Data Completeness', status: 'warn', detail: `${incompleteCourses} course(s) have no lecture/lab unit values set and were counted as 0 hours — demand totals below may be understated.` });
+        warnCount++;
+        recs.push({ type: 'warning', title: 'Incomplete Course Data', body: `${incompleteCourses} course(s) are missing unitsLecture/unitsLab. Ask the admin to verify them — otherwise the readiness numbers may look better than reality.` });
+      }
+
+      // ── Lecture Room Capacity ──
+      const lecCourses = courseList.filter(c => (Number(c.unitsLecture) || 0) > 0);
+      if (lecDemandHours > 0 && effectiveLecRooms === 0) {
+        checks.push({ id: 'cap-lec', label: 'Lecture Room Capacity', status: 'fail', detail: `${lecCourses.length} course(s) need ${lecDemandHours}h of lecture time, but no lecture room is selected or configured.` });
+        failCount++;
+        recs.push({ type: 'blocker', title: 'No Lecture Rooms Available', body: 'Select at least one lecture room in Step 1, or ask the admin to configure lecture rooms for your program.' });
+      } else if (lecDemandHours > lecCapacityHours) {
+        const short = lecDemandHours - lecCapacityHours;
+        checks.push({ id: 'cap-lec', label: 'Lecture Room Capacity', status: 'fail', detail: `Lecture demand is ${lecDemandHours}h, but your ${effectiveLecRooms} lecture room(s) only provide ${lecCapacityHours}h — short by ${short}h.` });
+        failCount++;
+        recs.push({ type: 'blocker', title: 'Insufficient Lecture Capacity', body: `You're short ${short} lecture-hour(s). Select more lecture rooms in Step 1 — lab rooms can't cover lecture sessions.` });
+      } else {
+        const util = lecCapacityHours ? Math.round((lecDemandHours / lecCapacityHours) * 100) : 0;
+        if (lecDemandHours > 0 && util >= 85) {
+          checks.push({ id: 'cap-lec', label: 'Lecture Room Capacity', status: 'warn', detail: `Lecture rooms are ${util}% utilized (${lecDemandHours}h of ${lecCapacityHours}h available)${lecFallback ? ' — using system rooms since none are explicitly selected' : ''} — tight, but should fit.` });
+          warnCount++;
+          if (lecFallback) recs.push({ type: 'warning', title: 'Lecture Rooms Not Explicitly Selected', body: 'Utilization is already tight and you\'re relying on system-wide lecture rooms, which may get contested by other programs. Select specific lecture rooms in Step 1.' });
+        } else {
+          checks.push({ id: 'cap-lec', label: 'Lecture Room Capacity', status: 'pass', detail: lecDemandHours > 0 ? `Lecture demand is ${lecDemandHours}h, within ${lecCapacityHours}h available (${util}% utilized)${lecFallback ? ', using system rooms' : ''}.` : 'No courses in this program require dedicated lecture sessions.' });
+        }
+      }
+
+      // ── Lab Room Capacity (kept separate — a lab room shortfall can't be papered over with extra lecture rooms) ──
+      const labCourses = courseList.filter(c => (Number(c.unitsLab) || 0) > 0);
+      if (labDemandHours > 0 && effectiveLabRooms === 0) {
+        checks.push({ id: 'cap-lab', label: 'Lab Room Capacity', status: 'fail', detail: `${labCourses.length} course(s) require ${labDemandHours}h of lab time, but no lab room exists or is selected for ${coordinatorProgram}.` });
+        failCount++;
+        recs.push({ type: 'blocker', title: 'No Lab Rooms Available', body: 'The solver has no lab room to place required lab sessions in — extra lecture rooms will NOT fix this. Select lab rooms in Step 1, or ask the admin to configure lab rooms.' });
+      } else if (labDemandHours > labCapacityHours) {
+        const short = labDemandHours - labCapacityHours;
+        checks.push({ id: 'cap-lab', label: 'Lab Room Capacity', status: 'fail', detail: `Lab demand is ${labDemandHours}h, but your ${effectiveLabRooms} lab room(s) only provide ${labCapacityHours}h — short by ${short}h.` });
+        failCount++;
+        recs.push({ type: 'blocker', title: 'Insufficient Lab Capacity', body: `You're short ${short} lab-hour(s). Select more lab rooms in Step 1 — lecture rooms can't substitute for lab sessions.` });
+      } else {
+        const util = labCapacityHours ? Math.round((labDemandHours / labCapacityHours) * 100) : 0;
+        if (labDemandHours > 0 && util >= 85) {
+          checks.push({ id: 'cap-lab', label: 'Lab Room Capacity', status: 'warn', detail: `Lab rooms are ${util}% utilized (${labDemandHours}h of ${labCapacityHours}h available)${labFallback ? ' — using system rooms since none are explicitly selected' : ''} — tight, but should fit.` });
+          warnCount++;
+          if (labFallback) recs.push({ type: 'warning', title: 'Lab Rooms Not Explicitly Selected', body: 'Utilization is already tight and you\'re relying on system-wide lab rooms, which may get contested by other programs. Select specific lab rooms in Step 1.' });
+        } else {
+          checks.push({ id: 'cap-lab', label: 'Lab Room Capacity', status: 'pass', detail: labDemandHours > 0 ? `Lab demand is ${labDemandHours}h, within ${labCapacityHours}h available (${util}% utilized)${labFallback ? ', using system rooms' : ''}.` : 'No courses in this program require dedicated lab sessions.' });
+        }
+      }
+
+      const verdict = failCount > 0 ? 'infeasible' : warnCount >= 2 ? 'at_risk' : warnCount > 0 ? 'tight' : 'feasible';
+      const verdictDetail = failCount > 0
+        ? 'Cannot generate until the blocking issue(s) above are resolved.'
+        : warnCount >= 2
+          ? 'Several warnings found — review the recommendations before generating.'
+          : warnCount > 0
+            ? 'Proceed with caution — one item may need attention.'
+            : 'All structural checks passed.';
+
+      const sectionCount = new Set(courseList.map(c => `${c.courseCode}__${c.blocks ?? ''}__${c.yearLevel ?? ''}`)).size;
+
+      setDiag({
+        verdict, verdictDetail,
+        summary: { failCount, warnCount, totalCourses: courseList.length, totalSections: sectionCount, lectureRooms: selectedLec.length, labRooms: selectedLab.length },
+        checks,
+        recommendations: recs,
+        accuracy_note: 'This check catches definite resource shortfalls with high accuracy but cannot predict interaction effects between multiple constraints or edge cases in the solver. A "feasible" verdict does not guarantee a perfect schedule — always review the result after solving.'
+      });
+    } catch (err) {
+      setDiagError({ title: 'Failed to run readiness check', message: err.message || 'An unexpected error occurred.' });
+    } finally {
+      setDiagLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (semester) runDiagnostic()
+  }, [semester])
+
+  if (!semester) {
+    return (
+      <div className="sch-card" style={{ padding: '40px 20px', textAlign: 'center', background: '#F8FAF9' }}>
+        <div style={{ fontSize: 13, color: G.muted, fontWeight: 500 }}>Waiting for the active queue to determine the academic term...</div>
+      </div>
+    )
+  }
+
+  const verdict = diag ? (VERDICT_META[diag.verdict] || VERDICT_META.likely_feasible) : null
+
+  return (
+    <div className="sch-card" style={{ padding: '20px' }}>
+      <div style={{ animation: 'cshFadeIn .3s' }}>
+        {diagLoading && !diag && (
+          <div style={{ display:'flex', flexDirection:'column', gap:10, padding:'8px 0' }}>
+            <Skel h={56} r={10} /><Skel h={56} r={10} /><Skel h={56} r={10} />
+          </div>
+        )}
+
+        {diagError && !diagLoading && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', borderRadius: 10, background: '#FEF2F2', border: '1px solid #FECACA' }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: '#991B1B', marginBottom: 4 }}>{diagError.title}</div>
+                <div style={{ fontSize: 12.5, color: '#B91C1C', lineHeight: 1.5 }}>{diagError.message}</div>
+              </div>
+            </div>
+            <button onClick={runDiagnostic} style={{ marginTop: 10, background: 'none', border: 'none', cursor: 'pointer', color: G.meadowDeep, fontSize: 13, fontWeight: 700, fontFamily: "'Inter',sans-serif", padding: 0 }}>Retry check →</button>
+          </div>
+        )}
+
+        {diag && !diagLoading && (
+          <div>
+            <div style={{ padding:'14px 16px', borderRadius:10, background: verdict.bg, border: `1px solid ${verdict.border}`, display:'flex', alignItems:'center', justifyContent:'space-between', gap:14, flexWrap:'wrap', marginBottom: 12 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+                <div style={{ width:44, height:44, borderRadius:11, background:verdict.color, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:800, flexShrink:0, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>{verdict.icon}</div>
+                <div>
+                  <div style={{ fontSize:15, fontWeight:800, color:verdict.color }}>{verdict.label}</div>
+                  <div style={{ fontSize:12.5, color:G.ink, marginTop:2, maxWidth:480, fontWeight: 500 }}>{diag.verdictDetail}</div>
+                </div>
+              </div>
+              <div style={{ display:'flex', gap:18, flexShrink:0 }}>
+                {[
+                  { val:diag.summary.totalCourses,  label:'Courses'  },
+                  { val:diag.summary.totalSections, label:'Sections'},
+                  { val:diag.summary.lectureRooms,  label:'Lec Rooms'},
+                  { val:diag.summary.labRooms,      label:'Lab Rooms'},
+                ].map(s => (
+                  <div key={s.label} style={{ textAlign:'center' }}>
+                    <div style={{ fontSize:18, fontWeight:800, color:verdict.color, lineHeight:1 }}>{s.val}</div>
+                    <div style={{ fontSize:10, color:G.muted2, marginTop:4, fontWeight:700, textTransform:'uppercase', letterSpacing:'.5px' }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display:'flex', gap:8, marginBottom: 14 }}>
+              <button onClick={() => setDiagTab('checks')} className={`r-tab ${diagTab === 'checks' ? 'active' : ''}`}>Checks ({diag.checks.length})</button>
+              <button onClick={() => setDiagTab('recs')} className={`r-tab ${diagTab === 'recs' ? 'active' : ''}`}>Recommendations ({diag.recommendations.length})</button>
+              <span style={{ flex: 1 }} />
+              <button className="check-btn" onClick={runDiagnostic} disabled={diagLoading}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.2"/></svg> Refresh
+              </button>
+            </div>
+
+            {diagTab === 'checks' && (
+              <div>
+                {diag.checks.map((chk, i) => {
+                  const cm = CHECK_META[chk.status] || CHECK_META.pass
+                  return (
+                    <div key={chk.id} className="diag-check-row" style={{ animationDelay:`${i*0.04}s` }}>
+                      <div style={{ width:28, height:28, borderRadius:8, background:cm.bg, border:`1px solid ${cm.border}`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:2 }}>
+                        <div style={{ width:10, height:10, borderRadius:'50%', background:cm.dot }}/>
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4 }}>
+                          <span style={{ fontSize:13.5, fontWeight:700, color:G.ink }}>{chk.label}</span>
+                          <span style={{ fontSize:11, fontWeight:700, padding:'2px 10px', borderRadius:99, background:cm.bg, color:cm.color, border:`1px solid ${cm.border}` }}>{cm.label}</span>
+                        </div>
+                        <p style={{ fontSize:12.5, color:G.muted, margin:0, lineHeight:1.55 }}>{chk.detail}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {diagTab === 'recs' && (
+              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                {diag.recommendations.length === 0 && <div style={{ textAlign:'center', padding:'24px 0', color:G.muted, fontSize:13, fontWeight:500 }}>No recommendations — everything looks good.</div>}
+                {diag.recommendations.map((rec, i) => {
+                  const rm = REC_META[rec.type] || REC_META.suggestion
+                  const icons = { blocker: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>, warning: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>, suggestion: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>, success: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> }
+                  return (
+                    <div key={i} className="diag-rec" style={{ background:rm.bg, borderColor:rm.border }}>
+                      <div style={{ width:32, height:32, borderRadius:8, background:rm.border, color:rm.color, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:2 }}>{icons[rec.type]}</div>
+                      <div>
+                        <div style={{ fontSize:13.5, fontWeight:700, color:G.ink, marginBottom:4 }}>{rec.title}</div>
+                        <p style={{ fontSize:12.5, color:G.muted, margin:0, lineHeight:1.55 }}>{rec.body}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────────────────── PAGE EXPORT ─────────────────────────── */
+
+export default function CoordSchedulerPage() {
+  const { coordinatorProgram } = useAuth()
+  const navigate = useNavigate()
+  const { toasts, toast } = useToast()
+
+  const [turnData, setTurnData] = useState(null)
+  const [schedules, setSchedules] = useState([])
+  const [loadingInit, setLoadingInit] = useState(true)
+
+  const [allRooms, setAllRooms] = useState({ lecture: [], lab: [] })
+  const [selLecture, setSelLecture] = useState([])
+  const [selLab, setSelLab] = useState([])
+  const [roomsLoading, setRoomsLoading] = useState(true)
+  const [roomsSaving, setRoomsSaving] = useState(false)
+  const [roomsDirty, setRoomsDirty] = useState(false)
+
+  const [wizStep, setWizStep] = useState(1)
+  const [maxReached, setMaxReached] = useState(1)
+  const [slideDir, setSlideDir] = useState('enter')
+
+  const {
+    processId, progress, status: statusState, label, result,
+    error: genError, errorKind: genErrorKind,
+    setProcessId, setProgress, setStatus, setLabel, setResult,
+    setError, setErrorKind,
+  } = useCoordSolverStore()
+
+  // Format the rich error detail if passed as an object
+  const genErrorDetails = typeof genError === 'object' ? genError : {
+    failedPhase: 'Unknown Phase',
+    reasons: [typeof genError === 'string' ? genError : 'Unspecified constraint failure.'],
+    suggestions: ['Check your room selection and time constraints.']
+  };
+
+  const [saveName, setSaveName] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [resultSearch, setResultSearch] = useState('')
+  // True from the moment Stop is clicked until the backend actually confirms
+  // the solve has unwound (see handleCancel). The solver only checks for a
+  // cancellation between phases, so this can lag the click by a while —
+  // starting a new solve during that window is what causes the "already
+  // running" 409 conflict.
+  const [stopRequested, setStopRequested] = useState(false)
+
+  const [renameId, setRenameId] = useState(null)
+  const [renameTmp, setRenameTmp] = useState('')
+  const [actionLoading, setActionLoading] = useState(null)
+
+  const isMyTurn = turnData?.isMyTurn
+  const currentProg = turnData?.currentProgram
+  const myPos = turnData?.myPosition
+  const qLen = turnData?.queueLength
+  // Backend sometimes sends -1 (or 0) as a "position unknown" sentinel instead
+  // of omitting the field entirely — guard against rendering that raw.
+  const myPosDisplay = (typeof myPos === 'number' && myPos > 0) ? myPos : '–'
+  const qLenDisplay = (typeof qLen === 'number' && qLen > 0) ? qLen : '–'
+  const queueList = turnData?.queue || []
+  const hasQueue = turnData?.queueId != null
+  const roundSemester = turnData?.semester
+  const roundAY = turnData?.academicYear
+
+  useEffect(() => { loadAll() }, [])
+
+  // The queue rail (who's waiting/active/generating/submitted) was only ever
+  // fetched once on page load, so a coordinator sitting on Setup/Readiness
+  // had no way to see the active program start generating or finish without
+  // refreshing the page. Poll just the turn/queue snapshot in the background.
+  useEffect(() => {
+    const id = setInterval(() => {
+      coordCheckTurn().then(t => t && setTurnData(t)).catch(() => {})
+    }, 10000)
+    return () => clearInterval(id)
+  }, [])
+
+  function loadAll() {
+    setLoadingInit(true)
+    setRoomsLoading(true)
+    Promise.all([
+      coordCheckTurn().catch(() => null),
+      coordListSchedules().catch(() => []),
+      coordGetRooms ? coordGetRooms().catch(() => ({ lecture: [], lab: [] })) : Promise.resolve({ lecture: [], lab: [] }),
+      coordGetSelectedRooms ? coordGetSelectedRooms().catch(() => ({ lecture: [], lab: [] })) : Promise.resolve({ lecture: [], lab: [] }),
+    ]).then(([t, s, rooms, selected]) => {
+      setTurnData(t)
+      setSchedules(Array.isArray(s) ? s : [])
+      setAllRooms({ lecture: rooms?.lecture || [], lab: rooms?.lab || [] })
+      setSelLecture(selected?.lecture || [])
+      setSelLab(selected?.lab || [])
+    }).finally(() => { setLoadingInit(false); setRoomsLoading(false) })
+  }
+
+  function toggleRoom(type, room) {
+    const setter = type === 'lecture' ? setSelLecture : setSelLab
+    setter(prev => prev.includes(room) ? prev.filter(r => r !== room) : [...prev, room])
+    setRoomsDirty(true)
+  }
+
+  function selectAllRooms(type) {
+    const setter = type === 'lecture' ? setSelLecture : setSelLab
+    setter([...(type === 'lecture' ? allRooms.lecture : allRooms.lab)])
+    setRoomsDirty(true)
+  }
+
+  function clearRooms(type) {
+    const setter = type === 'lecture' ? setSelLecture : setSelLab
+    setter([])
+    setRoomsDirty(true)
+  }
+
+  async function handleSaveRooms() {
+    setRoomsSaving(true)
+    try {
+      await coordSelectRooms({ lecture: selLecture, lab: selLab })
+      setRoomsDirty(false)
+      toast('Room selection saved', 'success')
+    } catch {
+      toast('Failed to save room selection', 'error')
+    } finally {
+      setRoomsSaving(false)
+    }
+  }
+
+  useEffect(() => {
+    if (statusState === 'running') {
+      setMaxReached(m => Math.max(m, 3))
+      goStep(3)
+    }
+  }, [statusState])
+
+  useEffect(() => {
+    if (statusState === 'complete' && result) {
+      setSaved(false)
+      setMaxReached(m => Math.max(m, 4))
+      goStep(4)
+      setSaveName(prev => prev || [roundSemester, roundAY].filter(Boolean).join(' ').trim())
+    }
+  }, [statusState, result])
+
+  // Belt-and-suspenders: pre-fill the save name with the academic term
+  // whenever step 4 is actually reached, not just on the fresh-solve path
+  // above (e.g. if the user lands on Review & Save some other way). Only
+  // fills in a still-empty field — never overwrites something the
+  // coordinator already typed.
+  useEffect(() => {
+    if (wizStep === 4 && !saveName) {
+      const suggested = [roundSemester, roundAY].filter(Boolean).join(' ').trim()
+      if (suggested) setSaveName(suggested)
+    }
+  }, [wizStep, roundSemester, roundAY])
+
+  async function handleGenerate() {
+    if (!isMyTurn) return
+    setStatus('running')
+    setError(null)
+    setErrorKind(null)
+    setResult(null)
+    setSaved(false)
+    setProgress(0)
+    try {
+      const r = await coordGenerate(roundSemester)
+      setProcessId(r.processId || r.process_id)
+      setLabel([coordinatorProgram, roundSemester].filter(Boolean).join(' — '))
+    } catch (err) {
+      const detail = err?.response?.data?.detail || 'Failed to start solver.'
+      setStatus('failed')
+      setError(detail)
+      setErrorKind(/already running/i.test(detail) ? 'busy' : 'error')
+    }
+  }
+
+  async function handleCancel() {
+    if (!processId) return
+    setStopRequested(true)
+    try {
+      await coordCancelSolve(processId)
+      toast('Stopping solver…', 'info')
+    } catch {
+      toast('Cancel request failed to reach the server — it may keep running in the background', 'error')
+    }
+    // Deliberately NOT calling setStatus('idle')/setProcessId(null) here.
+    // Status stays 'running' so useCoordSolverPolling keeps polling — it
+    // already knows how to transition to 'idle' once the backend reports
+    // the solve as actually cancelled. Jumping straight to 'idle' here used
+    // to let a fast "Start Solver" click race the backend's still-running
+    // process and hit the 409 "already running" conflict.
+  }
+
+  // Once the backend confirms the stop (useCoordSolverPolling sees status:
+  // 'cancelled' and sets status to 'idle'), clear the "stopping" flag so the
+  // Start Solver / Try Again buttons re-enable.
+  useEffect(() => {
+    if (stopRequested && statusState !== 'running') {
+      setStopRequested(false)
+    }
+  }, [statusState, stopRequested])
+
+  async function handleSaveSchedule() {
+    if (!result) return
+    setSaving(true)
+    try {
+      await coordSaveSchedule({ name: saveName || 'My Schedule' })
+      toast('Schedule saved!', 'success')
+      setSaved(true)
+      loadAll()
+    } catch (err) {
+      toast(err?.response?.data?.detail || 'Failed to save schedule.', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleRename(id) {
+    if (!renameTmp.trim()) return
+    setActionLoading(id + '_rename')
+    try {
+      await coordRenameSchedule(id, { name: renameTmp.trim() })
+      setSchedules(p => p.map(s => s.id === id ? { ...s, name: renameTmp.trim() } : s))
+      setRenameId(null)
+      toast('Renamed', 'success')
+    } catch { toast('Failed to rename', 'error') }
+    finally { setActionLoading(null) }
+  }
+
+  async function handleDelete(id, name) {
+    if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return
+    setActionLoading(id + '_del')
+    try {
+      await coordDeleteSchedule(id)
+      setSchedules(p => p.filter(s => s.id !== id))
+      toast('Deleted', 'success')
+    } catch { toast('Failed to delete', 'error') }
+    finally { setActionLoading(null) }
+  }
+
+  async function handleDuplicate(id, name) {
+    const newName = `${name} (copy)`
+    setActionLoading(id + '_dup')
+    try {
+      await coordDuplicateSchedule(id, { name: newName })
+      toast('Duplicated', 'success')
+      loadAll()
+    } catch { toast('Failed to duplicate', 'error') }
+    finally { setActionLoading(null) }
+  }
+
+  async function handleSubmit(id) {
+    setActionLoading(id + '_sub')
+    try {
+      await coordSubmitSchedule(id)
+      setSchedules(p => p.map(s => s.id === id ? { ...s, status: 'submitted' } : s))
+      toast('Submitted for approval', 'success')
+    } catch { toast('Failed to submit', 'error') }
+    finally { setActionLoading(null) }
+  }
+
+  async function handleUnsubmit(id) {
+    setActionLoading(id + '_unsub')
+    try {
+      await coordUnsubmitSchedule(id)
+      setSchedules(p => p.map(s => s.id === id ? { ...s, status: 'draft' } : s))
+      toast('Recalled from submission', 'info')
+    } catch { toast('Failed to unsubmit', 'error') }
+    finally { setActionLoading(null) }
+  }
+
+  function goStep(n) {
+    setSlideDir(n > wizStep ? 'enter' : 'back')
+    setWizStep(n)
+    setMaxReached(m => Math.max(m, n))
+  }
+
+  const events = result?.schedule || result?.events || []
+  const filteredEvents = useMemo(() => {
+    if (!resultSearch.trim()) return events
+    const q = resultSearch.toLowerCase()
+    return events.filter(e =>
+      (e.courseCode || '').toLowerCase().includes(q) ||
+      (e.day || '').toLowerCase().includes(q) ||
+      (e.room || '').toLowerCase().includes(q) ||
+      `${e.program}-${e.year}${e.block}`.toLowerCase().includes(q)
+    )
+  }, [events, resultSearch])
+
+  const resultStats = useMemo(() => {
+    if (!events.length) return null
+    return {
+      courses: new Set(events.map(e => e.courseCode)).size,
+      rooms: new Set(events.map(e => e.room)).size,
+      days: new Set(events.map(e => e.day)).size,
+      sections: new Set(events.map(e => `${e.program}-${e.year}${e.block}`)).size,
+    }
+  }, [events])
+
+  const totalRoomsPicked = selLecture.length + selLab.length
+  const canGenerate = isMyTurn && statusState !== 'running' && !stopRequested
+  const portalTarget = document.getElementById('header-stepper-portal');
+
+  return (
+    <div className="sch-root sch-wizard-shell">
+
+      {portalTarget 
+        ? createPortal(<WizTopBar step={wizStep} maxReached={maxReached} onStepClick={goStep} />, portalTarget) 
+        : <WizTopBar step={wizStep} maxReached={maxReached} onStepClick={goStep} />
+      }
+
+      <div className="wiz-body">
+        <div key={wizStep} className={`wiz-slide wiz-slide-${slideDir}${(wizStep === 3 && statusState === 'running') ? ' no-scroll' : ''}${wizStep === 1 ? ' step1-slide' : ''}`}>
+
+          {wizStep === 1 && (
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <StepHeader
+                number={1}
+                title="Queue & Room Setup"
+                subtitle={hasQueue ? <>Check your turn status and pick which rooms {coordinatorProgram} can use before generating.</> : <>Waiting for the admin to open a scheduling queue.</>}
+                badge={hasQueue && <RoundBadge semester={roundSemester} academicYear={roundAY} light />}
+              />
+              
+              <div className="step1-grid">
+                <div className="step1-col">
+                  <div className="queue-card">
+                    <div className="queue-head">
+                      <div style={{ minWidth: 0 }}>
+                        <div className="queue-head-title">
+                          {loadingInit ? '\u00A0' : !hasQueue ? 'No active queue' : isMyTurn ? "It's your turn" : 'Waiting in line'}
+                        </div>
+                        <div className="queue-head-sub">
+                          {loadingInit ? '\u00A0' : !hasQueue
+                            ? 'The admin hasn\'t opened a scheduling queue yet.'
+                            : isMyTurn
+                              ? 'Pick your rooms below, then continue.'
+                              : <>Currently serving <strong>{currentProg}</strong> — you're up after them.</>}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                        {loadingInit ? null : !hasQueue ? null : isMyTurn ? (
+                          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        ) : (
+                          <span>
+                            <span className="queue-head-num">{myPosDisplay}</span>
+                            <span className="queue-head-of">of {qLenDisplay}</span>
+                          </span>
+                        )}
+                        <button onClick={loadAll} title="Refresh" className="qt-refresh">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    {hasQueue && queueList.length > 0 ? (
+                      <div className="qt-rail-wrap">
+                        <div style={{ fontSize: 10, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 8 }}>Queue order</div>
+                        <QueueRail queue={queueList} myProgram={coordinatorProgram} currentProgram={currentProg} />
+                      </div>
+                    ) : !hasQueue && !loadingInit ? (
+                      <div className="qt-empty-note">You'll see the queue order here once the admin opens it.</div>
+                    ) : null}
+                  </div>
+
+                  <div style={{ background: '#fff', border: `1px solid ${G.border}`, borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(10,46,28,0.03)', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+                    <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 34, height: 34, borderRadius: 9, background: '#F2F7F4', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${G.border}`, overflow: 'hidden', flexShrink: 0 }}>
+                             <img src={roomsIcon} alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} />
+                          </div>
+                          <div>
+                             <div style={{ fontSize: 14, fontWeight: 800, color: G.ink }}>Room Selection</div>
+                             <div style={{ fontSize: 11.5, color: G.muted, marginTop: 1 }}>Only these rooms will be used when generating</div>
+                          </div>
+                       </div>
+                       {!roomsLoading && (
+                         <div style={{ padding: '5px 12px', background: totalRoomsPicked ? '#DCFCE7' : G.amberSoft, color: totalRoomsPicked ? '#065F46' : '#92400E', fontSize: 11.5, fontWeight: 700, borderRadius: 99, flexShrink: 0 }}>
+                           {totalRoomsPicked} selected
+                         </div>
+                       )}
+                    </div>
+
+                    {!roomsLoading && (
+                      <div style={{ padding: '0 16px 10px', flexShrink: 0 }}>
+                        <div style={{ height: 4, background: G.borderLight, borderRadius: 99, overflow: 'hidden' }}>
+                          <div style={{
+                            height: '100%', borderRadius: 99, transition: 'width .3s',
+                            width: `${(allRooms.lecture.length + allRooms.lab.length) ? (totalRoomsPicked / (allRooms.lecture.length + allRooms.lab.length)) * 100 : 0}%`,
+                            background: totalRoomsPicked ? `linear-gradient(90deg, ${G.meadowBorder}, ${G.meadow})` : G.amber,
+                          }} />
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div style={{ padding: '14px 16px 16px', borderTop: `1px solid ${G.border}`, flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                      {roomsLoading ? (
+                        <div style={{ display: 'flex', gap: 20 }}>
+                          <Skel h={60} style={{ flex: 1 }} /><Skel h={60} style={{ flex: 1 }} />
+                        </div>
+                      ) : (
+                        <>
+                          {totalRoomsPicked === 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 7, background: G.amberSoft, border: `1px solid ${G.amberBorder}`, fontSize: 11.5, color: '#92400E', fontWeight: 600, marginTop: 8, marginBottom: 12 }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                              No rooms selected — the solver will fall back to every room in the system.
+                            </div>
+                          )}
+                          {(() => {
+                            const hasLec = allRooms.lecture.length > 0
+                            const hasLab = allRooms.lab.length > 0
+                            const bothPresent = hasLec && hasLab
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}>
+                                <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
+                                  {(bothPresent || hasLec) && (
+                                    <RoomGroup title="Lecture Rooms" all={allRooms.lecture} selected={selLecture} onToggle={r => toggleRoom('lecture', r)} onSelectAll={() => selectAllRooms('lecture')} onClear={() => clearRooms('lecture')} />
+                                  )}
+                                  {bothPresent && (
+                                    <RoomGroup title="Lab Rooms" all={allRooms.lab} selected={selLab} onToggle={r => toggleRoom('lab', r)} onSelectAll={() => selectAllRooms('lab')} onClear={() => clearRooms('lab')} />
+                                  )}
+                                  {hasLab && !hasLec && (
+                                    <RoomGroup title="Lab Rooms" all={allRooms.lab} selected={selLab} onToggle={r => toggleRoom('lab', r)} onSelectAll={() => selectAllRooms('lab')} onClear={() => clearRooms('lab')} />
+                                  )}
+                                </div>
+                                {!bothPresent && hasLec && (
+                                  <RoomGroup title="Lab Rooms" all={allRooms.lab} compact />
+                                )}
+                                {!bothPresent && hasLab && (
+                                  <RoomGroup title="Lecture Rooms" all={allRooms.lecture} compact />
+                                )}
+                                {!hasLec && !hasLab && (
+                                  <>
+                                    <RoomGroup title="Lecture Rooms" all={allRooms.lecture} compact />
+                                    <RoomGroup title="Lab Rooms" all={allRooms.lab} compact />
+                                  </>
+                                )}
+                              </div>
+                            )
+                          })()}
+                        </>
+                      )}
+                    </div>
+                    
+                    <div style={{ padding: '10px 16px', borderTop: `1px solid ${G.border}`, display: 'flex', justifyContent: 'flex-end', background: '#F9FAFB', flexShrink: 0 }}>
+                       <button className="btn-primary" onClick={handleSaveRooms} disabled={roomsSaving || !roomsDirty} style={{ padding: '8px 20px', fontSize: 12.5 }}>
+                          {roomsSaving ? <svg className="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> : null}
+                          {roomsDirty ? 'Save Room Selection' : 'Room Selection Saved'}
+                       </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="sch-card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                  <div className="sch-card-header" style={{ padding: '16px 20px', flexShrink: 0, justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <h2 className="sch-card-title" style={{ fontSize: 14 }}>My Schedules</h2>
+                      {!loadingInit && <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10.5, fontWeight: 700, background: G.meadowSoft, color: G.meadowDeep }}>{schedules.length}</span>}
+                    </div>
+                    <button onClick={() => navigate('/coordinator/schedules')} style={{ background: 'none', border: 'none', fontSize: 12, fontWeight: 700, color: G.meadow, cursor: 'pointer', fontFamily: 'Inter,sans-serif', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                      View All
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                  </div>
+                  <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, background: '#FDFDFD' }}>
+                    {loadingInit ? (
+                      <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {[1, 2, 3].map(i => <Skel key={i} h={56} r={8} />)}
+                      </div>
+                    ) : schedules.length === 0 ? (
+                      <div style={{ padding: '40px 20px', textAlign: 'center', color: G.muted, fontSize: 13.5, fontWeight: 500 }}>No saved schedules yet. Generate one to get started!</div>
+                    ) : (
+                      schedules.slice(0, 8).map((sch) => {
+                        const isRenaming = renameId === sch.id
+                        const loading = actionLoading && actionLoading.startsWith(sch.id)
+                        const schSemester = sch.semester || roundSemester
+                        const schAY = sch.academicYear || roundAY
+                        const subLine = [schSemester || null, schAY ? `A.Y. ${schAY}` : null].filter(Boolean).join(' • ') || null
+                        
+                        return (
+                          <div key={sch.id} className="saved-item">
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              {isRenaming ? (
+                                <div style={{ display: 'flex', gap: 7, alignItems: 'center', marginBottom: 6 }}>
+                                  <input autoFocus value={renameTmp} onChange={e => setRenameTmp(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleRename(sch.id)}
+                                    style={{ padding: '6px 10px', borderRadius: 7, border: `1.5px solid ${G.meadow}`, fontSize: 12.5, fontFamily: 'Inter,sans-serif', color: G.ink, outline: 'none', width: '100%' }} />
+                                  <button className="btn-primary" onClick={() => handleRename(sch.id)} style={{ padding: '6px 10px', fontSize: 11 }}>Save</button>
+                                  <button className="btn-outline" onClick={() => setRenameId(null)} style={{ padding: '6px 9px', fontSize: 11 }}>Cancel</button>
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                                  <span className="saved-name">{sch.name}</span>
+                                  <StatusBadge status={sch.status} />
+                                </div>
+                              )}
+                              {subLine && <span className="saved-sub">{subLine}</span>}
+                              
+                              <div style={{ fontSize: 11.5, color: G.muted, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 4 }}>
+                                {sch.eventCount != null && <span style={{ fontWeight: 600 }}>{sch.eventCount} events</span>}
+                              </div>
+                              
+                              {sch.status === 'draft' && !isRenaming && (
+                                <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                                  <button className="btn-outline" style={{ padding: '5px 12px', fontSize: 11 }} onClick={() => navigate(`/coordinator/schedules/${sch.id}`)}>View</button>
+                                  <button className="btn-outline" style={{ padding: '5px 12px', fontSize: 11 }} onClick={() => { setRenameId(sch.id); setRenameTmp(sch.name) }}>Rename</button>
+                                  <button className="btn-primary" style={{ padding: '5px 12px', fontSize: 11 }} onClick={() => handleSubmit(sch.id)} disabled={!!loading}>Submit</button>
+                                </div>
+                              )}
+                              {sch.status === 'submitted' && (
+                                <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                                  <button className="btn-outline" style={{ padding: '5px 12px', fontSize: 11 }} onClick={() => navigate(`/coordinator/schedules/${sch.id}`)}>View</button>
+                                  <button className="btn-outline" style={{ padding: '5px 12px', fontSize: 11 }} onClick={() => handleUnsubmit(sch.id)} disabled={!!loading}>Recall</button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {wizStep === 2 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <StepHeader
+                number={2}
+                title="Check Readiness"
+                subtitle={<>Verify structural feasibility and course setup for <strong style={{ opacity: .95 }}>{coordinatorProgram}</strong> before generating.</>}
+                badge={<RoundBadge semester={roundSemester} academicYear={roundAY} light />}
+              />
+              {hasQueue && !isMyTurn && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 10, background: G.amberSoft, border: `1px solid ${G.amberBorder}`, fontSize: 12.5, color: '#92400E', fontWeight: 600 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  It's not your turn yet — you can review readiness now, but generating will stay locked until <strong>{currentProg || 'the current program'}</strong> finishes.
+                </div>
+              )}
+              <CoordinatorCheckPanel semester={roundSemester} />
+            </div>
+          )}
+
+          {wizStep === 3 && (
+            // flex:1 + minHeight:0 is only needed for the "running" card, which
+            // must fill the available height exactly so its centered loader
+            // looks right. For every other state (idle/failed/complete) this
+            // forced the card into a fixed-height flex box — when its content
+            // (error banner + action buttons) ran taller than that box, the
+            // overflow wasn't picked up by the wiz-slide scroll container, so
+            // the buttons could render past the visible edge with no way to
+            // scroll to them. Letting those states size naturally (height:auto)
+            // fixes that.
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, ...(statusState === 'running' ? { flex: 1, minHeight: 0 } : {}) }}>
+              <StepHeader
+                number={3}
+                title="Generate Schedule"
+                subtitle={<>Run the constraint solver for <strong style={{ opacity: .95 }}>{coordinatorProgram}</strong> using your selected rooms.</>}
+                badge={<RoundBadge semester={roundSemester} academicYear={roundAY} light />}
+              />
+
+              {statusState === 'running' && (
+                <div className="fadein sch-card" style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:14, padding:'16px 28px', position:'relative', overflow:'hidden', minHeight:0 }}>
+                  <div style={{ position:'absolute', inset:0, background:`linear-gradient(160deg, ${G.meadowSoft} 0%, #fff 55%, ${G.bg} 100%)`, pointerEvents:'none' }} />
+
+                  <div style={{ position:'relative', zIndex:1, flexShrink:0 }}>
+                    <ScheduleGeneratorLoader message="" progress={progress} showProgress={false} isOverlay={false} />
+                  </div>
+
+                  <div style={{ width:'100%', maxWidth:520, position:'relative', zIndex:1, flexShrink:0 }}>
+                    <PhaseTimeline currentPhaseIdx={Math.floor((progress / 100) * 7)} status={statusState} progress={progress} />
+                  </div>
+
+                  <p style={{ position:'relative', zIndex:1, fontSize:12, color:G.muted, fontWeight:500, textAlign:'center', margin:0, lineHeight:1.5, flexShrink:0 }}>
+                    {stopRequested
+                      ? 'Stopping — the solver only checks for this between phases, so it can take a moment.'
+                      : 'Running in the background — you can safely navigate away.'}
+                  </p>
+                </div>
+              )}
+
+              {statusState !== 'running' && (
+                <div className="sch-card">
+                  <div className="sch-card-header">
+                    <div style={{ flex: 1 }}>
+                      <h2 className="sch-card-title">Solver engine</h2>
+                      <p className="sch-card-sub" style={{ marginTop: 0 }}>{totalRoomsPicked} room{totalRoomsPicked === 1 ? '' : 's'} selected to evaluate.</p>
+                    </div>
+                    <button className="action-btn solve" onClick={handleGenerate} disabled={!canGenerate} style={{ padding:'11px 26px', fontSize:13.5, flexShrink:0 }}>
+                      {statusState === 'complete' || statusState === 'failed'
+                        ? <><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.2"/></svg> Re-generate</>
+                        : <><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> Start Solver</>
+                      }
+                    </button>
+                  </div>
+
+                  <div className="sch-card-body">
+                    <PhaseTimeline currentPhaseIdx={Math.floor((progress / 100) * 7)} status={statusState} progress={progress} />
+
+                    {!isMyTurn && statusState === 'idle' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 9, background: G.amberSoft, border: `1px solid ${G.amberBorder}`, fontSize: 12.5, color: '#92400E', fontWeight: 600, marginTop: 14 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        Generation is locked — it's not your turn yet.
+                      </div>
+                    )}
+
+                    {statusState === 'failed' && genErrorKind === 'busy' && (
+                      <div className="fadein solve-result" style={{ marginTop:14 }}>
+                        <div className="solve-result-body" style={{ background: G.amberSoft }}>
+                          <div style={{ width:44, height:44, borderRadius:'50%', background:'#FEF3C7', border:'1.5px solid #FDE68A', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                          </div>
+                          <div>
+                            <div style={{ fontSize:16, fontWeight:800, color:'#92400E', marginBottom:3 }}>Solver Is Busy</div>
+                            <div style={{ fontSize:13.5, color:'#92400E', fontWeight:500 }}>Only one schedule can be generated system-wide at a time — another coordinator (or the admin) currently has the solver running. Your room selection is unaffected — wait a bit and try again.</div>
+                          </div>
+                        </div>
+                        <div className="solve-result-actions">
+                          <button className="solve-action-btn primary" onClick={handleGenerate} disabled={!canGenerate}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.2"/></svg>
+                            Try Again
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {statusState === 'failed' && genErrorKind !== 'busy' && (
+                      <div className="fadein solve-result failed" style={{ marginTop: 14 }}>
+                        <div className="solve-result-body" style={{ background: '#FEF2F2', padding: '20px' }}>
+                          <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#FEE2E2', border: '1.5px solid #FCA5A5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 16, fontWeight: 800, color: '#991B1B', marginBottom: 4 }}>
+                              Generation Failed in Phase: {genErrorDetails?.failedPhase || 'Constraint Solving'}
+                            </div>
+
+                            <div style={{ maxHeight: 260, overflowY: 'auto', paddingRight: 6 }}>
+                              {/* Cause */}
+                              {genErrorDetails?.reasons?.map((reason, idx) => (
+                                <p key={idx} style={{ fontSize: 13, color: '#B91C1C', margin: '4px 0', fontWeight: 500 }}>
+                                  • {reason}
+                                </p>
+                              ))}
+
+                              {/* Actionable Suggestions */}
+                              {genErrorDetails?.suggestions?.length > 0 && (
+                                <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: '#FFF', border: '1px solid #FECACA' }}>
+                                  <div style={{ fontSize: 12, fontWeight: 800, color: '#991B1B', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
+                                    Suggested Actions:
+                                  </div>
+                                  {genErrorDetails.suggestions.map((sug, idx) => (
+                                    <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12.5, color: '#7F1D1D', marginTop: 4 }}>
+                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#B91C1C" strokeWidth="2.5" style={{ flexShrink: 0, marginTop: 2 }}><polyline points="9 18 15 12 9 6"/></svg>
+                                      <span>{sug}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="solve-result-actions">
+                          <button className="solve-action-btn ghost" onClick={() => goStep(1)}>
+                            Adjust Room Selection
+                          </button>
+                          <button className="solve-action-btn primary" onClick={handleGenerate} disabled={!canGenerate}>
+                            Try Again
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {statusState === 'complete' && (
+                      <div className="fadein solve-result complete" style={{ marginTop:14 }}>
+                        <div className="solve-result-body" style={{ background:'#F0FDF4' }}>
+                          <div style={{ width:44, height:44, borderRadius:'50%', background:'#D1FAE5', border:'1.5px solid #6EE7B7', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                          </div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:16, fontWeight:800, color:G.ink, marginBottom:3 }}>Schedule Generated Successfully</div>
+                            <div style={{ fontSize:13.5, color:G.muted, fontWeight:500 }}>
+                              Your generated schedule is ready in memory.
+                            </div>
+                          </div>
+                        </div>
+                        <div className="solve-result-actions">
+                          <button className="solve-action-btn primary" onClick={() => goStep(4)}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            View Result
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {wizStep === 4 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <StepHeader
+                number={4}
+                title="Review & Save"
+                subtitle={result ? <>{events.length} events generated for <strong style={{ opacity: .95 }}>{coordinatorProgram}</strong> — check them over, then save as a draft.</> : <>Generate a schedule in Step 3 first.</>}
+                badge={<RoundBadge semester={roundSemester} academicYear={roundAY} light />}
+              />
+
+              {!result ? (
+                <div className="sch-card" style={{ padding: '60px 20px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 14, color: G.muted, marginBottom: 16, fontWeight: 500 }}>No generated schedule yet.</div>
+                  <button className="btn-primary" onClick={() => goStep(3)} style={{ padding: '10px 20px', fontSize: 13 }}>Go to Generate step</button>
+                </div>
+              ) : (
+                <>
+                  {resultStats && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+                      {[
+                        { val: events.length, label: 'Total Events' },
+                        { val: resultStats.courses, label: 'Courses' },
+                        { val: resultStats.sections, label: 'Sections' },
+                        { val: resultStats.rooms, label: 'Rooms Used' },
+                        { val: resultStats.days, label: 'Days Used' },
+                      ].map(s => (
+                        <div key={s.label} style={{ background: '#fff', border: `1px solid ${G.border}`, borderRadius: 10, padding: '12px 14px', boxShadow: '0 1px 6px rgba(10,46,28,0.03)' }}>
+                          <div style={{ fontSize: 20, fontWeight: 800, color: G.meadowDeep, lineHeight: 1 }}>{s.val}</div>
+                          <div style={{ fontSize: 10.5, color: G.muted, fontWeight: 700, marginTop: 5, textTransform: 'uppercase', letterSpacing: '.4px' }}>{s.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="sch-card">
+                    <div className="sch-card-header" style={{ flexWrap: 'wrap', gap: 12 }}>
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, minWidth: 200 }}>
+                        <h2 className="sch-card-title">Generated Result</h2>
+                        <span style={{ padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: G.meadowSoft, color: G.meadowDeep }}>{filteredEvents.length} of {events.length} shown</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <div style={{ position: 'relative' }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={G.muted2} strokeWidth="2.5" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                          </svg>
+                          <input className="cp-inp" placeholder="Search events..." value={resultSearch} onChange={e => setResultSearch(e.target.value)} style={{ width: 220, padding: '8px 10px 8px 32px', fontSize: 12 }} />
+                        </div>
+                        <button className="btn-danger" onClick={() => { setResult(null); goStep(3) }} style={{ padding: '8px 14px', fontSize: 12 }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                          Discard
+                        </button>
+                      </div>
+                    </div>
+                    <div className="csh-table-wrap" style={{ maxHeight: 380, overflowY: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                          <tr style={{ background: G.hover }}>
+                            {['Course', 'Section', 'Session', 'Day', 'Period', 'Room'].map(h => (
+                              <th key={h} style={{ padding: '12px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', letterSpacing: '0.8px', borderBottom: `1px solid ${G.border}`, whiteSpace: 'nowrap' }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredEvents.length === 0 ? (
+                            <tr><td colSpan={6} style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: G.muted, fontWeight: 500 }}>No events match "{resultSearch}"</td></tr>
+                          ) : filteredEvents.map((e, i) => (
+                            <tr key={i} className="cp-tr-hover">
+                              <td style={{ padding: '10px 20px', fontSize: 12.5, fontWeight: 700, color: G.ink, borderBottom: `1px solid ${G.borderLight}` }}>{e.courseCode}</td>
+                              <td style={{ padding: '10px 20px', fontSize: 12.5, color: G.muted, borderBottom: `1px solid ${G.borderLight}` }}>{e.program}-{e.year}{e.block}</td>
+                              <td style={{ padding: '10px 20px', fontSize: 12, color: G.muted, borderBottom: `1px solid ${G.borderLight}` }}>{e.session}</td>
+                              <td style={{ padding: '10px 20px', fontSize: 12, color: G.muted, borderBottom: `1px solid ${G.borderLight}` }}>{e.day}</td>
+                              <td style={{ padding: '10px 20px', fontSize: 12, color: G.muted, whiteSpace: 'nowrap', borderBottom: `1px solid ${G.borderLight}` }}>{e.period}</td>
+                              <td style={{ padding: '10px 20px', fontSize: 12, color: G.muted, borderBottom: `1px solid ${G.borderLight}` }}>{e.room}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div style={{ padding: '18px 20px', borderTop: `1px solid ${G.border}`, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center', background: '#F8FAF9' }}>
+                      <div style={{ width: 38, height: 38, borderRadius: 10, background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={G.meadowDeep} strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 220 }}>
+                        <label style={{ fontSize: 11.5, fontWeight: 700, color: G.muted2, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Save As</label>
+                        <input className="cp-inp" value={saveName} onChange={e => setSaveName(e.target.value)} placeholder="e.g. 1st Sem Draft A"
+                          onKeyDown={e => e.key === 'Enter' && saveName.trim() && handleSaveSchedule()} style={{ fontSize: 13.5 }} />
+                      </div>
+                      <button className="btn-primary" onClick={handleSaveSchedule} disabled={saving || !saveName.trim() || saved}
+                        style={{ padding: '10px 24px', flexShrink: 0, fontSize: 13.5 }}>
+                        {saving
+                          ? <svg className="spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                          : saved ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> : null}
+                        {saved ? 'Saved' : 'Save Schedule'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {saved && (
+                    <div className="fadein sch-card" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: 16, background: G.meadowSoft, border: `1px solid ${G.meadowBorder}` }}>
+                      <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#D1FAE5', border: '1.5px solid #6EE7B7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: G.meadowDeep, marginBottom: 2 }}>Saved as a draft</div>
+                        <div style={{ fontSize: 13, color: G.meadowDeep, opacity: 0.8, fontWeight: 500 }}>Your schedule is safe. You can find it in your My Schedules list to submit for approval when you're ready.</div>
+                      </div>
+                      <button className="btn-outline" onClick={() => navigate('/coordinator/schedules')} style={{ padding: '10px 20px', fontSize: 13, background: '#fff' }}>Go to My Schedules</button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="wiz-footer">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {wizStep > 1 && (
+            <button className="wiz-nav-btn back" onClick={() => goStep(wizStep - 1)}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+              Back
+            </button>
+          )}
+          <span style={{ fontSize: 13, color: G.muted2, fontWeight: 500 }}>
+            Step {wizStep} of 4 — <span style={{ color: G.ink, fontWeight: 700 }}>{WIZ_STEPS[wizStep - 1].label}</span>
+          </span>
+        </div>
+        <div>
+          {wizStep === 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {roomsDirty && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#92400E' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  Save your room selection to continue
+                </span>
+              )}
+              <button
+                className="wiz-nav-btn next"
+                onClick={() => goStep(2)}
+                disabled={roomsDirty}
+                title={roomsDirty ? 'Save your room selection before continuing' : undefined}
+              >
+                Continue to Readiness
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+          )}
+          {wizStep === 2 && (
+            <button className="wiz-nav-btn next" onClick={() => goStep(3)}>
+              Continue to Generate
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          )}
+          {wizStep === 3 && statusState === 'idle' && (
+            <button className="wiz-nav-btn solve-main next" onClick={handleGenerate} disabled={!canGenerate}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Start Solver
+            </button>
+          )}
+          {wizStep === 3 && statusState === 'running' && (
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 20px', borderRadius:10, background:G.meadowSoft, border:`1px solid ${G.meadowBorder}` }}>
+                <svg className="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G.meadowDeep} strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                <span style={{ fontSize:13.5, fontWeight:700, color:G.meadowDeep }}>
+                  {stopRequested ? 'Stopping…' : `Solving… ${progress}%`}
+                </span>
+              </div>
+              <button
+                onClick={handleCancel}
+                disabled={stopRequested}
+                style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'10px 18px', borderRadius:10, border:'1.5px solid #FECACA', background:'#FFF8F8', color:'#DC2626', fontSize:13, fontWeight:700, cursor: stopRequested ? 'default' : 'pointer', opacity: stopRequested ? 0.6 : 1, fontFamily:"'Inter',sans-serif", transition:'all .15s' }}
+                onMouseEnter={e => { if (!stopRequested) e.currentTarget.style.background='#FEE2E2' }}
+                onMouseLeave={e => { if (!stopRequested) e.currentTarget.style.background='#FFF8F8' }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                {stopRequested ? 'Stopping…' : 'Stop'}
+              </button>
+            </div>
+          )}
+          {wizStep === 3 && statusState === 'complete' && (
+            <button className="wiz-nav-btn next" onClick={() => goStep(4)}>
+              Continue to Review
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          )}
+        </div>
+      </div>
+
+      <ToastContainer toasts={toasts} />
+    </div>
+  )
+}

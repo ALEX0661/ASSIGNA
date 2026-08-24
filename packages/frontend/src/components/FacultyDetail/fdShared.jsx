@@ -10,13 +10,15 @@ if (!document.getElementById('fd-shared-style')) {
     @keyframes spin        { to { transform: rotate(360deg) } }
     @keyframes fdShimmer  { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
     .fd-toast-wrap { position:fixed; bottom:24px; left:50%; z-index:9999; display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none; transform:translateX(-50%); }
-    .fd-toast { display:flex; align-items:center; gap:9px; padding:10px 16px; border-radius:12px; font-family:'Poppins',sans-serif; font-size:12.5px; font-weight:500; box-shadow:0 8px 28px rgba(26,26,46,0.18); animation:fdToastIn .22s cubic-bezier(.4,0,.2,1); white-space:nowrap; pointer-events:auto; }
-    .fd-toast.success,.fd-toast.error,.fd-toast.info { background:linear-gradient(135deg,#7C6FCD,#5a4fbf); color:#fff; box-shadow:0 8px 24px rgba(124,111,205,0.3); border:1px solid #A99BE8; }
-    .fd-skel { background:linear-gradient(90deg,#F0EDF9 25%,#E6E0F8 50%,#F0EDF9 75%); background-size:1200px 100%; animation:fdShimmer 1.5s ease-in-out infinite; border-radius:7px; }
-    .fd-skel-card { background:#fff; border-radius:16px; border:1.5px solid #E8E4F8; overflow:hidden; box-shadow:0 2px 10px rgba(124,111,205,0.06); }
-    .fd-skel-card-header { padding:14px 20px; border-bottom:1px solid #F0EDF9; display:flex; align-items:center; gap:10px; }
+    .fd-toast { display:flex; align-items:center; gap:9px; padding:10px 16px; border-radius:12px; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:500; box-shadow:0 8px 28px rgba(10,46,28,0.18); animation:fdToastIn .22s cubic-bezier(.4,0,.2,1); white-space:nowrap; pointer-events:auto; }
+    .fd-toast.success { background:linear-gradient(135deg,#15803D,#0F5C2C); color:#fff; box-shadow:0 8px 24px rgba(21,128,61,0.3); border:1px solid #BBF7D0; }
+    .fd-toast.error   { background:#fff; color:#DC2626; border:1.5px solid #FECACA; box-shadow:0 8px 24px rgba(220,38,38,0.15); }
+    .fd-toast.info    { background:#fff; color:#15803D; border:1.5px solid #BBF7D0; box-shadow:0 8px 24px rgba(21,128,61,0.15); }
+    .fd-skel { background:linear-gradient(90deg,#EBF4EF 25%,#D8EEE3 50%,#EBF4EF 75%); background-size:1200px 100%; animation:fdShimmer 1.5s ease-in-out infinite; border-radius:7px; }
+    .fd-skel-card { background:#fff; border-radius:16px; border:1.5px solid #D8E8DF; overflow:hidden; box-shadow:0 2px 10px rgba(10,46,28,0.06); }
+    .fd-skel-card-header { padding:14px 20px; border-bottom:1px solid #EBF4EF; display:flex; align-items:center; gap:10px; }
     .fd-skel-card-body { padding:18px 20px; display:flex; flex-direction:column; gap:14px; }
-    input:focus, select:focus { border-color:#7C6FCD !important; outline:none; box-shadow:0 0 0 3px rgba(124,111,205,0.12); }
+    input:focus, select:focus { border-color:#15803D !important; outline:none; box-shadow:0 0 0 3px rgba(21,128,61,0.12); }
   `
   document.head.appendChild(s)
 }
@@ -32,7 +34,7 @@ export const ACADEMIC_RANKS = [
 export const DEPARTMENTS   = ['CCS','CEAS','CHTM','CBA','CAHS']
 export const ALL_DAYS      = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
 export const RATING_LABELS = { 5:'Expert', 4:'Highly Proficient', 3:'Competent', 2:'Developing', 1:'Beginner' }
-export const RATING_COLORS = { 5:'#059669', 4:'#2563EB', 3:'#7C6FCD', 2:'#D97706', 1:'#C0392B' }
+export const RATING_COLORS = { 5:'#059669', 4:'#2563EB', 3:'#15803D', 2:'#D97706', 1:'#C0392B' }
 export const SPECS_PREVIEW = 4
 
 export const EMPTY_FACULTY = {
@@ -43,8 +45,8 @@ export const EMPTY_FACULTY = {
 }
 
 const AVATAR_COLORS = [
-  ['#7C6FCD','#EEEAFB'],['#2563EB','#EBF0FF'],['#059669','#E6FAF3'],
-  ['#D97706','#FEF3CD'],['#DC2626','#FFE8E8'],['#7C3AED','#EDE9FE'],
+  ['#15803D','#DCFCE7'],['#2563EB','#DBEAFE'],['#7C3AED','#EDE9FE'],
+  ['#D97706','#FEF3CD'],['#DC2626','#FFE8E8'],['#0891B2','#E0F2FE'],
 ]
 
 // ─── Pure utilities ───────────────────────────────────────────────────────────
@@ -173,11 +175,11 @@ export function ToastContainer({ toasts }) {
 export function FormField({ label, required, hint, children, span }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:5, gridColumn:span ? `span ${span}` : undefined }}>
-      <label style={{ fontSize:11, fontWeight:700, color:'#8883B0', textTransform:'uppercase', letterSpacing:'.6px', display:'flex', alignItems:'center', gap:4 }}>
-        {label}{required && <span style={{ color:'#7C6FCD' }}>*</span>}
+      <label style={{ fontSize:11, fontWeight:700, color:'#4B7060', textTransform:'uppercase', letterSpacing:'.6px', display:'flex', alignItems:'center', gap:4 }}>
+        {label}{required && <span style={{ color:'#15803D' }}>*</span>}
       </label>
       {children}
-      {hint && <div style={{ fontSize:10.5, color:'#B0ABCC', marginTop:1 }}>{hint}</div>}
+      {hint && <div style={{ fontSize:10.5, color:'#6B8C7A', marginTop:1 }}>{hint}</div>}
     </div>
   )
 }
@@ -186,7 +188,7 @@ export function FormField({ label, required, hint, children, span }) {
 export function SectionSaveBtn({ saving, saved, onClick, disabled }) {
   const dis = saving || disabled
   return (
-    <button type="button" onClick={onClick} disabled={dis} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'5px 12px', borderRadius:8, border:saved ? '1.5px solid #A7F3D0' : '1.5px solid #E8E4F8', background:saved ? '#E6FAF3' : '#fff', color:saved ? '#059669' : '#7C6FCD', fontFamily:"'Poppins',sans-serif", fontSize:11.5, fontWeight:600, cursor:dis ? 'default' : 'pointer', flexShrink:0, opacity:disabled ? 0.5 : 1 }}>
+    <button type="button" onClick={onClick} disabled={dis} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'5px 12px', borderRadius:8, border:saved ? '1.5px solid #BBF7D0' : '1.5px solid #D8E8DF', background:saved ? '#DCFCE7' : '#fff', color:saved ? '#15803D' : '#4B7060', fontFamily:"'Inter',sans-serif", fontSize:11.5, fontWeight:600, cursor:dis ? 'default' : 'pointer', flexShrink:0, opacity:disabled ? 0.5 : 1 }}>
       {saving  && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation:'spin 0.8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>}
       {!saving && saved  && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
       {!saving && !saved && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>}
@@ -203,13 +205,13 @@ export function StarRating({ value, onChange, size = 20 }) {
       {[1,2,3,4,5].map(s => {
         const on = (hov || value) >= s
         return (
-          <svg key={s} width={size} height={size} viewBox="0 0 24 24" fill={on ? '#7C6FCD' : 'none'} stroke={on ? '#7C6FCD' : '#D8D3F5'} strokeWidth="2" style={{ cursor:onChange ? 'pointer' : 'default' }}
+          <svg key={s} width={size} height={size} viewBox="0 0 24 24" fill={on ? '#15803D' : 'none'} stroke={on ? '#15803D' : '#D8E8DF'} strokeWidth="2" style={{ cursor:onChange ? 'pointer' : 'default' }}
             onMouseEnter={() => onChange && setHov(s)} onMouseLeave={() => onChange && setHov(0)} onClick={() => onChange && onChange(s)}>
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
           </svg>
         )
       })}
-      {onChange && <span style={{ fontSize:11, color:RATING_COLORS[value]||'#8883B0', fontWeight:600, marginLeft:4 }}>{RATING_LABELS[value]||''}</span>}
+      {onChange && <span style={{ fontSize:11, color:RATING_COLORS[value]||'#4B7060', fontWeight:600, marginLeft:4 }}>{RATING_LABELS[value]||''}</span>}
     </div>
   )
 }
@@ -217,19 +219,19 @@ export function StarRating({ value, onChange, size = 20 }) {
 // ─── DeleteConfirmModal ───────────────────────────────────────────────────────
 export function DeleteConfirmModal({ name, onConfirm, onCancel, deleting }) {
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:1100, background:'rgba(26,26,46,0.5)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
-      <div style={{ background:'#fff', borderRadius:18, padding:'28px 28px 24px', maxWidth:400, width:'100%', boxShadow:'0 20px 60px rgba(26,26,46,0.22)', textAlign:'center' }}>
+    <div style={{ position:'fixed', inset:0, zIndex:1100, background:'rgba(10,30,18,0.55)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
+      <div style={{ background:'#fff', borderRadius:18, padding:'28px 28px 24px', maxWidth:400, width:'100%', boxShadow:'0 20px 60px rgba(10,30,18,0.22)', border:'1px solid #D8E8DF', textAlign:'center' }}>
         <div style={{ width:52, height:52, borderRadius:'50%', background:'#FFE8E8', margin:'0 auto 16px', display:'flex', alignItems:'center', justifyContent:'center' }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
         </div>
-        <div style={{ fontSize:16, fontWeight:700, color:'#1a1a2e', marginBottom:8 }}>Permanently Delete Faculty Member?</div>
-        <div style={{ fontSize:13, color:'#8883B0', marginBottom:24, lineHeight:1.5 }}>
-          This cannot be undone. <strong style={{ color:'#1a1a2e' }}>{name}</strong> and their login account will be removed forever.
+        <div style={{ fontSize:16, fontWeight:700, color:'#0E2A20', marginBottom:8 }}>Permanently Delete Faculty Member?</div>
+        <div style={{ fontSize:13, color:'#4B7060', marginBottom:24, lineHeight:1.5 }}>
+          This cannot be undone. <strong style={{ color:'#0E2A20' }}>{name}</strong> and their login account will be removed forever.
           <div style={{ marginTop:8, fontSize:12, color:'#D97706', background:'#FEF3CD', borderRadius:8, padding:'6px 10px', border:'1px solid #FDE68A', textAlign:'left' }}>Tip: use Archive instead to hide them without losing their data.</div>
         </div>
         <div style={{ display:'flex', gap:10 }}>
-          <button onClick={onCancel} style={{ flex:1, padding:'10px', borderRadius:9, border:'1.5px solid #E8E4F8', background:'#fff', fontSize:13, fontWeight:600, color:'#8883B0', cursor:'pointer', fontFamily:"'Poppins',sans-serif" }}>Cancel</button>
-          <button onClick={onConfirm} disabled={deleting} style={{ flex:1, padding:'10px', borderRadius:9, border:'none', background:'#C0392B', fontSize:13, fontWeight:700, color:'#fff', cursor:'pointer', fontFamily:"'Poppins',sans-serif", opacity:deleting ? 0.7 : 1 }}>
+          <button onClick={onCancel} style={{ flex:1, padding:'10px', borderRadius:9, border:'1.5px solid #D8E8DF', background:'#fff', fontSize:13, fontWeight:600, color:'#4B7060', cursor:'pointer', fontFamily:'Inter,sans-serif' }}>Cancel</button>
+          <button onClick={onConfirm} disabled={deleting} style={{ flex:1, padding:'10px', borderRadius:9, border:'none', background:'#C0392B', fontSize:13, fontWeight:700, color:'#fff', cursor:'pointer', fontFamily:'Inter,sans-serif', opacity:deleting ? 0.7 : 1 }}>
             {deleting ? 'Deleting...' : 'Yes, Permanently Delete'}
           </button>
         </div>
@@ -245,7 +247,7 @@ function Sk({ w='100%', h=14, r=7, delay=0, style:extra={} }) {
 
 export function PageSkeleton() {
   return (
-    <div style={{ padding:'28px 32px', fontFamily:"'Poppins',sans-serif" }}>
+    <div style={{ padding:'28px 32px', fontFamily:"'Inter',sans-serif" }}>
       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:22 }}>
         <Sk w={52} h={14} r={6}/><Sk w={10} h={10} r={3}/><Sk w={140} h={14} r={6} delay={0.05}/><Sk w={56} h={18} r={99} delay={0.08}/>
       </div>

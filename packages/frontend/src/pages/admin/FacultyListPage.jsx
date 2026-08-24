@@ -742,7 +742,30 @@ export default function FacultyListPage() {
       ws['!cols'] = [{ wch: 18 }, { wch: 24 }, ...members.map(() => ({ wch: 16 }))]
       XLSX.utils.book_append_sheet(wb, ws, sheetLabel)
     })
-    XLSX.writeFile(wb, `Faculty-Matrix-${new Date().toISOString().slice(0, 10)}.xlsx`)
+
+    const filterParts = []
+    
+    if (viewTab === 'archived') filterParts.push('Archived')
+    
+    if (statusFilter.length > 0) {
+      filterParts.push(statusFilter.map(s => s === 'full-time' ? 'FullTime' : 'PartTime').join('-'))
+    }
+    
+    if (departmentFilter.length > 0) {
+      filterParts.push(departmentFilter.join('-'))
+    }
+
+    if (rankFilter.length > 0) {
+      filterParts.push(rankFilter.join('-'))
+    }
+
+    if (coordinatorFilter === 'any') filterParts.push('Coordinators')
+
+    // Clean up filename parts and construct final suffix
+    const safeFilterString = filterParts.join('_').replace(/[^a-zA-Z0-9_-]/g, '')
+    const filterSuffix = safeFilterString ? `-${safeFilterString}` : ''
+    
+    XLSX.writeFile(wb, `Faculty-Matrix${filterSuffix}-${new Date().toISOString().slice(0, 10)}.xlsx`)
     toast('Exported successfully', 'success')
   }
 

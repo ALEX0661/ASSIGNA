@@ -46,84 +46,84 @@ export const PROGRAM_COLORS = {
 export const PROGRAM_SHADE_PALETTE = {
   // Purple family ──────────────────────────────────────────────
   BSCS: [
-    { bg: '#F5F3FF', text: '#4C1D95', border: '#DDD6FE', accent: '#A78BFA', badgeText: '#fff' }, // A — soft violet
-    { bg: '#EDE9FE', text: '#3730A3', border: '#C4B5FD', accent: '#7C3AED', badgeText: '#fff' }, // B — medium violet
-    { bg: '#E0D9FE', text: '#2E1065', border: '#A78BFA', accent: '#5B21B6', badgeText: '#fff' }, // C — deep violet
-    { bg: '#D4C9FD', text: '#1E1065', border: '#8B5CF6', accent: '#3730A3', badgeText: '#fff' }, // D — indigo
-    { bg: '#EDE9FE', text: '#3730A3', border: '#C4B5FD', accent: '#7C3AED', badgeText: '#fff' }, // E (≡ B)
-    { bg: '#E0D9FE', text: '#2E1065', border: '#A78BFA', accent: '#5B21B6', badgeText: '#fff' }, // F (≡ C)
+    { bg: '#E8E0FF', text: '#4C1D95', border: '#C4B5FD', accent: '#A78BFA', badgeText: '#fff' }, // A — soft violet
+    { bg: '#DDD4FE', text: '#3730A3', border: '#A78BFA', accent: '#7C3AED', badgeText: '#fff' }, // B — medium violet
+    { bg: '#D0C5FD', text: '#2E1065', border: '#8B5CF6', accent: '#5B21B6', badgeText: '#fff' }, // C — deep violet
+    { bg: '#C4B5FD', text: '#1E1065', border: '#7C3AED', accent: '#3730A3', badgeText: '#fff' }, // D — indigo
+    { bg: '#DDD4FE', text: '#3730A3', border: '#A78BFA', accent: '#7C3AED', badgeText: '#fff' }, // E (≡ B)
+    { bg: '#D0C5FD', text: '#2E1065', border: '#8B5CF6', accent: '#5B21B6', badgeText: '#fff' }, // F (≡ C)
   ],
   // Amber family ───────────────────────────────────────────────
   BSIT: [
-    { bg: '#FFFBEB', text: '#92400E', border: '#FDE68A', accent: '#FBBF24', badgeText: '#78350F' }, // A — gold
-    { bg: '#FEF3C7', text: '#78350F', border: '#FCD34D', accent: '#F59E0B', badgeText: '#fff'   }, // B — amber
-    { bg: '#FEE9A0', text: '#6D2503', border: '#FBBF24', accent: '#D97706', badgeText: '#fff'   }, // C — deep amber
-    { bg: '#FDD87A', text: '#451A03', border: '#F59E0B', accent: '#92400E', badgeText: '#fff'   }, // D — dark brown
-    { bg: '#FEF3C7', text: '#78350F', border: '#FCD34D', accent: '#F59E0B', badgeText: '#fff'   }, // E (≡ B)
-    { bg: '#FEE9A0', text: '#6D2503', border: '#FBBF24', accent: '#D97706', badgeText: '#fff'   }, // F (≡ C)
+    { bg: '#FEF0C3', text: '#92400E', border: '#FCD34D', accent: '#FBBF24', badgeText: '#78350F' }, // A — gold
+    { bg: '#FDE68A', text: '#78350F', border: '#FBBF24', accent: '#F59E0B', badgeText: '#fff'   }, // B — amber
+    { bg: '#FDD87A', text: '#6D2503', border: '#F59E0B', accent: '#D97706', badgeText: '#fff'   }, // C — deep amber
+    { bg: '#FCC84A', text: '#451A03', border: '#D97706', accent: '#92400E', badgeText: '#fff'   }, // D — dark brown
+    { bg: '#FDE68A', text: '#78350F', border: '#FBBF24', accent: '#F59E0B', badgeText: '#fff'   }, // E (≡ B)
+    { bg: '#FDD87A', text: '#6D2503', border: '#F59E0B', accent: '#D97706', badgeText: '#fff'   }, // F (≡ C)
   ],
   // Emerald family ─────────────────────────────────────────────
   BSIE: [
-    { bg: '#ECFDF5', text: '#065F46', border: '#A7F3D0', accent: '#34D399', badgeText: '#064E3B' }, // A — mint
-    { bg: '#D1FAE5', text: '#065F46', border: '#6EE7B7', accent: '#10B981', badgeText: '#fff'   }, // B — emerald
-    { bg: '#B8F3D4', text: '#064E3B', border: '#34D399', accent: '#059669', badgeText: '#fff'   }, // C — deep emerald
-    { bg: '#9DECBE', text: '#022C22', border: '#10B981', accent: '#047857', badgeText: '#fff'   }, // D — forest
-    { bg: '#D1FAE5', text: '#065F46', border: '#6EE7B7', accent: '#10B981', badgeText: '#fff'   }, // E (≡ B)
-    { bg: '#B8F3D4', text: '#064E3B', border: '#34D399', accent: '#059669', badgeText: '#fff'   }, // F (≡ C)
+    { bg: '#D1FAE5', text: '#065F46', border: '#6EE7B7', accent: '#34D399', badgeText: '#064E3B' }, // A — mint
+    { bg: '#A7F3D0', text: '#065F46', border: '#34D399', accent: '#10B981', badgeText: '#fff'   }, // B — emerald
+    { bg: '#86EFAC', text: '#064E3B', border: '#10B981', accent: '#059669', badgeText: '#fff'   }, // C — deep emerald
+    { bg: '#6EE7B7', text: '#022C22', border: '#059669', accent: '#047857', badgeText: '#fff'   }, // D — forest
+    { bg: '#A7F3D0', text: '#065F46', border: '#34D399', accent: '#10B981', badgeText: '#fff'   }, // E (≡ B)
+    { bg: '#86EFAC', text: '#064E3B', border: '#10B981', accent: '#059669', badgeText: '#fff'   }, // F (≡ C)
   ],
   // Pink family ────────────────────────────────────────────────
   BSECE: [
-    { bg: '#FDF2F8', text: '#9D174D', border: '#FBCFE8', accent: '#F472B6', badgeText: '#831843' }, // A — light pink
-    { bg: '#FCE7F3', text: '#831843', border: '#F9A8D4', accent: '#EC4899', badgeText: '#fff'   }, // B — hot pink
-    { bg: '#FAD3E8', text: '#701A75', border: '#F472B6', accent: '#DB2777', badgeText: '#fff'   }, // C — deep pink
-    { bg: '#F8BFDC', text: '#500724', border: '#EC4899', accent: '#9D174D', badgeText: '#fff'   }, // D — burgundy
-    { bg: '#FCE7F3', text: '#831843', border: '#F9A8D4', accent: '#EC4899', badgeText: '#fff'   }, // E (≡ B)
-    { bg: '#FAD3E8', text: '#701A75', border: '#F472B6', accent: '#DB2777', badgeText: '#fff'   }, // F (≡ C)
+    { bg: '#FCE7F3', text: '#9D174D', border: '#F9A8D4', accent: '#F472B6', badgeText: '#831843' }, // A — light pink
+    { bg: '#FBCFE8', text: '#831843', border: '#F472B6', accent: '#EC4899', badgeText: '#fff'   }, // B — hot pink
+    { bg: '#F9A8D4', text: '#701A75', border: '#EC4899', accent: '#DB2777', badgeText: '#fff'   }, // C — deep pink
+    { bg: '#F472B6', text: '#500724', border: '#DB2777', accent: '#9D174D', badgeText: '#fff'   }, // D — burgundy
+    { bg: '#FBCFE8', text: '#831843', border: '#F472B6', accent: '#EC4899', badgeText: '#fff'   }, // E (≡ B)
+    { bg: '#F9A8D4', text: '#701A75', border: '#EC4899', accent: '#DB2777', badgeText: '#fff'   }, // F (≡ C)
   ],
   // Orange family ──────────────────────────────────────────────
   BSIS: [
-    { bg: '#FFF7ED', text: '#9A3412', border: '#FED7AA', accent: '#FB923C', badgeText: '#7C2D12' }, // A — peach
-    { bg: '#FFEDD5', text: '#7C2D12', border: '#FDBA74', accent: '#F97316', badgeText: '#fff'   }, // B — orange
-    { bg: '#FEE0BA', text: '#7C2D12', border: '#FB923C', accent: '#EA580C', badgeText: '#fff'   }, // C — deep orange
-    { bg: '#FDD0A0', text: '#431407', border: '#F97316', accent: '#9A3412', badgeText: '#fff'   }, // D — brick
-    { bg: '#FFEDD5', text: '#7C2D12', border: '#FDBA74', accent: '#F97316', badgeText: '#fff'   }, // E (≡ B)
-    { bg: '#FEE0BA', text: '#7C2D12', border: '#FB923C', accent: '#EA580C', badgeText: '#fff'   }, // F (≡ C)
+    { bg: '#FFEDD5', text: '#9A3412', border: '#FDBA74', accent: '#FB923C', badgeText: '#7C2D12' }, // A — peach
+    { bg: '#FED7AA', text: '#7C2D12', border: '#FB923C', accent: '#F97316', badgeText: '#fff'   }, // B — orange
+    { bg: '#FDBA74', text: '#7C2D12', border: '#F97316', accent: '#EA580C', badgeText: '#fff'   }, // C — deep orange
+    { bg: '#FB923C', text: '#431407', border: '#EA580C', accent: '#9A3412', badgeText: '#fff'   }, // D — brick
+    { bg: '#FED7AA', text: '#7C2D12', border: '#FB923C', accent: '#F97316', badgeText: '#fff'   }, // E (≡ B)
+    { bg: '#FDBA74', text: '#7C2D12', border: '#F97316', accent: '#EA580C', badgeText: '#fff'   }, // F (≡ C)
   ],
   // Green family ───────────────────────────────────────────────
   BSBA: [
-    { bg: '#F0FDF4', text: '#166534', border: '#BBF7D0', accent: '#4ADE80', badgeText: '#14532D' }, // A — light green
-    { bg: '#DCFCE7', text: '#166534', border: '#86EFAC', accent: '#22C55E', badgeText: '#fff'   }, // B — green
-    { bg: '#C6F9D9', text: '#14532D', border: '#4ADE80', accent: '#16A34A', badgeText: '#fff'   }, // C — deep green
-    { bg: '#B0F4CB', text: '#052E16', border: '#22C55E', accent: '#15803D', badgeText: '#fff'   }, // D — forest green
-    { bg: '#DCFCE7', text: '#166534', border: '#86EFAC', accent: '#22C55E', badgeText: '#fff'   }, // E (≡ B)
-    { bg: '#C6F9D9', text: '#14532D', border: '#4ADE80', accent: '#16A34A', badgeText: '#fff'   }, // F (≡ C)
+    { bg: '#DCFCE7', text: '#166534', border: '#86EFAC', accent: '#4ADE80', badgeText: '#14532D' }, // A — light green
+    { bg: '#BBF7D0', text: '#166534', border: '#4ADE80', accent: '#22C55E', badgeText: '#fff'   }, // B — green
+    { bg: '#86EFAC', text: '#14532D', border: '#22C55E', accent: '#16A34A', badgeText: '#fff'   }, // C — deep green
+    { bg: '#4ADE80', text: '#052E16', border: '#16A34A', accent: '#15803D', badgeText: '#fff'   }, // D — forest green
+    { bg: '#BBF7D0', text: '#166534', border: '#4ADE80', accent: '#22C55E', badgeText: '#fff'   }, // E (≡ B)
+    { bg: '#86EFAC', text: '#14532D', border: '#22C55E', accent: '#16A34A', badgeText: '#fff'   }, // F (≡ C)
   ],
   // Blue family ────────────────────────────────────────────────
   BSA: [
-    { bg: '#EFF6FF', text: '#1E40AF', border: '#BFDBFE', accent: '#60A5FA', badgeText: '#1E3A8A' }, // A — sky
-    { bg: '#DBEAFE', text: '#1E3A8A', border: '#93C5FD', accent: '#3B82F6', badgeText: '#fff'   }, // B — blue
-    { bg: '#C5DEFE', text: '#1E3A8A', border: '#60A5FA', accent: '#2563EB', badgeText: '#fff'   }, // C — deep blue
-    { bg: '#AECFFE', text: '#1E3A8A', border: '#3B82F6', accent: '#1D4ED8', badgeText: '#fff'   }, // D — navy
-    { bg: '#DBEAFE', text: '#1E3A8A', border: '#93C5FD', accent: '#3B82F6', badgeText: '#fff'   }, // E (≡ B)
-    { bg: '#C5DEFE', text: '#1E3A8A', border: '#60A5FA', accent: '#2563EB', badgeText: '#fff'   }, // F (≡ C)
+    { bg: '#DBEAFE', text: '#1E40AF', border: '#93C5FD', accent: '#60A5FA', badgeText: '#1E3A8A' }, // A — sky
+    { bg: '#BFDBFE', text: '#1E3A8A', border: '#60A5FA', accent: '#3B82F6', badgeText: '#fff'   }, // B — blue
+    { bg: '#93C5FD', text: '#1E3A8A', border: '#3B82F6', accent: '#2563EB', badgeText: '#fff'   }, // C — deep blue
+    { bg: '#60A5FA', text: '#1E3A8A', border: '#2563EB', accent: '#1D4ED8', badgeText: '#fff'   }, // D — navy
+    { bg: '#BFDBFE', text: '#1E3A8A', border: '#60A5FA', accent: '#3B82F6', badgeText: '#fff'   }, // E (≡ B)
+    { bg: '#93C5FD', text: '#1E3A8A', border: '#3B82F6', accent: '#2563EB', badgeText: '#fff'   }, // F (≡ C)
   ],
   // Sky / cyan family ──────────────────────────────────────────
   'BSEMC-DAT': [
-    { bg: '#F0F9FF', text: '#0369A1', border: '#BAE6FD', accent: '#38BDF8', badgeText: '#075985' }, // A — sky
-    { bg: '#E0F2FE', text: '#075985', border: '#7DD3FC', accent: '#0EA5E9', badgeText: '#fff'   }, // B — cerulean
-    { bg: '#CCE9FD', text: '#075985', border: '#38BDF8', accent: '#0284C7', badgeText: '#fff'   }, // C — deep sky
-    { bg: '#B7DEFC', text: '#0C4A6E', border: '#0EA5E9', accent: '#0369A1', badgeText: '#fff'   }, // D — dark sky
-    { bg: '#E0F2FE', text: '#075985', border: '#7DD3FC', accent: '#0EA5E9', badgeText: '#fff'   }, // E (≡ B)
-    { bg: '#CCE9FD', text: '#075985', border: '#38BDF8', accent: '#0284C7', badgeText: '#fff'   }, // F (≡ C)
+    { bg: '#E0F2FE', text: '#0369A1', border: '#7DD3FC', accent: '#38BDF8', badgeText: '#075985' }, // A — sky
+    { bg: '#BAE6FD', text: '#075985', border: '#38BDF8', accent: '#0EA5E9', badgeText: '#fff'   }, // B — cerulean
+    { bg: '#7DD3FC', text: '#075985', border: '#0EA5E9', accent: '#0284C7', badgeText: '#fff'   }, // C — deep sky
+    { bg: '#38BDF8', text: '#0C4A6E', border: '#0284C7', accent: '#0369A1', badgeText: '#fff'   }, // D — dark sky
+    { bg: '#BAE6FD', text: '#075985', border: '#38BDF8', accent: '#0EA5E9', badgeText: '#fff'   }, // E (≡ B)
+    { bg: '#7DD3FC', text: '#075985', border: '#0EA5E9', accent: '#0284C7', badgeText: '#fff'   }, // F (≡ C)
   ],
   // Teal family ────────────────────────────────────────────────
   'BSEMC-GD': [
-    { bg: '#F0FDF9', text: '#0F766E', border: '#99F6E4', accent: '#2DD4BF', badgeText: '#134E4A' }, // A — light teal
-    { bg: '#CCFBF1', text: '#0F766E', border: '#5EEAD4', accent: '#14B8A6', badgeText: '#fff'   }, // B — teal
-    { bg: '#ADFAE7', text: '#0D6C65', border: '#2DD4BF', accent: '#0D9488', badgeText: '#fff'   }, // C — deep teal
-    { bg: '#8EF7DA', text: '#134E4A', border: '#14B8A6', accent: '#0F766E', badgeText: '#fff'   }, // D — forest teal
-    { bg: '#CCFBF1', text: '#0F766E', border: '#5EEAD4', accent: '#14B8A6', badgeText: '#fff'   }, // E (≡ B)
-    { bg: '#ADFAE7', text: '#0D6C65', border: '#2DD4BF', accent: '#0D9488', badgeText: '#fff'   }, // F (≡ C)
+    { bg: '#CCFBF1', text: '#0F766E', border: '#5EEAD4', accent: '#2DD4BF', badgeText: '#134E4A' }, // A — light teal
+    { bg: '#99F6E4', text: '#0F766E', border: '#2DD4BF', accent: '#14B8A6', badgeText: '#fff'   }, // B — teal
+    { bg: '#5EEAD4', text: '#0D6C65', border: '#14B8A6', accent: '#0D9488', badgeText: '#fff'   }, // C — deep teal
+    { bg: '#2DD4BF', text: '#134E4A', border: '#0D9488', accent: '#0F766E', badgeText: '#fff'   }, // D — forest teal
+    { bg: '#99F6E4', text: '#0F766E', border: '#2DD4BF', accent: '#14B8A6', badgeText: '#fff'   }, // E (≡ B)
+    { bg: '#5EEAD4', text: '#0D6C65', border: '#14B8A6', accent: '#0D9488', badgeText: '#fff'   }, // F (≡ C)
   ],
 }
 

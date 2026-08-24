@@ -63,7 +63,7 @@ const ScheduleGeneratorLoader = ({
           </div>
           <div className="calendar-base">
             <div className="calendar-header">
-              <div className="calendar-month">OptiSched</div>
+              <div className="calendar-month">ASSIGNA</div>
             </div>
             <div className="calendar-grid">
               {cells}
