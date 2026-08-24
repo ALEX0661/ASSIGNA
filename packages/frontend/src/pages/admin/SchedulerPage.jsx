@@ -1,11 +1,11 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import {
   getFaculty, getCourses,
-  triggerSolve,
+  triggerSolve, cancelSolve,
   saveSchedule, listSaved, loadSaved, deleteSaved,
-  getPreDiagnostic,
+  getPreDiagnostic, getDiagnostic,
 } from '../../services/api'
 import { useScheduleStore, useSolverStore } from '../../store/scheduleStore'
 import ScheduleGeneratorLoader from './ScheduleGeneratorLoader'
@@ -63,6 +63,13 @@ const STATUS_META = {
 const now = new Date();
 const startYear = now.getMonth() < 5 ? now.getFullYear() - 1 : now.getFullYear();
 
+// Academic year options for the Custom dropdown — 2 years back through 4 years ahead,
+// always centred on the current academic year so it stays relevant automatically.
+const AY_OPTIONS = Array.from({ length: 7 }, (_, i) => {
+  const y = startYear - 1 + i
+  return `${y}-${y + 1}`
+})
+
 const PRESET_NAMES = [
   `A.Y. ${startYear}-${startYear + 1}, 1st Semester`,
   `A.Y. ${startYear}-${startYear + 1}, 2nd Semester`,
@@ -101,7 +108,7 @@ if (!document.getElementById('scheduler-page-style')) {
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@500;600;700&display=swap');
 
     .sch-root { display:flex; flex-direction:column; gap:0; padding:0; background:${G.bg}; min-height:100%; font-family:'Inter',sans-serif; overflow:hidden; }
-    .sch-wizard-shell { display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+    .sch-wizard-shell { display:flex; flex-direction:column; height:100%; overflow:hidden; }
 
     /* ── Wizard top bar (Slimmer Pill Stepper) ── */
     .wiz-topbar { display:flex; align-items:center; justify-content:center; padding:0; background:transparent; border:none; flex-shrink:0; z-index:10; }
@@ -128,6 +135,11 @@ if (!document.getElementById('scheduler-page-style')) {
     .wiz-slide-back   { animation:wizSlideBack .32s cubic-bezier(0.16,1,0.3,1) both; }
     @keyframes wizSlideIn  { from { opacity:0; transform:translateX(48px) scale(0.98); } to { opacity:1; transform:translateX(0) scale(1); } }
     @keyframes wizSlideBack { from { opacity:0; transform:translateX(-48px) scale(0.98); } to { opacity:1; transform:translateX(0) scale(1); } }
+    /* Step 3 running: no scroll, flex fill */
+    .wiz-slide.no-scroll { overflow-y:hidden; }
+
+    /* Panel body — the expandable content area inside CheckPanel and other cards */
+    .panel-body { padding:16px 18px; display:flex; flex-direction:column; gap:0; }
 
     /* Card shell (consistent across panels) */
     .sch-card { background:#fff; border-radius:12px; border:1px solid ${G.border}; box-shadow:0 2px 12px rgba(10,46,28,0.03); overflow:hidden; }
@@ -152,20 +164,22 @@ if (!document.getElementById('scheduler-page-style')) {
     .sch-input { padding:9px 14px; border-radius:8px; border:1px solid ${G.border}; background:#fff; color:${G.ink}; font-size:13px; font-weight:600; font-family:'Inter',sans-serif; outline:none; transition:all .15s; }
     .sch-input::placeholder { color:${G.muted2}; font-weight:500; }
 
-    .saved-item { display:flex; align-items:center; gap:14px; padding:16px 22px; cursor:pointer; transition:background .15s; border-bottom:1px solid ${G.borderLight}; background:#fff; }
-    .saved-item:hover { background:${G.hover}; }
+    .saved-item { display:flex; align-items:center; gap:14px; padding:14px 18px; cursor:pointer; transition:background .15s, border-color .15s; border-bottom:1px solid ${G.borderLight}; background:#fff; }
     .saved-item:last-child { border-bottom:none; }
-    .saved-item:hover  { background:${G.meadow}; color:#fff; border-color:${G.meadowDeep}; }
+    .saved-item:hover { background:${G.hover}; border-bottom-color:${G.meadowBorder}; }
+    .saved-item:hover .saved-name { color:${G.meadowDeep}; }
+    .saved-item:hover .saved-chevron { color:${G.meadowDeep}; }
     .saved-name-block { flex:1; min-width:0; }
-    .saved-name { font-size:13.5px; font-weight:700; color:${G.ink}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; }
+    .saved-name { font-size:13.5px; font-weight:700; color:${G.ink}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; transition:color .15s; }
     .saved-sub { font-size:11.5px; color:${G.muted}; font-weight:500; margin-top:2px; display:block; }
     .saved-actions { display:flex; gap:8px; margin-left:auto; flex-shrink:0; align-items:center; }
     .saved-load-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:'Inter',sans-serif; transition:all .15s; background:${G.meadowSoft}; color:${G.meadowDeep}; border:1px solid ${G.meadowBorder}; }
     .saved-load-btn:hover:not(:disabled) { background:${G.meadow}; color:#fff; border-color:${G.meadowDeep}; }
     .saved-load-btn:disabled { opacity:.5; cursor:not-allowed; }
-    .saved-del-btn { width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; border-radius:8px; font-size:12px; cursor:pointer; font-family:'Inter',sans-serif; transition:all .15s; background:#fff; color:#DC2626; border:1px solid #FECACA; }
+    .saved-del-btn { width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; border-radius:8px; cursor:pointer; font-family:'Inter',sans-serif; transition:all .15s; background:#FEF2F2; color:#DC2626; border:1px solid #FECACA; flex-shrink:0; }
     .saved-del-btn:hover:not(:disabled) { background:#FEE2E2; border-color:#FCA5A5; }
     .saved-del-btn:disabled { opacity:.4; cursor:not-allowed; }
+    .saved-chevron { color:${G.muted2}; transition:color .15s; flex-shrink:0; }
     .saved-current-badge { font-size:10px; font-weight:800; padding:2px 8px; border-radius:99px; background:${G.meadow}; color:#fff; letter-spacing:.3px; text-transform:uppercase; flex-shrink:0; }
 
     .r-tab { display:inline-flex; align-items:center; gap:5px; padding:8px 16px; border-radius:8px; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; transition:all .15s; border:1px solid ${G.border}; background:#fff; color:${G.muted}; box-shadow:0 1px 2px rgba(0,0,0,0.02); }
@@ -227,7 +241,7 @@ if (!document.getElementById('scheduler-page-style')) {
     .solve-result.complete { border-color:${G.meadowBorder}; }
     .solve-result.failed   { border-color:#FECACA; }
     .solve-result-body { display:flex; align-items:center; gap:16px; padding:24px 28px; }
-    .solve-result-actions { display:flex; gap:10px; padding:16px 28px; border-top:1px solid; background:#fff; justify-content:flex-end; }
+    .solve-result-actions { display:flex; flex-wrap:wrap; gap:10px; padding:16px 28px; border-top:1px solid; background:#fff; justify-content:flex-end; }
     .solve-result.complete .solve-result-actions { border-color:${G.meadowBorder}; background:#F8FAF9; }
     .solve-result.failed   .solve-result-actions { border-color:#FECACA; background:#FEF2F2; }
     .solve-action-btn { display:inline-flex; align-items:center; gap:8px; padding:10px 20px; border-radius:9px; font-family:'Inter',sans-serif; font-size:13px; font-weight:700; cursor:pointer; transition:all .2s; }
@@ -264,8 +278,21 @@ if (!document.getElementById('scheduler-page-style')) {
     .diag-rec:hover { transform:translateY(-1px); }
     @keyframes diag-bar { from { width:0 } }
 
-    /* Toast Notifications */
-    .sch-toast-wrap { position:fixed; bottom:24px; left:50%; z-index:9999; display:flex; flex-direction:column; gap:10px; align-items:center; pointer-events:none; transform:translateX(-50%); }
+    /* Toast Notifications — centered within main content area, not full viewport */
+    .sch-toast-wrap { 
+      position: fixed; 
+      bottom: 24px; 
+      left: 50%; 
+      transform: translateX(-50%);
+      /* Offset by sidebar width to center within main content */
+      margin-left: 110px; /* Half of normal sidebar width (220px / 2) */
+      z-index: 9999; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 10px; 
+      align-items: center; 
+      pointer-events: none; 
+    }
     .sch-toast { display:flex; align-items:center; gap:10px; padding:14px 22px; border-radius:12px; font-family:'Inter',sans-serif; font-size:13.5px; font-weight:600; animation:slideUp .25s cubic-bezier(.4,0,.2,1); white-space:nowrap; pointer-events:auto; box-shadow:0 8px 24px rgba(10,46,28,0.15); }
     .sch-toast.success { background:${G.meadow}; color:#fff; border:1px solid ${G.meadowBorder}; }
     .sch-toast.error   { background:#fff; color:#DC2626; border:1px solid #FECACA; }
@@ -509,7 +536,108 @@ function DeleteModal({ name, onConfirm, onCancel }) {
   )
 }
 
-/* ─────────────────────────── sub-components ─────────────────────────── */
+/* ─────────────────────────── Overwrite confirm modal ───────────────────────── */
+
+function OverwriteModal({ name, onOverwrite, onRename, onCancel }) {
+  const [newName, setNewName] = useState(name + ' (2)')
+  const [mode, setMode]       = useState('choice') // 'choice' | 'rename'
+
+  return (
+    <div className="del-modal-backdrop" onClick={onCancel}>
+      <div className="del-modal-box" onClick={e => e.stopPropagation()}>
+
+        {mode === 'choice' ? (
+          <>
+            <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:22 }}>
+              <div style={{ width:48, height:48, borderRadius:12, background:'#FEF3C7', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, border:'1px solid #FDE68A' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+              <div>
+                <p style={{ fontSize:17, fontWeight:800, color:G.ink, margin:0 }}>Name already exists</p>
+                <p style={{ fontSize:13, color:G.muted, marginTop:4 }}>A schedule named <strong style={{ color:G.ink }}>"{name}"</strong> already exists.</p>
+              </div>
+            </div>
+
+            <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:24 }}>
+              <button
+                onClick={onOverwrite}
+                style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 16px', borderRadius:10, border:`1.5px solid #FECACA`, background:'#FFF8F8', cursor:'pointer', fontFamily:"'Inter',sans-serif", textAlign:'left', transition:'all .15s' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor='#FCA5A5'; e.currentTarget.style.background='#FEE2E2' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor='#FECACA'; e.currentTarget.style.background='#FFF8F8' }}
+              >
+                <div style={{ width:36, height:36, borderRadius:9, background:'#FEE2E2', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+                </div>
+                <div>
+                  <div style={{ fontSize:13.5, fontWeight:700, color:'#DC2626' }}>Overwrite</div>
+                  <div style={{ fontSize:12, color:G.muted, marginTop:1 }}>Replace the existing schedule — this cannot be undone.</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setMode('rename')}
+                style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 16px', borderRadius:10, border:`1.5px solid ${G.meadowBorder}`, background:G.meadowSoft, cursor:'pointer', fontFamily:"'Inter',sans-serif", textAlign:'left', transition:'all .15s' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor=G.meadow; e.currentTarget.style.background='#BBF7D0' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor=G.meadowBorder; e.currentTarget.style.background=G.meadowSoft }}
+              >
+                <div style={{ width:36, height:36, borderRadius:9, background:'#BBF7D0', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G.meadowDeep} strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </div>
+                <div>
+                  <div style={{ fontSize:13.5, fontWeight:700, color:G.meadowDeep }}>Save with a new name</div>
+                  <div style={{ fontSize:12, color:G.muted, marginTop:1 }}>Keep the existing schedule and save this one separately.</div>
+                </div>
+              </button>
+            </div>
+
+            <div style={{ display:'flex', justifyContent:'flex-end' }}>
+              <button onClick={onCancel}
+                style={{ padding:'9px 20px', borderRadius:8, border:`1px solid ${G.border}`, background:'#fff', color:G.muted, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>
+                Cancel
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
+              <button onClick={() => setMode('choice')} style={{ background:'none', border:'none', cursor:'pointer', color:G.muted, display:'flex', padding:4, borderRadius:6 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+              <p style={{ fontSize:16, fontWeight:800, color:G.ink, margin:0 }}>Save with new name</p>
+            </div>
+
+            <label style={{ fontSize:11.5, fontWeight:700, color:G.muted2, textTransform:'uppercase', letterSpacing:'.6px', display:'block', marginBottom:7 }}>
+              Schedule Name
+            </label>
+            <input
+              autoFocus
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && newName.trim() && onRename(newName.trim())}
+              style={{ width:'100%', padding:'10px 13px', borderRadius:9, border:`1.5px solid ${G.border}`, fontSize:13.5, fontFamily:"'Inter',sans-serif", outline:'none', boxSizing:'border-box', marginBottom:20, transition:'border-color .15s' }}
+              onFocus={e => e.target.style.borderColor = G.meadow}
+              onBlur={e => e.target.style.borderColor = G.border}
+            />
+
+            <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+              <button onClick={onCancel}
+                style={{ padding:'9px 20px', borderRadius:8, border:`1px solid ${G.border}`, background:'#fff', color:G.muted, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>
+                Cancel
+              </button>
+              <button onClick={() => newName.trim() && onRename(newName.trim())} disabled={!newName.trim()}
+                style={{ padding:'9px 22px', borderRadius:8, border:'none', background:G.meadow, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'Inter',sans-serif", boxShadow:`0 3px 12px rgba(21,128,61,.25)`, opacity: newName.trim() ? 1 : 0.5 }}>
+                Save
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
 
 function MiniStars({ rating, size = 12 }) {
   return (
@@ -728,36 +856,50 @@ function PhaseTimeline({ currentPhaseIdx, status, progress }) {
   )
 }
 
-function SavedItem({ name, onLoad, onDelete, loading, isCurrent }) {
-  const ayMatch = name.match(/^(A\.Y\.\s*\d{4}[-–]\d{4}),\s*(.+)$/)
-  const titleLine = ayMatch ? ayMatch[2] : name
-  const subLine   = ayMatch ? ayMatch[1] : null
+function SavedItem({ name, academicYear, semester, finalized, onLoad, onDelete, loading, isCurrent }) {
+  // Subtitle comes from the schedule's actual stored metadata (academicYear /
+  // semester), not from parsing an "A.Y. XXXX-XXXX, ..." prefix out of the
+  // name. That parsing approach silently dropped the subtitle for any
+  // schedule saved under a raw name (e.g. "test1") that never had the A.Y.
+  // baked into it, even though the metadata existed in Firestore all along.
+  const subLine = [
+    academicYear ? `A.Y. ${academicYear}` : null,
+    semester || null,
+  ].filter(Boolean).join(' • ') || null
 
   return (
     <div className="saved-item fadein" onClick={() => onLoad(name)}>
-     
       <div className="saved-name-block">
         <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom: subLine ? 2 : 0 }}>
-          <span className="saved-name">{titleLine}</span>
+          <span className="saved-name">{name}</span>
           {isCurrent && <span className="saved-current-badge">Active</span>}
+          {finalized && (
+            <span style={{ display:'inline-flex', alignItems:'center', gap:3, padding:'1px 7px', borderRadius:99, fontSize:9.5, fontWeight:700, background:'#DCFCE7', color:'#15803D', border:'1px solid #BBF7D0', flexShrink:0 }}>
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+              Finalized
+            </span>
+          )}
         </div>
         {subLine && <span className="saved-sub">{subLine}</span>}
       </div>
-<div className="saved-actions">
-        <button className="saved-del-btn" 
-          onClick={(e) => { e.stopPropagation(); onDelete(name); }} 
-          disabled={loading} 
-          title="Delete Schedule">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" color="gray" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            <line x1="10" y1="11" x2="10" y2="17"></line>
-            <line x1="14" y1="11" x2="14" y2="17"></line>
+      <div className="saved-actions">
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(name); }}
+          disabled={loading}
+          title="Delete schedule"
+          style={{ width:30, height:30, borderRadius:8, border:'1.5px solid #FFD0D0', background:'#FFE8E8', color:'#C0392B', display:'inline-flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0, flexShrink:0, transition:'background .15s, color .15s', opacity: loading ? 0.4 : 1 }}
+          onMouseEnter={e => { e.currentTarget.style.background='#C0392B'; e.currentTarget.style.color='#fff' }}
+          onMouseLeave={e => { e.currentTarget.style.background='#FFE8E8'; e.currentTarget.style.color='#C0392B' }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            <path d="M10 11v6M14 11v6"/>
           </svg>
         </button>
-        {loading 
-          ? <svg className="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G.meadow} strokeWidth="2.5" style={{ marginLeft: 6 }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-          : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G.muted2} strokeWidth="2.5" style={{ marginLeft: 6 }}><polyline points="9 18 15 12 9 6"/></svg>
+        {loading
+          ? <svg className="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G.meadow} strokeWidth="2.5" style={{ marginLeft: 4, flexShrink:0 }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G.muted2} strokeWidth="2.5" style={{ marginLeft: 4, flexShrink:0 }}><polyline points="9 18 15 12 9 6"/></svg>
         }
       </div>
     </div>
@@ -868,9 +1010,6 @@ function CheckPanel({ semester }) {
   return (
     <div className="sch-card fadein">
       <div className="sch-card-header" onClick={() => setExpanded(v => !v)} style={{ cursor: 'pointer' }}>
-        <div style={{ width: 38, height: 38, borderRadius: 10, background: G.hover, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: `1px solid ${G.border}` }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={G.ink} strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-        </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h2 className="sch-card-title">Check Readiness</h2>
           <p className="sch-card-sub">Verify the term has enough rooms, slots, and qualified faculty before solving.</p>
@@ -1310,7 +1449,7 @@ function StepHeader({ number, title, subtitle, badge }) {
       {/* Decorative background circle */}
       <div style={{ position:'absolute', top:-30, right:-20, width:100, height:100, borderRadius:'50%', background:'rgba(255,255,255,0.05)', pointerEvents:'none' }} />
       
-      <div style={{ width:32, height:32, borderRadius:10, background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)',
+      <div style={{ width:32, height:32, borderRadius:'50%', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)',
         display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color: '#fff', flexShrink:0, zIndex: 1 }}>
         {number}
       </div>
@@ -1326,8 +1465,9 @@ function StepHeader({ number, title, subtitle, badge }) {
 /* ─────────────────────────── Step 1 slide ─────────────────────────── */
 
 function Step1Configure({ scheduleNamePreset, setScheduleNamePreset, scheduleNameCustom, setScheduleNameCustom,
-  customSemester, setCustomSemester, setSaved, targetSemester, effectiveScheduleName, status,
-  termStats, termStatsLoading, savedList, loadingList, onLoad, currentScheduleName, onDelete }) {
+  customSemester, setCustomSemester, customAcademicYear, setCustomAcademicYear,
+  setSaved, targetSemester, effectiveScheduleName, status,
+  termStats, termStatsLoading, savedList, loadingList, loadingItem, onLoad, currentScheduleName, onDelete }) {
 
   const sc = { from: G.meadowDeep, to: G.meadow }
   
@@ -1335,7 +1475,7 @@ function Step1Configure({ scheduleNamePreset, setScheduleNamePreset, scheduleNam
   const allSaved = savedList || []
 
   return (
-    <div>
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', minHeight:0 }}>
       {/* Compact step header */}
       <StepHeader
         number={1}
@@ -1344,8 +1484,8 @@ function Step1Configure({ scheduleNamePreset, setScheduleNamePreset, scheduleNam
       />
 
       {/* Main content: 2-column layout */}
-      <div style={{ display:'grid', gridTemplateColumns: allSaved.length > 0 || loadingList ? '1fr 340px' : '1fr', gap:14 }}>
-      <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+      <div style={{ display:'grid', gridTemplateColumns: allSaved.length > 0 || loadingList ? '1fr 340px' : '1fr', gap:14, flex:1, minHeight:0 }}>
+      <div style={{ display:'flex', flexDirection:'column', gap:12, minHeight:0, overflowY:'auto' }}>
 
       {/* Term selector card */}
       <div className="sch-card">
@@ -1369,9 +1509,20 @@ function Step1Configure({ scheduleNamePreset, setScheduleNamePreset, scheduleNam
               <>
                 <div style={{ display:'flex', flexDirection:'column', gap:6 }} className="fadein">
                   <span style={{ fontSize:11, fontWeight:800, color:G.muted2, textTransform:'uppercase', letterSpacing:'0.8px' }}>Schedule Name</span>
-                  <input className="sch-input" placeholder="e.g. A.Y. 2026-2027" value={scheduleNameCustom}
+                  <input className="sch-input" placeholder="e.g. Summer 2026" value={scheduleNameCustom}
                     onChange={e => { setScheduleNameCustom(e.target.value); setSaved(false) }}
-                    disabled={status === 'running'} style={{ minWidth:220 }} />
+                    disabled={status === 'running'} style={{ minWidth:200 }} />
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:6 }} className="fadein">
+                  <span style={{ fontSize:11, fontWeight:800, color:G.muted2, textTransform:'uppercase', letterSpacing:'0.8px' }}>Academic Year</span>
+                  <select className="sch-select" value={customAcademicYear}
+                    onChange={e => { setCustomAcademicYear(e.target.value); setSaved(false) }}
+                    disabled={status === 'running'} style={{ minWidth:160 }}>
+                    <option value="">— Select —</option>
+                    {AY_OPTIONS.map(ay => (
+                      <option key={ay} value={ay}>{ay}</option>
+                    ))}
+                  </select>
                 </div>
                 <div style={{ display:'flex', flexDirection:'column', gap:6 }} className="fadein">
                   <span style={{ fontSize:11, fontWeight:800, color:G.muted2, textTransform:'uppercase', letterSpacing:'0.8px' }}>Semester</span>
@@ -1436,11 +1587,8 @@ function Step1Configure({ scheduleNamePreset, setScheduleNamePreset, scheduleNam
 
       {/* Right column: All saved schedules */}
       {(allSaved.length > 0 || loadingList) && (
-        <div className="sch-card" style={{ alignSelf:'stretch', display: 'flex', flexDirection: 'column' }}>
+        <div className="sch-card" style={{ alignSelf:'stretch', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div className="sch-card-header" style={{ padding:'14px 18px', flexShrink: 0 }}>
-            <div style={{ width:32, height:32, borderRadius:8, background:G.meadowSoft, color:G.meadowDeep, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, border:`1px solid ${G.meadowBorder}` }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
-            </div>
             <div style={{ flex:1, minWidth:0 }}>
               <h2 className="sch-card-title" style={{ fontSize:13.5 }}>Saved Schedules</h2>
             </div>
@@ -1448,7 +1596,7 @@ function Step1Configure({ scheduleNamePreset, setScheduleNamePreset, scheduleNam
               <span style={{ fontSize:10.5, fontWeight:800, padding:'2px 8px', borderRadius:99, background:G.meadow, color:'#fff' }}>{savedList.length}</span>
             )}
           </div>
-          <div style={{ flex: 1, overflowY:'auto' }}>
+          <div style={{ flex: 1, overflowY:'auto', minHeight: 0 }}>
             {loadingList ? (
               <div style={{ padding:'12px 18px', display:'flex', flexDirection:'column', gap:10 }}>
                 <Skel h={44} r={8} /><Skel h={44} r={8} /><Skel h={44} r={8} />
@@ -1456,16 +1604,25 @@ function Step1Configure({ scheduleNamePreset, setScheduleNamePreset, scheduleNam
             ) : allSaved.length === 0 ? (
               <div style={{ padding:'24px 18px', textAlign:'center', color:G.muted, fontSize:13 }}>No saved schedules yet.</div>
             ) : (
-              allSaved.map(name => (
-                <SavedItem 
-                  key={name} 
-                  name={name} 
-                  onLoad={onLoad} 
-                  onDelete={onDelete} 
-                  loading={loadingList === name} 
-                  isCurrent={name === currentScheduleName} 
-                />
-              ))
+              allSaved.map(s => {
+                const sName = typeof s === 'string' ? s : (s.name || s.id || '')
+                const sFinalized = typeof s === 'object' ? !!s.finalized : false
+                const sAcademicYear = typeof s === 'object' ? s.academicYear : null
+                const sSemester = typeof s === 'object' ? s.semester : null
+                return (
+                  <SavedItem 
+                    key={sName} 
+                    name={sName}
+                    academicYear={sAcademicYear}
+                    semester={sSemester}
+                    finalized={sFinalized}
+                    onLoad={onLoad} 
+                    onDelete={onDelete} 
+                    loading={loadingItem === sName} 
+                    isCurrent={sName === currentScheduleName} 
+                  />
+                )
+              })
             )}
           </div>
         </div>
@@ -1479,21 +1636,33 @@ function Step1Configure({ scheduleNamePreset, setScheduleNamePreset, scheduleNam
 
 export default function SchedulerPage() {
   const navigate  = useNavigate()
+  const location  = useLocation()
   const setEvents = useScheduleStore(s => s.setEvents)
   const setName   = useScheduleStore(s => s.setName)
   const currentScheduleName = useScheduleStore(s => s.scheduleName)
-  const { progress, status, setProcessId, setStatus, setLabel, reset } = useSolverStore()
+  const { progress, status, processId, label, originalName, setProcessId, setStatus, setLabel, setOriginalName, setDismissed, reset } = useSolverStore()
   const { toasts, toast } = useToast()
 
   // Solver / Setup states
   const [scheduleNamePreset, setScheduleNamePreset] = useState(PRESET_NAMES[0])
   const [scheduleNameCustom, setScheduleNameCustom] = useState('')
   const [customSemester,     setCustomSemester]     = useState('1st Semester')
+  const [customAcademicYear, setCustomAcademicYear] = useState('')
   const [solveError,   setSolveError]   = useState(null)
+  // True from the moment Stop is clicked until the backend actually confirms
+  // the solve has unwound (see handleStop). The solver only checks for a
+  // cancellation between CP-SAT phases, so this can lag the click by a while —
+  // starting a new solve during that window is what causes the "already
+  // running" 409 conflict.
+  const [stopRequested, setStopRequested] = useState(false)
   const [saved,        setSaved]        = useState(false)
   const [saveLoading,  setSaveLoading]  = useState(false)
   const [termStats,    setTermStats]    = useState(null)
   const [termStatsLoading, setTermStatsLoading] = useState(false)
+  
+  // Diagnostic state
+  const [diagnostic, setDiagnostic] = useState(null)
+  const [diagnosticLoading, setDiagnosticLoading] = useState(false)
 
   function semesterFromPreset(preset) {
     if (preset.includes('2nd')) return '2nd Semester'
@@ -1537,23 +1706,88 @@ export default function SchedulerPage() {
       .finally(() => setLoadingList(false))
   }, [])
 
+  // Clear schedule data when semester changes to prevent stale data
+  // But only if we're not currently generating (to preserve progress when navigating)
   useEffect(() => {
-    if (status === 'complete') toast('Schedule generated successfully!', 'success')
-    if (status === 'failed')   toast('Solver failed — check eligibility and room settings.', 'error', 5000)
+    // Only clear if we have existing schedule data, status is complete/failed, AND not currently running
+    if ((status === 'complete' || status === 'failed') && currentScheduleName && status !== 'running') {
+      setEvents([])
+      setName(null)
+      reset()
+      setSaved(false)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status])
+  }, [targetSemester])
+
+  // Preserve progress during navigation - NEVER clear data when generation is active
+  // This ensures progress is maintained across all navigation during active generation
+  const prevProcessId = useRef(processId)
+  const prevStatus = useRef(status)
+  
+  useEffect(() => {
+    // Only clear data when explicitly changing semesters, not during navigation
+    // Don't clear if status is 'running' regardless of other conditions
+    if (status === 'running') {
+      return // Always preserve data during active generation
+    }
+    
+    // Update refs for next render
+    prevProcessId.current = processId
+    prevStatus.current = status
+  }, [processId, status])
+
+
 
   /* ── handlers ── */
 
   const effectiveScheduleName = scheduleNamePreset === 'Custom...' ? scheduleNameCustom : scheduleNamePreset;
   const canSolve = effectiveScheduleName.trim().length > 0;
 
-  async function handleSolve() {
-    if (!canSolve) return;
+  async function handleStop() {
+    if (!processId) { reset(); setStatus('idle'); return }
+    setStopRequested(true)
+    try { await cancelSolve(processId) } catch { /* still wait for poll below */ }
+    // Deliberately NOT calling reset()/setStatus('idle') here. Status stays
+    // 'running' so useSolverPolling keeps polling /status — it already knows
+    // how to transition to 'idle' once the backend reports the solve as
+    // actually cancelled. Jumping straight to 'idle' here used to let a
+    // fast "Start Solver" click race the backend's still-running process
+    // and hit the 409 "already running" conflict.
+  }
+
+  // Once the backend confirms the stop (useSolverPolling sees status:
+  // 'cancelled' and sets status to 'idle'), clear the "stopping" flag so the
+  // Start Solver / Try Again buttons re-enable.
+  useEffect(() => {
+    if (stopRequested && status !== 'running') {
+      setStopRequested(false)
+    }
+  }, [status, stopRequested])
+
+  async function handleSolve() {    
+    if (!canSolve || stopRequested) return;
     setSolveError('')
     setSaved(false)
-    reset()
-    setLabel(`${effectiveScheduleName.trim()} (${targetSemester})`)
+    
+    // Only clear existing schedule data when starting a NEW generation
+    // Don't clear if we're resuming or retrying the same generation
+    if (status !== 'running') {
+      setEvents([])
+      setName(null)
+    }
+    
+    // Only clear and reset if this is a brand new generation
+    // If resuming (processId exists), preserve the original label
+    if (!processId) {
+      reset()
+      // Don't duplicate the semester if it's already in the schedule name
+      const scheduleName = effectiveScheduleName.trim()
+      const generationName = scheduleName.includes(targetSemester) 
+        ? scheduleName 
+        : `${scheduleName} (${targetSemester})`
+      setLabel(generationName)
+      setOriginalName(generationName) // Store the original name
+    }
     setStatus('running')
     try {
       const res = await triggerSolve(targetSemester)
@@ -1567,14 +1801,45 @@ export default function SchedulerPage() {
   }
 
   async function handleSave() {
-    const finalName = effectiveScheduleName.trim()
+    let finalName = effectiveScheduleName.trim()
     if (!finalName) return
+    
+    // Generate unique name to prevent overwrites
+    finalName = generateUniqueName(finalName)
+    
+    await performSave(finalName)
+  }
+
+  async function performSave(finalName, overwrite = false) {
     setSaveLoading(true)
     try {
-      await saveSchedule(finalName)
+      // Pass academicYear and semester so they're stored automatically — no manual entry needed
+      const ayRaw = scheduleNamePreset === 'Custom...'
+        ? customAcademicYear.trim()
+        : scheduleNamePreset.replace(/,.*$/, '').replace('A.Y. ', '').trim()
+      await saveSchedule(finalName, { academicYear: ayRaw, semester: targetSemester })
+      
+      // Update the displayed name if it was auto-renamed
+      if (finalName !== effectiveScheduleName.trim()) {
+        if (scheduleNamePreset === 'Custom...') {
+          setScheduleNameCustom(finalName)
+        } else {
+          // If it was a preset, switch to custom mode with the new name
+          setScheduleNamePreset('Custom...')
+          setScheduleNameCustom(finalName)
+        }
+      }
+      
       setName(finalName)
       setSaved(true)
-      toast(`Saved as "${finalName}"`, 'success')
+      
+      // Show different message if name was auto-changed
+      if (finalName !== effectiveScheduleName.trim()) {
+        toast(`Saved as "${finalName}" (auto-renamed to avoid overwrite)`, 'success')
+      } else {
+        toast(`Saved as "${finalName}"`, 'success')
+      }
+      
       const data = await listSaved()
       setSavedList(Array.isArray(data) ? data : (data?.schedules ?? []))
     } catch (err) {
@@ -1609,7 +1874,7 @@ export default function SchedulerPage() {
     setDeleteTarget(null)
     try {
       await deleteSaved(name)
-      setSavedList(l => l.filter(x => x !== name))
+      setSavedList(l => l.filter(x => (typeof x === 'string' ? x : x.name) !== name))
       toast(`"${name}" deleted.`, 'info')
     } catch (err) {
       const parsed = await parseError(err, `delete "${name}"`)
@@ -1617,7 +1882,65 @@ export default function SchedulerPage() {
     }
   }
 
-  /* ── derived ── */
+  // Diagnostic handler
+  async function runDiagnostic() {
+    setDiagnosticLoading(true)
+    try {
+      const result = await getDiagnostic(targetSemester)
+      setDiagnostic(result)
+      if (result.issues && result.issues.length > 0) {
+        toast(`Found ${result.issues.length} issue(s) - check diagnostic details`, 'error', 5000)
+      } else {
+        toast('No issues found - solver should work', 'success')
+      }
+    } catch (err) {
+      const parsed = await parseError(err, 'run diagnostic')
+      toast(`${parsed.title} — ${parsed.message}`, 'error')
+      setDiagnostic({ status: 'error', error: parsed.message })
+    } finally {
+      setDiagnosticLoading(false)
+    }
+  }
+
+  // Smart naming to prevent overwrites
+  function generateUniqueName(baseName) {
+    const existingNames = savedList.map(s => typeof s === 'string' ? s : s.name)
+    
+    if (!existingNames.includes(baseName)) {
+      return baseName
+    }
+    
+    // Find next available number
+    let counter = 1
+    let uniqueName
+    do {
+      uniqueName = `${baseName} (${counter})`
+      counter++
+    } while (existingNames.includes(uniqueName))
+    
+    return uniqueName
+  }
+
+  async function handleViewSchedule() {
+    // Set metadata in the schedule store before navigating
+    const ayRaw = scheduleNamePreset === 'Custom...'
+      ? customAcademicYear.trim()
+      : scheduleNamePreset.replace(/,.*$/, '').replace('A.Y. ', '').trim()
+    
+    // Use the current schedule name (which might have been auto-renamed)
+    const currentName = currentScheduleName || effectiveScheduleName
+    
+    // Store the metadata temporarily for the view page
+    const metadata = {
+      academicYear: ayRaw,
+      semester: targetSemester,
+      scheduleName: currentName,
+      isUnsaved: !saved
+    }
+    
+    // Pass metadata via state
+    navigate('/dashboard/schedule', { state: metadata })
+  }
 
   const currentPhaseIdx = Math.floor((progress / 100) * 7)
   const [wizStep, setWizStep] = useState(1)
@@ -1634,6 +1957,15 @@ export default function SchedulerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status])
 
+  // Handle hash-based navigation (from floating pill when complete)
+  useEffect(() => {
+    if (location.hash === '#step3') {
+      goStep(3)
+      // Clear the hash to clean up URL
+      window.history.replaceState(null, null, location.pathname)
+    }
+  }, [location.hash, goStep])
+
   /* ────────────────────────── render ────────────────────────── */
 
   const portalTarget = document.getElementById('header-stepper-portal');
@@ -1647,7 +1979,7 @@ export default function SchedulerPage() {
       }
 
       <div className="wiz-body">
-        <div key={wizStep} className={`wiz-slide wiz-slide-${slideDir}`}>
+        <div key={wizStep} className={`wiz-slide wiz-slide-${slideDir}${(wizStep === 1 || (wizStep === 3 && status === 'running')) ? ' no-scroll' : ''}`}>
 
           {wizStep === 1 && (
             <Step1Configure
@@ -1657,6 +1989,8 @@ export default function SchedulerPage() {
               setScheduleNameCustom={setScheduleNameCustom}
               customSemester={customSemester}
               setCustomSemester={setCustomSemester}
+              customAcademicYear={customAcademicYear}
+              setCustomAcademicYear={setCustomAcademicYear}
               setSaved={setSaved}
               targetSemester={targetSemester}
               effectiveScheduleName={effectiveScheduleName}
@@ -1665,6 +1999,7 @@ export default function SchedulerPage() {
               termStatsLoading={termStatsLoading}
               savedList={savedList}
               loadingList={loadingList}
+              loadingItem={loadingItem}
               onLoad={handleLoad}
               onDelete={handleDelete}
               currentScheduleName={currentScheduleName}
@@ -1676,138 +2011,223 @@ export default function SchedulerPage() {
               <StepHeader
                 number={2}
                 title="Check Readiness"
-                subtitle={<>Verify structural feasibility and faculty pools for <strong style={{ opacity:.95 }}>{targetSemester}</strong> before solving.</>}
-                badge={<div style={{ padding:'5px 14px', borderRadius:99, background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', fontSize:12, fontWeight:700, color: '#fff', position:'relative' }}>{effectiveScheduleName || '—'}</div>}
+                subtitle={<>Verify structural feasibility and faculty pools for <strong style={{ opacity:.95 }}>{originalName ? originalName.split('(').pop().replace(')', '').trim() : targetSemester}</strong> before solving.</>}
+                badge={<div style={{ padding:'5px 14px', borderRadius:99, background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', fontSize:12, fontWeight:700, color: '#fff', position:'relative' }}>{originalName ? originalName.replace(/[()]/g, '').trim() : effectiveScheduleName || '—'}</div>}
               />
-              <CheckPanel semester={targetSemester} />
+              <CheckPanel semester={originalName ? originalName.split('(').pop().replace(')', '').trim() : targetSemester} />
             </div>
           )}
 
           {wizStep === 3 && (
-            <div>
+            // flex:1 + minHeight:0 is only needed for the "running" card, which
+            // must fill the available height exactly so its centered loader looks
+            // right. For every other state (idle/failed/complete) this forced the
+            // card into a fixed-height flex box — when its content (error banner +
+            // action buttons) ran taller than that box, the overflow wasn't picked
+            // up by the wiz-slide scroll container, so the buttons rendered past
+            // the visible edge with no way to scroll to them. Letting those states
+            // size naturally (height:auto) fixes that.
+            <div style={{ display:'flex', flexDirection:'column', gap:14, ...(status === 'running' ? { flex:1, minHeight:0 } : {}) }}>
               <StepHeader
                 number={3}
                 title="Solve & Save"
-                subtitle={<>Run the constraint solver to auto-generate a timetable for <strong style={{ opacity:.95 }}>{targetSemester}</strong>.</>}
+                subtitle={
+                  <>
+                    Run the constraint solver to auto-generate a timetable for{' '}
+                    <strong style={{ opacity:.95 }}>
+                      {/* Show original generation values when status is running/complete, otherwise show current form values */}
+                      {(status === 'running' || status === 'complete') && originalName 
+                        ? originalName.replace(/[()]/g, '').trim()  // Remove parentheses from stored name
+                        : `${scheduleNamePreset === 'Custom...' ? customAcademicYear : scheduleNamePreset.replace(/,.*$/, '').replace('A.Y. ', '')} - ${targetSemester}`
+                      }
+                    </strong>.
+                  </>
+                }
               />
 
-              {/* Solve card */}
-              <div className="sch-card">
-                <div className="sch-card-header">
-               
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <h2 className="sch-card-title">Schedule Generator</h2>
-                    <p className="sch-card-sub">Solving for <strong>{effectiveScheduleName || targetSemester}</strong></p>
+              {/* ── RUNNING: full-height, no-scroll state ── */}
+              {status === 'running' && (
+                <div className="fadein sch-card" style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:14, padding:'16px 28px', position:'relative', overflow:'hidden', minHeight:0 }}>
+                  
+                  {/* Subtle bg gradient */}
+                  <div style={{ position:'absolute', inset:0, background:`linear-gradient(160deg, ${G.meadowSoft} 0%, #fff 55%, ${G.bg} 100%)`, pointerEvents:'none' }} />
+
+                  {/* Calendar widget — no message, no inner progress bar */}
+                  <div style={{ position:'relative', zIndex:1, flexShrink:0 }}>
+                    <ScheduleGeneratorLoader
+                      message=""
+                      progress={progress}
+                      showProgress={false}
+                      isOverlay={false}
+                    />
                   </div>
-                  {status !== 'running' && (
+
+                  {/* Phase timeline — single progress bar + phase dots */}
+                  <div style={{ width:'100%', maxWidth:520, position:'relative', zIndex:1, flexShrink:0 }}>
+                    <PhaseTimeline currentPhaseIdx={currentPhaseIdx} status={status} progress={progress} />
+                  </div>
+
+                  {/* Info note */}
+                  <p style={{ position:'relative', zIndex:1, fontSize:12, color:G.muted, fontWeight:500, textAlign:'center', margin:0, lineHeight:1.5, flexShrink:0 }}>
+                    {stopRequested
+                      ? 'Stopping — the solver only checks for this between phases, so it can take a moment.'
+                      : 'Running in the background — you can safely navigate away.'}
+                  </p>
+                </div>
+              )}
+
+              {/* ── IDLE / COMPLETE / FAILED: normal card ── */}
+              {status !== 'running' && (
+                <div className="sch-card">
+                  <div className="sch-card-header">
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <h2 className="sch-card-title">Schedule Generator</h2>
+                      <p className="sch-card-sub">Solving for <strong>{originalName ? originalName.replace(/[()]/g, '').trim() : effectiveScheduleName || targetSemester}</strong></p>
+                    </div>
                     <button
-                      className={`action-btn solve`}
+                      className="action-btn solve"
                       onClick={handleSolve}
-                      disabled={!canSolve || status === 'running'}
+                      disabled={!canSolve || stopRequested}
                       style={{ padding:'11px 26px', fontSize:13.5, flexShrink:0 }}>
                       {status === 'complete'
                         ? <><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.2"/></svg> Re-generate</>
                         : <><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> Start Solver</>
                       }
                     </button>
-                  )}
-                </div>
+                  </div>
 
-                <div className="sch-card-body">
-                  {/* Phase timeline shown natively if not solving */}
-                  {status !== 'running' && (
-                     <PhaseTimeline currentPhaseIdx={currentPhaseIdx} status={status} progress={progress} />
-                  )}
+                  <div className="sch-card-body">
+                    <PhaseTimeline currentPhaseIdx={currentPhaseIdx} status={status} progress={progress} />
 
-                  {/* Inline solve animation featuring your custom Loader component */}
-                  {status === 'running' && (
-                    <div className="fadein" style={{ marginTop:20, padding:'40px 24px', borderRadius:16,
-                      background: 'linear-gradient(180deg, #ffffff 0%, #F2F7F4 100%)', border:`1px solid ${G.border}`, display:'flex', flexDirection:'column', alignItems:'center', gap:28, boxShadow: '0 8px 32px rgba(21,128,61,0.08)', position: 'relative', overflow: 'hidden' }}>
-                      
-                      {/* subtle animated glow behind loader */}
-                      <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%, -50%)', width: 200, height: 200, background: G.meadowSoft, filter:'blur(60px)', borderRadius:'50%', opacity: 0.6, animation: 'pulseGlow 2s infinite alternate', pointerEvents: 'none' }} />
-
-                      <div style={{ position: 'relative', zIndex: 1 }}>
-                        <ScheduleGeneratorLoader 
-                          message={`Solving ${PHASES[Math.min(currentPhaseIdx, 6)]?.label}...`}
-                          progress={progress}
-                          showProgress={false}
-                          isOverlay={false}
-                        />
-                      </div>
-
-                      <div style={{ width: '100%', maxWidth: 500, position: 'relative', zIndex: 1 }}>
-                        <PhaseTimeline currentPhaseIdx={currentPhaseIdx} status={status} progress={progress} />
-                      </div>
-                      
-                      <div style={{ fontSize:13, color:G.muted, fontWeight:500, textAlign: 'center', position: 'relative', zIndex: 1 }}>
-                         Running in the background — you can safely navigate away. A progress pill will follow you.
-                      </div>
-                    </div>
-                  )}
-
-                  {status === 'failed' && (
-                    <div className="fadein solve-result failed">
-                      <div className="solve-result-body" style={{ background: '#FEF2F2' }}>
-                        {solveError ? (
-                          <ErrorBanner error={solveError} onDismiss={() => setSolveError(null)} />
-                        ) : (
-                          <>
-                            <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#FEE2E2', border: '1.5px solid #FCA5A5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    {status === 'failed' && (
+                      <div className="fadein solve-result failed" style={{ marginTop:14 }}>
+                        <div className="solve-result-body" style={{ background: '#FEF2F2' }}>
+                          {solveError ? (
+                            <ErrorBanner error={solveError} onDismiss={() => setSolveError(null)} />
+                          ) : (
+                            <>
+                              <div style={{ width:44, height:44, borderRadius:'50%', background:'#FEE2E2', border:'1.5px solid #FCA5A5', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                              </div>
+                              <div>
+                                <div style={{ fontSize:16, fontWeight:800, color:'#991B1B', marginBottom:3 }}>Could Not Generate Schedule</div>
+                                <div style={{ fontSize:13.5, color:'#B91C1C', fontWeight:500 }}>No feasible solution found. Run diagnostics to identify the cause.</div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        <div className="solve-result-actions">
+                          <button 
+                            className="solve-action-btn ghost" 
+                            onClick={runDiagnostic}
+                            disabled={diagnosticLoading}
+                          >
+                            {diagnosticLoading 
+                              ? <><svg className="spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Checking...</>
+                              : <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg> Run Diagnostics</>
+                            }
+                          </button>
+                          <button className="solve-action-btn ghost" onClick={() => goStep(2)}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                            Review Readiness
+                          </button>
+                          <button className="solve-action-btn primary" onClick={handleSolve} disabled={!canSolve || stopRequested}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            Try Again
+                          </button>
+                        </div>
+                        
+                        {/* Diagnostic Results Panel */}
+                        {diagnostic && (
+                          <div className="fadein" style={{ marginTop:16, padding:16, borderRadius:10, border:'1px solid #D8E8DF', background:'#F8FAF9' }}>
+                            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={G.meadowDeep} strokeWidth="2.5">
+                                <path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/>
+                              </svg>
+                              <span style={{ fontSize:14, fontWeight:700, color:G.ink }}>Diagnostic Results</span>
                             </div>
-                            <div>
-                              <div style={{ fontSize: 16, fontWeight: 800, color: '#991B1B', marginBottom: 3 }}>Could Not Generate Schedule</div>
-                              <div style={{ fontSize: 13.5, color: '#B91C1C', fontWeight: 500 }}>No feasible solution found. Go back to Step 2 and check Readiness for conflicts.</div>
-                            </div>
-                          </>
+                            
+                            {diagnostic.status === 'error' ? (
+                              <div style={{ padding:12, borderRadius:8, background:'#FEE2E2', border:'1px solid #FECACA' }}>
+                                <div style={{ fontSize:13, fontWeight:600, color:'#DC2626', marginBottom:4 }}>Diagnostic Error</div>
+                                <div style={{ fontSize:12, color:'#B91C1C' }}>{diagnostic.error}</div>
+                              </div>
+                            ) : (
+                              <div>
+                                {/* Summary */}
+                                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:8, marginBottom:14 }}>
+                                  <div style={{ padding:8, borderRadius:6, background:'#fff', border:'1px solid #D8E8DF', textAlign:'center' }}>
+                                    <div style={{ fontSize:16, fontWeight:800, color:G.meadowDeep }}>{diagnostic.summary?.filtered_courses || 0}</div>
+                                    <div style={{ fontSize:10, color:G.muted, textTransform:'uppercase', letterSpacing:'0.5px' }}>Courses</div>
+                                  </div>
+                                  <div style={{ padding:8, borderRadius:6, background:'#fff', border:'1px solid #D8E8DF', textAlign:'center' }}>
+                                    <div style={{ fontSize:16, fontWeight:800, color:G.meadowDeep }}>{diagnostic.summary?.total_rooms || 0}</div>
+                                    <div style={{ fontSize:10, color:G.muted, textTransform:'uppercase', letterSpacing:'0.5px' }}>Rooms</div>
+                                  </div>
+                                  <div style={{ padding:8, borderRadius:6, background:'#fff', border:'1px solid #D8E8DF', textAlign:'center' }}>
+                                    <div style={{ fontSize:16, fontWeight:800, color:G.meadowDeep }}>{diagnostic.summary?.days_configured || 0}</div>
+                                    <div style={{ fontSize:10, color:G.muted, textTransform:'uppercase', letterSpacing:'0.5px' }}>Days</div>
+                                  </div>
+                                </div>
+
+                                {/* Issues */}
+                                {diagnostic.issues && diagnostic.issues.length > 0 ? (
+                                  <div style={{ marginBottom:12 }}>
+                                    <div style={{ fontSize:12, fontWeight:700, color:'#DC2626', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.5px' }}>Issues Found</div>
+                                    {diagnostic.issues.map((issue, i) => (
+                                      <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:8, padding:8, borderRadius:6, background:'#FEE2E2', border:'1px solid #FECACA', marginBottom:6 }}>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5" style={{ flexShrink:0, marginTop:1 }}>
+                                          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                                        </svg>
+                                        <span style={{ fontSize:12, color:'#B91C1C', lineHeight:1.4 }}>{issue}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div style={{ display:'flex', alignItems:'center', gap:8, padding:8, borderRadius:6, background:G.meadowSoft, border:`1px solid ${G.meadowBorder}`, marginBottom:12 }}>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G.meadowDeep} strokeWidth="2.5">
+                                      <polyline points="20 6 9 17 4 12"/>
+                                    </svg>
+                                    <span style={{ fontSize:12, color:G.meadowDeep, fontWeight:600 }}>No issues detected</span>
+                                  </div>
+                                )}
+
+                                {/* Recommendation */}
+                                <div style={{ padding:10, borderRadius:6, background:'#F0F9FF', border:'1px solid #BAE6FD' }}>
+                                  <div style={{ fontSize:11, fontWeight:700, color:'#0369A1', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.5px' }}>Recommendation</div>
+                                  <div style={{ fontSize:12, color:'#0C4A6E', lineHeight:1.4 }}>{diagnostic.recommendation}</div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
-                      <div className="solve-result-actions">
-                        <button className="solve-action-btn ghost" onClick={() => goStep(2)}>
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-                          Review Readiness
-                        </button>
-                        <button className="solve-action-btn primary" onClick={handleSolve} disabled={!canSolve}>
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                          Try Again
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                    )}
 
-                  {status === 'complete' && (
-                    <div className="fadein solve-result complete">
-                      <div className="solve-result-body" style={{ background: '#F0FDF4' }}>
-                        <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#D1FAE5', border: '1.5px solid #6EE7B7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 16, fontWeight: 800, color: G.ink, marginBottom: 3 }}>Schedule Generated Successfully</div>
-                          <div style={{ fontSize: 13.5, color: G.muted, fontWeight: 500 }}>
-                            <strong style={{ color: G.meadowDeep }}>"{effectiveScheduleName}"</strong> is ready in memory — save it to keep it permanently.
+                    {status === 'complete' && (
+                      <div className="fadein solve-result complete" style={{ marginTop:14 }}>
+                        <div className="solve-result-body" style={{ background:'#F0FDF4' }}>
+                          <div style={{ width:44, height:44, borderRadius:'50%', background:'#D1FAE5', border:'1.5px solid #6EE7B7', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                          </div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:16, fontWeight:800, color:G.ink, marginBottom:3 }}>Schedule Generated Successfully</div>
+                            <div style={{ fontSize:13.5, color:G.muted, fontWeight:500 }}>
+                              <strong style={{ color:G.meadowDeep }}>"{originalName ? originalName.replace(/[()]/g, '').trim() : effectiveScheduleName}"</strong> is ready in memory.
+                            </div>
                           </div>
                         </div>
+                        <div className="solve-result-actions">
+                          <button className="solve-action-btn primary" onClick={handleViewSchedule}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            View Schedule
+                          </button>
+                        </div>
                       </div>
-                      <div className="solve-result-actions">
-                        <button className="solve-action-btn ghost" onClick={() => navigate('/dashboard/schedule')}>
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                          View Schedule
-                        </button>
-                        <button className="solve-action-btn primary" onClick={handleSave} disabled={saved || saveLoading}>
-                          {saveLoading ? (
-                            <><svg className="spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Saving…</>
-                          ) : saved ? (
-                            <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg> Saved</>
-                          ) : (
-                            <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg> Save "{effectiveScheduleName}"</>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -1841,15 +2261,29 @@ export default function SchedulerPage() {
             </button>
           )}
           {wizStep === 3 && status === 'idle' && (
-            <button className="wiz-nav-btn solve-main next" onClick={handleSolve} disabled={!canSolve}>
+            <button className="wiz-nav-btn solve-main next" onClick={handleSolve} disabled={!canSolve || stopRequested}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
               Start Solver
             </button>
           )}
           {wizStep === 3 && status === 'running' && (
-            <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 20px', borderRadius:10, background:G.meadowSoft, border:`1px solid ${G.meadowBorder}` }}>
-              <svg className="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G.meadowDeep} strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-              <span style={{ fontSize:13.5, fontWeight:700, color:G.meadowDeep }}>Solving… {progress}%</span>
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 20px', borderRadius:10, background:G.meadowSoft, border:`1px solid ${G.meadowBorder}` }}>
+                <svg className="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G.meadowDeep} strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                <span style={{ fontSize:13.5, fontWeight:700, color:G.meadowDeep }}>
+                  {stopRequested ? 'Stopping…' : `Solving… ${progress}%`}
+                </span>
+              </div>
+              <button
+                onClick={handleStop}
+                disabled={stopRequested}
+                style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'10px 18px', borderRadius:10, border:'1.5px solid #FECACA', background:'#FFF8F8', color:'#DC2626', fontSize:13, fontWeight:700, cursor: stopRequested ? 'default' : 'pointer', opacity: stopRequested ? 0.6 : 1, fontFamily:"'Inter',sans-serif", transition:'all .15s' }}
+                onMouseEnter={e => { if (!stopRequested) e.currentTarget.style.background='#FEE2E2' }}
+                onMouseLeave={e => { if (!stopRequested) e.currentTarget.style.background='#FFF8F8' }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                {stopRequested ? 'Stopping…' : 'Stop'}
+              </button>
             </div>
           )}
           {wizStep === 3 && status === 'complete' && !saved && (
@@ -1860,7 +2294,7 @@ export default function SchedulerPage() {
             </button>
           )}
           {wizStep === 3 && status === 'complete' && saved && (
-            <button className="wiz-nav-btn next" onClick={() => navigate('/dashboard/schedule')}>
+            <button className="wiz-nav-btn next" onClick={handleViewSchedule}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
               View Schedule
             </button>

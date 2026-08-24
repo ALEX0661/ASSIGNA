@@ -1,8 +1,9 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useAuth } from '../../hooks/useAuth'
-import { listSaved, loadSaved, getFaculty } from '../../services/api'
+import { listSaved, loadSaved, getFaculty, getActiveSchedule } from '../../services/api'
 import { buildConflictMap, isMergedEvent } from '../../components/ScheduleView/svHelpers'
 import { exportScheduleToExcel } from '../../utils/exportScheduleToExcel'
+import { exportScheduleToICS } from '../../utils/exportScheduleToICS'
 
 // ─── PNG Icon Imports (stat strip) ────────────────────────────────────────────
 import iconClasses  from '../../assets/CLASSES.png'
@@ -673,12 +674,13 @@ function StatCard({ label, value, color, iconSrc, delay = 0 }) {
 export default function FacultySchedulePage() {
   const { user } = useAuth()
 
-  const [scheduleNames,    setScheduleNames]    = useState([])
-  const [selectedSchedule, setSelectedSchedule] = useState('')
+  const [schedulesMeta,    setSchedulesMeta]    = useState([])   // full metadata objects
+  const [selectedSchedule, setSelectedSchedule] = useState('')   // schedule id/name
+  const [finalizedMeta,    setFinalizedMeta]    = useState(null) // the finalized schedule meta, if any
   const [events,           setEvents]           = useState([])
   const [facultyName,      setFacultyName]      = useState('')
   const [facultyMeta,      setFacultyMeta]      = useState({})
-  
+
   const [viewMode,         setViewMode]         = useState('list')
   const [activeDay,        setActiveDay]        = useState('All')
   const [sessionFilter,    setSessionFilter]    = useState('All')
@@ -688,7 +690,27 @@ export default function FacultySchedulePage() {
   const [listLoading,   setListLoading]   = useState(true)
   const [eventsLoading, setEventsLoading] = useState(false)
   const [exporting,     setExporting]     = useState(false)
+  const [exportingIcs,  setExportingIcs]  = useState(false)
   const [error,         setError]         = useState('')
+
+  // Derive a stable list — faculty only sees finalized schedules
+  const finalizedSchedules = useMemo(() =>
+    schedulesMeta.filter(s => s.finalized),
+  [schedulesMeta])
+
+  const scheduleNames = useMemo(() =>
+    finalizedSchedules.map(s => s.id || s.name).filter(Boolean),
+  [finalizedSchedules])
+
+  // Label helper for dropdown options
+  function scheduleLabel(idOrName) {
+    const meta = finalizedSchedules.find(s => (s.id || s.name) === idOrName)
+    if (!meta) return idOrName
+    const parts = [meta.name || idOrName]
+    if (meta.academicYear) parts.push(`A.Y. ${meta.academicYear}`)
+    if (meta.semester)     parts.push(meta.semester)
+    return parts.join(' · ')
+  }
 
   useEffect(() => {
     if (!user) return
@@ -704,10 +726,18 @@ export default function FacultySchedulePage() {
           }
         } catch {}
         setFacultyName(resolvedName)
-        const names = await listSaved()
-        const arr = Array.isArray(names) ? names : (names?.schedules || [])
-        setScheduleNames(arr)
-        if (arr.length > 0) setSelectedSchedule(arr[arr.length - 1])
+
+        const raw = await listSaved()
+        const arr = Array.isArray(raw) ? raw : (raw?.schedules || [])
+        setSchedulesMeta(arr)
+
+        // Faculty only sees finalized schedules — auto-select the most recent one
+        const finalized = arr.filter(s => s.finalized)
+        if (finalized.length > 0) {
+          const latest = finalized[finalized.length - 1]
+          setFinalizedMeta(latest)
+          setSelectedSchedule(latest.id || latest.name)
+        }
       } catch {
         setError('Could not load schedule data.')
       } finally {
@@ -721,7 +751,12 @@ export default function FacultySchedulePage() {
     if (!selectedSchedule) return
     setEventsLoading(true)
     loadSaved(selectedSchedule)
-      .then(data => setEvents(data.schedule || data.events || []))
+      .then(data => {
+        setEvents(data.schedule || data.events || [])
+        // Keep finalizedMeta in sync when user manually switches schedules
+        const meta = schedulesMeta.find(s => (s.id || s.name) === selectedSchedule)
+        setFinalizedMeta(meta?.finalized ? meta : null)
+      })
       .catch(() => setError(`Could not load "${selectedSchedule}".`))
       .finally(() => setEventsLoading(false))
   }, [selectedSchedule])
@@ -776,6 +811,21 @@ export default function FacultySchedulePage() {
       await exportScheduleToExcel(displayedEvents, `${safeName} - ${schedLabel} (Filtered)`)
     } finally {
       setExporting(false)
+    }
+  }
+
+  // Uses the full myEvents (not displayedEvents) — a personal calendar import
+  // should carry the whole teaching schedule, not whatever day/session filter
+  // happens to be active in the view right now.
+  async function handleExportIcs() {
+    if (!myEvents?.length || exportingIcs) return
+    setExportingIcs(true)
+    try {
+      const schedLabel = selectedSchedule || 'Schedule'
+      const safeName   = (facultyName || 'Faculty').replace(/[^a-zA-Z0-9\s-]/g, '').trim()
+      await exportScheduleToICS(myEvents, `${safeName} - ${schedLabel}`)
+    } finally {
+      setExportingIcs(false)
     }
   }
 
@@ -888,15 +938,40 @@ export default function FacultySchedulePage() {
           {/* Left Side: Schedule & Type Dropdowns */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', flex: '1 1 auto' }}>
             
-            {/* Schedule Selector */}
-            {scheduleNames.length > 0 && (
+            {/* Schedule Selector — shows only finalized schedules */}
+            {scheduleNames.length === 1 ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.5px' }}>
                   Schedule
                 </span>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '4px 12px', borderRadius: 99, fontSize: 11, fontWeight: 700,
+                  background: '#DCFCE7', color: '#15803D', border: '1px solid #BBF7D0',
+                }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  {scheduleLabel(scheduleNames[0])}
+                </span>
+              </div>
+            ) : scheduleNames.length > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.5px' }}>
+                  Schedule
+                </span>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '2px 9px', borderRadius: 99, fontSize: 10, fontWeight: 700,
+                  background: '#DCFCE7', color: '#15803D', border: '1px solid #BBF7D0',
+                  whiteSpace: 'nowrap'
+                }}>
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  Published
+                </span>
                 <div style={{ position: 'relative' }}>
                   <select value={selectedSchedule} onChange={e => setSelectedSchedule(e.target.value)} className="fsp-select" style={{ minWidth: 150 }}>
-                    {scheduleNames.map(n => <option key={n} value={n}>{n}</option>)}
+                    {scheduleNames.map(id => (
+                      <option key={id} value={id}>{scheduleLabel(id)}</option>
+                    ))}
                   </select>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.textMuted} strokeWidth="2.5" style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><polyline points="6 9 12 15 18 9"/></svg>
                 </div>
@@ -952,6 +1027,16 @@ export default function FacultySchedulePage() {
               )}
               Export
             </button>
+
+            {/* Add to Calendar Button (.ics) */}
+            <button onClick={handleExportIcs} disabled={exportingIcs || myEvents.length === 0} className="fsp-export-btn" title="Download your full schedule as a .ics file to import into Google Calendar, Outlook, or Apple Calendar">
+              {exportingIcs ? (
+                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'fsp-spin 0.8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+              ) : (
+                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
+              )}
+              Add to Calendar
+            </button>
           </div>
         </div>
       )}
@@ -985,8 +1070,8 @@ export default function FacultySchedulePage() {
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={T.green} strokeWidth="1.7"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           </div>
           <div>
-            <p style={{ fontFamily:"'Sora',sans-serif", fontSize:17, fontWeight:800, color:T.textMain, margin:'0 0 9px' }}>No schedules published yet</p>
-            <p style={{ fontFamily:"'Inter',sans-serif", fontSize:13.5, color:T.textMuted, maxWidth:340, lineHeight:1.75, margin:0 }}>Once administration finalizes a schedule, your classes will appear here.</p>
+            <p style={{ fontFamily:"'Sora',sans-serif", fontSize:17, fontWeight:800, color:T.textMain, margin:'0 0 9px' }}>No published schedules yet</p>
+            <p style={{ fontFamily:"'Inter',sans-serif", fontSize:13.5, color:T.textMuted, maxWidth:340, lineHeight:1.75, margin:0 }}>Once administration finalizes and publishes a schedule, your classes will appear here.</p>
           </div>
         </div>
       )}
@@ -1084,7 +1169,7 @@ export default function FacultySchedulePage() {
           </div>
           <div>
             <p style={{ fontFamily:"'Sora',sans-serif", fontSize:16, fontWeight:800, color:T.textMain, margin:'0 0 8px' }}>No classes assigned</p>
-            <p style={{ fontFamily:"'Inter',sans-serif", fontSize:13.5, color:T.textMuted, maxWidth:340, lineHeight:1.75, margin:0 }}>You have no teaching assignments in <strong style={{ color:T.textMain }}>{selectedSchedule}</strong>.</p>
+            <p style={{ fontFamily:"'Inter',sans-serif", fontSize:13.5, color:T.textMuted, maxWidth:340, lineHeight:1.75, margin:0 }}>You have no teaching assignments in <strong style={{ color:T.textMain }}>{schedulesMeta.find(s=>(s.id||s.name)===selectedSchedule)?.name || selectedSchedule}</strong>.</p>
           </div>
         </div>
       )}

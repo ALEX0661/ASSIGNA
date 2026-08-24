@@ -24,7 +24,7 @@ function ModalSearch({ value, onChange, placeholder = 'Search…' }) {
         style={{
           width: '100%', padding: '7px 12px 7px 30px',
           border: `1px solid ${TV.border}`, borderRadius: 8,
-          fontSize: 12.5, fontFamily: 'Poppins, sans-serif',
+          fontSize: 12.5, fontFamily: 'Inter, sans-serif',
           color: TV.text, background: '#fafafa', outline: 'none',
           boxSizing: 'border-box', transition: 'border-color .15s, background .15s',
         }}
@@ -41,27 +41,6 @@ function ModalSearch({ value, onChange, placeholder = 'Search…' }) {
   )
 }
 
-// ── Shared: section label ─────────────────────────────────────────────────────
-function SectionLabel({ icon, label, count, accent = false }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
-      {icon && <span style={{ fontSize: 11 }}>{icon}</span>}
-      <span style={{
-        fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.8px',
-        color:      accent ? TV.deep  : TV.muted,
-        background: accent ? TV.pale  : 'rgba(0,0,0,.04)',
-        border:     `1px solid ${accent ? TV.light : TV.border}`,
-        borderRadius: 4, padding: '2px 7px',
-      }}>
-        {label}
-      </span>
-      {count !== undefined && (
-        <span style={{ fontSize: 9.5, color: TV.muted, fontWeight: 500 }}>{count} total</span>
-      )}
-    </div>
-  )
-}
-
 // ── Shared: modal shell ───────────────────────────────────────────────────────
 function ModalShell({ width = 480, children }) {
   return (
@@ -69,9 +48,9 @@ function ModalShell({ width = 480, children }) {
       background: '#fff', borderRadius: 14, padding: '22px 24px 20px',
       width, maxWidth: '92vw', maxHeight: '82vh',
       display: 'flex', flexDirection: 'column',
-      boxShadow: '0 24px 64px rgba(61,53,128,0.22), 0 0 0 1px rgba(0,0,0,.05)',
+      boxShadow: '0 24px 64px rgba(10,46,28,0.22), 0 0 0 1px rgba(0,0,0,.05)',
       border: `1px solid ${TV.border}`,
-      fontFamily: 'Poppins, sans-serif',
+      fontFamily: 'Inter, sans-serif',
     }}>
       {children}
     </div>
@@ -159,7 +138,7 @@ function CancelButton({ onClick }) {
         padding: '8px 20px', fontSize: 12.5, fontWeight: 600,
         background: '#fff', color: TV.muted,
         border: `1.5px solid ${TV.border}`, borderRadius: 8,
-        cursor: 'pointer', fontFamily: 'Poppins, sans-serif', transition: 'all .15s',
+        cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all .15s',
       }}
       onMouseEnter={e => { e.currentTarget.style.background = TV.pale; e.currentTarget.style.color = TV.text }}
       onMouseLeave={e => { e.currentTarget.style.background = '#fff';  e.currentTarget.style.color = TV.muted }}
@@ -290,7 +269,7 @@ export function FacultyFilterModal({
                 border:     `1px solid ${sortBy === val ? TV.deep : TV.border}`,
                 background: sortBy === val ? TV.deep : '#fff',
                 color:      sortBy === val ? '#fff'  : TV.muted,
-                textTransform: 'capitalize', transition: 'all .15s', fontFamily: 'Poppins, sans-serif',
+                textTransform: 'capitalize', transition: 'all .15s', fontFamily: 'Inter, sans-serif',
               }}>
                 {lbl}
               </button>
@@ -323,7 +302,7 @@ export function FacultyFilterModal({
                       padding: '9px 13px', borderRadius: 10, cursor: 'pointer',
                       border: `1.5px solid ${rowBorder}`,
                       background: rowBg,
-                      textAlign: 'left', fontFamily: 'Poppins, sans-serif',
+                      textAlign: 'left', fontFamily: 'Inter, sans-serif',
                       transition: 'all .15s', outline: 'none',
                     }}
                     onMouseEnter={e => { if (!isActive) e.currentTarget.style.borderColor = TV.mid }}
@@ -383,7 +362,7 @@ export function FacultyFilterModal({
 
                       {/* Bottom: unit progress bar + label */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                        <div style={{ flex: 1, height: 5, borderRadius: 99, background: '#F0EDF9', overflow: 'hidden' }}>
+                        <div style={{ flex: 1, height: 5, borderRadius: 99, background: '#E5F9EC', overflow: 'hidden' }}>
                           <div style={{
                             height: '100%', borderRadius: 99,
                             width: `${info.pct}%`,
@@ -417,9 +396,125 @@ export function FacultyFilterModal({
   )
 }
 
+// ── Room-type icons (outline SVG, no emoji) ───────────────────────────────────
+function LectureIcon({ color }) {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16"/>
+      <path d="M15 21V9.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V21"/>
+      <path d="M2 21h20"/>
+      <line x1="7.5" y1="8" x2="7.5" y2="8.01"/>
+      <line x1="11.5" y1="8" x2="11.5" y2="8.01"/>
+      <line x1="7.5" y1="12" x2="7.5" y2="12.01"/>
+      <line x1="11.5" y1="12" x2="11.5" y2="12.01"/>
+      <line x1="7.5" y1="16" x2="7.5" y2="16.01"/>
+      <line x1="11.5" y1="16" x2="11.5" y2="16.01"/>
+    </svg>
+  )
+}
+
+function LabIcon({ color }) {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 2h6"/>
+      <path d="M10 2v6.34a2 2 0 0 1-.4 1.2L5.08 16.9a1.83 1.83 0 0 0 1.51 2.85h10.82a1.83 1.83 0 0 0 1.51-2.85L14.4 9.54a2 2 0 0 1-.4-1.2V2"/>
+      <path d="M6.5 14.5h11"/>
+    </svg>
+  )
+}
+
+// ── Room-type accent palettes ──────────────────────────────────────────────────
+const ROOM_ACCENTS = {
+  lecture: { color: TV.deep,   bg: TV.pale,   border: TV.light,   solid: TV.deep   },
+  lab:     { color: '#7C3AED', bg: '#F3E8FF', border: '#DDD6FE',  solid: '#7C3AED' },
+}
+
+// ── Room-type group header ──────────────────────────────────────────────────────
+function RoomGroupHeader({ icon, label, count, accent }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+      <span style={{
+        width: 20, height: 20, borderRadius: 6, flexShrink: 0,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        background: accent.bg, border: `1px solid ${accent.border}`,
+      }}>
+        {icon}
+      </span>
+      <span style={{ fontSize: 11, fontWeight: 700, color: TV.text }}>{label}</span>
+      <span style={{
+        fontSize: 9.5, fontWeight: 700, color: accent.color,
+        background: accent.bg, border: `1px solid ${accent.border}`,
+        borderRadius: 10, padding: '1px 7px', marginLeft: 2,
+      }}>
+        {count}
+      </span>
+      <div style={{ flex: 1, height: 1, background: TV.border, marginLeft: 4 }} />
+    </div>
+  )
+}
+
+// ── Room card — label + session count + checkbox, one clear row/tile ───
+function RoomButton({ label, active, available, sessionCount, accent, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      title={label}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 9,
+        padding: '9px 11px', borderRadius: 10,
+        border: `1.5px solid ${active ? accent.solid : TV.border}`,
+        background: active ? accent.bg : '#fff',
+        cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+        transition: 'all .15s', width: '100%', boxSizing: 'border-box',
+        textAlign: 'left', outline: 'none',
+      }}
+      onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = accent.border; e.currentTarget.style.background = '#FAFAFA' } }}
+      onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = TV.border;      e.currentTarget.style.background = '#fff' } }}
+    >
+      {/* Label */}
+      <span style={{
+        flex: 1, minWidth: 0,
+        fontSize: 12.5, fontWeight: active ? 700 : 500,
+        color: active ? accent.color : TV.text,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>
+        {label}
+      </span>
+
+      {/* Session count badge */}
+      <span title={`${sessionCount} session${sessionCount !== 1 ? 's' : ''} today`} style={{
+        fontSize: 9.5, fontWeight: 700, flexShrink: 0,
+        padding: '1px 6px', borderRadius: 10,
+        color:      active ? accent.color : TV.muted,
+        background: active ? '#fff' : '#F3F4F6',
+        border: `1px solid ${active ? accent.border : TV.border}`,
+      }}>
+        {sessionCount}
+      </span>
+
+      {/* Checkbox */}
+      <span style={{
+        width: 15, height: 15, borderRadius: 4, flexShrink: 0,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        background: active ? accent.solid : '#fff',
+        border: `2px solid ${active ? accent.solid : TV.border}`,
+        transition: 'all .15s',
+      }}>
+        {active && (
+          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        )}
+      </span>
+    </button>
+  )
+}
+
 // ── Room picker modal with lecture / lab grouping ────────────────────────────
-export function RoomFilterModal({ title, options, selectedSet, onToggle, onClose, masterRooms }) {
-  const [q, setQ] = useState('')
+export function RoomFilterModal({ title, options, selectedSet, onToggle, onClose, masterRooms, availableRooms, sessionCounts }) {
+  const [q, setQ]         = useState('')
+  const [typeTab, setTypeTab] = useState('all') // 'all' | 'lecture' | 'lab'
+
   const labSet   = new Set(masterRooms.lab)
   const lecSet   = new Set(masterRooms.lecture)
   const labRooms = options.filter(r => labSet.has(r) || (!lecSet.has(r) && r.toLowerCase().includes('lab')))
@@ -429,36 +524,106 @@ export function RoomFilterModal({ title, options, selectedSet, onToggle, onClose
     return q ? rooms.filter(r => r.toLowerCase().includes(q.toLowerCase())) : rooms
   }
 
-  const RoomGroup = ({ groupTitle, rooms, icon }) => {
-    const visible = filterGroup(rooms)
-    if (visible.length === 0) return null
-    const isLab = groupTitle.toLowerCase().includes('lab')
+  const visibleLec = typeTab === 'lab'     ? [] : filterGroup(lecRooms)
+  const visibleLab = typeTab === 'lecture' ? [] : filterGroup(labRooms)
+  const allFiltered = [...visibleLec, ...visibleLab]
+
+  const RoomGroup = ({ groupTitle, rooms, icon, accentKey }) => {
+    if (rooms.length === 0) return null
+    const accent = ROOM_ACCENTS[accentKey]
     return (
       <div style={{ marginBottom: 18 }}>
-        <SectionLabel icon={icon} label={groupTitle} count={visible.length} accent={isLab} />
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-          {visible.map(rm => (
-            <Chip key={rm} label={rm} active={selectedSet.has(rm)} onClick={() => onToggle(rm)} />
+        <RoomGroupHeader icon={icon} label={groupTitle} count={rooms.length} accent={accent} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8 }}>
+          {rooms.map(rm => (
+            <RoomButton
+              key={rm}
+              label={rm}
+              active={selectedSet.has(rm)}
+              available={availableRooms?.has(rm)}
+              sessionCount={sessionCounts?.get(rm) ?? 0}
+              accent={accent}
+              onClick={() => onToggle(rm)}
+            />
           ))}
         </div>
       </div>
     )
   }
 
-  const allFiltered = [...filterGroup(lecRooms), ...filterGroup(labRooms)]
+  const availableCnt = availableRooms ? options.filter(r => availableRooms.has(r)).length : 0
+
+  const selectAvailableOnly = () => {
+    allFiltered.forEach(r => {
+      const shouldBeSelected = availableRooms?.has(r)
+      const isSelected       = selectedSet.has(r)
+      if (shouldBeSelected && !isSelected) onToggle(r)
+      if (!shouldBeSelected && isSelected) onToggle(r)
+    })
+  }
+
+  const TABS = [
+    ['all',     'All',      options.length],
+    ['lecture', 'Lecture',  lecRooms.length],
+    ['lab',     'Lab',      labRooms.length],
+  ]
 
   return (
     <ModalOverlay onClose={onClose}>
-      <ModalShell width={500}>
+      <ModalShell width={560}>
         <ModalHeader title={title} onClose={onClose} />
+
+        {/* ── Summary strip ── */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 14, flexWrap: 'wrap' }}>
+          <StatPill label="rooms"   value={options.length}  color={TV.deep} bg={TV.pale}  border={TV.light} />
+          {availableRooms && (
+            <StatPill label="open now" value={availableCnt} color="#15803D" bg="#F0FDF4" border="#86EFAC" />
+          )}
+          {availableRooms && (
+            <button
+              onClick={selectAvailableOnly}
+              disabled={availableRooms.size === 0}
+              style={{
+                marginLeft: 'auto',
+                fontSize: 10.5, fontWeight: 600, padding: '4px 11px', borderRadius: 20,
+                cursor: availableRooms.size === 0 ? 'default' : 'pointer',
+                border: '1px solid #86EFAC', background: '#F0FDF4', color: '#15803D',
+                opacity: availableRooms.size === 0 ? 0.5 : 1,
+                fontFamily: 'Inter, sans-serif', transition: 'all .15s', flexShrink: 0,
+              }}
+            >
+              Select available only
+            </button>
+          )}
+        </div>
+
         <ModalSearch value={q} onChange={setQ} placeholder="Search rooms…" />
+
+        {/* ── Type tabs ── */}
+        <div style={{ display: 'flex', gap: 4, marginBottom: 12, background: '#F9FAFB', border: `1px solid ${TV.border}`, borderRadius: 9, padding: 3, width: 'fit-content' }}>
+          {TABS.map(([val, lbl, count]) => (
+            <button key={val} onClick={() => setTypeTab(val)} style={{
+              fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 7, cursor: 'pointer',
+              border: 'none',
+              background: typeTab === val ? '#fff' : 'transparent',
+              color:      typeTab === val ? TV.deep : TV.muted,
+              boxShadow:  typeTab === val ? '0 1px 3px rgba(0,0,0,.08)' : 'none',
+              fontFamily: 'Inter, sans-serif', transition: 'all .15s',
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+            }}>
+              {lbl} <span style={{ opacity: .6, fontWeight: 600 }}>{count}</span>
+            </button>
+          ))}
+        </div>
+
         <QuickActions filtered={allFiltered} selectedSet={selectedSet} onToggle={onToggle} />
+
         <div style={{ overflowY: 'auto', flex: 1, paddingRight: 4 }}>
-          {options.length === 0
+          {allFiltered.length === 0
             ? <EmptyState q={q} noun="rooms" />
             : <>
-                <RoomGroup groupTitle="Lecture Rooms"    rooms={lecRooms} icon="🏫" />
-                <RoomGroup groupTitle="Laboratory Rooms" rooms={labRooms} icon="🔬" />
+                <RoomGroup groupTitle="Lecture Rooms"    rooms={visibleLec} icon={<LectureIcon color={TV.deep} />} accentKey="lecture" />
+                <RoomGroup groupTitle="Laboratory Rooms" rooms={visibleLab} icon={<LabIcon color="#7C3AED" />}      accentKey="lab" />
               </>
           }
         </div>
@@ -550,9 +715,9 @@ export function OverrideConfirmModal({ pendingDrop, onConfirm, onCancel }) {
         background: '#fff', borderRadius: 14, padding: 28,
         width: 560, maxWidth: '94vw', maxHeight: '88vh',
         display: 'flex', flexDirection: 'column',
-        boxShadow: '0 24px 72px rgba(61,53,128,0.24), 0 0 0 1px rgba(0,0,0,.06)',
+        boxShadow: '0 24px 72px rgba(10,46,28,0.24), 0 0 0 1px rgba(0,0,0,.06)',
         border: `1px solid ${TV.border}`,
-        fontFamily: 'Poppins, sans-serif',
+        fontFamily: 'Inter, sans-serif',
       }}>
         <ModalHeader
           title="Confirm Schedule Override"
@@ -615,7 +780,7 @@ export function OverrideConfirmModal({ pendingDrop, onConfirm, onCancel }) {
               padding: '8px 20px', fontSize: 12.5, fontWeight: 700,
               background: 'linear-gradient(135deg,#dc2626,#b91c1c)',
               color: '#fff', border: 'none', borderRadius: 8,
-              cursor: 'pointer', fontFamily: 'Poppins, sans-serif',
+              cursor: 'pointer', fontFamily: 'Inter, sans-serif',
               boxShadow: '0 4px 12px rgba(220,38,38,.30)',
               display: 'flex', alignItems: 'center', gap: 6, transition: 'all .15s',
             }}
@@ -684,7 +849,7 @@ export function StackConfirmModal({ pendingStack, onConfirm, onCancel }) {
         display: 'flex', flexDirection: 'column',
         boxShadow: '0 24px 72px rgba(16,185,129,0.18), 0 0 0 1px rgba(0,0,0,.06)',
         border: '1px solid #d1fae5',
-        fontFamily: 'Poppins, sans-serif',
+        fontFamily: 'Inter, sans-serif',
       }}>
         <ModalHeader
           title="Stack Sessions Together?"
@@ -743,7 +908,7 @@ export function StackConfirmModal({ pendingStack, onConfirm, onCancel }) {
               padding: '8px 20px', fontSize: 12.5, fontWeight: 700,
               background: 'linear-gradient(135deg,#059669,#047857)',
               color: '#fff', border: 'none', borderRadius: 8,
-              cursor: 'pointer', fontFamily: 'Poppins, sans-serif',
+              cursor: 'pointer', fontFamily: 'Inter, sans-serif',
               boxShadow: '0 4px 12px rgba(5,150,105,.30)',
               display: 'flex', alignItems: 'center', gap: 6, transition: 'all .15s',
             }}

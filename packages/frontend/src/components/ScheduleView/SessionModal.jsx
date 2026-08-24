@@ -20,17 +20,17 @@ if (!document.getElementById('sm-style')) {
 
     .sm-tab {
       padding:6px 14px; border-radius:7px; border:none;
-      font-family:'Poppins',sans-serif; font-size:12px; font-weight:500;
-      cursor:pointer; background:transparent; color:#8883B0;
+      font-family:'Inter',sans-serif; font-size:12px; font-weight:500;
+      cursor:pointer; background:transparent; color:#4B7060;
       transition:all 0.14s; white-space:nowrap;
       display:flex; align-items:center; gap:5px;
     }
-    .sm-tab:hover  { background:#F0EDF9; color:#3D3580; }
-    .sm-tab.active { background:#7C6FCD; color:#fff; box-shadow:0 3px 10px rgba(124,111,205,0.28); }
+    .sm-tab:hover  { background:#EBF4EF; color:#0E2A20; }
+    .sm-tab.active { background:#15803D; color:#fff; box-shadow:0 3px 10px rgba(21,128,61,0.28); }
     .sm-tab .sm-badge {
       display:inline-flex; align-items:center; justify-content:center;
       min-width:16px; height:16px; padding:0 4px; border-radius:99px;
-      font-size:9px; font-weight:700; background:#E8E4F8; color:#7C6FCD;
+      font-size:9px; font-weight:700; background:#D8E8DF; color:#15803D;
     }
     .sm-tab.active .sm-badge         { background:rgba(255,255,255,0.22); color:#fff; }
     .sm-tab.warn   .sm-badge         { background:#FFE8E8; color:#C0392B; }
@@ -38,15 +38,15 @@ if (!document.getElementById('sm-style')) {
 
     .sm-select {
       padding:8px 32px 8px 11px; font-size:12.5px; width:100%;
-      border-radius:9px; border:1px solid #E8E4F8; background:#fff;
-      font-family:'Poppins',sans-serif; color:#1a1a2e; outline:none;
+      border-radius:9px; border:1px solid #D8E8DF; background:#fff;
+      font-family:'Inter',sans-serif; color:#0E2A20; outline:none;
       appearance:none; -webkit-appearance:none; cursor:pointer;
       transition:border-color .15s, box-shadow .15s;
-      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%238883B0' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%234B7060' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
       background-repeat:no-repeat; background-position:right 10px center;
     }
-    .sm-select:focus { border-color:#A99BE8; box-shadow:0 0 0 3px rgba(169,155,232,.12); }
-    .sm-select:hover { border-color:#C5BBEF; }
+    .sm-select:focus { border-color:#6EE7B7; box-shadow:0 0 0 3px rgba(21,128,61,.12); }
+    .sm-select:hover { border-color:#BBF7D0; }
 
     .sm-time-row {
       padding:7px 12px; display:flex; align-items:center;
@@ -59,7 +59,7 @@ if (!document.getElementById('sm-style')) {
       padding:8px 12px; display:flex; align-items:center;
       justify-content:space-between; cursor:pointer;
       transition:background .1s; user-select:none;
-      border-bottom:1px solid #F0EDF9;
+      border-bottom:1px solid #EBF4EF;
     }
     .sm-fac-row:last-child { border-bottom:none; }
     .sm-fac-row:hover { filter:brightness(.97); }
@@ -67,19 +67,19 @@ if (!document.getElementById('sm-style')) {
     .sm-save-btn {
       flex:1; padding:9px 16px; font-size:13px; font-weight:700;
       border:none; border-radius:9px; cursor:pointer;
-      font-family:'Poppins',sans-serif; transition:all .15s;
+      font-family:'Inter',sans-serif; transition:all .15s;
       display:flex; align-items:center; justify-content:center; gap:6px;
     }
     .sm-cancel-btn {
       padding:9px 20px; font-size:13px; font-weight:600;
       border-radius:9px; cursor:pointer;
-      font-family:'Poppins',sans-serif; transition:all .15s;
-      background:#fff; color:#1a1a2e; border:1px solid #E8E4F8;
+      font-family:'Inter',sans-serif; transition:all .15s;
+      background:#fff; color:#0E2A20; border:1px solid #D8E8DF;
     }
-    .sm-cancel-btn:hover { background:#F5F4FB; border-color:#C5BBEF; }
+    .sm-cancel-btn:hover { background:#EBF4EF; border-color:#BBF7D0; }
 
     .sm-field-label {
-      font-size:10px; font-weight:700; color:#8883B0;
+      font-size:10px; font-weight:700; color:#4B7060;
       text-transform:uppercase; letter-spacing:.8px; margin-bottom:8px;
       display:flex; align-items:center; gap:5px;
     }
@@ -88,26 +88,26 @@ if (!document.getElementById('sm-style')) {
       justify-content:center; padding:44px 20px; gap:10px; text-align:center;
     }
     .sm-view-link {
-      background:none; border:none; font-size:11px; color:#7C6FCD;
-      cursor:pointer; font-family:'Poppins',sans-serif; font-weight:600;
+      background:none; border:none; font-size:11px; color:#15803D;
+      cursor:pointer; font-family:'Inter',sans-serif; font-weight:600;
       padding:0; text-decoration:underline;
     }
 
     /* ── Batch tab styles ───────────────────────────────────────────────────── */
     .sm-batch-row {
       display:flex; align-items:flex-start; gap:12px; padding:11px 14px;
-      border-radius:10px; border:1px solid #E8E4F8; background:#fff;
+      border-radius:10px; border:1px solid #D8E8DF; background:#fff;
       transition:border-color .14s;
     }
     .sm-batch-row.has-conflict { border-color:#fca5a5; background:#fff8f8; }
     .sm-batch-row.success      { border-color:#86efac; background:#f0fdf4; }
 
     /* ── Thin custom scrollbars ─────────────────────────────────────────────── */
-    .sm-scroll { scrollbar-width:thin; scrollbar-color:#D8D4EE transparent; }
+    .sm-scroll { scrollbar-width:thin; scrollbar-color:#C8E6C9 transparent; }
     .sm-scroll::-webkit-scrollbar { width:5px; }
     .sm-scroll::-webkit-scrollbar-track { background:transparent; }
-    .sm-scroll::-webkit-scrollbar-thumb { background:#D8D4EE; border-radius:99px; }
-    .sm-scroll::-webkit-scrollbar-thumb:hover { background:#B0A9DC; }
+    .sm-scroll::-webkit-scrollbar-thumb { background:#C8E6C9; border-radius:99px; }
+    .sm-scroll::-webkit-scrollbar-thumb:hover { background:#81C784; }
 
     /* ── Batch split columns ────────────────────────────────────────────────── */
     .sm-batch-col { display:flex; flex-direction:column; min-height:0; }
@@ -207,8 +207,8 @@ export function OverrideConfirmDialog({ event, newDay, newPeriod, newRoom, newFa
       <div style={{
         background:'#fff', borderRadius:14, padding:24,
         width:640, maxWidth:'95vw', maxHeight:'90vh', overflowY:'auto',
-        boxShadow:'0 20px 60px rgba(61,53,128,0.22)',
-        border:`1px solid ${TV.border}`, fontFamily:'Poppins,sans-serif',
+        boxShadow:'0 20px 60px rgba(10,46,28,0.22)',
+        border:`1px solid ${TV.border}`, fontFamily:'Inter,sans-serif',
         animation:'sm-in .2s cubic-bezier(.4,0,.2,1)',
       }}>
         <ModalHeader title="Confirm Override" subtitle="This will force the change despite detected conflicts." onClose={onCancel} fontSize={15} />
@@ -239,10 +239,10 @@ export function OverrideConfirmDialog({ event, newDay, newPeriod, newRoom, newFa
         )}
 
         <div style={{ display:'flex', gap:10, marginTop:20, borderTop:`1px solid ${TV.border}`, paddingTop:16 }}>
-          <button onClick={onConfirm} style={{ flex:1, padding:'10px 16px', fontSize:13, fontWeight:700, background:'#dc2626', color:'#fff', border:'none', borderRadius:9, cursor:'pointer', fontFamily:'Poppins,sans-serif', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+          <button onClick={onConfirm} style={{ flex:1, padding:'10px 16px', fontSize:13, fontWeight:700, background:'#dc2626', color:'#fff', border:'none', borderRadius:9, cursor:'pointer', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
             <Ic.Warning size={13} color="#fff" /> Force Override
           </button>
-          <button onClick={onCancel} style={{ flex:1, padding:'10px 16px', fontSize:13, fontWeight:600, background:'#fff', color:TV.text, border:`1px solid ${TV.border}`, borderRadius:9, cursor:'pointer', fontFamily:'Poppins,sans-serif' }}>
+          <button onClick={onCancel} style={{ flex:1, padding:'10px 16px', fontSize:13, fontWeight:600, background:'#fff', color:TV.text, border:`1px solid ${TV.border}`, borderRadius:9, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
             Cancel
           </button>
         </div>
@@ -254,7 +254,7 @@ export function OverrideConfirmDialog({ event, newDay, newPeriod, newRoom, newFa
 /* ════════════════════════════════════════════════════════════════════════════
    Main component
    ════════════════════════════════════════════════════════════════════════════ */
-export default function SessionModal({ event, allEvents, onClose, onSaved, masterRooms, masterFacultyList }) {
+export default function SessionModal({ event, allEvents, onClose, onSaved, masterRooms, masterFacultyList, readOnly = false, overrideFn = overrideSession }) {
   const originalRange = parsePeriodRange(event.period)
   const duration      = originalRange?.duration ?? 60
   const evId          = getEventId(event)
@@ -607,6 +607,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
 
   /* ── Merge: partner detection (when already merged) ─────────────────────── */
   async function handleBatchSave() {
+    if (readOnly) return
     // Allow TBA to explicitly unassign; only block when nothing is selected at all
     const facultyValue = batchFaculty === 'TBA' ? 'TBA' : batchFaculty
     if (facultyValue === '' || facultyValue == null) {
@@ -617,7 +618,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
     const results = []
     for (const sib of siblingEvents) {
       try {
-        await overrideSession({
+        await overrideFn({
           schedule_id:  sib.schedule_id,
           courseCode:   sib.courseCode,
           block:        sib.block,
@@ -657,9 +658,10 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
 
   /* ── Save logic (single session) ───────────────────────────────────────── */
   async function doSave(force = false) {
+    if (readOnly) return
     setSaving(true); setError('')
     try {
-      await overrideSession({
+      await overrideFn({
         schedule_id: event.schedule_id, // <-- ADD THIS LINE
         courseCode:event.courseCode, 
         block:event.block, 
@@ -719,8 +721,8 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
         <div style={{
           background:'#fff', borderRadius:16, width:1020, maxWidth:'98vw',
           maxHeight:'92vh', display:'flex', flexDirection:'column',
-          boxShadow:'0 24px 72px rgba(61,53,128,0.24)', border:`1px solid ${TV.border}`,
-          fontFamily:'Poppins,sans-serif', animation:'sm-in .22s cubic-bezier(.4,0,.2,1)',
+          boxShadow:'0 24px 72px rgba(10,46,28,0.24)', border:`1px solid ${TV.border}`,
+          fontFamily:'Inter,sans-serif', animation:'sm-in .22s cubic-bezier(.4,0,.2,1)',
           overflow:'hidden',
         }}>
 
@@ -748,7 +750,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                       <div className="sm-merge-tip" style={{
                         display:'none', position:'absolute', top:'calc(100% + 6px)', left:0, zIndex:20,
                         width:260, padding:'11px 13px', borderRadius:10,
-                        background:'#1a1a2e', color:'#e2e0f0', fontSize:11, lineHeight:1.65,
+                        background:'#0E2A20', color:'#d0e8db', fontSize:11, lineHeight:1.65,
                         boxShadow:'0 8px 28px rgba(0,0,0,.22)', whiteSpace:'normal',
                       }}>
                         <div style={{ fontWeight:700, color:'#fff', marginBottom:4, display:'flex', alignItems:'center', gap:5 }}>
@@ -759,7 +761,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                           Both sections share the same room, day, and time.
                           Drag either card to a different slot to unmerge.
                         </div>
-                        <div style={{ width:8, height:8, background:'#1a1a2e', transform:'rotate(45deg)', position:'absolute', top:-4, left:16 }} />
+                        <div style={{ width:8, height:8, background:'#0E2A20', transform:'rotate(45deg)', position:'absolute', top:-4, left:16 }} />
                       </div>
                     </span>
                   )}
@@ -828,7 +830,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
             </div>
 
             {/* Tab bar */}
-            <div style={{ display:'flex', gap:3, background:'#F5F4FB', padding:4, borderRadius:10, width:'fit-content' }}>
+            <div style={{ display:'flex', gap:3, background:'#EBF4EF', padding:4, borderRadius:10, width:'fit-content' }}>
               {TABS.map(t => (
                 <button
                   key={t.key}
@@ -850,6 +852,20 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
             </div>
 
             <div style={{ height:1, background:TV.border, marginTop:12 }} />
+
+            {readOnly && (
+              <div style={{
+                display:'flex', alignItems:'center', gap:8,
+                background:'#DCFCE7', border:`1px solid ${TV.light}`,
+                borderRadius:9, padding:'8px 12px', marginTop:12,
+                fontSize:11.5, color:TV.deep, fontWeight:600,
+              }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                This schedule is finalized. Unfinalize it to make changes.
+              </div>
+            )}
           </div>
 
           {/* ── TAB CONTENT ─────────────────────────────────────────────────── */}
@@ -870,7 +886,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
 
                 <div>
                   <p className="sm-field-label"><Ic.Calendar size={10} color={TV.muted} /> Day</p>
-                  <select className="sm-select" value={newDay} onChange={e => setNewDay(e.target.value)}>
+                  <select className="sm-select" value={newDay} onChange={e => setNewDay(e.target.value)} disabled={readOnly}>
                     {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
@@ -905,17 +921,19 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                       else if (isSelected)               { bg=TV.deep;   color='#fff'; bl=`3px solid ${TV.deep}` }
                       else if (mergePartnerAtSlot)       { bg='#eff6ff'; color='#1d4ed8'; bl='3px solid #93c5fd' }
                       else if (hasAny)                   { bg='#fef2f2'; color='#b91c1c'; bl='3px solid #fca5a5' }
-                      else                               { bg=isHour?'#FAFAFE':'#fff'; color=TV.text; bl='3px solid transparent' }
+                      else                               { bg=isHour?'#F8FAF9':'#fff'; color=TV.text; bl='3px solid transparent' }
 
                       return (
                         <div key={s.startMinutes}
                           className="sm-time-row"
-                          onClick={() => setNewStart(s.startMinutes)}
+                          onClick={() => !readOnly && setNewStart(s.startMinutes)}
                           style={{
                             background:bg, color, borderLeft:bl,
                             borderBottom: idx < timeOptions.length-1 ? `1px solid ${TV.border}` : 'none',
                             fontSize: isHour ? 12 : 11,
                             fontWeight: isSelected ? 700 : isHour ? 500 : 400,
+                            cursor: readOnly ? 'default' : 'pointer',
+                            opacity: readOnly && !isSelected ? .6 : 1,
                           }}
                         >
                           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -942,7 +960,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                 </div>
 
                 {/* Faculty — redirects to Assign All which is reactive to this time/day */}
-                <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', background:'#F5F4FB', border:`1px solid ${TV.border}`, borderRadius:9, fontSize:11.5, color:TV.muted }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', background:'#EBF4EF', border:`1px solid ${TV.border}`, borderRadius:9, fontSize:11.5, color:TV.muted }}>
                   <Ic.User size={13} color={TV.muted} />
                   <span style={{ flex:1 }}>
                     Faculty availability for <strong style={{ color:TV.text }}>{minutesToTimeLabel(newStart)}–{minutesToTimeLabel(newEnd)} on {newDay}</strong> is shown in the{' '}
@@ -980,7 +998,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                     <p className="sm-field-label"><Ic.Door size={10} color={TV.muted} /> Lecture Rooms</p>
                     <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
                       {lectureRooms.map(r => (
-                        <RoomChip key={r} room={r} selected={newRoom===r} hasRoomConflict={roomConflictSet.has(r)} hasMergePreview={mergePreviewRooms.has(r)} onClick={() => setNewRoom(r)} />
+                        <RoomChip key={r} room={r} selected={newRoom===r} hasRoomConflict={roomConflictSet.has(r)} hasMergePreview={mergePreviewRooms.has(r)} onClick={() => !readOnly && setNewRoom(r)} />
                       ))}
                     </div>
                   </div>
@@ -991,7 +1009,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                     <p className="sm-field-label"><Ic.Door size={10} color={TV.muted} /> Lab Rooms</p>
                     <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
                       {labRooms.map(r => (
-                        <RoomChip key={r} room={r} selected={newRoom===r} hasRoomConflict={roomConflictSet.has(r)} hasMergePreview={mergePreviewRooms.has(r)} onClick={() => setNewRoom(r)} />
+                        <RoomChip key={r} room={r} selected={newRoom===r} hasRoomConflict={roomConflictSet.has(r)} hasMergePreview={mergePreviewRooms.has(r)} onClick={() => !readOnly && setNewRoom(r)} />
                       ))}
                     </div>
                   </div>
@@ -1002,7 +1020,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                     <p className="sm-field-label"><Ic.Door size={10} color={TV.muted} /> Other Rooms</p>
                     <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
                       {otherRooms.map(r => (
-                        <RoomChip key={r} room={r} selected={newRoom===r} hasRoomConflict={roomConflictSet.has(r)} hasMergePreview={mergePreviewRooms.has(r)} onClick={() => setNewRoom(r)} />
+                        <RoomChip key={r} room={r} selected={newRoom===r} hasRoomConflict={roomConflictSet.has(r)} hasMergePreview={mergePreviewRooms.has(r)} onClick={() => !readOnly && setNewRoom(r)} />
                       ))}
                     </div>
                   </div>
@@ -1119,7 +1137,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
 
                     {/* ── Recommended header (shown when any faculty has a spec match) ── */}
                     {[...facultySpecMap.keys()].some(k => allFacNames.includes(k)) && (
-                      <div style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 12px', background:'#FAFAFE', borderBottom:`1px solid ${TV.border}` }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 12px', background:'#F8FAF9', borderBottom:`1px solid ${TV.border}` }}>
                         <span style={{ fontSize:9, fontWeight:700, color:TV.muted, textTransform:'uppercase', letterSpacing:'.8px' }}>
                           ★ Ranked by specialization &amp; availability
                         </span>
@@ -1134,7 +1152,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                       className="sm-fac-row"
                       onClick={() => { setBatchFaculty('TBA'); setBatchResults(null); setBatchError('') }}
                       style={{
-                        background: !batchFaculty || batchFaculty === 'TBA' ? TV.pale : '#FAFAFE',
+                        background: !batchFaculty || batchFaculty === 'TBA' ? TV.pale : '#F8FAF9',
                         color:      !batchFaculty || batchFaculty === 'TBA' ? TV.deep  : TV.muted,
                         borderLeft: !batchFaculty || batchFaculty === 'TBA' ? `3px solid ${TV.deep}` : '3px solid transparent',
                         fontSize: 11,
@@ -1158,7 +1176,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
 
                     {(() => {
                       const SPEC_LABELS = { 5:'Expert', 4:'Highly Proficient', 3:'Competent', 2:'Developing', 1:'Beginner' }
-                      const SPEC_COLORS = { 5:'#059669', 4:'#2563EB', 3:'#7C6FCD', 2:'#D97706', 1:'#C0392B' }
+                      const SPEC_COLORS = { 5:'#059669', 4:'#2563EB', 3:'#15803D', 2:'#D97706', 1:'#C0392B' }
 
                       // Find the first index in the ranked list where conflicts or unit overflow begin
                       let dividerAt = -1
@@ -1183,7 +1201,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
 
                         // Colour scheme — cleaner, fewer colours
                         let bg, color, bl, dotColor
-                        if      (isSelected && isClean && !wouldExceed)      { bg='#EDE9FB'; color=TV.deep;    bl=`3px solid ${TV.deep}`; dotColor=TV.deep }
+                        if      (isSelected && isClean && !wouldExceed)      { bg='#D1FAE5'; color=TV.deep;    bl=`3px solid ${TV.deep}`; dotColor=TV.deep }
                         else if (isSelected && (isPartial || wouldExceed))   { bg='#FFF3E0'; color='#b45309';  bl='3px solid #f59e0b';    dotColor='#f59e0b' }
                         else if (isSelected)                                  { bg='#FFF0F0'; color='#991b1b';  bl='3px solid #f87171';    dotColor='#ef4444' }
                         else if (isClean && !wouldExceed)                    { bg='#fff';    color=TV.text;    bl='3px solid transparent'; dotColor='#22c55e' }
@@ -1264,7 +1282,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                                   )}
                                   {hasUnitInfo && (
                                     <>
-                                      <div style={{ flex:1, height:3, borderRadius:99, background:'#F0EDF9', overflow:'hidden' }}>
+                                      <div style={{ flex:1, height:3, borderRadius:99, background:'#EBF4EF', overflow:'hidden' }}>
                                         <div style={{ height:'100%', borderRadius:99, width:`${unitBarPct}%`, background:unitBarColor, transition:'width .3s ease' }} />
                                       </div>
                                       <span style={{ fontSize:9, fontWeight:600, flexShrink:0, color:unitLabelColor, whiteSpace:'nowrap' }}>
@@ -1383,7 +1401,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                                 <span style={{
                                   fontSize:9.5, fontWeight:700,
                                   padding:'1px 7px', borderRadius:4,
-                                  background:'#F5F4FB',
+                                  background:'#EBF4EF',
                                   color:TV.muted,
                                   border:`1px solid ${TV.border}`,
                                 }}>
@@ -1438,7 +1456,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
 
             {/* ── Batch tab footer ── */}
             {tab === 'batch' && (
-              <div style={{ flexShrink:0, padding:'14px 20px', display:'flex', alignItems:'center', gap:10, background:'#FAFAFE' }}>
+              <div style={{ flexShrink:0, padding:'14px 20px', display:'flex', alignItems:'center', gap:10, background:'#F8FAF9' }}>
                 {batchError && (
                   <div style={{ display:'flex', alignItems:'center', gap:6, background:'#fff8f8', border:'1px solid #fecaca', borderRadius:8, padding:'6px 10px', fontSize:11.5, color:'#b91c1c', fontWeight:600, flex:1 }}>
                     <Ic.AlertCircle size={12} color="#b91c1c" />
@@ -1460,25 +1478,25 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                   {(() => {
                     const isTBA      = batchFaculty === 'TBA'
                     const hasChoice  = batchFaculty !== '' && batchFaculty != null
-                    const btnEnabled = hasChoice && !batchSaving
-                    const bg = !hasChoice
+                    const btnEnabled = hasChoice && !batchSaving && !readOnly
+                    const bg = !hasChoice || readOnly
                       ? '#f3f4f6'
                       : isTBA
                         ? 'linear-gradient(135deg,#6b7280,#4b5563)'
                         : batchConflictCount > 0
                           ? '#d97706'
-                          : 'linear-gradient(135deg,#7C6FCD,#5a4fbf)'
+                          : 'linear-gradient(135deg,#15803D,#0F5C2C)'
                     return (
                       <button
                         className="sm-save-btn"
                         onClick={handleBatchSave}
-                        disabled={!hasChoice || batchSaving}
+                        disabled={!hasChoice || batchSaving || readOnly}
                         style={{
                           background: bg, flex:'none',
-                          color: !hasChoice ? TV.muted : '#fff',
+                          color: !hasChoice || readOnly ? TV.muted : '#fff',
                           cursor: btnEnabled ? 'pointer' : 'default',
                           opacity: batchSaving ? .7 : 1,
-                          boxShadow: btnEnabled ? '0 4px 14px rgba(124,111,205,.3)' : 'none',
+                          boxShadow: btnEnabled ? '0 4px 14px rgba(21,128,61,.3)' : 'none',
                         }}
                       >
                         {batchSaving
@@ -1547,17 +1565,17 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                       <button
                         className="sm-save-btn"
                         onClick={handleSave}
-                        disabled={!hasChanges || saving}
+                        disabled={!hasChanges || saving || readOnly}
                         style={{
-                          background: !hasChanges
+                          background: !hasChanges || readOnly
                             ? '#f3f4f6'
                             : hasRealConflicts
                               ? '#dc2626'
-                              : 'linear-gradient(135deg,#7C6FCD,#5a4fbf)',
-                          color: !hasChanges ? TV.muted : '#fff',
-                          cursor: hasChanges && !saving ? 'pointer' : 'default',
+                              : 'linear-gradient(135deg,#15803D,#0F5C2C)',
+                          color: !hasChanges || readOnly ? TV.muted : '#fff',
+                          cursor: hasChanges && !saving && !readOnly ? 'pointer' : 'default',
                           opacity: saving ? .7 : 1,
-                          boxShadow: hasChanges && !saving ? '0 4px 14px rgba(124,111,205,.3)' : 'none',
+                          boxShadow: hasChanges && !saving && !readOnly ? '0 4px 14px rgba(21,128,61,.3)' : 'none',
                         }}
                       >
                         {saving

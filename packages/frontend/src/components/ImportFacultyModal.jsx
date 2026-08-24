@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import * as XLSX from 'xlsx'
 import { uploadFaculty, extractFacultySheets, commitFaculty } from '../services/api'
 import facultyTemplate from '../assets/templates/CCS-Faculty-Specialization-Matrix-Template.xlsx';
@@ -746,6 +746,13 @@ export default function ImportFacultyModal({ onClose, onImported }) {
   const [sheets,  setSheets]  = useState([])
   const [fileData, setFileData] = useState(null)
   const [faculty, setFaculty] = useState([])
+  const [ready,   setReady]   = useState(false)
+
+  // Delay backdrop-close to prevent accidental dismissal on open
+  useEffect(() => {
+    const t = setTimeout(() => setReady(true), 200)
+    return () => clearTimeout(t)
+  }, [])
 
   function handleUploaded(s, b) { setSheets(s); setFileData(b); setStep(2) }
   function handleParsed(preview)   { setFaculty(preview); setStep(3) }
@@ -755,15 +762,18 @@ export default function ImportFacultyModal({ onClose, onImported }) {
   return (
     <div
       style={{ position:'fixed', inset:0, background:'rgba(14,42,32,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, backdropFilter:'blur(4px)', animation:'ifmFadeIn .18s ease' }}
-      onClick={e => e.target === e.currentTarget && onClose()}
+      onClick={e => { if (ready && e.target === e.currentTarget) onClose() }}
     >
-      <div style={{
-        background:'#fff', borderRadius:18, padding:'26px 28px',
-        width: step === 3 ? 620 : 500, maxWidth:'95vw', maxHeight:'90vh',
-        overflowY:'auto', fontFamily:"'Poppins',sans-serif",
-        boxShadow:'0 24px 64px rgba(14,42,32,0.24),0 4px 16px rgba(46,158,91,0.12)',
-        transition:'width .2s ease',
-      }}>
+      <div
+        style={{
+          background:'#fff', borderRadius:18, padding:'26px 28px',
+          width: step === 3 ? 620 : 500, maxWidth:'95vw', maxHeight:'90vh',
+          overflowY:'auto', fontFamily:"'Poppins',sans-serif",
+          boxShadow:'0 24px 64px rgba(14,42,32,0.24),0 4px 16px rgba(46,158,91,0.12)',
+          transition:'width .2s ease',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
         {/* Header */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:22 }}>
           <div>

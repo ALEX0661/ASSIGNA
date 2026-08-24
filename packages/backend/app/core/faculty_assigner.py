@@ -66,6 +66,7 @@ class FacultyAssigner:
         self._faculty_courses:   dict[str, set[str]]    = defaultdict(set)
         self._faculty_slots:     dict[str, list[tuple]] = defaultdict(list)
         self._course_title_map:  dict[str, str]         = {}   # courseCode.upper() → courseTitle
+        self._pre_booked_faculty: dict[str, list[tuple]] = {}  # injected pre-bookings from approved schedules
 
     # ── Data loading ──────────────────────────────────────────────────────────
 
@@ -84,6 +85,28 @@ class FacultyAssigner:
         self._assigned_units  = {f["name"]: 0.0 for f in self.faculty_list}
         self._faculty_courses = defaultdict(set)
         self._faculty_slots   = defaultdict(list)
+        # Re-apply pre-booked faculty slots from approved schedules
+        if self._pre_booked_faculty:
+            for name, intervals in self._pre_booked_faculty.items():
+                self._faculty_slots[name].extend(intervals)
+
+    def inject_pre_booked_faculty(self, faculty_bookings: dict) -> None:
+        """Pre-populate faculty time slots from previously approved schedules.
+        
+        Call this BEFORE assign(). The bookings are stored and automatically
+        re-applied each time _reset_tracking() runs.
+
+        Parameters
+        ----------
+        faculty_bookings : dict
+            {faculty_name: [(start_slot, end_slot), ...]} from approved events.
+        """
+        self._pre_booked_faculty = faculty_bookings
+        count = sum(len(v) for v in faculty_bookings.values())
+        logger.info(
+            "FacultyAssigner: queued %d pre-booked intervals for %d faculty",
+            count, len(faculty_bookings)
+        )
 
     # ── Conflict helpers ──────────────────────────────────────────────────────
 

@@ -96,7 +96,10 @@ export function useFilters(events, masterFacultyList, masterRooms, activeDay) {
 // ── useDragDrop ───────────────────────────────────────────────────────────────
 // events      = full local event list (all days, reflects pending moves)
 // storeEvents = original server state (for reverting)
-export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeEvents) {
+// overrideFn lets a caller (e.g. the coordinator editor) redirect saves to
+// its own scoped endpoint instead of the admin-only one — defaults to the
+// admin override so existing callers are unaffected.
+export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeEvents, locked = false, overrideFn = overrideSession) {
   const [draggedEvent,     setDraggedEvent]     = useState(null)
   const [hoveredCell,      setHoveredCell]      = useState(null)
   const [toast,            setToast]            = useState(null)
@@ -146,10 +149,15 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
 
   // ── Drag handlers ─────────────────────────────────────────────────────────
   const handleDragStart = useCallback((e, event) => {
+    if (locked) {
+      e.preventDefault()
+      setToast({ type: 'info', message: 'This schedule is locked and can no longer be edited.' })
+      return
+    }
     setDraggedEvent(event)
     e.dataTransfer.effectAllowed = 'move'
     e.dataTransfer.setData('text/plain', getEventId(event))
-  }, [])
+  }, [locked])
 
   const handleDragEnd = useCallback(() => {
     // Small delay so the drop handler (if any) runs first without a flicker
@@ -350,7 +358,7 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
   // ── Drop handler — allows conflicting drops via confirmation ──────────────
   const handleDrop = useCallback((e, targetRoom, slot) => {
     e.preventDefault(); setHoveredCell(null)
-    if (!draggedEvent) return
+    if (locked || !draggedEvent) return
     const dragRange = parsePeriodRange(draggedEvent.period)
     if (!dragRange) return
     const newStart  = slot.startMinutes
@@ -434,7 +442,7 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     } else {
       setToast({ type: 'success', message: `Moved ${draggedEvent.courseCode} to ${targetRoom} at ${minutesToTimeLabel(newStart)}` })
     }
-  }, [draggedEvent, events, activeDay, applyMove])
+  }, [locked, draggedEvent, events, activeDay, applyMove])
 
   // ── Confirmation modal callbacks ──────────────────────────────────────────
   const confirmDrop = useCallback(() => {
@@ -451,14 +459,14 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
   const handleDropOnCard = useCallback((e, targetEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!draggedEvent) return
+    if (locked || !draggedEvent) return
     const dragId   = getEventId(draggedEvent)
     const targetId = getEventId(targetEvent)
     if (dragId === targetId) return
     setDraggedEvent(null)
     setHoveredCell(null)
     setPendingStack({ draggedEvent, targetEvent })
-  }, [draggedEvent])
+  }, [locked, draggedEvent])
 
   const confirmStack = useCallback(() => {
     if (!pendingStack) return
@@ -488,7 +496,7 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
 
     setSaving(true)
     const results = await Promise.allSettled(
-      overrides.map(o => overrideSession({
+      overrides.map(o => overrideFn({
         courseCode: o.courseCode,
         block:      o.block,
         session:    o.session,
@@ -515,7 +523,7 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
       setToast({ type: 'error', message: `${succeeded} saved, ${failed.length} failed — check network and retry` })
     }
     return { succeeded, failed }
-  }, [pendingOverrides])
+  }, [pendingOverrides, overrideFn])
 
   // Keep ref always pointing to the latest saveAllOverrides (for the auto-save timer)
   saveRef.current = saveAllOverrides
@@ -578,6 +586,10 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
   }, [draggedEvent, hoveredCell, events, activeDay])
 
   return {
+    // Locked (finalized) flag — consumers use this to disable draggable
+    // attributes / show a lock cursor, though edits are already blocked
+    // functionally regardless of what the UI does with it.
+    locked,
     // Drag state
     draggedEvent, hoveredCell, toast, setToast,
     // Drag handlers

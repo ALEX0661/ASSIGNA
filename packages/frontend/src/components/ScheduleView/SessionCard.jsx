@@ -13,6 +13,7 @@ export default function SessionCard({
   isPotentialConflict = false,
   isPotentialMerge = false,
   onDropOnCard,
+  locked = false,
 }) {
   const [isHovered,     setIsHovered]     = useState(false)
   const [isStackTarget, setIsStackTarget] = useState(false)
@@ -28,53 +29,53 @@ export default function SessionCard({
   // ── Unassigned faculty detection ─────────────────────────────────────────
   const isUnassigned = !event.faculty || event.faculty === 'TBA'
 
-  // ── THEME ─────────────────────────────────────────────────────────────────
+  // ── THEME — solid, saturated card fills ────────────────────────────────────
   let accentColor, bgGradient, borderColor, badgeBg, textColor, glowColor
 
   if (isStackTarget) {
     accentColor = '#059669'
-    bgGradient  = 'linear-gradient(160deg,#f0fdf4 0%,#fff 100%)'
+    bgGradient  = 'linear-gradient(160deg,#d1fae5 0%,#ecfdf5 100%)'
     borderColor = '#6ee7b7'
-    badgeBg     = 'rgba(5,150,105,.08)'
+    badgeBg     = 'rgba(5,150,105,.12)'
     textColor   = '#065f46'
     glowColor   = 'rgba(16,185,129,.40)'
   } else if (isConflictTarget && !isDragging) {
     accentColor = '#dc2626'
-    bgGradient  = 'linear-gradient(160deg,#fff5f5 0%,#fff 100%)'
+    bgGradient  = 'linear-gradient(160deg,#fee2e2 0%,#fff5f5 100%)'
     borderColor = '#fca5a5'
-    badgeBg     = 'rgba(239,68,68,.08)'
-    textColor   = '#b91c1c'
+    badgeBg     = 'rgba(239,68,68,.10)'
+    textColor   = '#991b1b'
     glowColor   = 'rgba(239,68,68,.45)'
   } else if (isPotentialMerge && !isDragging) {
     accentColor = '#2563eb'
-    bgGradient  = 'linear-gradient(160deg,#eff6ff 0%,#fff 100%)'
+    bgGradient  = 'linear-gradient(160deg,#dbeafe 0%,#eff6ff 100%)'
     borderColor = '#93c5fd'
-    badgeBg     = 'rgba(37,99,235,.07)'
-    textColor   = '#1d4ed8'
+    badgeBg     = 'rgba(37,99,235,.10)'
+    textColor   = '#1e40af'
     glowColor   = 'rgba(59,130,246,.40)'
   } else if (isPotentialConflict && !isDragging) {
     accentColor = '#dc2626'
-    bgGradient  = 'linear-gradient(160deg,#fff8f8 0%,#fff 100%)'
+    bgGradient  = 'linear-gradient(160deg,#fee2e2 0%,#fff5f5 100%)'
     borderColor = '#fca5a5'
-    badgeBg     = 'rgba(239,68,68,.06)'
-    textColor   = '#b91c1c'
+    badgeBg     = 'rgba(239,68,68,.08)'
+    textColor   = '#991b1b'
     glowColor   = 'rgba(239,68,68,.32)'
   } else if (conflictInfo) {
-    accentColor = '#ef4444'; bgGradient = 'linear-gradient(160deg,#fff8f8 0%,#fff 100%)'
-    borderColor = '#fca5a5'; badgeBg = 'rgba(239,68,68,.08)'; textColor = '#b91c1c'
+    accentColor = '#ef4444'; bgGradient = 'linear-gradient(160deg,#fee2e2 0%,#fff5f5 100%)'
+    borderColor = '#fca5a5'; badgeBg = 'rgba(239,68,68,.10)'; textColor = '#991b1b'
     glowColor   = 'rgba(239,68,68,.30)'
   } else if (merged) {
-    accentColor = TV.deep; bgGradient = `linear-gradient(160deg,#F0EEFB 0%,#fafaff 100%)`
-    borderColor = TV.mid;  badgeBg    = `rgba(124,111,205,.10)`; textColor = TV.deep
-    glowColor   = 'rgba(124,111,205,.35)'
+    accentColor = TV.deep; bgGradient = `linear-gradient(160deg,#BBF7D0 0%,#DCFCE7 100%)`
+    borderColor = TV.mid;  badgeBg    = `rgba(21,128,61,.12)`; textColor = '#065f46'
+    glowColor   = 'rgba(21,128,61,.35)'
   } else {
-    // Normal state — accent stripe is vivid, bg is the pale program tint
+    // Normal state — solid saturated program tint, no white washout
     accentColor = stripeColor
-    bgGradient  = `linear-gradient(160deg,${clr.bg} 0%,#fff 100%)`
+    bgGradient  = `linear-gradient(160deg,${clr.bg} 0%,${clr.bg}ee 100%)`
     borderColor = clr.border
-    badgeBg     = `rgba(0,0,0,.04)`
+    badgeBg     = `${clr.accent}18`
     textColor   = clr.text
-    glowColor   = `${stripeColor}44`
+    glowColor   = `${stripeColor}55`
   }
 
   const noSelect = {
@@ -108,14 +109,14 @@ export default function SessionCard({
   const handleLeave = () => { setIsHovered(false); onHoverChange?.(false) }
 
   const handleDragOverCard = e => {
-    if (!onDropOnCard) return
+    if (!onDropOnCard || locked) return
     e.preventDefault()
     e.stopPropagation()
     setIsStackTarget(true)
   }
   const handleDragLeaveCard = () => setIsStackTarget(false)
   const handleDropOnCard = e => {
-    if (!onDropOnCard) return
+    if (!onDropOnCard || locked) return
     e.preventDefault()
     e.stopPropagation()
     setIsStackTarget(false)
@@ -124,8 +125,8 @@ export default function SessionCard({
 
   const zIndex = isDragging ? 2000 : isHovered ? 1200 : isConflictTarget ? 1100 : isStackTarget ? 1150 : isInHoveredGroup ? 900 : 10 + overlapIndex
 
-  const baseShadow   = `0 1px 4px rgba(0,0,0,.08), 0 0 0 0.5px ${borderColor}66`
-  const hoverShadow  = `0 14px 42px ${glowColor}, 0 3px 12px rgba(0,0,0,.10), 0 0 0 2px ${accentColor}55`
+  const baseShadow   = `0 1px 3px rgba(0,0,0,.10), 0 0 0 0.5px ${borderColor}88`
+  const hoverShadow  = `0 12px 36px ${glowColor}, 0 3px 10px rgba(0,0,0,.12), 0 0 0 2px ${accentColor}66`
   const groupShadow  = `0 5px 16px ${glowColor}, 0 0 0 1.5px ${borderColor}99`
   const conflictRing = `0 0 0 2.5px #dc2626, 0 0 0 5px rgba(220,38,38,.28), 0 6px 28px rgba(239,68,68,.50)`
   const stackRing    = `0 0 0 2.5px #059669, 0 0 0 5px rgba(16,185,129,.28), 0 6px 28px rgba(16,185,129,.45)`
@@ -147,15 +148,15 @@ export default function SessionCard({
       title="Faculty unassigned"
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        width: compact ? 10 : 12, height: compact ? 10 : 12,
+        width: compact ? 8 : 12, height: compact ? 8 : 12,
         borderRadius: '50%',
-        background: 'rgba(245,158,11,.15)',
+        background: 'rgba(245,158,11,.18)',
         border: '1px solid #f59e0b',
         flexShrink: 0,
       }}
     >
       <svg
-        width={compact ? 6 : 7} height={compact ? 6 : 7}
+        width={compact ? 5 : 7} height={compact ? 5 : 7}
         viewBox="0 0 24 24" fill="none"
         stroke="#d97706" strokeWidth="2.5"
         strokeLinecap="round" strokeLinejoin="round"
@@ -168,13 +169,15 @@ export default function SessionCard({
   )
 
   // ─────────────────────────────────────────────────────────────────────────
-  // ── COMPACT MODE ──────────────────────────────────────────────────────────
+  // ── COMPACT MODE — ultra-tight, single-row layout ───────────────────────
   if (compact) {
-    const compactCardH = Math.max(height - vOffset - 2, 22)
+    const compactCardH = Math.max(height - vOffset - 2, 16)
+    const isTiny = compactCardH < 24
     return (
       <div
-        draggable
-        onDragStart={onDragStart} onDragEnd={onDragEnd}
+        draggable={!locked}
+        onDragStart={locked ? undefined : onDragStart}
+        onDragEnd={locked ? undefined : onDragEnd}
         onDragOver={handleDragOverCard}
         onDragLeave={handleDragLeaveCard}
         onDrop={handleDropOnCard}
@@ -182,89 +185,87 @@ export default function SessionCard({
         onMouseEnter={handleEnter} onMouseLeave={handleLeave}
         style={{
           ...noSelect, position: 'absolute',
-          left: `calc(${hOffset}px + 3px)`,
-          width: `calc(100% - ${hOffset + 6}px)`,
+          left: `calc(${hOffset}px + 2px)`,
+          width: `calc(100% - ${hOffset + 4}px)`,
           top: top + vOffset,
           height: compactCardH,
           background: bgGradient,
           border: `1px solid ${borderColor}`,
           borderLeft: `3px solid ${accentColor}`,
-          borderRadius: 5,
-          display: 'flex', flexDirection: 'column',
-          justifyContent: compactCardH > 35 ? 'space-between' : 'flex-start',
-          gap: compactCardH > 35 ? 0 : 2,
-          padding: '3px 6px 3px',
-          cursor: 'grab', overflow: 'hidden',
+          borderRadius: 4,
+          display: 'flex', alignItems: 'center',
+          gap: 3,
+          padding: isTiny ? '0 4px' : '1px 5px',
+          cursor: locked ? 'default' : 'grab', overflow: 'hidden',
           boxShadow: computeShadow(),
           opacity: isDimmed ? 0.32 : isDragging ? 0.55 : 1,
           transform,
-          transition: 'all .18s ease-out',
+          transition: 'all .15s ease-out',
           zIndex,
         }}
       >
         {isStackTarget && (
           <div style={{
-            position: 'absolute', inset: 0, borderRadius: 5,
+            position: 'absolute', inset: 0, borderRadius: 4,
             background: 'rgba(16,185,129,.06)',
             border: '2px dashed #10b981',
             pointerEvents: 'none', zIndex: 1,
           }} />
         )}
 
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, overflow: 'hidden', minWidth: 0 }}>
+        {/* Course code — always visible */}
+        <span style={{
+          fontSize: isTiny ? 8.5 : 10, fontWeight: 800, color: textColor,
+          letterSpacing: '-0.3px', lineHeight: 1, whiteSpace: 'nowrap', flexShrink: 0,
+        }}>
+          {event.courseCode}
+        </span>
+
+        {/* Section — shrink-to-fit */}
+        {sectionStr && !isTiny && (
           <span style={{
-            fontSize: 11.5, fontWeight: 800, color: textColor,
-            letterSpacing: '-0.4px', lineHeight: 1, whiteSpace: 'nowrap', flexShrink: 0,
+            fontSize: 7.5, fontWeight: 600, color: textColor, opacity: 0.6,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            lineHeight: 1, flex: 1, minWidth: 0,
           }}>
-            {event.courseCode}
+            {sectionStr}
           </span>
-          {sectionStr && (
+        )}
+
+        {/* Right-side info cluster */}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+          {isUnassigned && <UnassignedDot />}
+          {event.block && (
             <span style={{
-              fontSize: 8.5, fontWeight: 600, color: textColor, opacity: 0.55,
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1,
+              fontSize: 6, fontWeight: 900,
+              background: accentColor,
+              color: clr.badgeText ?? '#fff',
+              borderRadius: 2, padding: '0 3px', lineHeight: 1.4, flexShrink: 0,
             }}>
-              {sectionStr}
+              {event.block}
             </span>
           )}
-          {isUnassigned && <UnassignedDot />}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
-          <span style={{ fontSize: 8, fontWeight: 600, color: textColor, opacity: 0.75, whiteSpace: 'nowrap', lineHeight: 1 }}>
-            {event.period?.replace(/\s*[AP]M/g, '').trim()}
+          <span style={{
+            fontSize: 6, fontWeight: 800, letterSpacing: '0.3px',
+            color: isLab ? '#fff' : textColor,
+            background: isLab ? TV.deep : badgeBg,
+            border: isLab ? 'none' : `1px solid ${borderColor}`,
+            padding: '0 3px', borderRadius: 2, lineHeight: 1.4, flexShrink: 0,
+          }}>
+            {sessionType}
           </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            {/* Block badge (compact) */}
-            {event.block && (
-              <span style={{
-                fontSize: 6.5, fontWeight: 900,
-                background: accentColor,
-                color: clr.badgeText ?? '#fff',
-                borderRadius: 3, padding: '0.5px 4px', lineHeight: 1.4, flexShrink: 0,
-              }}>
-                {event.block}
-              </span>
-            )}
-            <span style={{
-              fontSize: 7, fontWeight: 800, letterSpacing: '0.5px',
-              color: isLab ? TV.deep : textColor,
-              background: isLab ? `rgba(124,111,205,.12)` : badgeBg,
-              border: `1px solid ${isLab ? TV.mid : borderColor}`,
-              padding: '0.5px 4px', borderRadius: 3, lineHeight: 1.4, flexShrink: 0,
-            }}>
-              {sessionType}
-            </span>
-          </div>
         </div>
       </div>
     )
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // ── NORMAL / MAXIMIZE MODE ────────────────────────────────────────────────
+  // ── NORMAL / MAXIMIZE MODE — rich, solid cards ──────────────────────────
   return (
     <div
-      draggable
-      onDragStart={onDragStart} onDragEnd={onDragEnd}
+      draggable={!locked}
+      onDragStart={locked ? undefined : onDragStart}
+      onDragEnd={locked ? undefined : onDragEnd}
       onDragOver={handleDragOverCard}
       onDragLeave={handleDragLeaveCard}
       onDrop={handleDropOnCard}
@@ -281,7 +282,7 @@ export default function SessionCard({
         borderLeft: `4px solid ${accentColor}`,
         borderRadius: 7,
         padding: '5px 8px 4px',
-        cursor: isDragging ? 'grabbing' : 'grab',
+        cursor: locked ? 'default' : isDragging ? 'grabbing' : 'grab',
         overflow: 'hidden',
         boxShadow: computeShadow(),
         opacity: isDimmed ? 0.25 : isDragging ? 0.5 : 1,
@@ -331,7 +332,7 @@ export default function SessionCard({
           {sectionStr && (
             <span style={{
               fontSize: 7.5, fontWeight: 700, color: textColor,
-              opacity: 0.5, lineHeight: 1.1, marginTop: 1,
+              opacity: 0.6, lineHeight: 1.1, marginTop: 1,
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '0.1px',
             }}>
               {sectionStr}
@@ -352,9 +353,9 @@ export default function SessionCard({
           {/* Session type badge */}
           <span style={{
             fontSize: 6.5, fontWeight: 800, letterSpacing: '0.7px',
-            background: isLab ? `rgba(124,111,205,.12)` : badgeBg,
-            border: `1px solid ${isLab ? TV.mid : borderColor}`,
-            color: isLab ? TV.deep : textColor,
+            background: isLab ? TV.deep : badgeBg,
+            border: isLab ? 'none' : `1px solid ${borderColor}`,
+            color: isLab ? '#fff' : textColor,
             padding: '1.5px 5px', borderRadius: 4,
           }}>
             {sessionType}
@@ -415,16 +416,16 @@ export default function SessionCard({
         marginTop: height > 58 ? 'auto' : 2,
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         paddingTop: height > 58 ? 4 : 0,
-        borderTop: height > 58 ? `1px solid ${accentColor}1A` : 'none',
+        borderTop: height > 58 ? `1px solid ${accentColor}22` : 'none',
         gap: 6,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 3, minWidth: 0 }}>
           {height > 58 && (
-            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={textColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: .5, flexShrink: 0 }}>
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={textColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: .55, flexShrink: 0 }}>
               <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
             </svg>
           )}
-          <span style={{ fontSize: height > 58 ? 8 : 7.5, fontWeight: 600, color: textColor, opacity: height > 58 ? .65 : .75, whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: height > 58 ? 8 : 7.5, fontWeight: 600, color: textColor, opacity: height > 58 ? .7 : .8, whiteSpace: 'nowrap' }}>
             {height > 58 ? event.period : event.period?.replace(/\s*[AP]M/g, '').trim()}
           </span>
         </div>
@@ -442,11 +443,11 @@ export default function SessionCard({
             ) : (
               <>
                 {height > 58 && (
-                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={textColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: .5, flexShrink: 0 }}>
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={textColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: .55, flexShrink: 0 }}>
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
                   </svg>
                 )}
-                <span style={{ fontSize: height > 58 ? 8 : 7.5, fontWeight: 600, color: textColor, opacity: height > 58 ? .60 : .55, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: height > 58 ? 8 : 7.5, fontWeight: 600, color: textColor, opacity: height > 58 ? .65 : .6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {height > 58 ? event.faculty : event.faculty?.split(' ').pop()}
                 </span>
               </>

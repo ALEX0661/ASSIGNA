@@ -16,16 +16,21 @@ if (!document.getElementById('tg-glow-style')) {
       50%      { background:rgba(239,68,68,.13); box-shadow:inset 0 0 0 1px rgba(239,68,68,.32); }
     }
     @keyframes tg-merge-glow {
-      0%,100% { background:rgba(124,111,205,.04); box-shadow:inset 0 0 0 1px rgba(124,111,205,.12); }
-      50%      { background:rgba(124,111,205,.10); box-shadow:inset 0 0 0 1px rgba(124,111,205,.26); }
+      0%,100% { background:rgba(21,128,61,.04); box-shadow:inset 0 0 0 1px rgba(21,128,61,.12); }
+      50%      { background:rgba(21,128,61,.10); box-shadow:inset 0 0 0 1px rgba(21,128,61,.26); }
     }
     @keyframes tg-row-conflict {
       0%,100% { background:rgba(239,68,68,.04); border-right-color:rgba(239,68,68,.28); }
       50%      { background:rgba(239,68,68,.10); border-right-color:rgba(239,68,68,.50); }
     }
-    .tg-cell-conflict { animation:tg-conflict-glow 1.7s ease-in-out infinite; }
-    .tg-cell-merge    { animation:tg-merge-glow    1.7s ease-in-out infinite; }
-    .tg-row-conflict  { animation:tg-row-conflict  1.7s ease-in-out infinite; }
+    @keyframes tg-available-glow {
+      0%,100% { background:rgba(21,128,61,.05);  box-shadow: inset 0 0 0 1px rgba(21,128,61,.15); }
+      50%      { background:rgba(110,231,183,.20); box-shadow: inset 0 0 0 1px rgba(21,128,61,.34); }
+    }
+    .tg-cell-conflict  { animation:tg-conflict-glow  1.7s ease-in-out infinite; }
+    .tg-cell-merge     { animation:tg-merge-glow     1.7s ease-in-out infinite; }
+    .tg-row-conflict   { animation:tg-row-conflict   1.7s ease-in-out infinite; }
+    .tg-cell-available { animation:tg-available-glow 2.4s ease-in-out infinite; }
   `
   document.head.appendChild(s)
 }
@@ -33,9 +38,9 @@ if (!document.getElementById('tg-glow-style')) {
 // ── DIMENSIONS ────────────────────────────────────────────────────────────────
 const TIME_COL_W      = 66
 const ROOM_MIN_W      = 210   // normal
-const COMPACT_ROOM_W  = 140
+const COMPACT_ROOM_W  = 120
 const NORMAL_SLOT     = 28
-const COMPACT_SLOT    = 22
+const COMPACT_SLOT    = 17
 const GRID_HEIGHT     = 'calc(100vh - 230px)'
 const SPREAD_PX       = 28
 
@@ -49,16 +54,36 @@ function resolveDims(gridSize) {
 function RoomColumn({
   room, dayEvents, conflictMap, draggedEvent, hoveredCell, getDropConflict,
   onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop, onCardClick,
-  gridSize, slotH,
+  gridSize, slotH, locked,
   conflictingDragIds,
   ambientConflictIds,
   ambientMergeIds,
   mergedIds,
   preGlowCells,   // { conflict: Set<cellKey>, merge: Set<cellKey> }
+  availabilityMap,     // Map<room, {start,end}[]> — TRUE free ranges, from unfiltered allEvents
+  highlightAvailable,  // bool — "Available Rooms" toggle is on
 }) {
   const compact    = gridSize === 'compact'
   const roomEvents = dayEvents.filter(e => e.room === room)
   const [hoveredId, setHoveredId] = useState(null)
+
+  // Slots that are genuinely free for this room, computed from the room's
+  // real (unfiltered) free ranges — never from the filtered dayEvents/roomEvents
+  // above. This is what makes the glow stay correct even when a session/program/
+  // faculty filter is hiding the event that's actually occupying a slot.
+  const availableSlotSet = useMemo(() => {
+    if (!highlightAvailable) return null
+    const ranges = availabilityMap?.get(room)
+    if (!ranges || ranges.length === 0) return new Set()
+    const set = new Set()
+    TIME_SLOTS.forEach(slot => {
+      const slotEnd = slot.startMinutes + SLOT_MINUTES
+      if (ranges.some(r => slot.startMinutes >= r.start && slotEnd <= r.end)) {
+        set.add(slot.startMinutes)
+      }
+    })
+    return set
+  }, [highlightAvailable, availabilityMap, room])
 
   const overlapGroups = useMemo(() => {
     const assigned = new Set()
@@ -121,6 +146,11 @@ function RoomColumn({
         const isPreConflict = !isHov && !!draggedEvent && (preGlowCells?.conflict.has(cellKey) ?? false)
         const isPreMerge    = !isHov && !!draggedEvent && (preGlowCells?.merge.has(cellKey)    ?? false)
 
+        // ── Available-Rooms highlight — only when not mid-drag/hover, and
+        // only for slots the room is TRULY free for (see availableSlotSet above) ──
+        const isAvailableSlot = !isHov && !draggedEvent &&
+          (availableSlotSet?.has(slot.startMinutes) ?? false)
+
         // ── Detect merge-only hover: all overlapping events in this room are merge partners ──
         const hovRoomConflicts = (isHov && dropConf) ? roomEvents.filter(ev => {
           const range = parsePeriodRange(ev.period)
@@ -137,22 +167,22 @@ function RoomColumn({
             key={slot.startMinutes}
             onDragOver={e => onDragOver(e, room, slot)}
             onDrop={e => onDrop(e, room, slot)}
-            className={isPreConflict ? 'tg-cell-conflict' : isPreMerge ? 'tg-cell-merge' : ''}
+            className={isPreConflict ? 'tg-cell-conflict' : isPreMerge ? 'tg-cell-merge' : isAvailableSlot ? 'tg-cell-available' : ''}
             style={{
               position: 'absolute',
               top: ((slot.startMinutes - GRID_START) / SLOT_MINUTES) * slotH,
               left: 0, right: 0, height: slotH,
               borderBottom: isHour
                 ? `1px solid ${TV.border}`
-                : `1px dashed rgba(200,196,230,.38)`,
+                : `1px dashed rgba(180,220,195,.38)`,
               background: isHov
                 ? isHovMergeOnly
-                  ? 'rgba(124,111,205,.07)'   // merge hover → purple
+                   ? 'rgba(21,128,61,.07)'   // merge hover → green
                   : dropConf
                     ? 'rgba(239,68,68,.07)'   // conflict hover → red
-                    : 'rgba(124,111,205,.05)' // clean hover → soft purple
+                     : 'rgba(21,128,61,.05)' // clean hover → soft green
                 : 'transparent',
-              transition: (isPreConflict || isPreMerge) ? 'none' : 'background .1s',
+              transition: (isPreConflict || isPreMerge || isAvailableSlot) ? 'none' : 'background .1s',
               zIndex: 1,
             }}
           >
@@ -228,6 +258,7 @@ function RoomColumn({
               compact={compact} slotH={slotH}
               onClick={onCardClick}
               onDragStart={e => onDragStart(e, event)} onDragEnd={onDragEnd}
+              locked={locked}
               overlapIndex={overlapIndex}
               spreadOffset={spreadOffset}
               isInHoveredGroup={isInHoveredGroup}
@@ -250,6 +281,7 @@ export default function TimeGrid({
   draggedEvent, hoveredCell, getDropConflict,
   onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop,
   onCardClick,
+  locked = false,
   gridSize = 'normal',
   compact = false,
   conflictingDragIds = new Set(),
@@ -259,6 +291,8 @@ export default function TimeGrid({
   fullscreen = false,
   mergedIds = null,   // Set<eventId> from ScheduleViewPage — always current
   allEvents = [],     // Unfiltered events to compute proper pre-glows when filters are active
+  availabilityMap = null,     // Map<room, {start,end}[]> — TRUE free ranges per room, from unfiltered allEvents
+  highlightAvailable = false, // "Available Rooms" toggle — glow the genuinely free slots green
 }) {
   // Resolve gridSize from legacy compact prop when needed
   const resolvedSize = compact ? 'compact' : gridSize
@@ -425,34 +459,34 @@ export default function TimeGrid({
         {/* ── HEADER ── */}
         <div style={{
           display: 'flex',
-          background: 'linear-gradient(to bottom,#F7F6FD,#FAFAFE)',
+          background: 'linear-gradient(to bottom,#F2F7F4,#F8FAF9)',
           position: 'sticky', top: 0, zIndex: 30, flexShrink: 0,
         }}>
           <div style={{
             width: TIME_COL_W, flexShrink: 0,
             borderRight: `2px solid ${TV.border}`,
             position: 'sticky', left: 0, zIndex: 31,
-            background: 'linear-gradient(to bottom,#F7F6FD,#FAFAFE)',
+            background: 'linear-gradient(to bottom,#F2F7F4,#F8FAF9)',
           }} />
           {rooms.map((room, idx) => (
             <div key={room} style={{
               flex: 1, minWidth: roomMinW,
-              padding: resolvedSize === 'compact' ? '4px 8px' : '7px 12px',
+              padding: resolvedSize === 'compact' ? '3px 5px' : '7px 12px',
               borderRight: idx < rooms.length - 1 ? `1px solid ${TV.border}` : 'none',
-              display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden',
+              display: 'flex', alignItems: 'center', gap: resolvedSize === 'compact' ? 4 : 6, overflow: 'hidden',
             }}>
-              <div style={{ width: 5, height: 5, borderRadius: '50%', background: TV.deep, opacity: .6, flexShrink: 0 }} />
+              <div style={{ width: resolvedSize === 'compact' ? 3 : 5, height: resolvedSize === 'compact' ? 3 : 5, borderRadius: '50%', background: TV.deep, opacity: .6, flexShrink: 0 }} />
               <span style={{
-                fontSize: resolvedSize === 'compact' ? 9.5 : 11, fontWeight: 700, color: TV.text,
+                fontSize: resolvedSize === 'compact' ? 8 : 11, fontWeight: 700, color: TV.text,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 flex: 1, letterSpacing: '-0.2px',
               }}>
                 {room}
               </span>
               <span style={{
-                fontSize: 8, background: TV.pale, color: TV.deep,
+                fontSize: resolvedSize === 'compact' ? 7 : 8, background: TV.pale, color: TV.deep,
                 border: `1px solid ${TV.light}`, borderRadius: 20,
-                padding: '1px 5px', fontWeight: 700, flexShrink: 0,
+                padding: resolvedSize === 'compact' ? '0 4px' : '1px 5px', fontWeight: 700, flexShrink: 0,
               }}>
                 {dayEvents.filter(e => e.room === room).length}
               </span>
@@ -467,7 +501,7 @@ export default function TimeGrid({
           <div style={{
             width: TIME_COL_W, flexShrink: 0,
             borderRight: `2px solid ${TV.border}`,
-            position: 'sticky', left: 0, background: '#FAFAFE', zIndex: 20,
+            position: 'sticky', left: 0, background: '#F8FAF9', zIndex: 20,
             boxShadow: '2px 0 6px rgba(0,0,0,0.03)',
           }}>
             {TIME_SLOTS.map(slot => {
@@ -492,17 +526,17 @@ export default function TimeGrid({
                     paddingTop: resolvedSize === 'compact' ? 1 : 3,
                     borderBottom: isHour
                       ? `1px solid ${TV.border}`
-                      : `1px dashed rgba(200,196,230,.65)`,
-                    borderRight: isRowConflict ? '3px solid rgba(239,68,68,.40)' : isRowMerge ? `3px solid rgba(124,111,205,.30)` : undefined,
+                      : `1px dashed rgba(180,220,195,.65)`,
+                    borderRight: isRowConflict ? '3px solid rgba(239,68,68,.40)' : isRowMerge ? `3px solid rgba(21,128,61,.30)` : undefined,
                     transition: 'border-color .1s',
                   }}>
                   {isHour ? (
-                    <span style={{ fontSize: resolvedSize === 'compact' ? 8.5 : 10, fontWeight: 700, color: isRowConflict ? '#ef4444' : isRowMerge ? TV.deep : TV.deep, lineHeight: 1, whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: resolvedSize === 'compact' ? 7 : 10, fontWeight: 700, color: isRowConflict ? '#ef4444' : isRowMerge ? TV.deep : TV.deep, lineHeight: 1, whiteSpace: 'nowrap' }}>
                       {slot.label}
                     </span>
                   ) : (
-                    <span style={{ fontSize: resolvedSize === 'compact' ? 7.5 : 8.5, fontWeight: 600, color: isRowConflict ? '#ef4444' : TV.deep, opacity: isRowConflict ? 1 : .85, lineHeight: 1, whiteSpace: 'nowrap' }}>
-                      {displayLabel}
+                    <span style={{ fontSize: resolvedSize === 'compact' ? 0 : 8.5, fontWeight: 600, color: isRowConflict ? '#ef4444' : TV.deep, opacity: isRowConflict ? 1 : .85, lineHeight: 1, whiteSpace: 'nowrap' }}>
+                      {resolvedSize === 'compact' ? '' : displayLabel}
                     </span>
                   )}
                 </div>
@@ -525,12 +559,15 @@ export default function TimeGrid({
                 onDragStart={onDragStart} onDragEnd={onDragEnd}
                 onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
                 onCardClick={onCardClick}
+                locked={locked}
                 gridSize={resolvedSize} slotH={slotH}
                 conflictingDragIds={conflictingDragIds}
                 ambientConflictIds={ambientConflictIds}
                 ambientMergeIds={ambientMergeIds}
                 mergedIds={mergedIds}
                 preGlowCells={preGlowCells}
+                availabilityMap={availabilityMap}
+                highlightAvailable={highlightAvailable}
               />
             </div>
           ))}

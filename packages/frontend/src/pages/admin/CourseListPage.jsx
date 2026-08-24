@@ -629,7 +629,7 @@ export default function CourseListPage() {
   }
 
   function handleExport() {
-    if (!courses.length) return
+    if (!filtered.length) return // Use 'filtered' instead of 'courses'
 
     const headers = ['Course Code', 'Title', 'Program', 'Semester', 'Year Level', 'Sections', 'Lecture Units', 'Lab Units', 'Total Units']
     const colWidths = [
@@ -640,7 +640,8 @@ export default function CourseListPage() {
     const wb = XLSX.utils.book_new()
 
     SEMESTERS.forEach(sem => {
-      const semCourses = courses.filter(c => (c.semester || '1st Semester') === sem)
+      // Filter from the 'filtered' array to respect active search/filters
+      const semCourses = filtered.filter(c => (c.semester || '1st Semester') === sem)
       if (!semCourses.length) return
 
       const rows = semCourses.map(c => [
@@ -660,9 +661,29 @@ export default function CourseListPage() {
       XLSX.utils.book_append_sheet(wb, ws, SEM_SHEET[sem] || sem)
     })
 
+    // 1. Build a dynamic filename based on active filters
+    const filterParts = []
+    
+    if (progFilter.length > 0) {
+      filterParts.push(progFilter.join('-'))
+    }
+    
+    if (yearFilter.length > 0) {
+      // Sort years ascending to keep strings tidy (e.g. '3rd-4th')
+      const sortedYears = [...yearFilter].sort((a, b) => Number(a) - Number(b))
+      filterParts.push(sortedYears.map(y => YEAR_SHORT[y]).join('-') + '-Year')
+    }
+    
+    if (typeFilter === 'lec') filterParts.push('Lec-Only')
+    if (typeFilter === 'lab') filterParts.push('Has-Lab')
+    if (issuesOnly) filterParts.push('Needs-Attention')
+    
+    const filterSuffix = filterParts.length > 0 ? `-${filterParts.join('_')}` : ''
     const date = new Date().toISOString().slice(0, 10)
-    XLSX.writeFile(wb, `Courses-All-Semesters-${date}.xlsx`)
-    toast('All semesters exported successfully', 'success')
+    
+    // 2. Append the dynamic suffix to the exported file name
+    XLSX.writeFile(wb, `Courses${filterSuffix}-${date}.xlsx`)
+    toast('Filtered courses exported successfully', 'success')
   }
 
   return (
@@ -710,9 +731,9 @@ export default function CourseListPage() {
           </button>
 
           {/* Export */}
-          <button onClick={handleExport} disabled={!courses.length} title="Export all semesters to Excel"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: `1px solid ${G.border}`, background: '#fff', color: G.muted2, fontSize: 11.5, fontWeight: 500, cursor: courses.length ? 'pointer' : 'not-allowed', opacity: courses.length ? 1 : 0.45, transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
-            onMouseEnter={e => { if (courses.length) { e.currentTarget.style.background = G.hover; e.currentTarget.style.color = G.meadow }}}
+          <button onClick={handleExport} disabled={!filtered.length} title="Export all semesters to Excel"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: `1px solid ${G.border}`, background: '#fff', color: G.muted2, fontSize: 11.5, fontWeight: 500, cursor: filtered.length ? 'pointer' : 'not-allowed', opacity: filtered.length ? 1 : 0.45, transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
+            onMouseEnter={e => { if (filtered.length) { e.currentTarget.style.background = G.hover; e.currentTarget.style.color = G.meadow }}}
             onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = G.muted2 }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -865,7 +886,7 @@ export default function CourseListPage() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlignment: 'center', padding: '60px 20px', color: G.muted2, animation: 'fadeIn 0.3s' }}>
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: G.muted2, animation: 'fadeIn 0.3s' }}>
           <div style={{ width: 56, height: 56, borderRadius: '50%', background: G.hover, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={G.border} strokeWidth="1.5">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
