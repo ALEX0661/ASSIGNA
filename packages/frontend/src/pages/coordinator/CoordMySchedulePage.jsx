@@ -455,7 +455,7 @@ export default function CoordMySchedulePage() {
       <div id="tour-schedules-list" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
           {selectionMode ? (
-            <div className="co-toolbar" style={{ background: '#2C3E50', borderColor: '#1A252F', color: '#fff' }}>
+            <div className="co-toolbar" style={{ background: '#2C3E50', borderColor: '#1A252F', color: '#fff', padding: '10px 14px', borderRadius: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Checkbox checked={allSel} indeterminate={someSel} onChange={togAll} />
               </div>
