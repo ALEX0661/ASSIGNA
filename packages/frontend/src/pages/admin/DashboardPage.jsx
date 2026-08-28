@@ -6,6 +6,15 @@ import {
   getAssignmentQuality, getScheduleDistribution,
 } from '../../services/api'
 import { useScheduleStore } from '../../store/scheduleStore'
+import { useTour } from '../../hooks/useTour.jsx'
+
+const TOUR_SEEN_KEY = 'adminDashboard_tourSeen'
+function isOnboardingCompleted() {
+  try { return localStorage.getItem(TOUR_SEEN_KEY) === '1' } catch { return true }
+}
+function markOnboardingCompleted() {
+  try { localStorage.setItem(TOUR_SEEN_KEY, '1') } catch {}
+}
 
 /* ─── Global keyframes & utility classes ─────────────────────────────────── */
 const DASH_STYLE = `
@@ -30,6 +39,7 @@ const DASH_STYLE = `
     border-radius: 14px;
     border: 1px solid #D8E8DF;
     box-shadow: 0 1px 8px rgba(10,46,28,0.06);
+    overflow: visible;
   }
   .d-row { cursor:pointer; transition:background 0.13s; }
   .d-row:hover { background: #EBF4EF !important; }
@@ -438,6 +448,48 @@ export default function DashboardPage() {
   const [showAllWl,    setShowAllWl]    = useState(false)
   const [error,        setError]        = useState(null)
 
+  const { TourElement, startTour } = useTour('adminDashboard', [
+    {
+      target: '#tour-admin-stats',
+      title: 'Your Overview',
+      content: 'A live snapshot of the system — faculty, courses, rooms, and schedules. Watch these counts as you set things up; they double as a quick check that each step of onboarding actually went through.',
+      placement: 'bottom',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-admin-setup',
+      title: 'Setup Checklist',
+      content: 'The recommended path to your first generated schedule, in order. Each item links straight to where you need to go, and checks itself off automatically once that step is detected as done — so you always know what\'s left.',
+      placement: 'top',
+    },
+    {
+      target: '#tour-admin-health',
+      title: 'Schedule Health',
+      content: 'Once a schedule is loaded, this checks it for problems — room/faculty coverage, unresolved conflicts, and any faculty over or near their unit cap. Green means clear; anything red or amber is worth fixing before you finalize.',
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-admin-scheduler',
+      title: 'Run the Scheduler',
+      content: 'Once faculty, courses, and rooms are in place, this is where you generate the actual timetable — pick a semester, check Readiness, and start the solver.',
+      placement: 'left',
+    },
+    {
+      target: '#tour-admin-breakdowns',
+      title: 'Course Breakdowns',
+      content: 'A quick read on how your curriculum is shaped — how courses split across semesters and which programs they belong to. Useful for spotting an imbalance before you generate a schedule.',
+      placement: 'top',
+    },
+    {
+      target: '#tour-admin-snapshot',
+      title: 'Year Level & Faculty Mix',
+      content: 'Rounds out the picture: how courses are spread across year levels, and your full-time vs. part-time faculty split — both worth checking if the scheduler ever comes back with unexpected results.',
+      placement: 'top',
+    },
+  ])
+
+  
+
   useEffect(() => {
     let cancelled = false
     async function load() {
@@ -594,7 +646,8 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div style={{ padding:'22px 28px 40px', fontFamily:"'Inter',sans-serif", display:'flex', flexDirection:'column', gap:18, background:'var(--bg)', minHeight:'100%' }}>
+    <div className="page" style={{ padding:'22px 28px 40px', fontFamily:"'Inter',sans-serif", display:'flex', flexDirection:'column', gap:18, background:'var(--bg)', minHeight:'100%' }}>
+      {TourElement}
       <style>{DASH_STYLE}</style>
 
       {/* ── Row 1: Header ── */}
@@ -604,7 +657,7 @@ export default function DashboardPage() {
             {greeting}, {displayName}.
           </h1>
         </div>
-        <button onClick={() => navigate('/dashboard/scheduler')}
+        <button id="tour-admin-scheduler" onClick={() => navigate('/dashboard/scheduler')}
           style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#15803D,#0F5C2C)', color:'#fff', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 4px 14px rgba(15,92,44,0.28)', transition:'opacity .15s' }}
           onMouseEnter={e=>e.currentTarget.style.opacity='.9'}
           onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
@@ -614,7 +667,9 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Setup Checklist — always mounted; renders its own empty/complete state ── */}
-      <SetupChecklist steps={obSteps} onNavigate={navigate} loading={statsLoading} />
+      <div id="tour-admin-setup">
+        <SetupChecklist steps={obSteps} onNavigate={navigate} loading={statsLoading} />
+      </div>
 
       {/* Error banner */}
       {error && (
@@ -628,7 +683,7 @@ export default function DashboardPage() {
       )}
 
       {/* ── Row 2: Primary Stat Cards ── */}
-      <div className="stat-grid">
+      <div id="tour-admin-stats" className="stat-grid">
         {STAT_CARDS.map((c, i) => (
           <div key={c.label} className="stat-card" style={{ borderLeft:`3px solid ${c.color}`, gap:8 }}>
             <div style={{ display:'flex', alignItems:'center', gap:7 }}>
@@ -652,7 +707,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Schedule Health ── */}
-      <div className="d-card" style={{ padding:'16px 18px', animationDelay:'.12s' }}>
+      <div id="tour-admin-health" className="d-card" style={{ padding:'16px 18px', animationDelay:'.12s' }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14, flexWrap:'wrap', gap:8 }}>
           <div>
             <div style={{ fontSize:13, fontWeight:700, color:'var(--ink)' }}>Schedule Health</div>
@@ -679,15 +734,15 @@ export default function DashboardPage() {
             {[
               {
                 label: 'Coverage',
-                value: distLoading ? '…' : `${sch.coveragePct ?? 0}%`,
-                sub: distLoading ? '' : `${sch.tbaSessions ?? 0} TBA sessions`,
+                value: statsLoading ? '…' : `${sch.coveragePct ?? 0}%`,
+                sub: statsLoading ? '' : `${sch.tbaSessions ?? 0} TBA sessions`,
                 color: (sch.coveragePct ?? 0) >= 95 ? '#15803D' : (sch.coveragePct ?? 0) >= 80 ? '#D97706' : '#C0392B',
                 bg: (sch.coveragePct ?? 0) >= 95 ? '#F0FDF4' : (sch.coveragePct ?? 0) >= 80 ? '#FFFBEB' : '#FFF5F5',
                 icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>,
               },
               {
                 label: 'Conflicts',
-                value: distLoading ? '…' : (sch.conflictCount ?? 0),
+                value: statsLoading ? '…' : (sch.conflictCount ?? 0),
                 sub: (sch.conflictCount ?? 0) === 0 ? 'None detected' : 'Need resolution',
                 color: (sch.conflictCount ?? 0) === 0 ? '#15803D' : '#C0392B',
                 bg: (sch.conflictCount ?? 0) === 0 ? '#F0FDF4' : '#FFF5F5',
@@ -796,7 +851,7 @@ export default function DashboardPage() {
       )}
 
       {/* ── Row 4: Course Breakdowns (2 columns) ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+      <div id="tour-admin-breakdowns" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
 
         {/* Left: Courses by Semester */}
         <div className="d-card" style={{ padding:'18px', animationDelay:'.16s' }}>
@@ -876,7 +931,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Row 5: Data snapshot (year level + faculty composition) ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 340px', gap:14 }}>
+      <div id="tour-admin-snapshot" style={{ display:'grid', gridTemplateColumns:'1fr 340px', gap:14 }}>
 
         {/* Courses by Year Level */}
         <div className="d-card" style={{ padding:'18px', animationDelay:'.20s' }}>

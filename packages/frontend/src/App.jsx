@@ -91,6 +91,7 @@ export default function App() {
           <Route path="settings"        element={<SettingsPage />} />
           <Route path="scheduler"       element={<SchedulerHub />} />
           <Route path="schedule/:name"  element={<ScheduleViewPage />} />
+          <Route path="schedule/submitted/:id" element={<ScheduleViewPage isSubmittedView />} />
           <Route path="schedule"        element={<ScheduleViewPage />} />
           <Route path="analytics"       element={<AnalyticsPage />} />
           <Route path="approval"        element={<Navigate to="/dashboard/scheduler?mode=manage" replace />} />

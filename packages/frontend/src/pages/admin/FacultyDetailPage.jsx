@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { addFaculty, updateFaculty, deleteFaculty, archiveFaculty, unarchiveFaculty, updateCredentials } from '../../services/api'
 
@@ -11,6 +11,17 @@ import {
 import { ProfileCard, UnitLoadCard, BasicInfoCard, SchedulePrefsCard, CredentialsCard } from '../../components/FacultyDetail/FacultyCards'
 import SpecializationModal from '../../components/FacultyDetail/SpecializationModal'
 import ScheduleSection     from '../../components/FacultyDetail/ScheduleSection'
+import { useTour } from '../../hooks/useTour.jsx'
+
+const TOUR_SEEN_KEY = 'adminFacultyDetail_tourSeen'
+function isOnboardingCompleted() {
+  try { return localStorage.getItem(TOUR_SEEN_KEY) === '1' } catch { return true }
+}
+function markOnboardingCompleted() {
+  try { localStorage.setItem(TOUR_SEEN_KEY, '1') } catch {}
+}
+
+const FACULTY_STYLE = ``;
 
 export default function FacultyDetailPage() {
   const { id }   = useParams()
@@ -18,6 +29,45 @@ export default function FacultyDetailPage() {
   const navigate = useNavigate()
 
   const { toasts, toast } = useToast()
+
+  const { TourElement, startTour } = useTour('adminFacultyDetail', [
+    {
+      target: '#tour-fac-actions',
+      title: 'Archive or Delete',
+      content: 'Archive removes a faculty member from scheduling while keeping their record and history — use this over Delete for anyone who\'s just on leave or no longer teaching. Delete is permanent.',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-fac-profile',
+      title: 'Profile Overview',
+      content: 'Name, status, and specializations at a glance. Click into specializations here to add or edit the courses this faculty member is qualified to teach.',
+      placement: 'right',
+    },
+    {
+      target: '#tour-fac-load',
+      title: 'Unit Load',
+      content: 'Shows how many units they\'re currently assigned against their cap for their status (full-time/part-time). It turns red when they\'re over capacity — worth checking before finalizing a schedule.',
+      placement: 'right',
+    },
+    {
+      target: '#tour-fac-basic-info',
+      title: 'Basic Information',
+      content: 'Core details — name, rank, department, education, and status. Changing status between full-time and part-time also changes their unit cap and whether schedule preferences apply.',
+      placement: 'auto',
+    },
+    {
+      target: '#tour-fac-credentials',
+      title: 'Login Credentials',
+      content: 'Set or update the email and password this faculty member uses to log in. Changing the email can migrate their account, so a temporary password may be generated — make sure to share it with them.',
+      placement: 'auto',
+    },
+    {
+      target: '#tour-fac-schedule-header',
+      title: 'Teaching Schedule',
+      content: 'Their actual assigned sessions once a schedule has been generated — a quick way to confirm what they\'re teaching without leaving this page.',
+      placement: 'bottom',
+    },
+  ])
 
   // ── Data ─────────────────────────────────────────────────────────────────────
   const {
@@ -253,8 +303,10 @@ export default function FacultyDetailPage() {
 
   // ── Main render ───────────────────────────────────────────────────────────────
   return (
-    <div style={{ padding:'28px 32px', fontFamily:"'Inter',sans-serif" }}>
-
+    <div className="page" style={{ padding:'28px 32px 200px 32px', fontFamily:"'Inter',sans-serif" }}>
+      {TourElement}
+      <style>{FACULTY_STYLE}</style>
+      
       {/* Breadcrumb + actions */}
       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:20, flexWrap:'wrap' }}>
         <div style={{ display:'flex', alignItems:'center', gap:8, flex:1 }}>
@@ -269,7 +321,7 @@ export default function FacultyDetailPage() {
         </div>
 
         {!isNew && (
-          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+          <div id="tour-fac-actions" style={{ display:'flex', alignItems:'center', gap:6 }}>
             {form.archived ? (
               <button type="button" onClick={handleUnarchive} disabled={archiving} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, border:'1.5px solid #BBF7D0', background:'#DCFCE7', color:'#15803D', fontSize:12, fontWeight:600, cursor: archiving ? 'default' : 'pointer', fontFamily:"'Inter',sans-serif", opacity: archiving ? 0.7 : 1 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
@@ -313,29 +365,35 @@ export default function FacultyDetailPage() {
 
             {/* Left column */}
             <div style={{ flex:'0 0 300px', minWidth:260, display:'flex', flexDirection:'column', gap:16 }}>
-              <ProfileCard
-                form={form} isNew={isNew} isOverloaded={isOverloaded}
-                avInitials={avInitials} avFg={avFg} avBg={avBg}
-                statusBg={statusBg} statusCl={statusCl}
-                specCount={specCount} onOpenSpecModal={() => setShowSpecModal(true)}
-              />
-              {!isNew && (
-                <UnitLoadCard
-                  displayUnits={displayUnits} effectiveCap={effectiveCap}
-                  isOverloaded={isOverloaded} loadPct={loadPct} tierLabel={tierLabel}
-                  scheduleUnits={scheduleUnits} barBg={barBg}
+              <div id="tour-fac-profile">
+                <ProfileCard
+                  form={form} isNew={isNew} isOverloaded={isOverloaded}
+                  avInitials={avInitials} avFg={avFg} avBg={avBg}
+                  statusBg={statusBg} statusCl={statusCl}
+                  specCount={specCount} onOpenSpecModal={() => setShowSpecModal(true)}
                 />
+              </div>
+              {!isNew && (
+                <div id="tour-fac-load">
+                  <UnitLoadCard
+                    displayUnits={displayUnits} effectiveCap={effectiveCap}
+                    isOverloaded={isOverloaded} loadPct={loadPct} tierLabel={tierLabel}
+                    scheduleUnits={scheduleUnits} barBg={barBg}
+                  />
+                </div>
               )}
             </div>
 
             {/* Right column */}
             <div style={{ flex:1, minWidth:280, display:'flex', flexDirection:'column', gap:16 }}>
-              <BasicInfoCard
-                form={form} setForm={setForm} isNew={isNew}
-                infoChanged={infoChanged} infoSaving={infoSaving} infoSaved={infoSaved} infoError={infoError} onSaveInfo={handleSaveInfo}
-                password={password} setPassword={setPassword} showPassword={showPassword} setShowPassword={setShowPassword}
-                facultyId={id}
-              />
+              <div id="tour-fac-basic-info">
+                <BasicInfoCard
+                  form={form} setForm={setForm} isNew={isNew}
+                  infoChanged={infoChanged} infoSaving={infoSaving} infoSaved={infoSaved} infoError={infoError} onSaveInfo={handleSaveInfo}
+                  password={password} setPassword={setPassword} showPassword={showPassword} setShowPassword={setShowPassword}
+                  facultyId={id}
+                />
+              </div>
               {isNew && (
                 <div>
                   {createError && (
@@ -367,15 +425,17 @@ export default function FacultyDetailPage() {
 
           {/* Credentials — full width for both full-time and part-time (edit mode) */}
           {!isNew && (
-            <CredentialsCard
-              form={form}
-              credEmail={credEmail} setCredEmail={setCredEmail}
-              credPassword={credPassword} setCredPassword={setCredPassword}
-              credConfirm={credConfirm} setCredConfirm={setCredConfirm}
-              showCredPwd={showCredPwd} setShowCredPwd={setShowCredPwd}
-              credSaving={credSaving} credError={credError} credSuccess={credSuccess}
-              onSave={handleSaveCredentials}
-            />
+            <div id="tour-fac-credentials">
+              <CredentialsCard
+                form={form}
+                credEmail={credEmail} setCredEmail={setCredEmail}
+                credPassword={credPassword} setCredPassword={setCredPassword}
+                credConfirm={credConfirm} setCredConfirm={setCredConfirm}
+                showCredPwd={showCredPwd} setShowCredPwd={setShowCredPwd}
+                credSaving={credSaving} credError={credError} credSuccess={credSuccess}
+                onSave={handleSaveCredentials}
+              />
+            </div>
           )}
 
         </div>

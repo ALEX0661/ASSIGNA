@@ -205,7 +205,11 @@ export const saveBlockConfigs  = async (configs)  => axios.post(`${BASE}/block-c
 export const applyBlockConfigs = async (semester) => axios.post(`${BASE}/block-config/apply`, { semester }, { headers: await authHeaders() }).then(r => r.data)
 
 // ── Coordinator ───────────────────────────────────────────────────────────────
-export const coordListSchedules   = async ()     => axios.get(`${BASE}/coordinator/schedule/list`,        { headers: await authHeaders() }).then(r => r.data)
+// `limit` is optional — pass it for background/dashboard polling so the
+// query doesn't scan this program's entire schedule history every time.
+// Omit it (as CoordMySchedulePage does) to get the full list.
+export const coordListSchedules   = async (limit)  => axios.get(`${BASE}/coordinator/schedule/list`, { headers: await authHeaders(), params: limit ? { limit } : {} }).then(r => r.data)
+export const coordGetScheduleCounts = async ()     => axios.get(`${BASE}/coordinator/schedule/counts`, { headers: await authHeaders() }).then(r => r.data)
 export const coordGenerate        = async (sem)  => axios.post(`${BASE}/coordinator/schedule/generate`,   { semester: sem }, { headers: await authHeaders() }).then(r => r.data)
 export const coordSolveStatus     = async (pid)  => axios.get(`${BASE}/coordinator/schedule/status/${pid}`, { headers: await authHeaders() }).then(r => r.data)
 export const coordGetResult       = async ()     => axios.get(`${BASE}/coordinator/schedule/result`,      { headers: await authHeaders() }).then(r => r.data)
@@ -232,7 +236,7 @@ export const coordGetSelectedRooms = async ()    => axios.get(`${BASE}/coordinat
 export const coordGetCourses      = async ()     => axios.get(`${BASE}/coordinator/courses`,              { headers: await authHeaders() }).then(r => r.data)
 export const coordCheckTurn       = async ()     => axios.get(`${BASE}/coordinator/queue/my-turn`,        { headers: await authHeaders() }).then(r => r.data)
 export const coordGetSettings     = async ()     => axios.get(`${BASE}/coordinator/settings`,             { headers: await authHeaders() }).then(r => r.data)
-export const coordGetSubmittedSchedule = async () => axios.get(`${BASE}/coordinator/queue/submitted-schedule`, { headers: await authHeaders() }).then(r => r.data)
+export const coordGetSubmittedSchedule = async (includeEvents = false) => axios.get(`${BASE}/coordinator/queue/submitted-schedule`, { headers: await authHeaders(), params: includeEvents ? { include_events: true } : {} }).then(r => r.data)
 
 // ── Queue Management (Admin) ──────────────────────────────────────────────────
 export const createQueue     = async (d)       => axios.post(`${BASE}/queue/create`, d,           { headers: await authHeaders() }).then(r => r.data)

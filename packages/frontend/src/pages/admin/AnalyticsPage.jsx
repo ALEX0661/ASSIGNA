@@ -132,18 +132,18 @@ function Skel({ w = "100%", h = 14, r = 7, style = {} }) {
 }
 
 // ── Card ──────────────────────────────────────────────────────────────────────
-function Card({ children, style = {} }) {
+function Card({ children, style = {}, id }) {
   return (
-    <div className="a-card" style={style}>
+    <div className="a-card" id={id} style={style}>
       {children}
     </div>
   );
 }
 
 // ── Card header (mirrors DashboardPage SectionHeader) ─────────────────────────
-function CardHeader({ title, subtitle, right }) {
+function CardHeader({ title, subtitle, right, id }) {
   return (
-    <div style={{
+    <div id={id} style={{
       padding: "12px 18px",
       borderBottom: "1px solid var(--border)",
       display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
@@ -389,9 +389,52 @@ function SectionSkel({ rows = 4 }) {
   );
 }
 
+import { useTour } from '../../hooks/useTour.jsx'
+
+const TOUR_SEEN_KEY = 'adminAnalytics_tourSeen'
+function isOnboardingCompleted() {
+  try { return localStorage.getItem(TOUR_SEEN_KEY) === '1' } catch { return true }
+}
+function markOnboardingCompleted() {
+  try { localStorage.setItem(TOUR_SEEN_KEY, '1') } catch {}
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AnalyticsPage() {
   const { scheduleName, setName, clearSchedule } = useScheduleStore();
+
+  const { TourElement, startTour } = useTour('adminAnalytics', [
+    {
+      target: '#tour-analytics-source',
+      title: 'Choose a Schedule',
+      content: 'View analytics for the schedule you\'re currently working on, or pick any saved schedule from the dropdown to review it instead.',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-analytics-stats',
+      title: 'System Health at a Glance',
+      content: 'Four numbers worth checking first: how many sessions are assigned, faculty coverage, sessions still missing an instructor, and hard conflicts that need fixing.',
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-analytics-score',
+      title: 'Coverage & Optimization Score',
+      content: 'The left card tracks instructor coverage over time; the right one scores how well the solver placed sessions automatically and within your time windows.',
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-analytics-composition',
+      title: 'Academic Composition',
+      content: 'See how sessions break down by program and by lecture vs. laboratory — useful for spotting an imbalance before it becomes a scheduling bottleneck.',
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-analytics-constraints',
+      title: 'Faculty & Room Load',
+      content: 'Faculty Workload flags anyone over their unit cap; Most Utilized Rooms shows which spaces are booked hardest — both are worth checking before finalizing a term.',
+      placement: 'bottom',
+    },
+  ])
 
   const [dist,           setDist]           = useState(null);
   const [quality,        setQuality]        = useState(null);
@@ -403,7 +446,6 @@ export default function AnalyticsPage() {
   useEffect(() => {
     listSaved().then(res => {
       const list = Array.isArray(res) ? res : (res?.schedules ?? []);
-      // listSaved() returns schedule objects, not plain name strings
       const names = list.map(item => (typeof item === "string" ? item : item?.name)).filter(Boolean);
       setSavedList(names);
     }).catch(() => {});
@@ -451,7 +493,23 @@ export default function AnalyticsPage() {
   const total        = dist?.totalSessions ?? 1;
   const programData  = (dist?.byProgram ?? []).map(p => ({ ...p, name: p.program,  value: p.sessions, total }));
   const typeData     = (dist?.byType     ?? []).map(t => ({ ...t, name: t.type,    value: t.count,    total }));
-  const dayData      = dist?.byDay ?? [];
+  
+  // Normalizing `byDay` handles discrepancies if the API returns an Object instead of an Array, 
+  // or if it returns { count: X } instead of { sessions: X }. This guarantees the BarChart renders.
+  const rawDayData = dist?.byDay;
+  const dayArray = Array.isArray(rawDayData) 
+    ? rawDayData 
+    : (typeof rawDayData === 'object' && rawDayData !== null) 
+      ? Object.entries(rawDayData).map(([k, v]) => ({ day: k, count: v })) 
+      : [];
+
+  const dayData = dayArray.map(d => {
+    const rawDay = String(d.day || d.name || "Unknown");
+    const day = rawDay.charAt(0).toUpperCase() + rawDay.slice(1).toLowerCase(); // Match DAY_COLORS
+    const sessions = d.sessions ?? d.count ?? d.value ?? (typeof d.count === 'number' ? d.count : 0);
+    return { ...d, day, sessions };
+  });
+  
   const roomData     = (dist?.roomUtilisation ?? []).slice(0, 8);
   const workloadData = (wl ?? [])
     .map(r => ({ ...r, fill: loadColor(r) }))
@@ -487,21 +545,13 @@ export default function AnalyticsPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div style={{
-      fontFamily: "'Poppins', sans-serif",
-      background: "var(--bg, #F0F7F4)",
-      minHeight: "100vh",
-      padding: "20px 28px",
-      color: "var(--ink)",
-      display: "flex",
-      flexDirection: "column",
-      gap: 16,
-    }}>
+    <div className="page" style={{ padding: "24px 32px", background: "var(--bg)", minHeight: "100%", display: "flex", flexDirection: "column", gap: 24, fontFamily: "'Inter', sans-serif" }}>
+      {TourElement}
       <style>{ANALYTICS_STYLE}</style>
 
       {/* ── Top control bar ── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div id="tour-analytics-source" style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {/* Session count badge */}
           <div style={{
             fontSize: 11.5, fontWeight: 600, color: "var(--muted)",
@@ -523,7 +573,7 @@ export default function AnalyticsPage() {
           />
         </div>
 
-        {/* Refresh button — matches DashboardPage pill style */}
+        {/* Refresh button */}
         <button
           onClick={load}
           disabled={loading}
@@ -555,7 +605,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* ── SECTION 1: System Health stat cards ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
+      <div id="tour-analytics-stats" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
 
         {/* Assigned Sessions */}
         <StatCard
@@ -591,7 +641,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* ── Coverage insight + Optimization Score row ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div id="tour-analytics-score" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         {/* Coverage insight card */}
         <div className="a-stat-card" style={{ alignItems: "flex-start", flexDirection: "column", gap: 6 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)" }}>Coverage Summary</div>
@@ -623,13 +673,14 @@ export default function AnalyticsPage() {
       {/* ── SECTION 2: Academic Composition ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
 
-        {/* Program Distribution — distinct PALETTE */}
+        {/* Program Distribution */}
         <Card>
           <CardHeader
+            id="tour-analytics-composition"
             title="Distribution by Program"
             subtitle="Session count per academic program"
           />
-          <div style={{ padding: "18px" }}>
+          <div style={{ padding: "18px", minHeight: 320 }}>
             {loading ? (
               <SectionSkel rows={5} />
             ) : (
@@ -656,13 +707,13 @@ export default function AnalyticsPage() {
           </div>
         </Card>
 
-        {/* Lecture vs Lab — green/blue clearly contrasting */}
+        {/* Lecture vs Lab */}
         <Card>
           <CardHeader
             title="Lecture vs. Laboratory"
             subtitle="Ratio of theoretical to practical sessions"
           />
-          <div style={{ padding: "18px" }}>
+          <div style={{ padding: "18px", minHeight: 320 }}>
             {loading ? (
               <SectionSkel rows={4} />
             ) : (
@@ -690,19 +741,19 @@ export default function AnalyticsPage() {
         </Card>
       </div>
 
-      {/* ── SECTION 3: Daily Session Volume (bar chart — distinct colour per day) ── */}
-      <Card>
+      {/* ── SECTION 3: Daily Session Volume ── */}
+      <Card id="tour-analytics-daily">
         <CardHeader
           title="Daily Session Volume"
           subtitle="Number of scheduled sessions per weekday"
         />
-        <div style={{ padding: "18px" }}>
+        <div style={{ padding: "18px", minHeight: 340 }}>
           {loading ? (
-            <SectionSkel rows={5} />
+            <SectionSkel rows={4} />
           ) : (
             <>
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={dayData} margin={{ top: 14, right: 4, bottom: 0, left: -20 }}>
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={dayData} margin={{ top: 20, right: 8, left: 0, bottom: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--hover)" />
                   <XAxis
                     dataKey="day" axisLine={false} tickLine={false}
@@ -744,9 +795,10 @@ export default function AnalyticsPage() {
       {/* ── SECTION 4: Resource Constraints ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
 
-        {/* Faculty Workload — load-based colour per bar */}
+        {/* Faculty Workload */}
         <Card>
           <CardHeader
+            id="tour-analytics-constraints"
             title="Faculty Workload"
             subtitle="Assigned units vs. maximum capacity"
             right={
@@ -760,7 +812,7 @@ export default function AnalyticsPage() {
               )
             }
           />
-          <div style={{ padding: "18px" }}>
+          <div style={{ padding: "18px", minHeight: Math.max(220, workloadData.length * 34) + 60 }}>
             {loading ? (
               <SectionSkel rows={6} />
             ) : (
@@ -810,13 +862,13 @@ export default function AnalyticsPage() {
           </div>
         </Card>
 
-        {/* Room Utilization — stepped PALETTE so bars are visually distinct */}
+        {/* Room Utilization */}
         <Card>
           <CardHeader
             title="Most Utilized Rooms"
             subtitle="Top rooms by total sessions assigned"
           />
-          <div style={{ padding: "18px" }}>
+          <div style={{ padding: "18px", minHeight: Math.max(220, roomData.length * 34) + 60 }}>
             {loading ? (
               <SectionSkel rows={6} />
             ) : (

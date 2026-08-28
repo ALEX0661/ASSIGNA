@@ -1,10 +1,19 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   coordListSchedules, coordDeleteSchedule,
   coordRenameSchedule, coordDuplicateSchedule, coordSubmitSchedule,
-  coordUnsubmitSchedule, coordGetSubmittedSchedule,
+  coordUnsubmitSchedule, coordCheckTurn,
 } from '../../services/api'
+import { useTour } from '../../hooks/useTour.jsx'
+
+const TOUR_SEEN_KEY = 'coordMySchedule_tourSeen'
+function isOnboardingCompleted() {
+  try { return localStorage.getItem(TOUR_SEEN_KEY) === '1' } catch { return true }
+}
+function markOnboardingCompleted() {
+  try { localStorage.setItem(TOUR_SEEN_KEY, '1') } catch {}
+}
 
 /* ── Design tokens (unified with CoordSchedulerPage / CourseListPage) ── */
 const G = {
@@ -15,6 +24,7 @@ const G = {
   surface: '#FFFFFF', hover: '#EBF4EF', amber: '#D97706',
   amberSoft: '#FEF3C7', amberBorder: '#FDE68A',
   red: '#C0392B', redSoft: '#FFF0F0', redBorder: '#FECACA',
+  blue: '#1D4ED8', blueSoft: '#DBEAFE', blueBorder: '#BFDBFE',
 }
 
 const CO_STYLE = `
@@ -68,6 +78,20 @@ const CO_STYLE = `
 
   /* Session count chip */
   .co-chip { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:${G.muted}; }
+
+  /* Page header */
+  .co-page-title { font-size:19px; font-weight:800; color:${G.ink}; margin:0; letter-spacing:-0.2px; }
+  .co-page-sub { font-size:12.5px; color:${G.muted}; margin:3px 0 0; }
+  .co-section-label { font-size:12px; font-weight:700; color:${G.inkMid}; text-transform:uppercase; letterSpacing:0.4px; }
+
+  /* Single-row toolbar — no wrap, no scrollbar. The status tabs, "Approved
+     so far" button, sort select, and New Schedule button keep their natural
+     size; the term select and search box are the two elements allowed to
+     shrink (down to a sane minimum) to absorb any width pressure. */
+  .co-toolbar { display:flex; align-items:center; gap:8px; flex-wrap:nowrap; width:100%; min-width:0; }
+  .co-toolbar-cluster { display:flex; align-items:center; gap:8px; flex-shrink:0; min-width:0; }
+  .co-tb-shrink { flex:1 1 auto; min-width:0; }
+  .co-tb-term { flex:0 1 170px; min-width:80px; text-overflow:ellipsis; white-space:nowrap; overflow:hidden; }
 `
 
 const STATUS_MAP = {
@@ -174,6 +198,23 @@ function Toast({ msg, onClose }) {
   )
 }
 
+  function Checkbox({ checked, indeterminate, onChange }) {
+    const active = checked || indeterminate
+    return (
+      <span onClick={onChange} style={{
+        width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+        border: `1.5px solid ${active ? G.meadow : G.border}`,
+        background: active ? G.meadow : 'transparent',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'all 0.15s', cursor: 'pointer',
+        boxShadow: active ? '0 2px 6px rgba(21,128,61,0.3)' : 'none',
+      }}>
+        {indeterminate && !checked && <svg width="8" height="2" viewBox="0 0 8 2" fill="none"><rect width="8" height="2" rx="1" fill="#fff"/></svg>}
+        {checked && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><polyline points="1,3.5 3.5,6 8,1" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+      </span>
+    )
+  }
+
 export default function CoordMySchedulePage() {
   const navigate = useNavigate()
 
@@ -187,27 +228,98 @@ export default function CoordMySchedulePage() {
   const [sortBy,         setSortBy]         = useState('newest')
   const [termFilter,     setTermFilter]     = useState('all')
 
-  // Master schedule (already-approved programs before this coordinator's turn)
-  const [masterEvents,      setMasterEvents]      = useState([])
-  const [masterLoading,     setMasterLoading]     = useState(false)
-  const [showMasterPanel,   setShowMasterPanel]   = useState(false)
+  const [selected,       setSelected]       = useState(new Set())
+  const [deleting,       setDeleting]       = useState(false)
+  const [confirmModal,   setConfirmModal]   = useState(null)
+
+  // Active queue's academic term — used to know which of *my* approved
+  // schedules is the one belonging to the currently active queue round (a
+  // program can have approved schedules from unrelated past terms sitting
+  // in this list; only the one matching the current queue's term gets the
+  // "view combined schedule" action on its row).
+  const [roundTerm,         setRoundTerm]         = useState(null)
+  const [hasApprovedInQueue, setHasApprovedInQueue] = useState(false)
+
+  const tourSteps = useMemo(() => {
+    const steps = [
+      {
+        target: '.co-seg',
+        title: 'Schedule Status',
+        content: 'Filter your generated schedules by their current state: Drafts you are working on, Submitted schedules waiting for admin review, or Approved schedules.',
+        placement: 'bottom'
+      },
+      {
+        target: '.co-tb-term',
+        title: 'Term Filter',
+        content: 'Use this to focus on schedules for a specific academic year and semester.',
+        placement: 'bottom'
+      },
+      {
+        target: '.co-btn-primary',
+        title: 'Generate Schedule',
+        content: 'Ready to build? Click here to enter the automated scheduler and start assigning courses to rooms and faculty.',
+        placement: 'left'
+      }
+    ];
+
+    if (schedules.length > 0) {
+      steps.push(
+        {
+          target: '.tour-btn-view',
+          title: 'View Schedule',
+          content: 'Click the eye icon to dive into this schedule. You can inspect its timetable, review health stats, or start manually assigning faculty to courses.',
+          placement: 'bottom'
+        },
+        {
+          target: '.tour-btn-rename',
+          title: 'Rename Draft',
+          content: 'Give your draft a clear name (like "Scenario A - Heavy Loading") so you can tell your experiments apart.',
+          placement: 'bottom'
+        },
+        {
+          target: '.tour-btn-duplicate',
+          title: 'Duplicate Schedule',
+          content: 'Want to try a different arrangement without ruining a good draft? Duplicate it first to safely experiment.',
+          placement: 'bottom'
+        },
+        {
+          target: '.tour-btn-submit',
+          title: 'Submit for Review',
+          content: 'When your draft is perfect, hit the green Submit button! This sends the schedule straight to the Administrator for approval. Make sure you\'re ready — you can\'t edit it again unless you recall it.',
+          placement: 'left'
+        },
+        {
+          target: '.tour-btn-delete',
+          title: 'Delete Draft',
+          content: 'Clean up drafts you no longer need. (Note: Only drafts can be deleted; submitted/approved ones are locked).',
+          placement: 'bottom'
+        }
+      );
+    } else {
+      steps.push({
+        target: '#tour-schedules-list',
+        title: 'Your Schedules',
+        content: 'Once you generate a schedule, it will appear here. You\'ll be able to view, rename, submit, or delete it from this list.',
+        placement: 'bottom'
+      });
+    }
+
+    return steps;
+  }, [schedules.length]);
+
+  const { TourElement, startTour } = useTour('coordSchedules', tourSteps, !loading)
+
+  
 
   useEffect(() => { loadList() }, [])
 
-  // Try to load the in-progress master schedule (events from already-approved programs)
   useEffect(() => {
-    async function loadMaster() {
-      setMasterLoading(true)
-      try {
-        const data = await coordGetSubmittedSchedule()
-        setMasterEvents(data?.schedule || [])
-      } catch {
-        // silently fail — master schedule is optional context
-      } finally {
-        setMasterLoading(false)
+    coordCheckTurn().then(t => {
+      if (t) {
+        setRoundTerm({ academicYear: t.academicYear, semester: t.semester })
+        setHasApprovedInQueue(t.queue?.some(p => p.status === 'approved') || false)
       }
-    }
-    loadMaster()
+    }).catch(() => {})
   }, [])
 
   async function loadList() {
@@ -217,10 +329,44 @@ export default function CoordMySchedulePage() {
 
   const flash = msg => setToast(msg)
 
+  const filteredIds = schedules.filter(s => s.status === 'draft').map(s => s.id)
+  const selCount = [...selected].filter(id => filteredIds.includes(id)).length
+  const selectionMode = selCount > 0
+  const allSel = filteredIds.length > 0 && selCount === filteredIds.length
+  const someSel = selCount > 0 && selCount < filteredIds.length
+
+  const togAll = () => allSel
+    ? setSelected(p => { const n = new Set(p); filteredIds.forEach(id => n.delete(id)); return n })
+    : setSelected(p => { const n = new Set(p); filteredIds.forEach(id => n.add(id)); return n })
+
+  const togOne = id => {
+    // Only allow selecting drafts
+    const s = schedules.find(x => x.id === id)
+    if (s && s.status === 'draft') {
+      setSelected(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n })
+    }
+  }
+
+  async function handleBulkDelete() {
+    if (selected.size === 0) return
+    setDeleting(true)
+    try {
+      await Promise.all([...selected].map(sid => coordDeleteSchedule(sid)))
+      flash(`Deleted ${selected.size} schedule(s)`)
+      setSelected(new Set())
+      loadList()
+    } catch {
+      flash('Failed to delete some schedules')
+    } finally {
+      setDeleting(false)
+      setConfirmModal(null)
+    }
+  }
+
   async function handleDelete(sid) {
-    if (!confirm('Delete this schedule?')) return
     try { await coordDeleteSchedule(sid); flash('Deleted'); loadList() }
     catch (e) { flash(e?.response?.data?.detail || 'Delete failed') }
+    finally { setConfirmModal(null) }
   }
 
   async function handleRename(sid) {
@@ -237,6 +383,7 @@ export default function CoordMySchedulePage() {
   async function handleSubmit(sid) {
     try { await coordSubmitSchedule(sid); flash('Submitted for review!'); loadList() }
     catch (e) { flash(e?.response?.data?.detail || 'Submit failed — this term may already have a submission') }
+    finally { setConfirmModal(null) }
   }
 
   async function handleUnsubmit(sid) {
@@ -289,123 +436,77 @@ export default function CoordMySchedulePage() {
     return schedules.some(o => o.id !== s.id && termKey(o) === key && (o.status === 'submitted' || o.status === 'approved'))
   }
 
+  // Allow viewing the combined master schedule for any schedule belonging to
+  // the currently active queue round, regardless of status.
+  function isActiveRound(s) {
+    return roundTerm
+      && hasApprovedInQueue
+      && roundTerm.academicYear === s.academicYear
+      && roundTerm.semester === s.semester
+  }
+
   return (
-    <div style={{ fontFamily: "'Inter',sans-serif", background: G.bg, minHeight: '100%', padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ fontFamily: "'Inter',sans-serif", background: G.bg, minHeight: '100%', padding: '24px 32px', display: 'flex', flexDirection: 'column', gap: 16 }}>
       <style>{CO_STYLE}</style>
       <Toast msg={toast} onClose={() => setToast('')} />
+      {TourElement}
 
-      {/* ── Toolbar ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <div className="co-seg">
-            {['all', 'draft', 'submitted', 'approved'].map(f => (
-              <button key={f} className={`co-seg-btn${filter === f ? ' active' : ''}`} onClick={() => setFilter(f)}>
-                {f.charAt(0).toUpperCase() + f.slice(1)}
-                <span className="co-seg-count">{counts[f]}</span>
+      {/* ── Your schedules ── */}
+      <div id="tour-schedules-list" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+          {selectionMode ? (
+            <div className="co-toolbar" style={{ background: '#2C3E50', borderColor: '#1A252F', color: '#fff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Checkbox checked={allSel} indeterminate={someSel} onChange={togAll} />
+              </div>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#fff', flex: 1, paddingLeft: 8 }}>{selCount} schedule{selCount !== 1 ? 's' : ''} selected</span>
+              <button onClick={() => setSelected(new Set())} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.85)', fontSize: 12, padding: '5px 14px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>Deselect all</button>
+              <button onClick={() => setConfirmModal({ action: 'bulkDelete' })} disabled={deleting} style={{ background: '#C0392B', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, padding: '5px 15px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontFamily: "'Inter',sans-serif", opacity: deleting ? 0.7 : 1 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                Delete {selCount}
               </button>
-            ))}
-          </div>
-
-          {termKeys.length > 0 && (
-            <select className="co-sel" value={termFilter} onChange={e => setTermFilter(e.target.value)} title="Filter by academic term">
-              <option value="all">All terms</option>
-              {termKeys.map(k => (
-                <option key={k} value={k}>{termMeta[k] ? (termLabel(termMeta[k]) || 'No term set') : 'No term set'}</option>
-              ))}
-            </select>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <select className="co-sel" value={sortBy} onChange={e => setSortBy(e.target.value)} title="Sort schedules">
-            <option value="newest">Newest first</option>
-            <option value="oldest">Oldest first</option>
-            <option value="name">Name (A–Z)</option>
-            <option value="events">Most sessions</option>
-          </select>
-
-          {/* Toggle for approved programs reference */}
-          {(masterEvents.length > 0 || masterLoading) && (
-            <button
-              className={`co-icon-btn${showMasterPanel ? ' active' : ''}`}
-              title="Approved programs (read-only reference)"
-              onClick={() => setShowMasterPanel(v => !v)}
-              style={{ width: 'auto', padding: '0 12px', gap: 6, fontFamily: "'Inter',sans-serif", fontSize: 11.5, fontWeight: 600 }}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
-              Approved Programs
-              {masterEvents.length > 0 && (
-                <span style={{ padding: '1px 7px', borderRadius: 99, fontSize: 9.5, fontWeight: 700, background: G.meadowSoft, color: G.meadowMid }}>
-                  {masterEvents.length}
-                </span>
-              )}
-            </button>
-          )}
-          <div style={{ position: 'relative' }}>
-            <svg style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={G.muted2} strokeWidth="2">
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search schedules…"
-              className="co-input" style={{ paddingLeft: 32, width: 220 }} />
-          </div>
-
-          <button className="co-btn co-btn-primary" onClick={() => navigate('/coordinator/scheduler')} style={{ padding: '7px 14px', flexShrink: 0 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            New Schedule
-          </button>
-        </div>
-      </div>
-
-      {/* ── Approved programs reference panel ── */}
-      {showMasterPanel && (
-        <div className="co-card" style={{ border: '1.5px solid #BBF7D0' }}>
-          <div style={{ padding: '12px 18px', borderBottom: '1px solid #D8E8DF', display: 'flex', alignItems: 'center', gap: 8, background: '#F0FDF4' }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2.2"><polyline points="20 6 9 17 4 12"/></svg>
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: '#15803D' }}>
-              Already-approved programs — read only
-            </span>
-            <span style={{ fontSize: 11, color: '#6B8C7A', marginLeft: 'auto' }}>
-              Use this as reference when building your schedule to avoid conflicts
-            </span>
-          </div>
-          {masterLoading ? (
-            <div style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {[1,2,3].map(i => <Skel key={i} h={36} r={8} />)}
-            </div>
-          ) : masterEvents.length === 0 ? (
-            <div style={{ padding: '32px 18px', textAlign: 'center', color: '#A0AEC0', fontSize: 13 }}>
-              No approved schedules yet — you may be first in queue.
             </div>
           ) : (
-            <div style={{ overflowX: 'auto', maxHeight: 320 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                <thead>
-                  <tr style={{ background: '#F2F7F4', position: 'sticky', top: 0 }}>
-                    {['Program', 'Course', 'Section', 'Day', 'Period', 'Room'].map(h => (
-                      <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: '#4A5568', letterSpacing: 0.4, textTransform: 'uppercase', borderBottom: '1px solid #D8E8DF', whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {masterEvents.map((ev, i) => (
-                    <tr key={i}
-                      onMouseEnter={e => e.currentTarget.style.background = '#F8FBFA'}
-                      onMouseLeave={e => e.currentTarget.style.background = ''}
-                      style={{ borderBottom: '1px solid #F0F4F2' }}>
-                      <td style={{ padding: '7px 12px', fontWeight: 600, color: '#15803D', whiteSpace: 'nowrap' }}>{ev.programCode || ev.program || '—'}</td>
-                      <td style={{ padding: '7px 12px', fontWeight: 600, color: '#0E2A20' }}>{ev.courseCode}</td>
-                      <td style={{ padding: '7px 12px', color: '#374151' }}>{ev.program}-{ev.year}{ev.block}</td>
-                      <td style={{ padding: '7px 12px', color: '#374151' }}>{ev.day}</td>
-                      <td style={{ padding: '7px 12px', color: '#374151', whiteSpace: 'nowrap' }}>{ev.period}</td>
-                      <td style={{ padding: '7px 12px', color: '#374151' }}>{ev.room || 'TBA'}</td>
-                    </tr>
+            <div className="co-toolbar">
+              <div className="co-seg" style={{ flexShrink: 0 }}>
+                {['all', 'draft', 'submitted', 'approved'].map(f => (
+                  <button key={f} className={`co-seg-btn${filter === f ? ' active' : ''}`} onClick={() => setFilter(f)}>
+                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                    <span className="co-seg-count">{counts[f]}</span>
+                  </button>
+                ))}
+              </div>
+
+              {termKeys.length > 0 && (
+                <select className="co-sel co-tb-term" value={termFilter} onChange={e => setTermFilter(e.target.value)} title="Filter by academic term">
+                  <option value="all">All terms</option>
+                  {termKeys.map(k => (
+                    <option key={k} value={k}>{termMeta[k] ? (termLabel(termMeta[k]) || 'No term set') : 'No term set'}</option>
                   ))}
-                </tbody>
-              </table>
+                </select>
+              )}
+
+              <select className="co-sel" value={sortBy} onChange={e => setSortBy(e.target.value)} title="Sort schedules" style={{ flexShrink: 0 }}>
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="name">Name (A–Z)</option>
+                <option value="events">Most sessions</option>
+              </select>
+
+              <div className="co-tb-shrink" style={{ position: 'relative', minWidth: 70 }}>
+                <svg style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={G.muted2} strokeWidth="2">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
+                  className="co-input" style={{ paddingLeft: 32, width: '100%' }} />
+              </div>
+
+              <button className="co-btn co-btn-primary" onClick={() => navigate('/coordinator/scheduler')} style={{ padding: '7px 14px', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                New Schedule
+              </button>
             </div>
           )}
-        </div>
-      )}
 
       {loading ? (
         <div className="co-card" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -462,12 +563,58 @@ export default function CoordMySchedulePage() {
           ))}
         </div>
       )}
-    </div>
-  )
+        </div>
+
+        {confirmModal && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ background: '#fff', borderRadius: 12, width: 400, maxWidth: '90%', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+              <div style={{ padding: '20px 24px', borderBottom: '1px solid #eee' }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#1A2F25' }}>
+                  {confirmModal.action === 'submit' ? 'Submit Schedule' : 'Delete Schedule'}
+                </h3>
+              </div>
+              <div style={{ padding: '24px' }}>
+                <p style={{ margin: 0, fontSize: 14, color: '#4B7060', lineHeight: 1.5 }}>
+                  {confirmModal.action === 'submit' 
+                    ? 'Are you sure you want to submit this schedule for approval? You will not be able to edit it unless the admin recalls it.'
+                    : confirmModal.action === 'bulkDelete'
+                      ? `Are you sure you want to delete ${selected.size} schedule(s)? This action cannot be undone.`
+                      : 'Are you sure you want to delete this schedule? This action cannot be undone.'}
+                </p>
+              </div>
+              <div style={{ padding: '16px 24px', background: '#F9FAFB', display: 'flex', justifyContent: 'flex-end', gap: 12, borderRadius: '0 0 12px 12px' }}>
+                <button className="co-btn co-btn-ghost" onClick={() => setConfirmModal(null)}>Cancel</button>
+                <button 
+                  className="co-btn co-btn-primary" 
+                  style={confirmModal.action === 'submit' ? {} : { background: '#DC2626', borderColor: '#B91C1C' }}
+                  onClick={() => {
+                    if (confirmModal.action === 'submit') {
+                      handleSubmit(confirmModal.id)
+                    } else if (confirmModal.action === 'bulkDelete') {
+                      handleBulkDelete()
+                    } else {
+                      handleDelete(confirmModal.id)
+                    }
+                  }}
+                >
+                  {confirmModal.action === 'submit' ? 'Submit' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
+    )
 
   function renderScheduleRow(s) {
+    const isSel = selected.has(s.id);
+    const isDraft = s.status === 'draft';
     return (
-            <div key={s.id} className="co-row">
+            <div key={s.id} className="co-row" onClick={() => isDraft && togOne(s.id)} style={{ cursor: isDraft ? 'pointer' : 'default', background: isSel ? G.meadowSoft : 'transparent' }}>
+              <div style={{ paddingRight: 14, minWidth: 30, display: 'flex', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                {isDraft ? <Checkbox checked={isSel} onChange={() => togOne(s.id)} /> : null}
+              </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 {renameId === s.id ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -504,26 +651,26 @@ export default function CoordMySchedulePage() {
               </div>
 
               {renameId !== s.id && (
-                <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                  <button className="co-row-icon-btn" title="View schedule" onClick={() => navigate(`/coordinator/schedules/${s.id}`)}>
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
+                  <button className="co-row-icon-btn tour-btn-view" title="View schedule" onClick={() => navigate(`/coordinator/schedules/${s.id}`)}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
                   </button>
                   {s.status === 'draft' && (
-                    <button className="co-row-icon-btn" title="Rename" onClick={() => { setRenameId(s.id); setRenameName(s.name) }}>
+                    <button className="co-row-icon-btn tour-btn-rename" title="Rename" onClick={() => { setRenameId(s.id); setRenameName(s.name) }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                     </button>
                   )}
-                  <button className="co-row-icon-btn" title="Duplicate" onClick={() => handleDuplicate(s.id, s.name)}>
+                  <button className="co-row-icon-btn tour-btn-duplicate" title="Duplicate" onClick={() => handleDuplicate(s.id, s.name)}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                   </button>
                   {s.status === 'draft' && (
                     <>
-                      <button className="co-row-icon-btn primary" disabled={termLocked(s)}
+                      <button className="co-row-icon-btn tour-btn-submit" disabled={termLocked(s)}
                         title={termLocked(s) ? 'Another schedule is already submitted/approved for this term' : 'Submit for review'}
-                        onClick={() => !termLocked(s) && handleSubmit(s.id)}>
+                        onClick={() => !termLocked(s) && setConfirmModal({ action: 'submit', id: s.id })}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                       </button>
-                      <button className="co-row-icon-btn danger" title="Delete" onClick={() => handleDelete(s.id)}>
+                      <button className="co-row-icon-btn tour-btn-delete danger" title="Delete" onClick={() => setConfirmModal({ action: 'delete', id: s.id })}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
                       </button>
                     </>
@@ -531,6 +678,13 @@ export default function CoordMySchedulePage() {
                   {s.status === 'submitted' && (
                     <button className="co-row-icon-btn amber" title="Withdraw from review" onClick={() => handleUnsubmit(s.id)}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+                    </button>
+                  )}
+                  {isActiveRound(s) && (
+                    <button className="co-row-icon-btn" style={{ color: G.blue, borderColor: G.blueBorder, background: G.blueSoft }}
+                      title="View the combined schedule — see how this schedule fits with what's approved so far"
+                      onClick={() => navigate(`/coordinator/schedules/master?overlay=${s.id}`)}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="15" width="7" height="7" rx="1.5"/><rect x="14" y="15" width="7" height="7" rx="1.5"/></svg>
                     </button>
                   )}
                 </div>

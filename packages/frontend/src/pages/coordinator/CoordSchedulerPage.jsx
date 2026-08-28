@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
@@ -7,10 +7,12 @@ import {
   coordSaveSchedule, coordListSchedules, coordDeleteSchedule,
   coordRenameSchedule, coordDuplicateSchedule, coordSubmitSchedule, coordUnsubmitSchedule,
   coordGetRooms, coordGetSelectedRooms, coordSelectRooms, coordGetCourses,
-  coordGetSettings
+  coordGetSettings, coordGetSubmittedSchedule
 } from '../../services/api'
+import { useTour } from '../../hooks/useTour.jsx'
 import { useCoordSolverStore } from '../../store/scheduleStore'
 import ScheduleGeneratorLoader from '../admin/ScheduleGeneratorLoader'
+import TimeGrid from '../../components/ScheduleView/TimeGrid'
 import roomsIcon from '../../assets/ROOMS.png'
 
 /* ─────────────────────────── CONSTANTS & SETTINGS ─────────────────────────── */
@@ -48,6 +50,44 @@ const CHECK_META = {
   pass: { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder, dot: G.meadow,  label: 'Pass' },
   warn: { color: '#D97706',    bg: '#FFFBEB',    border: '#FDE68A',      dot: '#F59E0B', label: 'Warn' },
   fail: { color: '#DC2626',    bg: '#FEE2E2',    border: '#FECACA',      dot: '#EF4444', label: 'Fail' },
+  info: { color: G.blue,       bg: G.blueSoft,   border: G.blueBorder,   dot: G.blue,    label: 'Info' },
+}
+
+// ── Room usage from previously-approved coordinator schedules ──────────────
+// Parses a saved event's "period" string ("7:00 AM - 8:30 AM") into a
+// duration in hours. Returns 0 for anything that doesn't match, so a bad
+// record just doesn't count instead of blowing up the summary.
+function _periodHours(period) {
+  if (!period || typeof period !== 'string') return 0
+  const parts = period.split(' - ')
+  if (parts.length !== 2) return 0
+  const toHours = str => {
+    const m = str.trim().match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i)
+    if (!m) return null
+    let h = parseInt(m[1], 10)
+    const min = parseInt(m[2], 10)
+    const ampm = m[3].toUpperCase()
+    if (ampm === 'PM' && h !== 12) h += 12
+    if (ampm === 'AM' && h === 12) h = 0
+    return h + min / 60
+  }
+  const start = toHours(parts[0])
+  const end = toHours(parts[1])
+  if (start == null || end == null || end <= start) return 0
+  return end - start
+}
+
+// Total hours each room is already booked for, from a list of events —
+// used both to badge room chips ("this room's filling up") and to keep the
+// readiness check from double-counting hours other programs already claimed.
+function summarizeRoomHours(events) {
+  const byRoom = {}
+  for (const ev of (events || [])) {
+    const room = ev.room
+    if (!room || room === 'TBA') continue
+    byRoom[room] = (byRoom[room] || 0) + _periodHours(ev.period)
+  }
+  return byRoom
 }
 
 const REC_META = {
@@ -364,7 +404,7 @@ function QueueRail({ queue, myProgram, currentProgram }) {
   )
 }
 
-function RoomGroup({ title, all, selected, onToggle, onSelectAll, onClear, compact }) {
+function RoomGroup({ title, all, selected, onToggle, onSelectAll, onClear, compact, usage }) {
   if (!all || all.length === 0) {
     return compact ? (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: G.hover, borderRadius: 8, border: `1px dashed ${G.border}` }}>
@@ -396,14 +436,30 @@ function RoomGroup({ title, all, selected, onToggle, onSelectAll, onClear, compa
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
         {all.map(room => {
           const picked = selected.includes(room)
+          const u = usage?.[room]
+          const badge = u && u.hours > 0.05
+            ? (u.pct >= 85 ? { bg: '#FEE2E2', color: '#DC2626' } : u.pct >= 50 ? { bg: '#FEF3C7', color: '#92400E' } : { bg: G.meadowSoft, color: G.meadowDeep })
+            : null
           return (
-            <span key={room} className={`csh-room-chip${picked ? ' picked' : ''}`} onClick={() => onToggle(room)}>
+            <span key={room} className={`csh-room-chip${picked ? ' picked' : ''}`} onClick={() => onToggle(room)}
+              title={badge ? `${u.hours.toFixed(1)}h/week already booked by previously-approved programs (~${u.pct}% of this room's weekly capacity)` : 'Not used by any previously-approved program yet'}>
               {picked && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
               {room}
+              {badge && (
+                <span style={{ marginLeft: 5, fontSize: 9.5, fontWeight: 800, padding: '1px 5px', borderRadius: 99, background: badge.bg, color: badge.color }}>
+                  {u.pct}%
+                </span>
+              )}
             </span>
           )
         })}
       </div>
+      {usage && Object.keys(usage).length > 0 && (
+        <div id="tour-room-usage-legend" style={{ fontSize: 10.5, color: G.muted2, marginTop: 7, display: 'flex', alignItems: 'center', gap: 5 }}>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          % shown is how full that room already is from programs approved ahead of you in the queue.
+        </div>
+      )}
     </div>
   )
 }
@@ -486,7 +542,7 @@ function PhaseTimeline({ currentPhaseIdx, status, progress }) {
   )
 }
 
-function CoordinatorCheckPanel({ semester }) {
+function CoordinatorCheckPanel({ semester, masterEvents }) {
   const [diag, setDiag] = useState(null)
   const [diagLoading, setDiagLoading] = useState(false)
   const [diagError, setDiagError] = useState(null)
@@ -496,11 +552,16 @@ function CoordinatorCheckPanel({ semester }) {
   async function runDiagnostic() {
     setDiagLoading(true); setDiagError(null);
     try {
+      // masterEvents comes from the parent page, which already fetched it
+      // once in loadAll() — reading it again here would double the cost of
+      // an already-expensive call (the master schedule's events live one
+      // doc per session in Firestore, so this is O(sessions) reads, not 1).
       const [courses, selectedRooms, settings] = await Promise.all([
         coordGetCourses(),
         coordGetSelectedRooms(),
-        coordGetSettings()
+        coordGetSettings(),
       ]);
+      const roomHoursBooked = summarizeRoomHours(masterEvents);
 
       const checks = [];
       const recs = [];
@@ -529,7 +590,7 @@ function CoordinatorCheckPanel({ semester }) {
         const lab = Number(c.unitsLab) || 0;
         const blocks = Number(c.blocks) || 1;
         const code = (c.courseCode || '').toUpperCase();
-        const isMergedType = code.includes('NSTP') || code.startsWith('GEC') || code.startsWith('MAT');
+        const isMergedType = code.includes('NSTP') || code.startsWith('GEC') || (code.startsWith('MAT') && !code.startsWith('MATH'));
         const lecBlocks = isMergedType ? Math.ceil(blocks / 2) : blocks;
 
         lecDemandHours += lec * lecBlocks;
@@ -551,15 +612,38 @@ function CoordinatorCheckPanel({ semester }) {
         checks.push({ id: 'time1', label: 'Time Window Settings', status: 'pass', detail: `${activeDays} operating day(s), ${hoursPerDay} hour(s)/day (${startT}:00–${endT}:00).` });
       }
 
-      // System-wide fallback counts, used only when the coordinator hasn't explicitly picked rooms of that type
-      const systemLecRooms = (settings?.rooms?.lecture || []).length;
-      const systemLabRooms = (settings?.rooms?.lab || []).length;
-      const effectiveLecRooms = selectedLec.length > 0 ? selectedLec.length : systemLecRooms;
-      const effectiveLabRooms = selectedLab.length > 0 ? selectedLab.length : systemLabRooms;
+      // System-wide fallback names, used only when the coordinator hasn't explicitly picked rooms of that type
+      const systemLecRoomNames = settings?.rooms?.lecture || [];
+      const systemLabRoomNames = settings?.rooms?.lab || [];
+      const systemLecRooms = systemLecRoomNames.length;
+      const systemLabRooms = systemLabRoomNames.length;
+      const effectiveLecRoomNames = selectedLec.length > 0 ? selectedLec : systemLecRoomNames;
+      const effectiveLabRoomNames = selectedLab.length > 0 ? selectedLab : systemLabRoomNames;
+      const effectiveLecRooms = effectiveLecRoomNames.length;
+      const effectiveLabRooms = effectiveLabRoomNames.length;
       const lecCapacityHours = effectiveLecRooms * activeDays * hoursPerDay;
       const labCapacityHours = effectiveLabRooms * activeDays * hoursPerDay;
       const lecFallback = selectedLec.length === 0 && systemLecRooms > 0;
       const labFallback = selectedLab.length === 0 && systemLabRooms > 0;
+
+      // ── Hours other, already-approved programs have claimed in these same
+      // rooms — the merge injects these as pre-bookings before your solve
+      // runs, so they're not actually free capacity even though nothing
+      // you've generated yet uses them. Net them out before judging whether
+      // your demand fits, or "capacity" here would overstate what's real.
+      const lecBookedHours = effectiveLecRoomNames.reduce((sum, r) => sum + (roomHoursBooked[r] || 0), 0);
+      const labBookedHours = effectiveLabRoomNames.reduce((sum, r) => sum + (roomHoursBooked[r] || 0), 0);
+      const lecAvailableHours = Math.max(0, lecCapacityHours - lecBookedHours);
+      const labAvailableHours = Math.max(0, labCapacityHours - labBookedHours);
+
+      if (lecBookedHours > 0 || labBookedHours > 0) {
+        checks.push({
+          id: 'room-overlap',
+          label: 'Room Overlap — Other Programs',
+          status: 'info',
+          detail: `Programs already approved ahead of you in the queue occupy ${lecBookedHours.toFixed(1)}h of lecture time and ${labBookedHours.toFixed(1)}h of lab time in your selected rooms. That's already subtracted from the capacity checks below, so the merge won't double-book those slots.`
+        });
+      }
 
       // ── Courses ──
       if (courseList.length === 0) {
@@ -577,47 +661,51 @@ function CoordinatorCheckPanel({ semester }) {
         recs.push({ type: 'warning', title: 'Incomplete Course Data', body: `${incompleteCourses} course(s) are missing unitsLecture/unitsLab. Ask the admin to verify them — otherwise the readiness numbers may look better than reality.` });
       }
 
-      // ── Lecture Room Capacity ──
+      // ── Lecture Room Capacity ── (compared against hours actually still
+      // free — i.e. after subtracting what other approved programs already
+      // hold in these rooms — not the room's raw theoretical capacity)
       const lecCourses = courseList.filter(c => (Number(c.unitsLecture) || 0) > 0);
+      const lecBookedNote = lecBookedHours > 0 ? ` (${lecCapacityHours}h raw − ${lecBookedHours.toFixed(1)}h already booked by other programs)` : '';
       if (lecDemandHours > 0 && effectiveLecRooms === 0) {
         checks.push({ id: 'cap-lec', label: 'Lecture Room Capacity', status: 'fail', detail: `${lecCourses.length} course(s) need ${lecDemandHours}h of lecture time, but no lecture room is selected or configured.` });
         failCount++;
         recs.push({ type: 'blocker', title: 'No Lecture Rooms Available', body: 'Select at least one lecture room in Step 1, or ask the admin to configure lecture rooms for your program.' });
-      } else if (lecDemandHours > lecCapacityHours) {
-        const short = lecDemandHours - lecCapacityHours;
-        checks.push({ id: 'cap-lec', label: 'Lecture Room Capacity', status: 'fail', detail: `Lecture demand is ${lecDemandHours}h, but your ${effectiveLecRooms} lecture room(s) only provide ${lecCapacityHours}h — short by ${short}h.` });
+      } else if (lecDemandHours > lecAvailableHours) {
+        const short = lecDemandHours - lecAvailableHours;
+        checks.push({ id: 'cap-lec', label: 'Lecture Room Capacity', status: 'fail', detail: `Lecture demand is ${lecDemandHours}h, but only ${lecAvailableHours.toFixed(1)}h is actually free in your ${effectiveLecRooms} lecture room(s)${lecBookedNote} — short by ${short.toFixed(1)}h.` });
         failCount++;
-        recs.push({ type: 'blocker', title: 'Insufficient Lecture Capacity', body: `You're short ${short} lecture-hour(s). Select more lecture rooms in Step 1 — lab rooms can't cover lecture sessions.` });
+        recs.push({ type: 'blocker', title: 'Insufficient Lecture Capacity', body: `You're short ${short.toFixed(1)} lecture-hour(s)${lecBookedHours > 0 ? ', partly because other approved programs already hold time in these rooms' : ''}. Select more (or different, less-contested) lecture rooms in Step 1.` });
       } else {
-        const util = lecCapacityHours ? Math.round((lecDemandHours / lecCapacityHours) * 100) : 0;
+        const util = lecAvailableHours ? Math.round((lecDemandHours / lecAvailableHours) * 100) : 0;
         if (lecDemandHours > 0 && util >= 85) {
-          checks.push({ id: 'cap-lec', label: 'Lecture Room Capacity', status: 'warn', detail: `Lecture rooms are ${util}% utilized (${lecDemandHours}h of ${lecCapacityHours}h available)${lecFallback ? ' — using system rooms since none are explicitly selected' : ''} — tight, but should fit.` });
+          checks.push({ id: 'cap-lec', label: 'Lecture Room Capacity', status: 'warn', detail: `Lecture rooms are ${util}% utilized (${lecDemandHours}h of ${lecAvailableHours.toFixed(1)}h actually free${lecBookedNote})${lecFallback ? ' — using system rooms since none are explicitly selected' : ''} — tight, but should fit.` });
           warnCount++;
           if (lecFallback) recs.push({ type: 'warning', title: 'Lecture Rooms Not Explicitly Selected', body: 'Utilization is already tight and you\'re relying on system-wide lecture rooms, which may get contested by other programs. Select specific lecture rooms in Step 1.' });
         } else {
-          checks.push({ id: 'cap-lec', label: 'Lecture Room Capacity', status: 'pass', detail: lecDemandHours > 0 ? `Lecture demand is ${lecDemandHours}h, within ${lecCapacityHours}h available (${util}% utilized)${lecFallback ? ', using system rooms' : ''}.` : 'No courses in this program require dedicated lecture sessions.' });
+          checks.push({ id: 'cap-lec', label: 'Lecture Room Capacity', status: 'pass', detail: lecDemandHours > 0 ? `Lecture demand is ${lecDemandHours}h, within ${lecAvailableHours.toFixed(1)}h actually free (${util}% utilized)${lecBookedNote}${lecFallback ? ', using system rooms' : ''}.` : 'No courses in this program require dedicated lecture sessions.' });
         }
       }
 
       // ── Lab Room Capacity (kept separate — a lab room shortfall can't be papered over with extra lecture rooms) ──
       const labCourses = courseList.filter(c => (Number(c.unitsLab) || 0) > 0);
+      const labBookedNote = labBookedHours > 0 ? ` (${labCapacityHours}h raw − ${labBookedHours.toFixed(1)}h already booked by other programs)` : '';
       if (labDemandHours > 0 && effectiveLabRooms === 0) {
         checks.push({ id: 'cap-lab', label: 'Lab Room Capacity', status: 'fail', detail: `${labCourses.length} course(s) require ${labDemandHours}h of lab time, but no lab room exists or is selected for ${coordinatorProgram}.` });
         failCount++;
         recs.push({ type: 'blocker', title: 'No Lab Rooms Available', body: 'The solver has no lab room to place required lab sessions in — extra lecture rooms will NOT fix this. Select lab rooms in Step 1, or ask the admin to configure lab rooms.' });
-      } else if (labDemandHours > labCapacityHours) {
-        const short = labDemandHours - labCapacityHours;
-        checks.push({ id: 'cap-lab', label: 'Lab Room Capacity', status: 'fail', detail: `Lab demand is ${labDemandHours}h, but your ${effectiveLabRooms} lab room(s) only provide ${labCapacityHours}h — short by ${short}h.` });
+      } else if (labDemandHours > labAvailableHours) {
+        const short = labDemandHours - labAvailableHours;
+        checks.push({ id: 'cap-lab', label: 'Lab Room Capacity', status: 'fail', detail: `Lab demand is ${labDemandHours}h, but only ${labAvailableHours.toFixed(1)}h is actually free in your ${effectiveLabRooms} lab room(s)${labBookedNote} — short by ${short.toFixed(1)}h.` });
         failCount++;
-        recs.push({ type: 'blocker', title: 'Insufficient Lab Capacity', body: `You're short ${short} lab-hour(s). Select more lab rooms in Step 1 — lecture rooms can't substitute for lab sessions.` });
+        recs.push({ type: 'blocker', title: 'Insufficient Lab Capacity', body: `You're short ${short.toFixed(1)} lab-hour(s)${labBookedHours > 0 ? ', partly because other approved programs already hold time in these rooms' : ''}. Select more (or different, less-contested) lab rooms in Step 1.` });
       } else {
-        const util = labCapacityHours ? Math.round((labDemandHours / labCapacityHours) * 100) : 0;
+        const util = labAvailableHours ? Math.round((labDemandHours / labAvailableHours) * 100) : 0;
         if (labDemandHours > 0 && util >= 85) {
-          checks.push({ id: 'cap-lab', label: 'Lab Room Capacity', status: 'warn', detail: `Lab rooms are ${util}% utilized (${labDemandHours}h of ${labCapacityHours}h available)${labFallback ? ' — using system rooms since none are explicitly selected' : ''} — tight, but should fit.` });
+          checks.push({ id: 'cap-lab', label: 'Lab Room Capacity', status: 'warn', detail: `Lab rooms are ${util}% utilized (${labDemandHours}h of ${labAvailableHours.toFixed(1)}h actually free${labBookedNote})${labFallback ? ' — using system rooms since none are explicitly selected' : ''} — tight, but should fit.` });
           warnCount++;
           if (labFallback) recs.push({ type: 'warning', title: 'Lab Rooms Not Explicitly Selected', body: 'Utilization is already tight and you\'re relying on system-wide lab rooms, which may get contested by other programs. Select specific lab rooms in Step 1.' });
         } else {
-          checks.push({ id: 'cap-lab', label: 'Lab Room Capacity', status: 'pass', detail: labDemandHours > 0 ? `Lab demand is ${labDemandHours}h, within ${labCapacityHours}h available (${util}% utilized)${labFallback ? ', using system rooms' : ''}.` : 'No courses in this program require dedicated lab sessions.' });
+          checks.push({ id: 'cap-lab', label: 'Lab Room Capacity', status: 'pass', detail: labDemandHours > 0 ? `Lab demand is ${labDemandHours}h, within ${labAvailableHours.toFixed(1)}h actually free (${util}% utilized)${labBookedNote}${labFallback ? ', using system rooms' : ''}.` : 'No courses in this program require dedicated lab sessions.' });
         }
       }
 
@@ -648,7 +736,8 @@ function CoordinatorCheckPanel({ semester }) {
 
   useEffect(() => {
     if (semester) runDiagnostic()
-  }, [semester])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [semester, masterEvents])
 
   if (!semester) {
     return (
@@ -772,6 +861,131 @@ export default function CoordSchedulerPage() {
   const navigate = useNavigate()
   const { toasts, toast } = useToast()
 
+  const [wizStep, setWizStep] = useState(1)
+  const [maxReached, setMaxReached] = useState(1)
+  const [slideDir, setSlideDir] = useState('enter')
+
+  // Steps depend on which wizard step is currently mounted, since every
+  // step swaps out its DOM entirely (Readiness/Generate/Review are not
+  // present while on Setup, and vice versa). useTour reads `steps` fresh
+  // on every render, so recomputing this per wizStep is enough to make
+  // the single header '?' button show the right walkthrough wherever the
+  // coordinator currently is, without needing a separate tour per step.
+  const stepsForWizStep = useMemo(() => {
+    if (wizStep === 1) {
+      return [
+        {
+          target: '#tour-wiz-nav',
+          title: 'Welcome to the Scheduler',
+          content: 'This 4-step wizard walks you through Queue & Room Setup, Readiness checks, Generating, and finally Reviewing & Saving your schedule. Once a step is complete you can jump back to it any time by clicking its label here.',
+          disableBeacon: true,
+        },
+        {
+          target: '#tour-queue-card',
+          title: 'Queue Status',
+          content: 'Schedules are generated one program at a time. This card shows whose turn it is and where you sit in line — feel free to look around while you wait, but the solver stays locked until it\'s your turn.',
+        },
+        {
+          target: '#tour-room-selection',
+          title: 'Room Selection',
+          content: 'Pick the lecture and lab rooms your program is allowed to use. Only rooms checked here are available to the solver, so leaving one unchecked means it will never be scheduled into it. Don\'t forget to save your selection — "Continue to Readiness" stays disabled until you do.',
+          placement: 'top',
+        },
+        {
+          target: '#tour-room-usage-legend',
+          title: 'Reading the Room Badges',
+          content: 'The % badge on a room shows how full it already is from programs approved ahead of you in the queue — green is mostly free, amber is filling up, red is nearly booked out. Picking a room that\'s already near capacity leaves the solver less room to work with.',
+          placement: 'top',
+        },
+        {
+          target: '#tour-my-schedules',
+          title: 'My Schedules',
+          content: 'Every schedule you\'ve generated and saved shows up here. A draft can be viewed, renamed, or submitted for the admin\'s approval, and a submitted schedule can still be recalled if you need to make changes.',
+          // This card sits near the top of the page, so the default
+          // bottom/top placement had nowhere to flip to without clipping
+          // above the viewport. Anchoring to its left keeps the tooltip
+          // fully on-screen regardless of scroll position.
+          placement: 'left',
+        },
+        {
+          target: '#tour-wiz-next',
+          title: 'Next: Readiness',
+          content: 'Once your rooms are saved, click here to move on. The steps ahead let you run the readiness check, start the solver, and review the generated timetable before saving it as a new draft.',
+          placement: 'top',
+        },
+      ]
+    }
+    if (wizStep === 2) {
+      return [
+        {
+          target: '#tour-readiness-panel',
+          title: 'Readiness Check',
+          content: 'This step checks whether your course and room setup can structurally support a schedule before you spend time generating one. Each check either passes, warns, or fails, and includes the underlying utilization percentage — e.g. how much of your lecture or lab room capacity is already demanded. A fail here means generating won\'t produce a usable schedule, so it\'s worth fixing the underlying course or room setup first. Hit Refresh after making changes elsewhere to re-run these checks.',
+          placement: 'center',
+          disableBeacon: true,
+        },
+        {
+          target: '#tour-wiz-next',
+          title: 'Next: Generate',
+          content: 'Once you\'re satisfied with readiness, continue on to Generate. Note that generating itself stays locked until it\'s your turn in the queue.',
+          placement: 'top',
+        },
+      ]
+    }
+    if (wizStep === 3) {
+      return [
+        {
+          target: '#tour-solver-engine',
+          title: 'Generate',
+          content: 'This is the Generate step, where the constraint solver actually builds a timetable for your program using the rooms you selected earlier. Hit Start Solver to run it — it\'s safe to navigate away while it runs since it continues in the background.',
+          placement: 'center',
+          disableBeacon: true,
+        },
+        {
+          target: '#tour-phase-timeline',
+          title: 'Phase Progress',
+          content: 'This tracks the solver through its 7 scheduling phases in order, so you can see roughly where it is and how far it has left — no need to guess whether it\'s stuck.',
+          placement: 'top',
+        },
+      ]
+    }
+    // wizStep === 4
+    return [
+      {
+        target: '#tour-review-result',
+        title: 'Review & Save',
+        content: 'Check the generated timetable over before committing it as a draft. Every event the solver placed shows up here — switch views, filter, or search to check for anything that looks off before saving. You can still re-generate from the Generate step if something needs fixing.',
+        placement: 'center',
+        disableBeacon: true,
+      },
+      {
+        target: '#tour-save-schedule',
+        title: 'Save as Draft',
+        content: 'Give this run a name and save it as a draft. It won\'t be submitted for approval automatically — you can find it later under My Schedules to submit whenever you\'re ready.',
+        placement: 'top',
+      },
+    ]
+  }, [wizStep])
+
+  const { TourComponent, startTour, run: tourRunning } = useTour('coordScheduler', stepsForWizStep)
+
+  // When the coordinator advances/returns to a different wizard step while
+  // the main tour is actively running, `stepsForWizStep` above swaps out
+  // entirely for that step's own array. Without this, the tour's stepIndex
+  // stays wherever it was in the *previous* array (often past the end of
+  // the new, shorter one), which made Joyride re-measure against
+  // '#tour-wiz-nav' over and over — the "keeps re-highlighting the
+  // stepper" loop. Jumping back to index 0 of the fresh array whenever the
+  // wizard step actually changes (not on every render) keeps the tour
+  // moving forward into that step's real content instead.
+  const prevWizStepRef = useRef(wizStep)
+  useEffect(() => {
+    if (prevWizStepRef.current !== wizStep) {
+      if (tourRunning) startTour()
+      prevWizStepRef.current = wizStep
+    }
+  }, [wizStep, tourRunning, startTour])
+
   const [turnData, setTurnData] = useState(null)
   const [schedules, setSchedules] = useState([])
   const [loadingInit, setLoadingInit] = useState(true)
@@ -783,12 +997,28 @@ export default function CoordSchedulerPage() {
   const [roomsSaving, setRoomsSaving] = useState(false)
   const [roomsDirty, setRoomsDirty] = useState(false)
 
-  const [wizStep, setWizStep] = useState(1)
-  const [maxReached, setMaxReached] = useState(1)
-  const [slideDir, setSlideDir] = useState('enter')
+  // Events from every program already approved ahead of this coordinator in
+  // the queue — used to show which rooms are filling up before generating,
+  // and fed to the readiness checker so it doesn't count hours other
+  // programs already claimed as still "available".
+  const [masterEvents, setMasterEvents] = useState([])
+  const [globalSettings, setGlobalSettings] = useState(null)
+
+  const roomUsage = useMemo(() => {
+    const hours = summarizeRoomHours(masterEvents)
+    const activeDays = (globalSettings?.days || []).length || 6
+    const startT = Number(globalSettings?.time?.start_time) || 7
+    const endT = Number(globalSettings?.time?.end_time) || 21
+    const weeklyCap = Math.max(1, activeDays * (endT - startT))
+    const out = {}
+    for (const [room, h] of Object.entries(hours)) {
+      out[room] = { hours: h, pct: Math.min(100, Math.round((h / weeklyCap) * 100)) }
+    }
+    return out
+  }, [masterEvents, globalSettings])
 
   const {
-    processId, progress, status: statusState, label, result,
+    processId, progress, status: statusState, result,
     error: genError, errorKind: genErrorKind,
     setProcessId, setProgress, setStatus, setLabel, setResult,
     setError, setErrorKind,
@@ -811,12 +1041,35 @@ export default function CoordSchedulerPage() {
   // starting a new solve during that window is what causes the "already
   // running" 409 conflict.
   const [stopRequested, setStopRequested] = useState(false)
+  const [activeDay, setActiveDay] = useState('Monday')
+  const [reviewViewMode, setReviewViewMode] = useState('grid')
 
   const [renameId, setRenameId] = useState(null)
   const [renameTmp, setRenameTmp] = useState('')
   const [actionLoading, setActionLoading] = useState(null)
 
   const isMyTurn = turnData?.isMyTurn
+
+  // Separate one-time guide for the moment a coordinator first reaches
+  // Step 3 while it's actually their turn. Uses its own tourId so it has
+  // its own localStorage "seen" flag, independent of the Step-1 intro
+  // tour above. isReady is only true while both conditions hold, so
+  // useTour's internal effect re-checks (and can auto-arm) the moment
+  // isMyTurn flips true via the 15s poll while already sitting on Step 3.
+  const { TourComponent: TurnTourComponent } = useTour(
+    'coordSchedulerYourTurn',
+    [
+      {
+        target: '#tour-wiz-next',
+        title: "It's Your Turn",
+        content: "You can now run the solver — hit Start Solver whenever you're ready. It runs in the background, so it's safe to navigate away while it works.",
+        disableBeacon: true,
+      },
+    ],
+    isMyTurn && wizStep === 3,
+    { isPrimary: false }
+  )
+
   const currentProg = turnData?.currentProgram
   const myPos = turnData?.myPosition
   const qLen = turnData?.queueLength
@@ -829,17 +1082,50 @@ export default function CoordSchedulerPage() {
   const roundSemester = turnData?.semester
   const roundAY = turnData?.academicYear
 
+  // When the backend has no "turn" left to report for this coordinator, it
+  // just omits queueId — which used to render as "No active queue", the same
+  // message shown before a queue ever existed. But "no turn left" usually
+  // means the coordinator already finished this round (schedule submitted
+  // or approved), not that nothing has happened yet. Tell those two apart
+  // using their own schedule history so a done coordinator sees "you're
+  // done", not a message implying they still need to wait on the admin.
+  const latestActiveSchedule = !hasQueue
+    ? [...schedules]
+        .filter(s => s.status === 'submitted' || s.status === 'approved')
+        .sort((a, b) => (new Date(b.createdAt || 0)) - (new Date(a.createdAt || 0)))[0]
+    : null
+  const doneStatus = latestActiveSchedule?.status || null // 'approved' | 'submitted' | null
+  function doneTermLabel(s) {
+    const parts = [s?.academicYear ? `A.Y. ${s.academicYear}` : null, s?.semester || null].filter(Boolean)
+    return parts.length ? parts.join(' • ') : null
+  }
+
   useEffect(() => { loadAll() }, [])
 
   // The queue rail (who's waiting/active/generating/submitted) was only ever
   // fetched once on page load, so a coordinator sitting on Setup/Readiness
   // had no way to see the active program start generating or finish without
-  // refreshing the page. Poll just the turn/queue snapshot in the background.
+  // refreshing the page. Poll just the turn/queue snapshot in the background —
+  // but only while the tab is actually visible, so a coordinator who leaves
+  // this tab open in the background all day isn't silently burning a read
+  // every 10s for a screen nobody's looking at.
   useEffect(() => {
-    const id = setInterval(() => {
-      coordCheckTurn().then(t => t && setTurnData(t)).catch(() => {})
-    }, 10000)
-    return () => clearInterval(id)
+    let id = null
+    function start() {
+      if (id) return
+      id = setInterval(() => {
+        coordCheckTurn().then(t => t && setTurnData(t)).catch(() => {})
+      }, 15000)
+    }
+    function stop() {
+      if (id) { clearInterval(id); id = null }
+    }
+    function onVisibility() {
+      if (document.hidden) stop(); else start()
+    }
+    if (!document.hidden) start()
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => { stop(); document.removeEventListener('visibilitychange', onVisibility) }
   }, [])
 
   function loadAll() {
@@ -850,12 +1136,18 @@ export default function CoordSchedulerPage() {
       coordListSchedules().catch(() => []),
       coordGetRooms ? coordGetRooms().catch(() => ({ lecture: [], lab: [] })) : Promise.resolve({ lecture: [], lab: [] }),
       coordGetSelectedRooms ? coordGetSelectedRooms().catch(() => ({ lecture: [], lab: [] })) : Promise.resolve({ lecture: [], lab: [] }),
-    ]).then(([t, s, rooms, selected]) => {
+      // Needs the actual sessions (not just approvedPrograms) to run the
+      // room/faculty conflict checks in CoordinatorCheckPanel below.
+      coordGetSubmittedSchedule ? coordGetSubmittedSchedule(true).catch(() => ({ schedule: [] })) : Promise.resolve({ schedule: [] }),
+      coordGetSettings ? coordGetSettings().catch(() => null) : Promise.resolve(null),
+    ]).then(([t, s, rooms, selected, master, settings]) => {
       setTurnData(t)
       setSchedules(Array.isArray(s) ? s : [])
       setAllRooms({ lecture: rooms?.lecture || [], lab: rooms?.lab || [] })
       setSelLecture(selected?.lecture || [])
       setSelLab(selected?.lab || [])
+      setMasterEvents(master?.schedule || [])
+      setGlobalSettings(settings)
     }).finally(() => { setLoadingInit(false); setRoomsLoading(false) })
   }
 
@@ -1039,7 +1331,19 @@ export default function CoordSchedulerPage() {
     setMaxReached(m => Math.max(m, n))
   }
 
+  const [overlayMaster, setOverlayMaster] = useState(false)
+  const [isMaximized, setIsMaximized] = useState(false)
+  
   const events = result?.schedule || result?.events || []
+  
+  const combinedEventsForGrid = useMemo(() => {
+    if (!overlayMaster) return events
+    const masterOthers = masterEvents.map(e => ({ ...e, _isOtherProgram: true }))
+    return [...events, ...masterOthers]
+  }, [events, overlayMaster, masterEvents])
+
+  const gridDayEvents = useMemo(() => combinedEventsForGrid.filter(e => e.day === activeDay), [combinedEventsForGrid, activeDay])
+  const gridUniqueRooms = useMemo(() => Array.from(new Set(combinedEventsForGrid.map(e => e.room))).sort(), [combinedEventsForGrid])
   const filteredEvents = useMemo(() => {
     if (!resultSearch.trim()) return events
     const q = resultSearch.toLowerCase()
@@ -1067,10 +1371,12 @@ export default function CoordSchedulerPage() {
 
   return (
     <div className="sch-root sch-wizard-shell">
+      <TourComponent />
+      <TurnTourComponent />
 
       {portalTarget 
-        ? createPortal(<WizTopBar step={wizStep} maxReached={maxReached} onStepClick={goStep} />, portalTarget) 
-        : <WizTopBar step={wizStep} maxReached={maxReached} onStepClick={goStep} />
+        ? createPortal(<div id="tour-wiz-nav" style={{ display: 'flex', alignItems: 'center', gap: 10 }}><WizTopBar step={wizStep} maxReached={maxReached} onStepClick={goStep} /></div>, portalTarget) 
+        : <div id="tour-wiz-nav" style={{ display: 'flex', alignItems: 'center', gap: 10 }}><WizTopBar step={wizStep} maxReached={maxReached} onStepClick={goStep} /></div>
       }
 
       <div className="wiz-body">
@@ -1081,29 +1387,52 @@ export default function CoordSchedulerPage() {
               <StepHeader
                 number={1}
                 title="Queue & Room Setup"
-                subtitle={hasQueue ? <>Check your turn status and pick which rooms {coordinatorProgram} can use before generating.</> : <>Waiting for the admin to open a scheduling queue.</>}
+                subtitle={
+                  hasQueue
+                    ? <>Check your turn status and pick which rooms {coordinatorProgram} can use before generating.</>
+                    : doneStatus === 'approved'
+                      ? <>Your {doneTermLabel(latestActiveSchedule) || 'latest'} schedule was approved — nothing to do until the next round opens.</>
+                      : doneStatus === 'submitted'
+                        ? <>Your {doneTermLabel(latestActiveSchedule) || 'latest'} schedule is submitted — waiting on the admin's review.</>
+                        : <>Waiting for the admin to open a scheduling queue.</>
+                }
                 badge={hasQueue && <RoundBadge semester={roundSemester} academicYear={roundAY} light />}
               />
               
               <div className="step1-grid">
                 <div className="step1-col">
-                  <div className="queue-card">
+                  <div className="queue-card" id="tour-queue-card">
                     <div className="queue-head">
                       <div style={{ minWidth: 0 }}>
                         <div className="queue-head-title">
-                          {loadingInit ? '\u00A0' : !hasQueue ? 'No active queue' : isMyTurn ? "It's your turn" : 'Waiting in line'}
+                          {loadingInit ? '\u00A0'
+                            : !hasQueue
+                              ? (doneStatus === 'approved' ? "You're done — approved" : doneStatus === 'submitted' ? 'Submitted — awaiting review' : 'No active queue')
+                              : isMyTurn ? "It's your turn" : 'Waiting in line'}
                         </div>
                         <div className="queue-head-sub">
-                          {loadingInit ? '\u00A0' : !hasQueue
-                            ? 'The admin hasn\'t opened a scheduling queue yet.'
-                            : isMyTurn
-                              ? 'Pick your rooms below, then continue.'
-                              : <>Currently serving <strong>{currentProg}</strong> — you're up after them.</>}
+                          {loadingInit ? '\u00A0'
+                            : !hasQueue
+                              ? (doneStatus === 'approved'
+                                  ? <>The admin approved your {doneTermLabel(latestActiveSchedule) || 'schedule'} — you're all set for this round.</>
+                                  : doneStatus === 'submitted'
+                                    ? <>Sit tight — the admin hasn't reviewed your {doneTermLabel(latestActiveSchedule) || 'schedule'} yet.</>
+                                    : 'The admin hasn\'t opened a scheduling queue yet.')
+                              : isMyTurn
+                                ? 'Pick your rooms below, then continue.'
+                                : <>Currently serving <strong>{currentProg}</strong> — you're up after them.</>}
                         </div>
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                        {loadingInit ? null : !hasQueue ? null : isMyTurn ? (
+                        {loadingInit ? null
+                          : !hasQueue
+                            ? (doneStatus === 'approved'
+                                ? <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                : doneStatus === 'submitted'
+                                  ? <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                  : null)
+                            : isMyTurn ? (
                           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                         ) : (
                           <span>
@@ -1122,12 +1451,20 @@ export default function CoordSchedulerPage() {
                         <div style={{ fontSize: 10, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 8 }}>Queue order</div>
                         <QueueRail queue={queueList} myProgram={coordinatorProgram} currentProgram={currentProg} />
                       </div>
+                    ) : !hasQueue && !loadingInit && doneStatus ? (
+                      <div className="qt-empty-note" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                        <span>{doneStatus === 'approved' ? 'You can review your approved schedule any time.' : 'You can still edit or withdraw it while it waits.'}</span>
+                        <button onClick={() => navigate('/coordinator/schedules')}
+                          style={{ background: 'none', border: 'none', fontSize: 11.5, fontWeight: 700, color: G.meadow, cursor: 'pointer', fontFamily: 'Inter,sans-serif', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', padding: 0, flexShrink: 0 }}>
+                          View schedule →
+                        </button>
+                      </div>
                     ) : !hasQueue && !loadingInit ? (
                       <div className="qt-empty-note">You'll see the queue order here once the admin opens it.</div>
                     ) : null}
                   </div>
 
-                  <div style={{ background: '#fff', border: `1px solid ${G.border}`, borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(10,46,28,0.03)', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+                  <div id="tour-room-selection" style={{ background: '#fff', border: `1px solid ${G.border}`, borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(10,46,28,0.03)', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
                     <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div style={{ width: 34, height: 34, borderRadius: 9, background: '#F2F7F4', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${G.border}`, overflow: 'hidden', flexShrink: 0 }}>
@@ -1178,13 +1515,13 @@ export default function CoordSchedulerPage() {
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}>
                                 <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
                                   {(bothPresent || hasLec) && (
-                                    <RoomGroup title="Lecture Rooms" all={allRooms.lecture} selected={selLecture} onToggle={r => toggleRoom('lecture', r)} onSelectAll={() => selectAllRooms('lecture')} onClear={() => clearRooms('lecture')} />
+                                    <RoomGroup title="Lecture Rooms" all={allRooms.lecture} selected={selLecture} onToggle={r => toggleRoom('lecture', r)} onSelectAll={() => selectAllRooms('lecture')} onClear={() => clearRooms('lecture')} usage={roomUsage} />
                                   )}
                                   {bothPresent && (
-                                    <RoomGroup title="Lab Rooms" all={allRooms.lab} selected={selLab} onToggle={r => toggleRoom('lab', r)} onSelectAll={() => selectAllRooms('lab')} onClear={() => clearRooms('lab')} />
+                                    <RoomGroup title="Lab Rooms" all={allRooms.lab} selected={selLab} onToggle={r => toggleRoom('lab', r)} onSelectAll={() => selectAllRooms('lab')} onClear={() => clearRooms('lab')} usage={roomUsage} />
                                   )}
                                   {hasLab && !hasLec && (
-                                    <RoomGroup title="Lab Rooms" all={allRooms.lab} selected={selLab} onToggle={r => toggleRoom('lab', r)} onSelectAll={() => selectAllRooms('lab')} onClear={() => clearRooms('lab')} />
+                                    <RoomGroup title="Lab Rooms" all={allRooms.lab} selected={selLab} onToggle={r => toggleRoom('lab', r)} onSelectAll={() => selectAllRooms('lab')} onClear={() => clearRooms('lab')} usage={roomUsage} />
                                   )}
                                 </div>
                                 {!bothPresent && hasLec && (
@@ -1215,7 +1552,7 @@ export default function CoordSchedulerPage() {
                   </div>
                 </div>
 
-                <div className="sch-card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                <div className="sch-card" id="tour-my-schedules" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                   <div className="sch-card-header" style={{ padding: '16px 20px', flexShrink: 0, justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <h2 className="sch-card-title" style={{ fontSize: 14 }}>My Schedules</h2>
@@ -1288,7 +1625,7 @@ export default function CoordSchedulerPage() {
           )}
 
           {wizStep === 2 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div id="tour-readiness-panel" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <StepHeader
                 number={2}
                 title="Check Readiness"
@@ -1301,7 +1638,7 @@ export default function CoordSchedulerPage() {
                   It's not your turn yet — you can review readiness now, but generating will stay locked until <strong>{currentProg || 'the current program'}</strong> finishes.
                 </div>
               )}
-              <CoordinatorCheckPanel semester={roundSemester} />
+              <CoordinatorCheckPanel semester={roundSemester} masterEvents={masterEvents} />
             </div>
           )}
 
@@ -1344,7 +1681,7 @@ export default function CoordSchedulerPage() {
               )}
 
               {statusState !== 'running' && (
-                <div className="sch-card">
+                <div className="sch-card" id="tour-solver-engine">
                   <div className="sch-card-header">
                     <div style={{ flex: 1 }}>
                       <h2 className="sch-card-title">Solver engine</h2>
@@ -1359,7 +1696,9 @@ export default function CoordSchedulerPage() {
                   </div>
 
                   <div className="sch-card-body">
-                    <PhaseTimeline currentPhaseIdx={Math.floor((progress / 100) * 7)} status={statusState} progress={progress} />
+                    <div id="tour-phase-timeline">
+                      <PhaseTimeline currentPhaseIdx={Math.floor((progress / 100) * 7)} status={statusState} progress={progress} />
+                    </div>
 
                     {!isMyTurn && statusState === 'idle' && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 9, background: G.amberSoft, border: `1px solid ${G.amberBorder}`, fontSize: 12.5, color: '#92400E', fontWeight: 600, marginTop: 14 }}>
@@ -1495,13 +1834,23 @@ export default function CoordSchedulerPage() {
                     </div>
                   )}
 
-                  <div className="sch-card">
+                  <div className="sch-card" id="tour-review-result">
                     <div className="sch-card-header" style={{ flexWrap: 'wrap', gap: 12 }}>
                       <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, minWidth: 200 }}>
                         <h2 className="sch-card-title">Generated Result</h2>
                         <span style={{ padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: G.meadowSoft, color: G.meadowDeep }}>{filteredEvents.length} of {events.length} shown</span>
                       </div>
                       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <div style={{ display: 'flex', background: G.hover, borderRadius: 8, padding: 4 }}>
+                          <button onClick={() => setReviewViewMode('grid')}
+                            style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'grid' ? '#fff' : 'transparent', color: reviewViewMode === 'grid' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'grid' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
+                            Grid
+                          </button>
+                          <button onClick={() => setReviewViewMode('table')}
+                            style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'table' ? '#fff' : 'transparent', color: reviewViewMode === 'table' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'table' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
+                            List
+                          </button>
+                        </div>
                         <div style={{ position: 'relative' }}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={G.muted2} strokeWidth="2.5" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
                             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -1514,32 +1863,79 @@ export default function CoordSchedulerPage() {
                         </button>
                       </div>
                     </div>
-                    <div className="csh-table-wrap" style={{ maxHeight: 380, overflowY: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
-                          <tr style={{ background: G.hover }}>
-                            {['Course', 'Section', 'Session', 'Day', 'Period', 'Room'].map(h => (
-                              <th key={h} style={{ padding: '12px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', letterSpacing: '0.8px', borderBottom: `1px solid ${G.border}`, whiteSpace: 'nowrap' }}>{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredEvents.length === 0 ? (
-                            <tr><td colSpan={6} style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: G.muted, fontWeight: 500 }}>No events match "{resultSearch}"</td></tr>
-                          ) : filteredEvents.map((e, i) => (
-                            <tr key={i} className="cp-tr-hover">
-                              <td style={{ padding: '10px 20px', fontSize: 12.5, fontWeight: 700, color: G.ink, borderBottom: `1px solid ${G.borderLight}` }}>{e.courseCode}</td>
-                              <td style={{ padding: '10px 20px', fontSize: 12.5, color: G.muted, borderBottom: `1px solid ${G.borderLight}` }}>{e.program}-{e.year}{e.block}</td>
-                              <td style={{ padding: '10px 20px', fontSize: 12, color: G.muted, borderBottom: `1px solid ${G.borderLight}` }}>{e.session}</td>
-                              <td style={{ padding: '10px 20px', fontSize: 12, color: G.muted, borderBottom: `1px solid ${G.borderLight}` }}>{e.day}</td>
-                              <td style={{ padding: '10px 20px', fontSize: 12, color: G.muted, whiteSpace: 'nowrap', borderBottom: `1px solid ${G.borderLight}` }}>{e.period}</td>
-                              <td style={{ padding: '10px 20px', fontSize: 12, color: G.muted, borderBottom: `1px solid ${G.borderLight}` }}>{e.room}</td>
+                    <div className="csh-table-wrap" style={{ maxHeight: reviewViewMode === 'grid' ? 500 : 380, overflowY: 'auto' }}>
+                      {reviewViewMode === 'table' ? (
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                          <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                            <tr style={{ background: G.hover }}>
+                              {['Course', 'Section', 'Session', 'Day', 'Period', 'Room'].map(h => (
+                                <th key={h} style={{ padding: '12px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', letterSpacing: '0.8px', borderBottom: `1px solid ${G.border}`, whiteSpace: 'nowrap' }}>{h}</th>
+                              ))}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {filteredEvents.length === 0 ? (
+                              <tr><td colSpan={6} style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: G.muted, fontWeight: 500 }}>No events match "{resultSearch}"</td></tr>
+                            ) : filteredEvents.map((e, i) => (
+                              <tr key={i} className="cp-tr-hover">
+                                <td style={{ padding: '10px 20px', fontSize: 12.5, fontWeight: 700, color: G.ink, borderBottom: `1px solid ${G.borderLight}` }}>{e.courseCode}</td>
+                                <td style={{ padding: '10px 20px', fontSize: 12.5, color: G.muted, borderBottom: `1px solid ${G.borderLight}` }}>{e.program}-{e.year}{e.block}</td>
+                                <td style={{ padding: '10px 20px', fontSize: 12, color: G.muted, borderBottom: `1px solid ${G.borderLight}` }}>{e.session}</td>
+                                <td style={{ padding: '10px 20px', fontSize: 12, color: G.muted, borderBottom: `1px solid ${G.borderLight}` }}>{e.day}</td>
+                                <td style={{ padding: '10px 20px', fontSize: 12, color: G.muted, whiteSpace: 'nowrap', borderBottom: `1px solid ${G.borderLight}` }}>{e.period}</td>
+                                <td style={{ padding: '10px 20px', fontSize: 12, color: G.muted, borderBottom: `1px solid ${G.borderLight}` }}>{e.room}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <div style={{
+                          display: 'flex', flexDirection: 'column', height: '100%', minHeight: 450, padding: '12px 16px',
+                          ...(isMaximized ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: '#fff', zIndex: 9999, minHeight: '100vh', padding: '24px 32px' } : {})
+                        }}>
+                          <div style={{ display: 'flex', gap: 12, marginBottom: 16, overflowX: 'auto', paddingBottom: 4, alignItems: 'center' }}>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(d => (
+                                <button key={d} onClick={() => setActiveDay(d)} 
+                                  style={{
+                                    padding: '6px 13px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+                                    cursor: 'pointer', border: '1px solid #D8E8DF',
+                                    background: activeDay === d ? `linear-gradient(135deg, ${G.meadow}, ${G.meadowDeep})` : '#fff',
+                                    color: activeDay === d ? '#fff' : G.muted,
+                                    transition: 'all .15s', whiteSpace: 'nowrap',
+                                    boxShadow: activeDay === d ? '0 2px 8px rgba(21,128,61,.3)' : 'none'
+                                  }}>
+                                  {d}
+                                </button>
+                              ))}
+                            </div>
+                            <div style={{ flex: 1 }} />
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, fontWeight: 600, color: G.muted2, cursor: 'pointer', background: '#F8FAF9', padding: '6px 12px', borderRadius: 8, border: `1px solid ${G.border}` }}>
+                              <input type="checkbox" checked={overlayMaster} onChange={e => setOverlayMaster(e.target.checked)} style={{ cursor: 'pointer' }} />
+                              Show Other Programs (Background)
+                            </label>
+                            <button onClick={() => setIsMaximized(m => !m)} title={isMaximized ? "Restore size" : "Maximize"}
+                              style={{ padding: '6px', borderRadius: 8, background: '#F8FAF9', border: `1px solid ${G.border}`, color: G.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {isMaximized ? (
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
+                              ) : (
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                              )}
+                            </button>
+                          </div>
+                          <div style={{ flex: 1, minHeight: 400 }}>
+                            <TimeGrid 
+                              rooms={gridUniqueRooms} dayEvents={gridDayEvents} conflictMap={new Map()}
+                              locked={true} gridSize="normal" fullscreen={isMaximized}
+                              ambientConflictIds={new Set()} ambientMergeIds={new Set()}
+                              conflictingDragIds={new Set()} dragConflictBands={[]}
+                              mergedIds={new Set()} allEvents={combinedEventsForGrid} availabilityMap={new Map()}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div style={{ padding: '18px 20px', borderTop: `1px solid ${G.border}`, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center', background: '#F8FAF9' }}>
+                    <div id="tour-save-schedule" style={{ padding: '18px 20px', borderTop: `1px solid ${G.border}`, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center', background: '#F8FAF9' }}>
                       <div style={{ width: 38, height: 38, borderRadius: 10, background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={G.meadowDeep} strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                       </div>
@@ -1599,6 +1995,7 @@ export default function CoordSchedulerPage() {
                 </span>
               )}
               <button
+                id="tour-wiz-next"
                 className="wiz-nav-btn next"
                 onClick={() => goStep(2)}
                 disabled={roomsDirty}
@@ -1610,13 +2007,13 @@ export default function CoordSchedulerPage() {
             </div>
           )}
           {wizStep === 2 && (
-            <button className="wiz-nav-btn next" onClick={() => goStep(3)}>
+            <button id="tour-wiz-next" className="wiz-nav-btn next" onClick={() => goStep(3)}>
               Continue to Generate
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
           )}
           {wizStep === 3 && statusState === 'idle' && (
-            <button className="wiz-nav-btn solve-main next" onClick={handleGenerate} disabled={!canGenerate}>
+            <button id="tour-wiz-next" className="wiz-nav-btn solve-main next" onClick={handleGenerate} disabled={!canGenerate}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
               Start Solver
             </button>

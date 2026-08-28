@@ -3,6 +3,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { coordGetCourses, addCourse, deleteCourse, updateCourse, coordGetSelectedRooms } from '../../services/api'
 import ImportCoursesModal from '../../components/ImportCoursesModal'
 import BlockConfigModal from '../../components/BlockConfigModal'
+import { useTour } from '../../hooks/useTour.jsx'
 import * as XLSX from 'xlsx'
 
 import iconCourses from '../../assets/COURSES.png'
@@ -38,6 +39,20 @@ const SEM_SHORT = { '1st Semester': '1st Sem', '2nd Semester': '2nd Sem', 'Midye
 const SEM_SHEET = { '1st Semester': 'First Semester', '2nd Semester': 'Second Semester', 'Midyear': 'Midyear' }
 
 const LS_VIEW_PREFS = 'cc-view-prefs'
+
+// ── Onboarding tour trigger ──────────────────────────────────────────────
+// Same pattern as the Dashboard tour: these two functions are the only place
+// that decides whether a coordinator has already seen this page's tour.
+// They're a localStorage stand-in for now — swap the bodies for a real
+// `onboardingCompleted: true/false` API call when the backend has one, and
+// nothing else on this page needs to change.
+const TOUR_SEEN_KEY = 'coordCourses_tourSeen'
+function isOnboardingCompleted() {
+  try { return localStorage.getItem(TOUR_SEEN_KEY) === '1' } catch { return true }
+}
+function markOnboardingCompleted() {
+  try { localStorage.setItem(TOUR_SEEN_KEY, '1') } catch {}
+}
 
 /* ─── Styles ─────────────────────────────────────────────────────────────── */
 {
@@ -593,6 +608,63 @@ export default function CoordCoursesPage() {
 
   const searchRef = useRef(null)
 
+  const { TourElement, startTour } = useTour('coordCourses', [
+    {
+      target: '#tour-semester-tabs',
+      title: 'Semester Selection',
+      content: 'Switch between semesters here. The courses, sections, and stats below all update to match the tab you pick.',
+      skipBeacon: true,
+      placement: 'bottom'
+    },
+    {
+      target: '.tour-btn-config-blocks',
+      title: 'Configure Blocks',
+      content: 'Define how many standard block sections you need for each year level in your program.',
+      placement: 'bottom'
+    },
+    {
+      target: '.tour-btn-export',
+      title: 'Export Courses',
+      content: 'Download your current filtered list of courses straight to an Excel file.',
+      placement: 'bottom'
+    },
+    {
+      target: '.tour-btn-import',
+      title: 'Bulk Upload',
+      content: 'Save time by uploading multiple courses at once from a spreadsheet.',
+      placement: 'left'
+    },
+    {
+      target: '#tour-add-course-btn',
+      title: 'Add New Course',
+      content: 'Add a single course by hand. You\'ll set its code, title, units, sections, and year level here.',
+      placement: 'left'
+    },
+    {
+      target: '#tour-stats-bar',
+      title: 'Semester Summary',
+      content: 'A quick health check of the courses in this semester — totals, units, and anything that might need your attention before scheduling.',
+      placement: 'bottom'
+    },
+    {
+      target: '#tour-search-toolbar',
+      title: 'Search & Filter',
+      content: 'Find specific courses by code or title, open advanced filters, or select multiple courses at once for bulk actions like deletion.',
+      placement: 'bottom'
+    },
+    {
+      target: '#tour-courses-table-anchor',
+      spotlightTarget: '#tour-courses-table',
+      title: 'Course Roster',
+      content: 'Every course for your program lives here. Click any row to edit its details, or use the quick-action icons to duplicate, assign preferred rooms, or delete.',
+      placement: 'left'
+    },
+  ])
+
+  // First-time coordinators get the highlighted step-by-step tour automatically;
+  // returning coordinators never see it again.
+  
+
   async function load() {
     setLoading(true)
     try {
@@ -819,12 +891,13 @@ export default function CoordCoursesPage() {
 
   return (
     <div className="page" style={{ fontFamily:"'Inter',sans-serif", background: G.bg, minHeight: '100%', padding: '28px 32px' }}>
+      {TourElement}
 
       {/* ── Header Row ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
 
         {/* Semester Tabs */}
-        <div style={{ display: 'flex', gap: 3, background: '#fff', borderRadius: 10, padding: 3, border: `1px solid ${G.border}`, flexShrink: 0 }}>
+        <div id="tour-semester-tabs" style={{ display: 'flex', gap: 3, background: '#fff', borderRadius: 10, padding: 3, border: `1px solid ${G.border}`, flexShrink: 0 }}>
           {SEMESTERS.map(sem => {
             const isActive = semesterTab === sem
             return (
@@ -850,15 +923,15 @@ export default function CoordCoursesPage() {
           })}
         </div>
 
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-          <button onClick={() => setShowBlockCfg(true)} title="Configure blocks per year level"
+        <div id="tour-header-actions" style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+          <button className="tour-btn-config-blocks" onClick={() => setShowBlockCfg(true)} title="Configure blocks per year level"
             style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 8, border: `1px solid ${G.border}`, background: '#fff', color: G.muted, cursor: 'pointer', transition: 'all .15s', padding: 0 }}
             onMouseEnter={e => { e.currentTarget.style.background = G.hover; e.currentTarget.style.color = G.meadow }}
             onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = G.muted }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
           </button>
 
-          <button onClick={handleExport} disabled={!filtered.length} title="Export filtered courses to Excel"
+          <button className="tour-btn-export" onClick={handleExport} disabled={!filtered.length} title="Export filtered courses to Excel"
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: `1px solid ${G.border}`, background: '#fff', color: G.muted2, fontSize: 11.5, fontWeight: 500, cursor: filtered.length ? 'pointer' : 'not-allowed', opacity: filtered.length ? 1 : 0.45, transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
             onMouseEnter={e => { if (filtered.length) { e.currentTarget.style.background = G.hover; e.currentTarget.style.color = G.meadow }}}
             onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = G.muted2 }}>
@@ -870,7 +943,7 @@ export default function CoordCoursesPage() {
             Export
           </button>
 
-          <button onClick={() => setShowImport(true)}
+          <button className="tour-btn-import" onClick={() => setShowImport(true)}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 16px', borderRadius: 10, border: `1px solid ${G.border}`, fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: '#fff', color: G.muted }}
             onMouseEnter={e => { e.currentTarget.style.background = G.hover; e.currentTarget.style.borderColor = G.meadowBorder; e.currentTarget.style.color = G.meadow }}
             onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
@@ -882,7 +955,7 @@ export default function CoordCoursesPage() {
             Upload Courses
           </button>
 
-          <button onClick={() => { setShowAdd(true); setError('') }}
+          <button id="tour-add-course-btn" onClick={() => { setShowAdd(true); setError('') }}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 18px', borderRadius: 10, border: 'none', fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: '#fff', boxShadow: '0 3px 12px rgba(21,128,61,0.32)' }}
             onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 5px 18px rgba(21,128,61,0.42)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
             onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 3px 12px rgba(21,128,61,0.32)'; e.currentTarget.style.transform = 'none' }}>
@@ -898,10 +971,12 @@ export default function CoordCoursesPage() {
       </div>
 
       {/* ── Stats Bar ── */}
-      <StatsBar loading={loading} filtered={filtered} isFiltered={hasFilter} />
+      <div id="tour-stats-bar">
+        <StatsBar loading={loading} filtered={filtered} isFiltered={hasFilter} />
+      </div>
 
       {/* ── Search + Toolbar ── */}
-      <div style={{ background: '#fff', borderRadius: 14, border: `1px solid ${G.border}`, padding: '10px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', boxShadow: '0 2px 8px rgba(10,46,28,0.05)' }}>
+      <div id="tour-search-toolbar" style={{ background: '#fff', borderRadius: 14, border: `1px solid ${G.border}`, padding: '10px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', boxShadow: '0 2px 8px rgba(10,46,28,0.05)' }}>
 
         <div style={{ position: 'relative', flex: '1 1 220px', minWidth: 180 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={G.muted2} strokeWidth="2"
@@ -1000,6 +1075,16 @@ export default function CoordCoursesPage() {
       )}
 
       {/* ── Content ── */}
+      <div id="tour-courses-table">
+      {/* Small, always-rendered anchor for the tour tooltip. The table
+          below can run much taller than the viewport (loading skeleton,
+          empty state, or a long course list), so anchoring the tooltip to
+          the whole #tour-courses-table block left no room above or below
+          for it to fit — floating-ui had nowhere good to flip it.
+          Anchoring to this instead (while still spotlighting the full
+          table via spotlightTarget) gives it a small, stable reference
+          point near the top of the table. */}
+      <div id="tour-courses-table-anchor" style={{ height: 0 }} />
       {loading ? (
         <div style={{ background: '#fff', borderRadius: 12, border: `1.5px solid ${G.border}`, overflow: 'hidden' }}>
           {Array.from({ length: 8 }).map((_, i) => (
@@ -1135,6 +1220,7 @@ export default function CoordCoursesPage() {
           </table>
         </div>
       )}
+      </div>
 
       {/* ── Filters Modal ── */}
       {showFilters && (

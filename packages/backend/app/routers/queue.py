@@ -76,7 +76,14 @@ def create_queue(req: CreateQueueRequest, user: dict = Depends(admin_only)):
 
 @router.get("/list")
 def list_queues(user: dict = Depends(admin_only)):
-    docs = db.collection("coordinator_queues").order_by("createdAt", direction=firestore.Query.DESCENDING).get()
+    # Capped at the most recent 20 — this collection only ever grows (queues
+    # are never deleted except manually), and the admin dashboard only ever
+    # displays the handful of recent/active ones as tabs. Without a limit,
+    # this was re-reading every queue ever created on every poll tick.
+    docs = db.collection("coordinator_queues") \
+        .order_by("createdAt", direction=firestore.Query.DESCENDING) \
+        .limit(20) \
+        .get()
     return [doc.to_dict() for doc in docs]
 
 @router.get("/{queue_id}")

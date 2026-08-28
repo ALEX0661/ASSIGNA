@@ -134,7 +134,7 @@ export default function ScheduleSection({ facultyName, onUnitsLoaded, onAssignme
       <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
 
       {/* Header */}
-      <div style={{ 
+      <div id="tour-fac-schedule-header" style={{ 
         padding: '14px 20px', 
         borderBottom: '1.5px solid #BBF7D0', 
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,

@@ -155,9 +155,35 @@ function ToastContainer({ toasts }) {
   )
 }
 
+import { useTour } from '../../hooks/useTour.jsx'
+
+const TOUR_SEEN_KEY = 'adminSettings_tourSeen'
+function isOnboardingCompleted() {
+  try { return localStorage.getItem(TOUR_SEEN_KEY) === '1' } catch { return true }
+}
+function markOnboardingCompleted() {
+  try { localStorage.setItem(TOUR_SEEN_KEY, '1') } catch {}
+}
+
 /* ─── Main Page ───────────────────────────────────────────────────────────── */
 export default function SettingsPage() {
   const { toasts, toast } = useToast()
+
+  const { TourElement, startTour } = useTour('adminSettings', [
+    {
+      target: '#tour-stg-days .day-row',
+      title: 'Active Operational Days',
+      content: 'Toggle which days classes can be scheduled on. At least one day must stay active — the scheduler only places sections on the days selected here.',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-stg-time .cp-sel',
+      title: 'Daily Time Boundaries',
+      content: 'Set the earliest opening and latest closing time for the day. Everything in between gets split into 30-minute slots the scheduler can assign.',
+    },
+  ])
+
+  
 
   /* Current State */
   const [days, setDays] = useState(['Monday','Tuesday','Wednesday','Thursday','Friday'])
@@ -252,14 +278,13 @@ export default function SettingsPage() {
 
   return (
     <div className="page" style={{ padding: '28px 32px', background: G.bg, minHeight: '100%', fontFamily: "'Inter', sans-serif", display: 'flex', flexDirection: 'column' }}>
-      
+      {TourElement}
       <div style={{ flex: 1 }}>
         
-
         {/* ═══════════════════════════════════════════
             Card 1 — Active Days 
         ═══════════════════════════════════════════ */}
-        <div className="stg-card">
+        <div id="tour-stg-days" className="stg-card">
           <div className="stg-card-head">
             <div className="stg-icon-box" style={{ background: G.meadowSoft, border: `1px solid ${G.meadowBorder}` }}>
               <img src={iconDays} alt="Days" />
@@ -327,7 +352,7 @@ export default function SettingsPage() {
         {/* ═══════════════════════════════════════════
             Card 2 — Time Window 
         ═══════════════════════════════════════════ */}
-        <div className="stg-card">
+        <div id="tour-stg-time" className="stg-card">
           <div className="stg-card-head">
             <div className="stg-icon-box" style={{ background: G.hover, border: `1px solid ${G.border}` }}>
               <img src={iconTime} alt="Time" />

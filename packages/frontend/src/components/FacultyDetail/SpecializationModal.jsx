@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { getCourses } from '../../services/api'
 import { dedupeSpecs } from './fdShared'
+import { useTour } from '../../hooks/useTour.jsx'
 
 // ─── Proficiency levels ───────────────────────────────────────────────────────
 const LEVELS = [
@@ -171,6 +172,20 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
   const [newCode] = useState('')    // kept to avoid reference errors
   const [codeError] = useState('')  // kept to avoid reference errors
 
+  // Lock the page's own scroll while this modal is open. It's a fixed,
+  // full-viewport overlay, so the page behind it never needs to move —
+  // but without this, the underlying page's scroll container (<main>,
+  // per the useTour hook's own notes on this app's layout) is still the
+  // "nearest scrollable ancestor" that Joyride and other scroll-into-view
+  // logic can end up nudging, which reads as the background page
+  // scrolling behind the modal.
+  useEffect(() => {
+    const main = document.querySelector('main') || document.body
+    const prevOverflow = main.style.overflow
+    main.style.overflow = 'hidden'
+    return () => { main.style.overflow = prevOverflow }
+  }, [])
+
   useEffect(() => {
     setLoadingCrs(true)
     getCourses()
@@ -241,6 +256,35 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
   const pendingCount  = pendingList.length
   const specCount     = specs.length
 
+  const { TourElement, startTour } = useTour('facultySpecModal', [
+    {
+      target: '#tour-spec-nav',
+      title: 'Assigned vs. Browse',
+      content: 'Assigned lists what this faculty member is already qualified to teach. Browse Catalog is where you search all courses and stage new ones to add.',
+      disableBeacon: true,
+      disableScrolling: true,
+    },
+    {
+      target: '#tour-spec-current-toolbar',
+      title: 'Filter & Sort',
+      content: 'Filter the assigned list by code or title, or sort by proficiency to see their strongest (or weakest) areas first.',
+      disableScrolling: true,
+    },
+    {
+      target: '#tour-spec-breakdown',
+      title: 'Proficiency Breakdown',
+      content: 'A quick count of how their assigned courses split across proficiency levels — useful for spotting whether they\'re mostly rated as experts or still developing.',
+      disableScrolling: true,
+    },
+    {
+      target: '#tour-spec-footer',
+      title: 'Save Your Changes',
+      content: 'Nothing is applied to the faculty member\'s record until you save here — staged courses from Browse Catalog are only committed at this point too.',
+      disableScrolling: true,
+    },
+  ], true, { isPrimary: false })
+
+
   const breakdown = useMemo(() => {
     const counts = {}
     specs.forEach(s => { const r = s.rating || 3; counts[r] = (counts[r] || 0) + 1 })
@@ -284,6 +328,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
       padding: '20px 16px',
       fontFamily: "'Inter', sans-serif",
     }}>
+      {TourElement}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         .spec-scroll::-webkit-scrollbar { width: 5px }
@@ -324,6 +369,10 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
               <span style={{ fontSize: 11.5, fontWeight: 700, color: '#15803D' }}>{specCount} assigned</span>
             </div>
           )}
+          <button type="button" onClick={() => startTour()} title="Take the tour"
+            style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #D8E8DF', background: '#F2F7F4', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, flexShrink: 0, color: '#4B7060', fontSize: 13, fontWeight: 700, fontFamily: "'Inter', sans-serif" }}>
+            ?
+          </button>
           <button onClick={onClose}
             style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #D8E8DF', background: '#F2F7F4', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4B7060" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -337,15 +386,17 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
           <div style={{ width: 208, flexShrink: 0, borderRight: '1px solid #D8E8DF', display: 'flex', flexDirection: 'column', padding: '12px 10px', gap: 2, background: '#F2F7F4' }}>
             <div style={{ fontSize: 9.5, fontWeight: 700, color: '#6B8C7A', textTransform: 'uppercase', letterSpacing: '0.8px', padding: '4px 11px 8px' }}>Navigation</div>
 
-            <NavBtn active={tab === 'current'} onClick={() => setTab('current')}
-              icon={<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></>}
-              label="Assigned" badge={specCount} />
-            <NavBtn active={tab === 'browse'} onClick={() => setTab('browse')}
-              icon={<><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></>}
-              label="Browse Catalog" badge={pendingCount || null} />
+            <div id="tour-spec-nav">
+              <NavBtn active={tab === 'current'} onClick={() => setTab('current')}
+                icon={<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></>}
+                label="Assigned" badge={specCount} />
+              <NavBtn active={tab === 'browse'} onClick={() => setTab('browse')}
+                icon={<><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></>}
+                label="Browse Catalog" badge={pendingCount || null} />
+            </div>
 
             {specCount > 0 && (
-              <div style={{ marginTop: 'auto', paddingTop: 14 }}>
+              <div id="tour-spec-breakdown" style={{ marginTop: 'auto', paddingTop: 14 }}>
                 <div style={{ height: 1, background: '#D8E8DF', marginBottom: 12 }} />
                 <div style={{ fontSize: 9.5, fontWeight: 700, color: '#6B8C7A', textTransform: 'uppercase', letterSpacing: '0.8px', padding: '0 11px', marginBottom: 8 }}>Breakdown</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3, padding: '0 2px' }}>
@@ -367,7 +418,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
             {/* ── Assigned Courses ──────────────────────────────────────── */}
             {tab === 'current' && (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <div style={{ padding: '12px 18px', borderBottom: '1px solid #D8E8DF', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                <div style={{ padding: '12px 18px', borderBottom: '1px solid #D8E8DF', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }} id="tour-spec-current-toolbar">
                   <div style={{ flex: 1 }}>
                     <SearchBox value={currentQ} onChange={setCurrentQ} placeholder="Filter by code or title…" />
                   </div>
@@ -645,7 +696,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
         </div>
 
         {/* ── Footer ─────────────────────────────────────────────────────── */}
-        <div style={{ padding: '12px 22px', borderTop: '1px solid #D8E8DF', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F2F7F4', flexShrink: 0 }}>
+        <div style={{ padding: '12px 22px', borderTop: '1px solid #D8E8DF', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F2F7F4', flexShrink: 0 }} id="tour-spec-footer">
           <div style={{ fontSize: 12, color: '#9CA3AF' }}>
             {specCount === 0
               ? 'No specializations assigned'

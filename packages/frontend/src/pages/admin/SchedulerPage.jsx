@@ -1406,7 +1406,7 @@ function WizTopBar({ step, onStepClick }) {
   ]
   return (
     <div className="wiz-topbar">
-      <div className="wiz-steps fadein">
+      <div id="tour-sch-wizard" className="wiz-steps fadein">
         {steps.map((s, i) => {
           const state = s.n < step ? 'done' : s.n === step ? 'active' : 'todo'
           return (
@@ -1488,7 +1488,7 @@ function Step1Configure({ scheduleNamePreset, setScheduleNamePreset, scheduleNam
       <div style={{ display:'flex', flexDirection:'column', gap:12, minHeight:0, overflowY:'auto' }}>
 
       {/* Term selector card */}
-      <div className="sch-card">
+      <div id="tour-sch-presets" className="sch-card">
         <div className="sch-card-header">
           <div style={{ flex:1, minWidth:0 }}>
             <h2 className="sch-card-title">Academic Term</h2>
@@ -1587,7 +1587,7 @@ function Step1Configure({ scheduleNamePreset, setScheduleNamePreset, scheduleNam
 
       {/* Right column: All saved schedules */}
       {(allSaved.length > 0 || loadingList) && (
-        <div className="sch-card" style={{ alignSelf:'stretch', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div id="tour-sch-saved-list" className="sch-card" style={{ alignSelf:'stretch', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div className="sch-card-header" style={{ padding:'14px 18px', flexShrink: 0 }}>
             <div style={{ flex:1, minWidth:0 }}>
               <h2 className="sch-card-title" style={{ fontSize:13.5 }}>Saved Schedules</h2>
@@ -1634,6 +1634,16 @@ function Step1Configure({ scheduleNamePreset, setScheduleNamePreset, scheduleNam
 
 /* ─────────────────────────── main page ─────────────────────────── */
 
+import { useTour } from '../../hooks/useTour.jsx'
+
+const TOUR_SEEN_KEY = 'adminScheduler_tourSeen'
+function isOnboardingCompleted() {
+  try { return localStorage.getItem(TOUR_SEEN_KEY) === '1' } catch { return true }
+}
+function markOnboardingCompleted() {
+  try { localStorage.setItem(TOUR_SEEN_KEY, '1') } catch {}
+}
+
 export default function SchedulerPage() {
   const navigate  = useNavigate()
   const location  = useLocation()
@@ -1642,6 +1652,90 @@ export default function SchedulerPage() {
   const currentScheduleName = useScheduleStore(s => s.scheduleName)
   const { progress, status, processId, label, originalName, setProcessId, setStatus, setLabel, setOriginalName, setDismissed, reset } = useSolverStore()
   const { toasts, toast } = useToast()
+
+  const [wizStep, setWizStep] = useState(1)
+  const [slideDir, setSlideDir] = useState('enter') // 'enter' | 'back'
+
+  // Steps depend on which wizard step is currently mounted, since each step
+  // swaps out its DOM entirely (Readiness/Solve panels aren't present while
+  // on Configure, and vice versa). useTour reads `steps` fresh on every
+  // render, so recomputing this per wizStep lets the single header '?'
+  // button show the right walkthrough wherever the admin currently is,
+  // without needing a separate tour per step. Mirrors the coordinator
+  // scheduler's tour (see CoordSchedulerPage.jsx) for consistency.
+  const stepsForWizStep = useMemo(() => {
+    if (wizStep === 1) {
+      return [
+        {
+          target: '#tour-sch-wizard',
+          title: 'Welcome to the Scheduler',
+          content: 'This 3-step wizard walks you through Configuring the term, checking Readiness, and Solving to generate a timetable. Once a step is complete you can jump back to it any time.',
+          skipBeacon: true,
+        },
+        {
+          target: '#tour-sch-presets',
+          title: 'Choose the Term',
+          content: 'Select the semester to schedule for, or use Custom... to specify a different academic year.',
+        },
+        {
+          target: '#tour-sch-saved-list',
+          title: 'Saved Schedules',
+          content: 'Or load a previously saved schedule from here instead of starting a fresh configuration.',
+        },
+        {
+          target: '#tour-sch-next',
+          title: 'Next: Readiness',
+          content: 'Once you\'ve picked a term, click here to move on to the readiness check and solver.',
+        },
+      ]
+    }
+    if (wizStep === 2) {
+      return [
+        {
+          target: '#tour-sch-checkpanel',
+          title: 'Readiness Check',
+          content: 'This step verifies structural feasibility and faculty pools before you spend time solving. Each check either passes, warns, or fails, along with the utilization percentage behind it — a fail here means solving won\'t produce a usable schedule, so it\'s worth fixing the underlying setup first.',
+          placement: 'center',
+          disableBeacon: true,
+        },
+        {
+          target: '#tour-sch-next',
+          title: 'Next: Solve',
+          content: 'Once readiness looks good, continue on to run the solver.',
+        },
+      ]
+    }
+    // wizStep === 3
+    return [
+      {
+        target: '#tour-sch-solve-area',
+        title: 'Solve & Save',
+        content: 'Run the constraint solver to auto-generate a timetable for the selected term. It\'s safe to navigate away while it runs — it continues in the background.',
+        placement: 'center',
+        disableBeacon: true,
+      },
+    ]
+  }, [wizStep])
+
+  const { TourElement, startTour, run: tourRunning } = useTour('adminScheduler', stepsForWizStep)
+
+  // When the admin advances/returns to a different wizard step while the
+  // tour is actively running, stepsForWizStep swaps out entirely for that
+  // step's own array. Without this, the tour's stepIndex stays wherever it
+  // was in the *previous* array, which can point at a target that no
+  // longer exists and cause Joyride to re-measure and re-highlight
+  // whatever's still mounted (e.g. the wizard stepper) over and over.
+  // Jumping to index 0 of the fresh array whenever the wizard step
+  // actually changes keeps the tour moving into that step's real content.
+  const prevWizStepRef = useRef(1)
+  useEffect(() => {
+    if (prevWizStepRef.current !== wizStep) {
+      if (tourRunning) startTour()
+      prevWizStepRef.current = wizStep
+    }
+  }, [wizStep, tourRunning, startTour])
+
+  
 
   // Solver / Setup states
   const [scheduleNamePreset, setScheduleNamePreset] = useState(PRESET_NAMES[0])
@@ -1943,8 +2037,6 @@ export default function SchedulerPage() {
   }
 
   const currentPhaseIdx = Math.floor((progress / 100) * 7)
-  const [wizStep, setWizStep] = useState(1)
-  const [slideDir, setSlideDir] = useState('enter') // 'enter' | 'back'
 
   function goStep(n) {
     setSlideDir(n > wizStep ? 'enter' : 'back')
@@ -1972,7 +2064,7 @@ export default function SchedulerPage() {
 
   return (
     <div className="sch-root sch-wizard-shell">
-
+      {TourElement}
       {portalTarget 
         ? createPortal(<WizTopBar step={wizStep} onStepClick={goStep} />, portalTarget) 
         : <WizTopBar step={wizStep} onStepClick={goStep} />
@@ -2014,7 +2106,9 @@ export default function SchedulerPage() {
                 subtitle={<>Verify structural feasibility and faculty pools for <strong style={{ opacity:.95 }}>{originalName ? originalName.split('(').pop().replace(')', '').trim() : targetSemester}</strong> before solving.</>}
                 badge={<div style={{ padding:'5px 14px', borderRadius:99, background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', fontSize:12, fontWeight:700, color: '#fff', position:'relative' }}>{originalName ? originalName.replace(/[()]/g, '').trim() : effectiveScheduleName || '—'}</div>}
               />
-              <CheckPanel semester={originalName ? originalName.split('(').pop().replace(')', '').trim() : targetSemester} />
+              <div id="tour-sch-checkpanel">
+                <CheckPanel semester={originalName ? originalName.split('(').pop().replace(')', '').trim() : targetSemester} />
+              </div>
             </div>
           )}
 
@@ -2027,7 +2121,7 @@ export default function SchedulerPage() {
             // up by the wiz-slide scroll container, so the buttons rendered past
             // the visible edge with no way to scroll to them. Letting those states
             // size naturally (height:auto) fixes that.
-            <div style={{ display:'flex', flexDirection:'column', gap:14, ...(status === 'running' ? { flex:1, minHeight:0 } : {}) }}>
+            <div id="tour-sch-solve-area" style={{ display:'flex', flexDirection:'column', gap:14, ...(status === 'running' ? { flex:1, minHeight:0 } : {}) }}>
               <StepHeader
                 number={3}
                 title="Solve & Save"
@@ -2249,13 +2343,13 @@ export default function SchedulerPage() {
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           {wizStep === 1 && (
-            <button className="wiz-nav-btn next" onClick={() => goStep(2)} disabled={!effectiveScheduleName.trim()}>
+            <button id="tour-sch-next" className="wiz-nav-btn next" onClick={() => goStep(2)} disabled={!effectiveScheduleName.trim()}>
               Continue to Readiness Check
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
           )}
           {wizStep === 2 && (
-            <button className="wiz-nav-btn next" onClick={() => goStep(3)}>
+            <button id="tour-sch-next" className="wiz-nav-btn next" onClick={() => goStep(3)}>
               Continue to Solver
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
             </button>

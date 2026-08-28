@@ -1,11 +1,18 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useScheduleStore } from '../../store/scheduleStore'
+import { useAuth } from '../../hooks/useAuth'
 import {
   coordLoadSchedule, coordSaveScheduleInPlace, coordOverrideSession,
   coordSubmitSchedule, coordUnsubmitSchedule, coordGetRooms, getFaculty,
   coordRestoreScheduleVersion, coordGetScheduleVersionDiff,
+  coordGetSubmittedSchedule, coordListSchedules, coordCheckTurn,
 } from '../../services/api'
+
+// Special :id value used for the read-only "combined schedule so far" view —
+// there's no single schedule doc behind it, just the merged events from
+// whichever programs ahead in the queue have already been approved.
+const MASTER_VIEW_ID = 'master'
 import { buildConflictMap, DAYS, getEventId, getMergedIds } from '../../components/ScheduleView/svHelpers'
 import { TV, ConflictSummaryBar, Toast, FilterButton, FilterRow, PendingChangesBar, ProgramLegend, ModalOverlay, ModalHeader } from '../../components/ScheduleView/svPrimitives'
 import { useFilters, useDragDrop } from '../../components/ScheduleView/svHooks'
@@ -13,11 +20,18 @@ import { FilterModal, FacultyFilterModal, RoomFilterModal, OverrideConfirmModal 
 import TimeGrid from '../../components/ScheduleView/TimeGrid'
 import SessionModal from '../../components/ScheduleView/SessionModal'
 import VersionHistoryModal from '../../components/VersionHistoryModal'
-import { exportScheduleToExcel } from '../../utils/exportScheduleToExcel'
-import { exportAvailableRoomsToExcel } from '../../utils/exportAvailableRoomsToExcel'
 import { computeRoomAvailability } from '../../utils/roomAvailability'
+import { exportScheduleToExcel } from '../../utils/exportScheduleToExcel'
+import { useTour } from '../../hooks/useTour.jsx'
 import scheduleImage from '../../assets/SCHEDULE.png'
 
+const TOUR_SEEN_KEY = 'coordScheduleView_tourSeen'
+function isOnboardingCompleted() {
+  try { return localStorage.getItem(TOUR_SEEN_KEY) === '1' } catch { return true }
+}
+function markOnboardingCompleted() {
+  try { localStorage.setItem(TOUR_SEEN_KEY, '1') } catch {}
+}
 
 /* ── Page-scoped styles ────────────────────────────────────────────────────── */
 if (!document.getElementById('sv-page-style')) {
@@ -601,6 +615,9 @@ function svIsOtherDept(courseCode = "") {
 export default function CoordScheduleViewPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { search } = useLocation()
+  const overlayId = new URLSearchParams(search).get('overlay')
+  const { coordinatorProgram } = useAuth()
   const { events:storeEvents, scheduleName:storeName, setEvents, setName } = useScheduleStore()
 
   const [localEvents,       setLocalEvents]   = useState(storeEvents)
@@ -627,6 +644,23 @@ export default function CoordScheduleViewPage() {
   const [filterLab,         setFilterLab]     = useState(false)
   const [showAvailableOnly, setShowAvailableOnly] = useState(false)
 
+  const { TourElement, startTour } = useTour('coordScheduleView', [
+    { 
+      target: '#tour-sv-filters', 
+      title: 'Advanced Filtering',
+      content: 'Filter the schedule by specific programs, faculty members, or rooms. This is the fastest way to hunt down conflicts or check a specific professor\'s workload.', 
+      placement: 'bottom' 
+    },
+    { 
+      target: '#tour-sv-grid', 
+      title: 'Interactive Grid',
+      content: 'Drag and drop sessions to assign faculty, change rooms, or move timeslots. The system will warn you if you create a conflict.', 
+      placement: 'left' 
+    },
+  ], !loading)
+
+  
+
   /* ── Schedule status (draft / submitted / approved) ─────────────────────── */
   const [status,            setStatus]        = useState('draft')
   const [scheduleMeta,      setScheduleMeta]  = useState(null)
@@ -638,7 +672,8 @@ export default function CoordScheduleViewPage() {
   // Editing (drag-drop, overrides, Save) is only allowed while still a
   // draft — mirrors the admin page's "locked while finalized" behavior,
   // just keyed off the coordinator workflow's status instead.
-  const locked = status !== 'draft'
+  const isMasterView = id === MASTER_VIEW_ID
+  const locked = (isMasterView && !overlayId) || status !== 'draft'
 
   /* ── Bootstrap ──────────────────────────────────────────────────────────── */
   useEffect(() => {
@@ -648,28 +683,101 @@ export default function CoordScheduleViewPage() {
       .finally(() => setInitLoading(false))
   }, [])
 
-  /* ── Load schedule (pinned to the route's :id — no schedule switcher) ───── */
+  /* ── Load schedule (pinned to the route's :id — no schedule switcher) ─────
+     :id === 'master' is a special case: instead of one draft/submitted doc,
+     it pulls the merged events from every program already approved ahead of
+     this coordinator in the queue. There's no doc behind it, so it's always
+     rendered read-only (status is forced to 'approved', which the header/
+     save/submit logic below already treats as locked). */
   async function loadSchedule() {
     if (!id) return
     setLoading(true); setError(null); setSaveState('idle')
     try {
-      const data = await coordLoadSchedule(id)
-      const events = data.schedule || []
-      setLocalEvents(events); setEvents(events)
-      setPast([]); setFuture([])
-      setActiveName(data.name || 'Schedule'); setName(data.name || 'Schedule')
-      setSchedAY(data.academicYear || ''); setSchedSem(data.semester || '')
-      setStatus(data.status || 'draft')
-      setHasUnsavedChanges(false)
-      setScheduleMeta({
-        version:        data.version || 1,
-        savedAt:        data.updatedAt || data.createdAt,
-        eventCount:     events.length,
-        versionHistory: data.versionHistory || [],
-        restoredFromVersion: data.restoredFromVersion || null,
-        restoredAt:          data.restoredAt || null,
-      })
-    } catch { setError('Failed to load this schedule.') }
+      if (isMasterView) {
+        // The queue endpoint only returns programs already approved *ahead*
+        // of this coordinator — it never includes this coordinator's own
+        // schedule, even once it's approved too. Pull that in separately
+        // and merge it in so "Combined Schedule (Approved So Far)" actually
+        // includes your own approved schedule once you have one. Scoped to
+        // the *active queue's* academic term only — a coordinator can have
+        // approved schedules from unrelated past/future terms sitting in
+        // "My Schedules", and those must never bleed into this term's view.
+        const [data, mine, turn] = await Promise.all([
+          coordGetSubmittedSchedule(true).catch(() => null),
+          coordListSchedules().catch(() => []),
+          coordCheckTurn().catch(() => null),
+        ])
+        const queueEvents = data?.schedule || []
+        const approvedInMaster = data?.approvedPrograms || []
+        const roundAY = turn?.academicYear
+        const roundSem = turn?.semester
+        const myProgram = turn?.queue?.find(q =>
+          (typeof q === 'string' ? q : q.program) === (coordinatorProgram || '')
+        )
+        const myProgramInMaster = approvedInMaster.includes(coordinatorProgram || '')
+        const myApproved = myProgramInMaster ? [] : (Array.isArray(mine) ? mine : []).filter(s =>
+          s.status === 'approved' &&
+          (!roundAY || s.academicYear === roundAY) &&
+          (!roundSem || s.semester === roundSem)
+        )
+        const myApprovedEvents = myApproved.length
+          ? (await Promise.all(myApproved.map(s => coordLoadSchedule(s.id).catch(() => null))))
+              .filter(Boolean)
+              .flatMap(d => d.schedule || [])
+          : []
+          
+        let overlayEvents = []
+        let overlayData = null
+        if (overlayId) {
+          overlayData = await coordLoadSchedule(overlayId).catch(() => null)
+          overlayEvents = overlayData?.schedule || []
+        }
+        
+        // Mark events appropriately
+        const myProgramName = coordinatorProgram || ''
+        const overEvents = overlayEvents.map(e => ({ ...e, _isOtherProgram: false, _isReadonly: false }))
+        const overlayEventIds = new Set(overEvents.map(getEventId))
+        
+        const qEvents = queueEvents
+          .filter(e => !overlayEventIds.has(getEventId(e)))
+          .map(e => ({ ...e, _isOtherProgram: e.program !== myProgramName, _isReadonly: true }))
+          
+        const myApprEvents = myApprovedEvents
+          .filter(e => !overlayEventIds.has(getEventId(e)))
+          .map(e => ({ ...e, _isOtherProgram: false, _isReadonly: true }))
+        
+        const events = [...qEvents, ...myApprEvents, ...overEvents]
+        setLocalEvents(events); setEvents(events)
+        setPast([]); setFuture([])
+        
+        const finalName = overlayId ? 'Combined Schedule (with Draft Overlay)' : 'Combined Schedule (Approved So Far)'
+        setActiveName(finalName); setName(finalName)
+        setSchedAY(roundAY || ''); setSchedSem(roundSem || '')
+        setStatus(overlayId ? (overlayData?.status || 'draft') : 'approved')
+        setHasUnsavedChanges(false)
+        setScheduleMeta({
+          version: overlayData?.version || 1, savedAt: overlayData?.updatedAt || overlayData?.createdAt || null, eventCount: events.length,
+          versionHistory: overlayData?.versionHistory || [], restoredFromVersion: null, restoredAt: null,
+        })
+      } else {
+        const data = await coordLoadSchedule(id)
+        const events = data.schedule || []
+        setLocalEvents(events); setEvents(events)
+        setPast([]); setFuture([])
+        setActiveName(data.name || 'Schedule'); setName(data.name || 'Schedule')
+        setSchedAY(data.academicYear || ''); setSchedSem(data.semester || '')
+        setStatus(data.status || 'draft')
+        setHasUnsavedChanges(false)
+        setScheduleMeta({
+          version:        data.version || 1,
+          savedAt:        data.updatedAt || data.createdAt,
+          eventCount:     events.length,
+          versionHistory: data.versionHistory || [],
+          restoredFromVersion: data.restoredFromVersion || null,
+          restoredAt:          data.restoredAt || null,
+        })
+      }
+    } catch { setError(isMasterView ? 'Failed to load the combined schedule.' : 'Failed to load this schedule.') }
     finally   { setLoading(false) }
   }
 
@@ -682,14 +790,19 @@ export default function CoordScheduleViewPage() {
      Injected into useDragDrop / SessionModal below so drag-and-drop and the
      session editor hit the coordinator-scoped endpoint (ownership + draft-
      only checked server-side) instead of the admin-only one they default to. */
-  const overrideFn = useCallback(payload => coordOverrideSession(id, payload), [id])
+  const overrideFn = useCallback(payload => {
+    if (isMasterView && !overlayId) return Promise.reject(new Error('read-only'))
+    const targetId = (isMasterView && overlayId) ? overlayId : id
+    return coordOverrideSession(targetId, payload)
+  }, [id, isMasterView, overlayId])
 
   /* ── Save (in place) ──────────────────────────────────────────────────────
      Unlike the admin page's Save (which mints a new numbered version), this
      coordinator schedule has no versioning — it just persists the current
      board back onto the same draft doc. */
   async function handleSave() {
-    if (!id || saveState === 'saving' || locked) return
+    const targetId = (isMasterView && overlayId) ? overlayId : id
+    if (!targetId || (isMasterView && !overlayId) || saveState === 'saving' || locked) return
     setSaveState('saving')
     try {
       // Same reasoning as the admin page: flush any drag-and-drop moves still
@@ -703,9 +816,9 @@ export default function CoordScheduleViewPage() {
           return
         }
       }
-      const response = await coordSaveScheduleInPlace(id)
+      const response = await coordSaveScheduleInPlace(targetId)
       // Reload so versionHistory reflects the authoritative backend copy.
-      const fresh = await coordLoadSchedule(id)
+      const fresh = await coordLoadSchedule(targetId)
       setScheduleMeta({
         version:        fresh.version || response?.version || 1,
         savedAt:        fresh.updatedAt || response?.savedAt,
@@ -725,7 +838,7 @@ export default function CoordScheduleViewPage() {
 
   /* ── Submit / Unsubmit (replaces Finalize / Unfinalize) ──────────────────── */
   async function handleSubmit() {
-    if (!id || actionState === 'working') return
+    if (!id || isMasterView || actionState === 'working') return
     setActionState('working')
     setActionError('')
     try {
@@ -754,7 +867,7 @@ export default function CoordScheduleViewPage() {
   }
 
   async function handleUnsubmit() {
-    if (!id || actionState === 'working') return
+    if (!id || isMasterView || actionState === 'working') return
     setActionState('working')
     setActionError('')
     try {
@@ -982,10 +1095,10 @@ export default function CoordScheduleViewPage() {
   /* ════════════════════ RENDER ════════════════════════════════════════════ */
   return (
     <div className="page" style={{ padding:'15px 15px 30px', overflowX:'hidden', width:'100%', minWidth:0 }}>
-
-      {/* ── Header ───────────────────────────────────────────────────────── */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:20, minWidth:0 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:16, minWidth:0, flex:'1 1 0' }}>
+      {TourElement}
+      {/* ── Header + day tabs, merged into one row to save vertical space ─── */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginBottom:16, minWidth:0, flexWrap:'wrap', rowGap:8 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0, flex:'1 1 auto' }}>
           <button
             onClick={() => navigate('/coordinator/schedules')}
             className="sv-icon-btn"
@@ -994,12 +1107,12 @@ export default function CoordScheduleViewPage() {
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
 
-          <div>
-            <h1 className="page-title" style={{ margin:0, fontSize:18, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'28ch' }}>
+          <div style={{ minWidth:0, flexShrink:0 }}>
+            <h1 className="page-title" style={{ margin:0, fontSize:15, fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'20ch' }}>
               {activeName || 'Schedule'}
             </h1>
             {(schedAY || schedSem) && (
-              <div style={{ fontSize:11.5, marginTop:2, display:'flex', alignItems:'center', gap:12, color:TV.muted2, fontWeight:500 }}>
+              <div style={{ fontSize:10.5, marginTop:1, color:TV.muted2, fontWeight:500, whiteSpace:'nowrap' }}>
                 {[schedAY, schedSem].filter(Boolean).join(' • ')}
               </div>
             )}
@@ -1008,7 +1121,7 @@ export default function CoordScheduleViewPage() {
           {/* Submit/Unsubmit — same row as title, replaces admin's Finalize/Unfinalize */}
           {allEvents.length > 0 && (
             status === 'submitted' ? (
-              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
                 <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'#FEF3C7', color:'#92400E', border:'1px solid #FDE68A' }}>
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                   Submitted
@@ -1019,20 +1132,52 @@ export default function CoordScheduleViewPage() {
                 </button>
               </div>
             ) : status === 'approved' ? (
-              <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'#DCFCE7', color:'#15803D', border:'1px solid #BBF7D0' }}>
+              <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'#DCFCE7', color:'#15803D', border:'1px solid #BBF7D0', flexShrink:0 }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                 Approved
               </span>
             ) : (
               <button onClick={handleSubmit} disabled={actionState === 'working'}
-                style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 13px', borderRadius:8, border:'none', background:'linear-gradient(135deg,#15803D,#0F5C2C)', color:'#fff', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 2px 8px rgba(21,128,61,.25)' }}>
+                style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 13px', borderRadius:8, border:'none', background:'linear-gradient(135deg,#15803D,#0F5C2C)', color:'#fff', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 2px 8px rgba(21,128,61,.25)', flexShrink:0 }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                 {actionState === 'working' ? 'Submitting…' : 'Submit'}
               </button>
             )
           )}
+
+          {/* Day tabs live in this same row now — no separate row just for them */}
+          {allEvents.length > 0 && (
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap', minWidth:0 }}>
+              {DAYS.map(d => (
+                <button key={d} onClick={() => setActiveDay(d)}
+                  className={`sv-day-btn${activeDay===d?' active':''}`}>
+                  {d.slice(0,3)}
+                  {dayCounts[d] > 0 && (
+                    <span style={{ marginLeft:4, fontSize:9.5, fontWeight:700, opacity: activeDay===d ? 1 : .6 }}>
+                      {dayCounts[d]}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-        <div style={{ display:'flex', gap:5, alignItems:'center', flexShrink:0 }}>
+
+        <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0, flexWrap:'wrap', justifyContent:'flex-end' }}>
+          {/* Combined-schedule tab — replaces the old separate "Approved so far"
+              card/link on the My Schedules list; one click switches views right
+              here instead of navigating through a different page. */}
+          {isMasterView ? (
+            <button onClick={() => navigate('/coordinator/schedules')} className="sv-day-btn active" title="Back to your own schedule">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" style={{ marginRight:4, verticalAlign:-1 }}><polyline points="15 18 9 12 15 6"/></svg>
+              My Schedule
+            </button>
+          ) : (
+            <button onClick={() => navigate('/coordinator/schedules/master')} className="sv-day-btn" title="View what's been approved so far — programs ahead of you in the queue, plus your own approved schedule">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ marginRight:4, verticalAlign:-1 }}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
+              Approved So Far
+            </button>
+          )}
           {activeName && !locked && <SmartSaveButton state={saveState} onClick={handleSave} hasUnsavedChanges={hasUnsavedChanges} scheduleMeta={scheduleMeta} activeName={activeName} />}
           {activeName && scheduleMeta && scheduleMeta.versionHistory && scheduleMeta.versionHistory.length > 0 && (
             <button
@@ -1118,7 +1263,7 @@ export default function CoordScheduleViewPage() {
  
       {/* ── Filters bar ──────────────────────────────────────────────────── */}
       {allEvents.length > 0 && (
-        <div style={{ background:'#fff', border:`1px solid ${TV.border}`, borderRadius:12, padding:'11px 14px', marginBottom:14, display:'flex', flexDirection:'column', gap:10 }}>
+        <div id="tour-sv-filters" style={{ background:'#fff', border:`1px solid ${TV.border}`, borderRadius:12, padding:'11px 14px', marginBottom:14, display:'flex', flexDirection:'column', gap:10 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
             <div style={{ position:'relative', flexShrink:0 }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={TV.muted} strokeWidth="2"
@@ -1269,23 +1414,9 @@ export default function CoordScheduleViewPage() {
         </div>
       )}
 
-{/* ── Day selector + View toggles ───────────────────────────────────── */}
+{/* ── View toggles (day tabs now live in the header row above) ───────── */}
       {allEvents.length > 0 && (
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:16, flexWrap:'wrap' }}>
-          <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-            {DAYS.map(d => (
-              <button key={d} onClick={() => setActiveDay(d)}
-                className={`sv-day-btn${activeDay===d?' active':''}`}>
-                {d.slice(0,3)}
-                {dayCounts[d] > 0 && (
-                  <span style={{ marginLeft:4, fontSize:9.5, fontWeight:700, opacity: activeDay===d ? 1 : .6 }}>
-                    {dayCounts[d]}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:8, marginBottom:16, flexWrap:'wrap' }}>
           <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0 }}>
             <div style={{ display:'flex', gap:6, alignItems:'center', borderRight: `1px solid ${TV.border}`, paddingRight: 8, marginRight: 2 }}>
               <button onClick={undo} disabled={past.length === 0} className="sv-icon-btn" title="Undo" style={{ opacity: past.length === 0 ? 0.4 : 1, cursor: past.length === 0 ? 'not-allowed' : 'pointer' }}>
@@ -1674,7 +1805,7 @@ export default function CoordScheduleViewPage() {
           )}
         </div>
       ) : (
-        <div style={{
+        <div id="tour-sv-grid" style={{
           background:'#fff', border:`1px solid ${TV.border}`, borderRadius:14,
           overflow:'hidden', boxShadow:'0 1px 4px rgba(10,46,28,.07)',
           display:'flex', flexDirection:'column', width:'100%', minWidth:0,
@@ -1721,7 +1852,7 @@ export default function CoordScheduleViewPage() {
           onClose={() => setSelectedEvent(null)}
           masterRooms={masterRooms}
           masterFacultyList={masterFacultyList}
-          readOnly={locked}
+          readOnly={locked || selectedEvent._isReadonly}
           overrideFn={overrideFn}
           onSaved={(updates) => {
             setSelectedEvent(null)

@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { getRooms, saveRooms, getCourses, bulkSetPreferredRooms } from '../../services/api'
+import { useTour } from '../../hooks/useTour.jsx'
+
+const TOUR_SEEN_KEY = 'adminRooms_tourSeen'
+function isOnboardingCompleted() {
+  try { return localStorage.getItem(TOUR_SEEN_KEY) === '1' } catch { return true }
+}
+function markOnboardingCompleted() {
+  try { localStorage.setItem(TOUR_SEEN_KEY, '1') } catch {}
+}
 
 import iconLab from '../../assets/LABROOM.png'
 import iconLec from '../../assets/LECROOM.png'
@@ -384,6 +393,30 @@ export default function RoomsPage() {
   // Modal State
   const [modalState, setModalState] = useState({ isOpen: false, targetKey: null, rooms: [], title: '' })
 
+  const { TourElement, startTour } = useTour('adminRooms', [
+    {
+      target: '#tour-campus-rooms .room-card-head',
+      title: 'Campus Rooms',
+      content: 'Add every lecture and laboratory room available on campus. Drag chips to reorder — earlier chips are the scheduler\'s preferred pick when rooms are otherwise equal.',
+      placement: 'bottom',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-course-filters',
+      title: 'Search & Filters',
+      content: 'Narrow the course list by name, assignment status, or program before assigning rooms — handy once you have more than a handful of courses.',
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-course-rooms .room-card-head',
+      title: 'Assign Room Pools',
+      content: 'Give each course a pool of rooms it can be scheduled into. Select multiple rows with the checkboxes to assign the same pool to several courses at once.',
+      placement: 'bottom',
+    },
+  ], !loading)
+
+  
+
   // Load Data
   useEffect(() => {
     Promise.all([getRooms(), getCourses()])
@@ -531,9 +564,9 @@ export default function RoomsPage() {
 
   return (
     <div className="page" style={{ fontFamily:"'Inter', sans-serif", background: G.bg, minHeight: '100%', padding: '32px 40px' }}>
-      
+      {TourElement}
       {/* ── Top Row: Ultra-Compact Room Configuration ── */}
-      <div className="room-card" style={{ marginBottom: 24 }}>
+      <div id="tour-campus-rooms" className="room-card" style={{ marginBottom: 24 }}>
         <div className="room-card-head" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ width: 40, height: 40, borderRadius: 10, background: G.meadowSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${G.meadowBorder}` }}>
@@ -600,7 +633,7 @@ export default function RoomsPage() {
       </div>
 
       {/* ── Bottom Row: High-Density Course Assignments ── */}
-      <div className="room-card" style={{ position: 'relative' }}>
+      <div id="tour-course-rooms" className="room-card" style={{ position: 'relative' }}>
         
         {/* Course Assignment Header - Now with Save/Discard Controls */}
         <div className="room-card-head" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
@@ -641,7 +674,7 @@ export default function RoomsPage() {
         </div>
 
         {/* Filters */}
-        <div style={{ padding: '14px 20px', borderBottom: `1px solid ${G.borderLight}`, display: 'flex', flexDirection: 'column', gap: 12, background: '#fff' }}>
+        <div id="tour-course-filters" style={{ padding: '14px 20px', borderBottom: `1px solid ${G.borderLight}`, display: 'flex', flexDirection: 'column', gap: 12, background: '#fff' }}>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 160 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={G.muted2} strokeWidth="2.5" style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>

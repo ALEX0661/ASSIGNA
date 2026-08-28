@@ -4,11 +4,15 @@ import {
   getSubmittedSchedules, getSubmittedSchedule, approveSchedule, rejectSchedule,
   getMasterSchedule, finalizeMasterSchedule, getCourses, adminEditSchedule,
 } from '../../services/api'
+import { ProgramLegend } from '../../components/ScheduleView/svPrimitives'
+import TimeGrid from '../../components/ScheduleView/TimeGrid'
+import { useTour } from '../../hooks/useTour.jsx'
 
 /* ─────────────────────────── DESIGN TOKENS ───────────────────────────
    Same meadow palette + Inter/Poppins/IBM Plex Mono stack as
    CoordSchedulerPage / SchedulerPage / CoordMySchedulePage, so this page
-   reads as part of the same product instead of a one-off. ── */
+   reads as part of the same product instead of a one-off. ── 
+   Cache bust comment for Vite */
 const G = {
   meadow: '#15803D', meadowDeep: '#0F5C2C', meadowMid: '#166534',
   meadowSoft: '#DCFCE7', meadowBorder: '#BBF7D0',
@@ -121,7 +125,11 @@ if (!document.getElementById('approval-dashboard-style')) {
 /* ─────────────────────────── CONSTANTS ─────────────────────────── */
 const DEFAULT_PROGRAMS = ['BSIT', 'BSCS', 'BSEMC-GD', 'BSEMC-DAT']
 const SEMESTERS = ['1st Semester', '2nd Semester', 'Midyear']
-const POLL_MS = 20000
+// The submitted-schedules list is now scoped server-side to the active
+// term (see approval.py), so it no longer grows with every semester that's
+// ever been approved — but it's still worth polling less aggressively than
+// every 20s, and not at all while the tab is hidden.
+const POLL_MS = 45000
 
 // PH school years run roughly June–May, so anything from June onward
 // counts as the start of that calendar year's AY. Centers the dropdown
@@ -530,6 +538,10 @@ function ReviewPanel({ scheduleId, pendingList, masterEvents, onClose, onApprove
   const [editing, setEditing] = useState(false)
   const [editedEvents, setEditedEvents] = useState([])
   const [savingEdit, setSavingEdit] = useState(false)
+  const [showConflictsOnly, setShowConflictsOnly] = useState(false)
+  const [reviewViewMode, setReviewViewMode] = useState('grid')
+  const [activeDay, setActiveDay] = useState('Monday')
+  const [isMaximized, setIsMaximized] = useState(false)
 
   useEscapeClose(() => { if (!showReject) onClose() })
 
@@ -586,7 +598,7 @@ function ReviewPanel({ scheduleId, pendingList, masterEvents, onClose, onApprove
   return (
     <>
       <div className="ap-panel-overlay" onClick={onClose} />
-      <div className="ap-panel">
+      <div className="ap-panel" style={isMaximized ? { width: '100vw' } : {}}>
         {/* Header */}
         <div style={{ padding: '16px 20px', borderBottom: `1px solid ${G.border}`, display: 'flex', alignItems: 'flex-start', gap: 12, background: G.bg, flexShrink: 0 }}>
           {data && (
@@ -612,7 +624,16 @@ function ReviewPanel({ scheduleId, pendingList, masterEvents, onClose, onApprove
               </button>
             </div>
           )}
-          <button onClick={onClose} className="ap-modal-close">×</button>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <button onClick={() => setIsMaximized(m => !m)} className="ap-icon-btn" title={isMaximized ? "Restore size" : "Maximize"}>
+              {isMaximized ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+              )}
+            </button>
+            <button onClick={onClose} className="ap-modal-close" style={{ margin: 0 }}>×</button>
+          </div>
         </div>
 
         {/* Conflict banner */}
@@ -628,24 +649,39 @@ function ReviewPanel({ scheduleId, pendingList, masterEvents, onClose, onApprove
         {/* Edit toolbar */}
         {!loading && isSubmitted && (
           <div style={{ padding: '9px 20px', borderBottom: `1px solid ${G.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: '#fff' }}>
-            <span style={{ fontSize: 11, color: G.muted2, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span className="ap-kbd">J</span><span className="ap-kbd">K</span> navigate · <span className="ap-kbd">A</span> approve · <span className="ap-kbd">R</span> reject
+            <span style={{ fontSize: 11, color: G.muted2, display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span><span className="ap-kbd">J</span><span className="ap-kbd">K</span> nav · <span className="ap-kbd">A</span> approve</span>
+              
+              {conflicts.length > 0 && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: G.inkMid, fontWeight: 500 }}>
+                  <input type="checkbox" checked={showConflictsOnly} onChange={e => setShowConflictsOnly(e.target.checked)} style={{ margin: 0, accentColor: G.red }} />
+                  Show conflicts only
+                </label>
+              )}
             </span>
-            {editing ? (
-              <div style={{ display: 'flex', gap: 7 }}>
-                <button className="btn-outline" style={{ padding: '5px 11px', fontSize: 11.5 }} onClick={() => { setEditing(false); setEditedEvents(data?.schedule || []) }}>Cancel</button>
-                <button className="btn-primary" style={{ padding: '5px 12px', fontSize: 11.5 }} onClick={handleSaveEdit} disabled={savingEdit}>{savingEdit ? 'Saving…' : 'Save Changes'}</button>
-              </div>
-            ) : (
-              <button className="btn-outline" style={{ padding: '5px 11px', fontSize: 11.5 }} onClick={() => setEditing(true)}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                Fix before approving
-              </button>
-            )}
+            <div style={{ display: 'flex', gap: 7 }}>
+              {!editing && (
+                <button className="btn-outline" style={{ padding: '5px 11px', fontSize: 11.5 }} onClick={() => window.open(`/admin/schedule/submitted/${scheduleId}`, '_blank')}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                  View Grid
+                </button>
+              )}
+              {editing ? (
+                <>
+                  <button className="btn-outline" style={{ padding: '5px 11px', fontSize: 11.5 }} onClick={() => { setEditing(false); setEditedEvents(data?.schedule || []) }}>Cancel</button>
+                  <button className="btn-primary" style={{ padding: '5px 12px', fontSize: 11.5 }} onClick={handleSaveEdit} disabled={savingEdit}>{savingEdit ? 'Saving…' : 'Save Changes'}</button>
+                </>
+              ) : (
+                <button className="btn-outline" style={{ padding: '5px 11px', fontSize: 11.5 }} onClick={() => setEditing(true)}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  Fix
+                </button>
+              )}
+            </div>
           </div>
         )}
 
-        {/* Table */}
+        {/* Table / Grid */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {loading ? (
             <div style={{ padding: '40px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -654,37 +690,88 @@ function ReviewPanel({ scheduleId, pendingList, masterEvents, onClose, onApprove
           ) : events.length === 0 ? (
             <EmptyState icon={ICONS.clipboard} text="No events found in this schedule." />
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-              <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
-                <tr style={{ background: G.bg }}>
-                  {COLS.map(h => (
-                    <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: G.muted, letterSpacing: 0.4, textTransform: 'uppercase', borderBottom: `1px solid ${G.border}`, whiteSpace: 'nowrap' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((ev, i) => {
-                  const conflicted = conflicts.some(c => c.event === (data.schedule || [])[i])
-                  return (
-                    <tr key={i} className="ap-row" style={{ padding: 0, background: conflicted && !editing ? '#FEF2F2' : undefined }}>
-                      <td style={{ padding: '8px 12px', fontWeight: 600, color: G.ink }}>{ev.courseCode}</td>
-                      <td style={{ padding: '8px 12px', color: G.inkMid }}>{ev.program}-{ev.year}{ev.block}</td>
-                      <td style={{ padding: '8px 12px', color: G.inkMid }}>{ev.session}</td>
-                      <td style={{ padding: '8px 12px', color: G.inkMid }}>
-                        {editing ? <input className="cp-inp sm" value={ev.day || ''} onChange={e => patchEvent(i, 'day', e.target.value)} /> : ev.day}
-                      </td>
-                      <td style={{ padding: '8px 12px', color: G.inkMid, whiteSpace: 'nowrap' }}>
-                        {editing ? <input className="cp-inp sm" value={ev.period || ''} onChange={e => patchEvent(i, 'period', e.target.value)} style={{ width: 100 }} /> : ev.period}
-                      </td>
-                      <td style={{ padding: '8px 12px', color: conflicted && !editing ? '#991B1B' : G.inkMid, fontWeight: conflicted && !editing ? 700 : 400 }}>
-                        {editing ? <input className="cp-inp sm" value={ev.room || ''} onChange={e => patchEvent(i, 'room', e.target.value)} style={{ width: 90 }} /> : ev.room}
-                      </td>
-                      <td style={{ padding: '8px 12px', color: G.muted }}>{ev.assigned_faculty || ev.faculty || 'TBA'}</td>
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: reviewViewMode === 'grid' ? 500 : 'auto' }}>
+              <div style={{ display: 'flex', padding: '12px 20px', background: '#F8FAF9', borderBottom: `1px solid ${G.border}`, alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', background: G.hover, borderRadius: 8, padding: 4 }}>
+                  <button onClick={() => setReviewViewMode('grid')}
+                    style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'grid' ? '#fff' : 'transparent', color: reviewViewMode === 'grid' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'grid' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
+                    Grid
+                  </button>
+                  <button onClick={() => setReviewViewMode('table')}
+                    style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'table' ? '#fff' : 'transparent', color: reviewViewMode === 'table' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'table' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
+                    List
+                  </button>
+                </div>
+                {reviewViewMode === 'grid' && (
+                  <div style={{ display: 'flex', gap: 6, overflowX: 'auto', flex: 1 }}>
+                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(d => (
+                      <button key={d} onClick={() => setActiveDay(d)} 
+                        style={{
+                          padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                          cursor: 'pointer', border: '1px solid #D8E8DF',
+                          background: activeDay === d ? `linear-gradient(135deg, ${G.meadow}, ${G.meadowDeep})` : '#fff',
+                          color: activeDay === d ? '#fff' : G.muted,
+                          transition: 'all .15s', whiteSpace: 'nowrap',
+                          boxShadow: activeDay === d ? '0 2px 8px rgba(21,128,61,.3)' : 'none'
+                        }}>
+                        {d}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {reviewViewMode === 'table' ? (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                    <tr style={{ background: G.bg }}>
+                      {COLS.map(h => (
+                        <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: G.muted, letterSpacing: 0.4, textTransform: 'uppercase', borderBottom: `1px solid ${G.border}`, whiteSpace: 'nowrap' }}>{h}</th>
+                      ))}
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody>
+                    {events.map((ev, i) => {
+                      const originalEvent = (data.schedule || [])[i]
+                      const conflicted = conflicts.some(c => c.event === originalEvent)
+                      
+                      if (showConflictsOnly && !conflicted) return null;
+                      
+                      return (
+                        <tr key={i} className="ap-row" style={{ padding: 0, background: conflicted && !editing ? '#FEF2F2' : undefined }}>
+                          <td style={{ padding: '8px 12px', fontWeight: 600, color: G.ink }}>{ev.courseCode}</td>
+                          <td style={{ padding: '8px 12px', color: G.inkMid }}>{ev.program}-{ev.year}{ev.block}</td>
+                          <td style={{ padding: '8px 12px', color: G.inkMid }}>{ev.session}</td>
+                          <td style={{ padding: '8px 12px', color: G.inkMid }}>
+                            {editing ? <input className="cp-inp sm" value={ev.day || ''} onChange={e => patchEvent(i, 'day', e.target.value)} /> : ev.day}
+                          </td>
+                          <td style={{ padding: '8px 12px', color: G.inkMid, whiteSpace: 'nowrap' }}>
+                            {editing ? <input className="cp-inp sm" value={ev.period || ''} onChange={e => patchEvent(i, 'period', e.target.value)} style={{ width: 100 }} /> : ev.period}
+                          </td>
+                          <td style={{ padding: '8px 12px', color: conflicted && !editing ? '#991B1B' : G.inkMid, fontWeight: conflicted && !editing ? 700 : 400 }}>
+                            {editing ? <input className="cp-inp sm" value={ev.room || ''} onChange={e => patchEvent(i, 'room', e.target.value)} style={{ width: 90 }} /> : ev.room}
+                          </td>
+                          <td style={{ padding: '8px 12px', color: G.muted }}>{ev.assigned_faculty || ev.faculty || 'TBA'}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              ) : (
+                <div style={{ flex: 1, padding: '16px', background: '#fff', minHeight: 400 }}>
+                  <TimeGrid 
+                    rooms={Array.from(new Set(events.map(e => e.room))).sort()} 
+                    dayEvents={events.filter(e => e.day === activeDay)} 
+                    conflictMap={new Map(conflicts.map(c => [getEventId(c.event), c]))}
+                    locked={!editing} 
+                    gridSize="normal" fullscreen={false}
+                    ambientConflictIds={new Set()} ambientMergeIds={new Set()}
+                    conflictingDragIds={new Set()} dragConflictBands={[]}
+                    mergedIds={new Set()} allEvents={events} availabilityMap={new Map()}
+                  />
+                </div>
+              )}
+            </div>
           )}
         </div>
 
@@ -721,6 +808,7 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, 
   const [dragIndex, setDragIndex] = useState(null)
   const [overIndex, setOverIndex] = useState(null)
   const [savingOrder, setSavingOrder] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const queue = queues.find(q => (q.id || q.queueId) === activeQueueId) || queues[0] || null
   const programs = queue?.queue || []
@@ -745,7 +833,7 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, 
 
   async function doSkip(prog) { setActing(`skip-${prog}`); try { await onSkip(queue.id || queue.queueId, prog) } finally { setActing(null) } }
   async function doAdvance() { setActing('advance'); try { await onAdvance(queue.id || queue.queueId) } finally { setActing(null) } }
-  async function doDelete() { if (!confirm('Delete this queue? This cannot be undone.')) return; await onDelete(queue.id || queue.queueId) }
+  async function doDelete() { setShowDeleteConfirm(true) }
 
   return (
     <div className="ap-card ap-fadein">
@@ -800,6 +888,19 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, 
           {!reordering && (
             <>
               <div style={{ height: 1, background: G.borderLight, margin: '16px 0' }} />
+              
+              {turnIndex >= programs.length && (
+                <div style={{ padding: '14px 20px', background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, borderRadius: 10, display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: G.meadow, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: G.meadowDeep }}>Queue Complete!</div>
+                    <div style={{ fontSize: 12, color: G.meadowMid, marginTop: 2 }}>All coordinators have finished. Head over to the <b>Master Schedule</b> tab to review the final result and generate the combined schedule.</div>
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 {skippable.length > 0 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -827,6 +928,25 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, 
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#fff', borderRadius: 12, width: 400, maxWidth: '90%', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #eee' }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#1A2F25' }}>Delete Queue</h3>
+            </div>
+            <div style={{ padding: '24px' }}>
+              <p style={{ margin: 0, fontSize: 14, color: '#4B7060', lineHeight: 1.5 }}>
+                Are you sure you want to delete this queue? This action cannot be undone.
+              </p>
+            </div>
+            <div style={{ padding: '16px 24px', background: '#F9FAFB', display: 'flex', justifyContent: 'flex-end', gap: 12, borderRadius: '0 0 12px 12px' }}>
+              <button className="co-btn co-btn-ghost" onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
+              <button className="co-btn co-btn-primary" style={{ background: '#DC2626', borderColor: '#B91C1C' }} onClick={async () => { setShowDeleteConfirm(false); await onDelete(queue.id || queue.queueId); }}>Delete</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -965,6 +1085,9 @@ function MasterTab({ queueId, onFinalize, programs }) {
   const [expanded, setExpanded] = useState(true)
   const [filter, setFilter] = useState('All')
   const [acting, setActing] = useState(false)
+  const [reviewViewMode, setReviewViewMode] = useState('grid')
+  const [activeDay, setActiveDay] = useState('Monday')
+  const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false)
 
   useEffect(() => {
     if (!queueId) return
@@ -973,9 +1096,8 @@ function MasterTab({ queueId, onFinalize, programs }) {
   }, [queueId])
 
   async function handleFinalize() {
-    if (!confirm('Finalize and publish this schedule to faculty? This cannot be undone.')) return
     setActing(true)
-    try { await onFinalize(queueId) } finally { setActing(false) }
+    try { await onFinalize(queueId) } finally { setActing(false); setShowFinalizeConfirm(false) }
   }
 
   if (!queueId) return <div className="ap-card ap-fadein"><EmptyState icon={ICONS.calendar} text="Create a coordinator queue first — the master schedule builds up as programs get approved." /></div>
@@ -997,7 +1119,7 @@ function MasterTab({ queueId, onFinalize, programs }) {
           {isFinalized
             ? <Badge label="Published to Faculty" bg="rgba(255,255,255,0.18)" color="#fff" border="rgba(255,255,255,0.4)" />
             : approved.length > 0 && (
-              <button onClick={handleFinalize} disabled={acting} className="btn-blue">
+              <button onClick={() => setShowFinalizeConfirm(true)} disabled={acting} className="btn-blue">
                 {acting
                   ? <><svg className="ap-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg> Finalizing…</>
                   : <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Finalize & Publish</>}
@@ -1042,37 +1164,100 @@ function MasterTab({ queueId, onFinalize, programs }) {
                     {p}{p !== 'All' && <span style={{ marginLeft: 5, opacity: 0.7, fontWeight: 400 }}>({events.filter(e => e.program === p).length})</span>}
                   </button>
                 ))}
+                
+                <div style={{ flex: 1 }} />
+                <div style={{ display: 'flex', background: G.borderLight, borderRadius: 8, padding: 4 }}>
+                  <button onClick={() => setReviewViewMode('grid')}
+                    style={{ padding: '4px 10px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'grid' ? '#fff' : 'transparent', color: reviewViewMode === 'grid' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'grid' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
+                    Grid
+                  </button>
+                  <button onClick={() => setReviewViewMode('table')}
+                    style={{ padding: '4px 10px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'table' ? '#fff' : 'transparent', color: reviewViewMode === 'table' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'table' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
+                    List
+                  </button>
+                </div>
               </div>
-              <div style={{ overflowX: 'auto', maxHeight: 380, overflowY: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
-                  <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
-                    <tr style={{ background: G.bg }}>
-                      {['Program', 'Course', 'Section', 'Day', 'Period', 'Room', 'Faculty'].map(h => (
-                        <th key={h} style={{ padding: '9px 14px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, color: G.muted, letterSpacing: 0.4, textTransform: 'uppercase', borderBottom: `1px solid ${G.border}`, whiteSpace: 'nowrap' }}>{h}</th>
+              <div style={{ maxHeight: reviewViewMode === 'grid' ? 500 : 380, overflowY: 'auto' }}>
+                {reviewViewMode === 'table' ? (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                    <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                      <tr style={{ background: G.bg }}>
+                        {['Program', 'Course', 'Section', 'Day', 'Period', 'Room', 'Faculty'].map(h => (
+                          <th key={h} style={{ padding: '9px 14px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, color: G.muted, letterSpacing: 0.4, textTransform: 'uppercase', borderBottom: `1px solid ${G.border}`, whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visible.map((ev, i) => {
+                        const c = getProgColor(ev.program)
+                        return (
+                          <tr key={i} className="ap-row">
+                            <td style={{ padding: '8px 14px' }}><span style={{ padding: '2px 8px', borderRadius: 6, background: `${c}14`, color: c, fontSize: 11, fontWeight: 700 }}>{ev.program}</span></td>
+                            <td style={{ padding: '8px 14px', fontWeight: 600, color: G.ink }}>{ev.courseCode}</td>
+                            <td style={{ padding: '8px 14px', color: G.inkMid }}>{ev.program}-{ev.year}{ev.block}</td>
+                            <td style={{ padding: '8px 14px', color: G.inkMid }}>{ev.day}</td>
+                            <td style={{ padding: '8px 14px', color: G.inkMid, whiteSpace: 'nowrap' }}>{ev.period}</td>
+                            <td style={{ padding: '8px 14px', color: G.inkMid }}>{ev.room}</td>
+                            <td style={{ padding: '8px 14px', color: G.muted }}>{ev.assigned_faculty || ev.faculty || 'TBA'}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 450, padding: '12px 16px', background: '#fff' }}>
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 12, overflowX: 'auto', paddingBottom: 4 }}>
+                      {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(d => (
+                        <button key={d} onClick={() => setActiveDay(d)} 
+                          style={{
+                            padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                            cursor: 'pointer', border: '1px solid #D8E8DF',
+                            background: activeDay === d ? `linear-gradient(135deg, ${G.meadow}, ${G.meadowDeep})` : '#fff',
+                            color: activeDay === d ? '#fff' : G.muted,
+                            transition: 'all .15s', whiteSpace: 'nowrap',
+                            boxShadow: activeDay === d ? '0 2px 8px rgba(21,128,61,.3)' : 'none'
+                          }}>
+                          {d}
+                        </button>
                       ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visible.map((ev, i) => {
-                      const c = getProgColor(ev.program)
-                      return (
-                        <tr key={i} className="ap-row">
-                          <td style={{ padding: '8px 14px' }}><span style={{ padding: '2px 8px', borderRadius: 6, background: `${c}14`, color: c, fontSize: 11, fontWeight: 700 }}>{ev.program}</span></td>
-                          <td style={{ padding: '8px 14px', fontWeight: 600, color: G.ink }}>{ev.courseCode}</td>
-                          <td style={{ padding: '8px 14px', color: G.inkMid }}>{ev.program}-{ev.year}{ev.block}</td>
-                          <td style={{ padding: '8px 14px', color: G.inkMid }}>{ev.day}</td>
-                          <td style={{ padding: '8px 14px', color: G.inkMid, whiteSpace: 'nowrap' }}>{ev.period}</td>
-                          <td style={{ padding: '8px 14px', color: G.inkMid }}>{ev.room}</td>
-                          <td style={{ padding: '8px 14px', color: G.muted }}>{ev.assigned_faculty || ev.faculty || 'TBA'}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                    </div>
+                    <div style={{ flex: 1, minHeight: 400 }}>
+                      <TimeGrid 
+                        rooms={Array.from(new Set(visible.map(e => e.room))).sort()} 
+                        dayEvents={visible.filter(e => e.day === activeDay)} 
+                        conflictMap={new Map()}
+                        locked={true} 
+                        gridSize="normal" fullscreen={false}
+                        ambientConflictIds={new Set()} ambientMergeIds={new Set()}
+                        conflictingDragIds={new Set()} dragConflictBands={[]}
+                        mergedIds={new Set()} allEvents={visible} availabilityMap={new Map()}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}
         </>
+      )}
+
+      {showFinalizeConfirm && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#fff', borderRadius: 12, width: 400, maxWidth: '90%', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #eee' }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#1A2F25' }}>Finalize Master Schedule</h3>
+            </div>
+            <div style={{ padding: '24px' }}>
+              <p style={{ margin: 0, fontSize: 14, color: '#4B7060', lineHeight: 1.5 }}>
+                Finalize and publish this schedule to faculty? This cannot be undone.
+              </p>
+            </div>
+            <div style={{ padding: '16px 24px', background: '#F9FAFB', display: 'flex', justifyContent: 'flex-end', gap: 12, borderRadius: '0 0 12px 12px' }}>
+              <button className="co-btn co-btn-ghost" onClick={() => setShowFinalizeConfirm(false)}>Cancel</button>
+              <button className="co-btn co-btn-primary" onClick={handleFinalize}>Publish</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
@@ -1126,6 +1311,14 @@ function ActivityTab({ schedules }) {
   )
 }
 
+const TOUR_SEEN_KEY = 'adminApprovalDashboard_tourSeen'
+function isOnboardingCompleted() {
+  try { return localStorage.getItem(TOUR_SEEN_KEY) === '1' } catch { return true }
+}
+function markOnboardingCompleted() {
+  try { localStorage.setItem(TOUR_SEEN_KEY, '1') } catch {}
+}
+
 /* ─────────────────────────── MAIN PAGE ─────────────────────────── */
 export default function ApprovalDashboardPage() {
   const [queues, setQueues] = useState([])
@@ -1141,6 +1334,37 @@ export default function ApprovalDashboardPage() {
   const [tab, setTab] = useState('submissions')
   const [master, setMaster] = useState(null)
   const { toasts, toast } = useToast()
+
+  const { TourElement } = useTour('adminApprovalDashboard', [
+    {
+      target: '#tour-create-queue',
+      title: 'Start with a Scheduling Queue',
+      content: 'A queue decides which programs get to build their schedule first, and in what order. Create one here whenever a new semester or scheduling round begins — coordinators can\'t submit a draft until their program has a turn.',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-queue-tab',
+      title: 'Queue Control',
+      content: 'Track and manage turn order here. You can see which program is currently up, skip a program that isn\'t ready, advance the queue once a program finishes, reorder programs by dragging, or delete a queue entirely. The badge shows how many queues are active out of the total.',
+    },
+    {
+      target: '#tour-submissions-tab',
+      title: 'Reviewing submissions',
+      content: 'Once a coordinator submits their draft, it lands here for your review. Open a submission to inspect it in detail, then approve it (which merges it into the Master Schedule) or reject it with feedback so the coordinator can revise and resubmit. The badge shows how many are waiting on you right now.',
+    },
+    {
+      target: '#tour-master-tab',
+      title: 'Master Schedule',
+      content: 'This is every approved class from every program, layered together into one unified timetable. Once everything looks right, finalize it here to publish the official schedule out to faculty.',
+    },
+    {
+      target: '#tour-activity-tab',
+      title: 'Activity log',
+      content: 'A running history of what happened and when — submissions, approvals, rejections, and queue changes — so you can trace back through the approval process if something needs double-checking.',
+    },
+  ])
+
+  
 
   const loadAll = useCallback(async (silent = false) => {
     if (silent) setRefreshing(true); else setLoading(true)
@@ -1187,18 +1411,41 @@ export default function ApprovalDashboardPage() {
 
   useEffect(() => { loadAll() }, [loadAll])
 
+  // Paused while a modal is open, and now also paused whenever the tab is
+  // hidden — an admin who leaves this dashboard open in the background all
+  // day was otherwise polling forever for a screen nobody was looking at.
   useEffect(() => {
     if (showCreate || reviewId) return
-    const t = setInterval(() => loadAll(true), POLL_MS)
-    return () => clearInterval(t)
+    let id = null
+    function start() { if (!id) id = setInterval(() => loadAll(true), POLL_MS) }
+    function stop() { if (id) { clearInterval(id); id = null } }
+    function onVisibility() { if (document.hidden) stop(); else { start(); loadAll(true) } }
+    if (!document.hidden) start()
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => { stop(); document.removeEventListener('visibilitychange', onVisibility) }
   }, [loadAll, showCreate, reviewId])
 
   // Master schedule events, kept at page level so the review panel can run
   // conflict checks without an extra fetch of its own.
+  //
+  // IMPORTANT: this used to depend on `submitted`, which gets a brand-new
+  // array reference from every loadAll() call — including the silent
+  // background poll — even when nothing in it actually changed. Since
+  // GET /approval/master/{id} reads every event in the master schedule's
+  // subcollection (one Firestore read per session, easily hundreds), that
+  // was re-reading the entire master schedule on every single poll tick
+  // regardless of whether an approval had happened. The master schedule
+  // only ever changes as a *result* of an approve/reject action, so those
+  // handlers now call refreshMaster() explicitly instead — this effect
+  // only fires when the admin switches which queue they're looking at.
+  const refreshMaster = useCallback((queueId) => {
+    if (!queueId) { setMaster(null); return }
+    getMasterSchedule(queueId).then(setMaster).catch(() => setMaster(null))
+  }, [])
+
   useEffect(() => {
-    if (!activeQueueId) { setMaster(null); return }
-    getMasterSchedule(activeQueueId).then(setMaster).catch(() => setMaster(null))
-  }, [activeQueueId, submitted])
+    refreshMaster(activeQueueId)
+  }, [activeQueueId, refreshMaster])
 
   const programs = useMemo(() => {
     const fromCourses = new Set(courses.map(c => c.program).filter(Boolean))
@@ -1243,6 +1490,7 @@ export default function ApprovalDashboardPage() {
       const remaining = pendingList.filter(s => (s.id || s.scheduleId) !== id)
       setReviewId(remaining.length ? (remaining[0].id || remaining[0].scheduleId) : null)
       loadAll(true)
+      refreshMaster(activeQueueId)
     } catch (e) { toast(e?.response?.data?.detail || 'Approval failed', 'error') }
     finally { setApprovingIds(s => { const n = new Set(s); n.delete(id); return n }) }
   }
@@ -1255,6 +1503,7 @@ export default function ApprovalDashboardPage() {
     setApprovingIds(s => { const n = new Set(s); ids.forEach(id => n.delete(id)); return n })
     toast(fail ? `Approved ${ok}, ${fail} failed` : `Approved ${ok} schedule${ok === 1 ? '' : 's'}`, fail ? 'error' : 'success')
     loadAll(true)
+    if (ok > 0) refreshMaster(activeQueueId)
   }
   async function handleReject(id, feedback) {
     try {
@@ -1262,10 +1511,16 @@ export default function ApprovalDashboardPage() {
       toast('Feedback sent — schedule returned to draft', 'info')
       setReviewId(prev => prev === id ? null : prev)
       loadAll(true)
+      // Rejection doesn't touch the master schedule, so no refreshMaster() call.
     } catch (e) { toast(e?.response?.data?.detail || 'Reject failed', 'error') }
   }
   async function handleFinalize(qId) {
-    try { await finalizeMasterSchedule(qId); toast('Master schedule published to faculty!', 'success'); loadAll() }
+    try {
+      await finalizeMasterSchedule(qId)
+      toast('Master schedule published to faculty!', 'success')
+      loadAll()
+      refreshMaster(qId)
+    }
     catch (e) { toast(e?.response?.data?.detail || 'Finalize failed', 'error') }
   }
   function navigateReview(delta) {
@@ -1289,6 +1544,7 @@ export default function ApprovalDashboardPage() {
 
   return (
     <div className="ap-root" style={{ padding: '20px 28px 60px', display: 'flex', flexDirection: 'column', gap: 16, minHeight: '100%' }}>
+      {TourElement}
 
       {/* Tabs + toolbar, one row */}
       {loading ? (
@@ -1305,7 +1561,7 @@ export default function ApprovalDashboardPage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {TABS.map(t => (
-              <button key={t.id} className={`ap-tab${tab === t.id ? ' active' : ''}`} onClick={() => setTab(t.id)}>
+              <button key={t.id} id={`tour-${t.id}-tab`} className={`ap-tab${tab === t.id ? ' active' : ''}`} onClick={() => setTab(t.id)}>
                 {t.label}
                 {t.badge && <span className="ap-tab-count">{t.badge}</span>}
               </button>
@@ -1316,7 +1572,7 @@ export default function ApprovalDashboardPage() {
             <button onClick={() => loadAll(true)} disabled={refreshing || loading} className="ap-icon-btn" title="Refresh">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={refreshing ? 'ap-spin' : undefined}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             </button>
-            <button onClick={() => setShowCreate(true)} className="btn-primary" style={{ padding: '9px 18px', fontSize: 12.5 }}>
+            <button id="tour-create-queue" onClick={() => setShowCreate(true)} className="btn-primary" style={{ padding: '9px 18px', fontSize: 12.5 }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               New Queue
             </button>
@@ -1397,3 +1653,5 @@ export default function ApprovalDashboardPage() {
     </div>
   )
 }
+
+

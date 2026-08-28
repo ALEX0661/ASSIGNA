@@ -440,9 +440,23 @@ function SortTh({ label, field, sortBy, sortDir, onSort, center, right, width })
   )
 }
 
+import { useTour } from '../../hooks/useTour.jsx'
+
+const TOUR_SEEN_KEY = 'adminCourses_tourSeen'
+function isOnboardingCompleted() {
+  try { return localStorage.getItem(TOUR_SEEN_KEY) === '1' } catch { return true }
+}
+function markOnboardingCompleted() {
+  try { localStorage.setItem(TOUR_SEEN_KEY, '1') } catch {}
+}
+
 /* ─── Main Page ───────────────────────────────────────────────────────────── */
 export default function CourseListPage() {
   const { toasts, toast } = useToast()
+
+  
+
+  
 
   const initialPrefs = useMemo(() => {
     try { return JSON.parse(localStorage.getItem(LS_VIEW_PREFS)) || {} } catch { return {} }
@@ -450,6 +464,47 @@ export default function CourseListPage() {
 
   const [courses,       setCourses]       = useState([])
   const [loading,       setLoading]       = useState(true)
+
+  const { TourElement, startTour } = useTour('adminCourses', [
+    {
+      target: '#tour-semester-tabs',
+      title: '1st Sem, 2nd Sem, Midyear',
+      content: 'Courses are grouped by semester — switch tabs to see and manage the offering for each term separately.',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-block-config-btn',
+      title: 'Configure Blocks',
+      content: 'Set how many blocks/sections each program and year level gets — this determines how many parallel sections of a course the scheduler needs to fill.',
+    },
+    {
+      target: '#tour-header-actions',
+      title: 'Export & Import',
+      content: 'Export the full course list to Excel, or bulk-upload a spreadsheet of courses instead of entering them one by one.',
+    },
+    {
+      target: '#tour-add-course-btn',
+      title: 'Add a Course',
+      content: 'Manually add a single course — set its code, title, units, program, and whether it has a lab component.',
+    },
+    {
+      target: '#tour-stats-bar',
+      title: 'Semester Summary',
+      content: 'A quick read on the currently selected semester — total courses, units, and how they split between lecture and lab.',
+    },
+    {
+      target: '#tour-search-toolbar',
+      title: 'Search & Filter',
+      content: 'Find a course by code or title, or open advanced filters to narrow by program, year level, or lab status.',
+    },
+    {
+      target: '#tour-courses-table-anchor',
+      spotlightTarget: '#tour-courses-table',
+      title: 'The Course List',
+      content: 'Every course for this semester lives here. Click a row to edit its details, or use the action icons to duplicate or delete it.',
+      placement: 'center',
+    },
+  ], !loading)
   const [search,        setSearch]        = useState('')
   const [progFilter,    setProgFilter]    = useState([])
   const [yearFilter,    setYearFilter]    = useState([])
@@ -688,12 +743,12 @@ export default function CourseListPage() {
 
   return (
     <div className="page" style={{ fontFamily:"'Inter',sans-serif", background: G.bg, minHeight: '100%', padding: '28px 32px' }}>
-
+      {TourElement}
       {/* ── Header Row ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
 
         {/* Semester Tabs - Unified with Faculty active/archived toggle */}
-        <div style={{ display: 'flex', gap: 3, background: '#fff', borderRadius: 10, padding: 3, border: `1px solid ${G.border}`, flexShrink: 0 }}>
+        <div id="tour-semester-tabs" style={{ display: 'flex', gap: 3, background: '#fff', borderRadius: 10, padding: 3, border: `1px solid ${G.border}`, flexShrink: 0 }}>
           {SEMESTERS.map(sem => {
             const isActive = semesterTab === sem
             return (
@@ -722,8 +777,8 @@ export default function CourseListPage() {
           })}
         </div>
 
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-          <button onClick={() => setShowBlockCfg(true)} title="Configure blocks per program-year"
+        <div id="tour-header-actions" style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+          <button id="tour-block-config-btn" onClick={() => setShowBlockCfg(true)} title="Configure blocks per program-year"
             style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 8, border: `1px solid ${G.border}`, background: '#fff', color: G.muted, cursor: 'pointer', transition: 'all .15s', padding: 0 }}
             onMouseEnter={e => { e.currentTarget.style.background = G.hover; e.currentTarget.style.color = G.meadow }}
             onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = G.muted }}>
@@ -756,7 +811,7 @@ export default function CourseListPage() {
             Upload Courses
           </button>
 
-          <button onClick={() => { setShowAdd(true); setError('') }}
+          <button id="tour-add-course-btn" onClick={() => { setShowAdd(true); setError('') }}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 18px', borderRadius: 10, border: 'none', fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: '#fff', boxShadow: '0 3px 12px rgba(21,128,61,0.32)' }}
             onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 5px 18px rgba(21,128,61,0.42)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
             onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 3px 12px rgba(21,128,61,0.32)'; e.currentTarget.style.transform = 'none' }}>
@@ -767,10 +822,12 @@ export default function CourseListPage() {
       </div>
 
       {/* ── Stats Bar ── */}
-      <StatsBar loading={loading} filtered={filtered} isFiltered={hasFilter} />
+      <div id="tour-stats-bar">
+        <StatsBar loading={loading} filtered={filtered} isFiltered={hasFilter} />
+      </div>
 
       {/* ── Search + Toolbar ── */}
-      <div style={{ background: '#fff', borderRadius: 14, border: `1px solid ${G.border}`, padding: '10px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', boxShadow: '0 2px 8px rgba(10,46,28,0.05)' }}>
+      <div id="tour-search-toolbar" style={{ background: '#fff', borderRadius: 14, border: `1px solid ${G.border}`, padding: '10px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', boxShadow: '0 2px 8px rgba(10,46,28,0.05)' }}>
 
         {/* Search */}
         <div style={{ position: 'relative', flex: '1 1 220px', minWidth: 180 }}>
@@ -905,8 +962,8 @@ export default function CourseListPage() {
           )}
         </div>
       ) : (
-        <div style={{ background: '#fff', borderRadius: 12, border: `1.5px solid ${G.border}`, overflow: 'hidden', boxShadow: '0 2px 8px rgba(10,46,28,0.06)' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+        <div id="tour-courses-table-anchor" style={{ background: '#fff', borderRadius: 12, border: `1.5px solid ${G.border}`, overflow: 'hidden', boxShadow: '0 2px 8px rgba(10,46,28,0.06)' }}>
+          <table id="tour-courses-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
             <thead>
               <tr style={{ background: G.hover, borderBottom: `1.5px solid ${G.border}` }}>
                 <th style={{ width: 40, padding: '10px 14px', textAlign: 'center' }}><div onClick={togAll} style={{ cursor: 'pointer', display: 'inline-flex' }}><Checkbox checked={allSel} indeterminate={someSel}/></div></th>
