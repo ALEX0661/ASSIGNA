@@ -87,12 +87,6 @@ if (!document.getElementById(STYLE_TAG_ID)) {
     .cd-icon-btn.danger:hover { background:${G.redSoft}; color:${G.redDeep} !important; border-color:${G.redBorder}; }
     .cd-icon-btn:disabled { opacity:.5; cursor:default; }
     
-    .cd-bell-btn { width:34px; height:34px; border-radius:8px; border:1px solid ${G.border}; background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; color:${G.muted}; transition:all .12s; flex-shrink:0; }
-    .cd-bell-btn svg { fill:none !important; stroke:currentColor !important; display:block; flex-shrink:0; }
-    .cd-bell-btn:hover { background:${G.hover}; color:${G.meadowDeep}; border-color:${G.meadowBorder}; }
-    .cd-bell-btn.on, .cd-bell-btn.light.on { color:${G.meadowDeep}; background:${G.meadowSoft}; border-color:${G.meadowBorder}; }
-    .cd-bell-btn.light { border-color:${G.border}; background:#fff; color:${G.muted}; }
-    .cd-bell-btn.light:hover { background:${G.hover}; }
     
     .cd-run-btn { display:inline-flex; align-items:center; gap:7px; padding:9px 20px; border-radius:10px; border:none; background:linear-gradient(135deg,${G.meadow},${G.meadowDeep}); color:#fff; font-size:13px; font-weight:700; cursor:pointer; font-family:'Inter',sans-serif; box-shadow:0 3px 12px rgba(21,128,61,0.25); transition:transform .15s, box-shadow .15s, background .15s; }
     .cd-run-btn:hover { transform:translateY(-1px); box-shadow:0 5px 16px rgba(21,128,61,0.3); }
@@ -432,23 +426,6 @@ function QueueLedger({ queue }) {
   )
 }
 
-function NotifyBell({ permission, onRequest, light }) {
-  const title = permission === 'unsupported' ? 'Notifications are not supported in this browser'
-    : permission === 'granted' ? 'Turn alerts are on'
-    : permission === 'denied' ? 'Turn alerts are blocked — enable notifications for this site in your browser'
-    : 'Turn on alerts for when your turn opens up'
-  return (
-    <button className={`cd-bell-btn${light ? ' light' : ''}${permission === 'granted' ? ' on' : ''}`} title={title} onClick={onRequest} disabled={permission !== 'default'}
-      style={permission === 'unsupported' ? { opacity: 0.45, cursor: 'default' } : undefined}>
-      {permission === 'denied' ? (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-      ) : (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-      )}
-    </button>
-  )
-}
-
 const SUGGESTION_STYLES = {
   error:   { bg: G.redSoft,    border: G.redBorder,    icon: G.redDeep,    chip: '#FECACA', dot: '#EF4444', label: 'Critical' },
   warning: { bg: G.amberSoft,  border: G.amberBorder,  icon: G.amber,      chip: '#FDE68A', dot: '#F59E0B', label: 'Warning'  },
@@ -523,7 +500,6 @@ export default function CoordDashboard() {
   const [refreshing, setRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState(null)
   const [error, setError] = useState(null)
-  const [notifPerm, setNotifPerm] = useState(() => (typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'))
   const [rowBusyId, setRowBusyId] = useState(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
   const [renameId, setRenameId] = useState(null)
@@ -558,9 +534,6 @@ export default function CoordDashboard() {
     setTurnData(turn)
     if (turn?.isMyTurn && !wasMyTurn.current) {
       toast("It's your turn — you can generate your schedule now!", 'success', 5000)
-      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-        try { new Notification("It's your turn to schedule", { body: 'Your program is now active in the queue.' }) } catch {}
-      }
     }
     wasMyTurn.current = !!turn?.isMyTurn
   }, [toast])
@@ -674,14 +647,6 @@ export default function CoordDashboard() {
     document.addEventListener('visibilitychange', onVisibility)
     return () => { stop(); document.removeEventListener('visibilitychange', onVisibility) }
   }, [pollTurn, load])
-
-  const requestNotifPermission = useCallback(() => {
-    if (typeof Notification === 'undefined' || Notification.permission !== 'default') return
-    Notification.requestPermission().then(p => {
-      setNotifPerm(p)
-      if (p === 'granted') toast('Turn alerts are on', 'success')
-    }).catch(() => {})
-  }, [toast])
 
   const handleDuplicate = useCallback(async (id) => {
     setRowBusyId(id)
@@ -876,26 +841,25 @@ export default function CoordDashboard() {
   const tourSteps = useMemo(() => {
     if (loading) return []
     const steps = [
-      { target: '#tour-notify-bell', content: "Turn on notifications here so you're alerted the moment it becomes your turn in the queue — no need to keep this tab open and refreshing.", skipBeacon: true },
-      { target: '#tour-refresh-btn', content: 'This refreshes everything on the page — queue position, courses, rooms, and schedules — without reloading the app.' },
-      { target: '#tour-stat-cards', content: 'Your stats at a glance: your position in the scheduling queue, how many courses and rooms are set up, and how many schedules you have in draft, submitted, or approved.' },
+      { target: '#tour-refresh-btn', title: 'Refresh Anytime', content: 'This refreshes everything on the page — queue position, courses, rooms, and schedules — without reloading the app.', placement: 'bottom', disableBeacon: true },
+      { target: '#tour-stat-cards', title: 'Your Overview', content: 'Your stats at a glance: your position in the scheduling queue, how many courses and rooms are set up, and how many schedules you have in draft, submitted, or approved.', placement: 'bottom' },
     ]
     // Setup Checklist collapses to nothing (renders null) once every step
     // is done, so there's no point spotlighting it — same reasoning as the
     // analytics-row / insights-card guards below: don't point Joyride at a
     // section that isn't actually showing anything right now.
     if (readinessPct < 100) {
-      steps.push({ target: '#tour-setup-checklist-anchor', spotlightTarget: '#tour-setup-checklist', content: 'This checklist walks you through everything to set up — adding courses, selecting rooms, and generating a schedule — before you can submit.' })
+      steps.push({ target: '#tour-setup-checklist-anchor', spotlightTarget: '#tour-setup-checklist', title: 'Setup Checklist', content: 'This checklist walks you through everything to set up — adding courses, selecting rooms, and generating a schedule — before you can submit.', placement: 'top' })
     }
-    steps.push({ target: '#tour-scheduling-queue-anchor', spotlightTarget: '#tour-scheduling-queue', content: "This shows the active scheduling queue. When it's your turn, you get exclusive access to run the solver, and once other programs are approved you'll see combined progress here too." })
+    steps.push({ target: '#tour-scheduling-queue-anchor', spotlightTarget: '#tour-scheduling-queue', title: 'Scheduling Queue', content: "This shows the active scheduling queue. When it's your turn, you get exclusive access to run the solver, and once other programs are approved you'll see combined progress here too.", placement: 'top' })
     if (courseCount > 0) {
-      steps.push({ target: '#tour-analytics-row-anchor', spotlightTarget: '#tour-analytics-row', content: "These charts break down your courses by semester and show how much of your selected rooms' time is already covered by approved sessions." })
+      steps.push({ target: '#tour-analytics-row-anchor', spotlightTarget: '#tour-analytics-row', title: 'Course Analytics', content: "These charts break down your courses by semester and show how much of your selected rooms' time is already covered by approved sessions.", placement: 'top' })
     }
-    steps.push({ target: '#tour-my-schedules-anchor', spotlightTarget: '#tour-my-schedules', content: 'All of your schedules live here — your active one pinned at the top, then recent drafts, submissions, and approvals, each with quick actions to rename, duplicate, recall, or delete.' })
+    steps.push({ target: '#tour-my-schedules-anchor', spotlightTarget: '#tour-my-schedules', title: 'My Schedules', content: 'All of your schedules live here — your active one pinned at the top, then recent drafts, submissions, and approvals, each with quick actions to rename, duplicate, recall, or delete.', placement: 'top' })
     if (hasInsights) {
-      steps.push({ target: '#tour-insights-anchor', spotlightTarget: '#tour-insights', content: "Insights & Recommendations flags anything worth your attention — missing rooms, unsubmitted drafts, or other issues to fix before you're done." })
+      steps.push({ target: '#tour-insights-anchor', spotlightTarget: '#tour-insights', title: 'Insights & Recommendations', content: "Insights & Recommendations flags anything worth your attention — missing rooms, unsubmitted drafts, or other issues to fix before you're done.", placement: 'top' })
     }
-    steps.push({ target: '#tour-scheduler-btn', content: "Ready to build? Click here to enter the smart scheduler and generate your program's schedule." })
+    steps.push({ target: '#tour-scheduler-btn', title: 'Run the Scheduler', content: "Ready to build? Click here to enter the smart scheduler and generate your program's schedule.", placement: 'left' })
     return steps
   }, [loading, courseCount, hasInsights, readinessPct])
 
@@ -905,6 +869,10 @@ export default function CoordDashboard() {
   // once the page has actually finished loading (so every target below exists
   // in the DOM); returning coordinators never see it again.
   useEffect(() => {
+    if (loading || tourSteps.length === 0) return
+    if (isOnboardingCompleted()) return
+    startTour()
+    markOnboardingCompleted()
   }, [loading, tourSteps, startTour])
 
   // Queue Position now leads the row (widest card) since it's the single most
@@ -947,7 +915,6 @@ export default function CoordDashboard() {
             <h1 style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Sora',sans-serif", margin: 0, lineHeight: 1.2, color: G.ink }}>
               {greeting}.
             </h1>
-            {!loading && <span id="tour-notify-bell"><NotifyBell permission={notifPerm} onRequest={requestNotifPermission} light /></span>}
           </div>
           <div style={{ fontSize: 12.5, fontWeight: 600, color: G.muted, marginTop: 4 }}>{coordinatorProgram} Coordinator</div>
         </div>

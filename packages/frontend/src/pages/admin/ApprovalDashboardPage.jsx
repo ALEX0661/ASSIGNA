@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import {
   listQueues, createQueue, skipProgram, advanceQueue, deleteQueue, reorderQueue,
   getSubmittedSchedules, getSubmittedSchedule, approveSchedule, rejectSchedule,
@@ -492,7 +493,7 @@ function RejectModal({ schedule, onClose, onReject }) {
     finally { setSaving(false) }
   }
 
-  return (
+  return createPortal(
     <div className="ap-modal-overlay" style={{ zIndex: 3000 }} onClick={onClose}>
       <div className="ap-modal" style={{ width: 440 }} onClick={e => e.stopPropagation()}>
         <div className="ap-modal-header">
@@ -520,7 +521,8 @@ function RejectModal({ schedule, onClose, onReject }) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -809,6 +811,7 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, 
   const [overIndex, setOverIndex] = useState(null)
   const [savingOrder, setSavingOrder] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deletingQueue, setDeletingQueue] = useState(false)
 
   const queue = queues.find(q => (q.id || q.queueId) === activeQueueId) || queues[0] || null
   const programs = queue?.queue || []
@@ -931,41 +934,31 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, 
         </div>
       )}
 
-      {showDeleteConfirm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(14, 42, 32, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 24, animation: 'bcFadeIn 0.2s ease forwards' }} onClick={() => setShowDeleteConfirm(false)}>
-          <div style={{ background: '#fff', borderRadius: 20, width: 400, maxWidth: '100%', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
-            <div style={{ padding: '24px 28px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-              <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#111827', letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                Delete Queue
-              </h3>
+      {showDeleteConfirm && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(10,30,18,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => !deletingQueue && setShowDeleteConfirm(false)}>
+          <div style={{ background: '#fff', borderRadius: 18, padding: '28px 28px 24px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(10,30,18,0.22)', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+            <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#FFE8E8', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
             </div>
-            <div style={{ padding: '24px 28px' }}>
-              <p style={{ margin: 0, fontSize: 14, color: '#4B5563', lineHeight: 1.5, fontWeight: 500 }}>
-                Are you sure you want to delete this queue? This action cannot be undone.
-              </p>
+            <div style={{ fontSize: 16, fontWeight: 700, color: G.ink, marginBottom: 8, fontFamily: 'Inter,sans-serif' }}>Delete Queue?</div>
+            <div style={{ fontSize: 13, color: G.muted2, marginBottom: 24, lineHeight: 1.5, fontFamily: 'Inter,sans-serif' }}>
+              This cannot be undone. The queue and its scheduling order will be removed forever.
             </div>
-            <div style={{ padding: '20px 28px', borderTop: '1px solid #E2E8F0', background: '#F9FAFB', display: 'flex', justifyContent: 'flex-end', gap: 12, borderRadius: '0 0 20px 20px' }}>
-              <button 
-                className="co-btn co-btn-ghost" 
-                onClick={() => setShowDeleteConfirm(false)}
-                style={{ padding: '10px 20px', borderRadius: 10, border: '1px solid #E2E8F0', fontFamily: "'Poppins', 'Inter', sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer', background: '#fff', color: '#6B7280', transition: 'all .2s' }}
-              >
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowDeleteConfirm(false)} disabled={deletingQueue} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: '#fff', fontSize: 13, fontWeight: 600, color: G.muted, cursor: deletingQueue ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
                 Cancel
               </button>
-              <button 
-                className="co-btn co-btn-primary" 
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 24px',
-                  borderRadius: 10, border: 'none', fontFamily: "'Poppins', 'Inter', sans-serif",
-                  fontSize: 13, fontWeight: 600, cursor: 'pointer', background: '#DC2626', color: '#ffffff', transition: 'all .2s'
-                }} 
-                onClick={async () => { setShowDeleteConfirm(false); await onDelete(queue.id || queue.queueId); }}
+              <button
+                onClick={async () => { setDeletingQueue(true); try { await onDelete(queue.id || queue.queueId) } finally { setDeletingQueue(false); setShowDeleteConfirm(false) } }}
+                disabled={deletingQueue}
+                style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: '#C0392B', fontSize: 13, fontWeight: 700, color: '#fff', cursor: deletingQueue ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: deletingQueue ? 0.7 : 1 }}
               >
-                Delete
+                {deletingQueue ? 'Deleting...' : 'Yes, Delete'}
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
@@ -1259,44 +1252,27 @@ function MasterTab({ queueId, onFinalize, programs }) {
         </>
       )}
 
-      {showFinalizeConfirm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(14, 42, 32, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 24, animation: 'bcFadeIn 0.2s ease forwards' }} onClick={() => setShowFinalizeConfirm(false)}>
-          <div style={{ background: '#fff', borderRadius: 20, width: 400, maxWidth: '100%', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
-            <div style={{ padding: '24px 28px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-              <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#111827', letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                Finalize Master Schedule
-              </h3>
+      {showFinalizeConfirm && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(10,30,18,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => !acting && setShowFinalizeConfirm(false)}>
+          <div style={{ background: '#fff', borderRadius: 18, padding: '28px 28px 24px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(10,30,18,0.22)', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+            <div style={{ width: 52, height: 52, borderRadius: '50%', background: G.blueSoft, margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={G.blue} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             </div>
-            <div style={{ padding: '24px 28px' }}>
-              <p style={{ margin: 0, fontSize: 14, color: '#4B5563', lineHeight: 1.5, fontWeight: 500 }}>
-                Finalize and publish this schedule to faculty? This cannot be undone.
-              </p>
+            <div style={{ fontSize: 16, fontWeight: 700, color: G.ink, marginBottom: 8, fontFamily: 'Inter,sans-serif' }}>Finalize Master Schedule?</div>
+            <div style={{ fontSize: 13, color: G.muted2, marginBottom: 24, lineHeight: 1.5, fontFamily: 'Inter,sans-serif' }}>
+              Finalize and publish this schedule to faculty. This cannot be undone.
             </div>
-            <div style={{ padding: '20px 28px', borderTop: '1px solid #E2E8F0', background: '#F9FAFB', display: 'flex', justifyContent: 'flex-end', gap: 12, borderRadius: '0 0 20px 20px' }}>
-              <button 
-                className="co-btn co-btn-ghost" 
-                onClick={() => setShowFinalizeConfirm(false)}
-                style={{ padding: '10px 20px', borderRadius: 10, border: '1px solid #E2E8F0', fontFamily: "'Poppins', 'Inter', sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer', background: '#fff', color: '#6B7280', transition: 'all .2s' }}
-              >
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowFinalizeConfirm(false)} disabled={acting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: '#fff', fontSize: 13, fontWeight: 600, color: G.muted, cursor: acting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
                 Cancel
               </button>
-              <button 
-                className="co-btn co-btn-primary" 
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 24px',
-                  borderRadius: 10, border: 'none', fontFamily: "'Poppins', 'Inter', sans-serif",
-                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  background: '#15803d', color: '#ffffff', 
-                  boxShadow: '0 4px 14px rgba(21,128,61,0.25)',
-                  transition: 'all .2s',
-                }}
-                onClick={handleFinalize}
-              >
-                Publish
+              <button onClick={handleFinalize} disabled={acting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: G.blue, fontSize: 13, fontWeight: 700, color: '#fff', cursor: acting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: acting ? 0.7 : 1 }}>
+                {acting ? 'Publishing...' : 'Publish'}
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
@@ -1692,5 +1668,3 @@ export default function ApprovalDashboardPage() {
     </div>
   )
 }
-
-

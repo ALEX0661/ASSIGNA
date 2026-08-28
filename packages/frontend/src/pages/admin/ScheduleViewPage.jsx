@@ -680,8 +680,59 @@ export default function ScheduleViewPage({ isSubmittedView = false }) {
   const [loading,           setLoading]       = useState(false)
 
   const { TourElement, startTour } = useTour('adminScheduleView', [
-    { target: '#tour-sv-tools', content: 'Filter and view options for the schedule.' },
-    { target: '#tour-sv-grid', content: 'Drag and drop sessions directly onto the grid.' },
+    {
+      target: '#tour-sv-save',
+      title: 'Saving & Schedule Actions',
+      content: 'Switch between saved schedules from the dropdown, then Save here once you\'ve made changes. History shows past versions you can restore, the copy icon duplicates the whole schedule, and Export downloads it as Excel.',
+      disableBeacon: true,
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-sv-pending',
+      title: 'Pending Changes & Auto-Save',
+      content: 'Every drag-and-drop move is queued here first, not saved instantly. It auto-saves 5 seconds after your last move — or click Save Now to push immediately, or Revert All to undo every queued move and go back to the last saved state.',
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-sv-tools',
+      title: 'Search & Filters',
+      content: 'Search by course, block, or faculty, or narrow the view by program, year, block, session type, faculty, or room. The Conflicts and Unassigned toggles further down isolate only the sessions that need attention.',
+      disableBeacon: true,
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-sv-days',
+      title: 'Day Selector',
+      content: 'The grid, filters, and conflict count only ever show one day at a time — switch days here. The small number on each button is how many sessions fall on that day given your current filters.',
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-sv-viewmode',
+      title: 'Grid vs. List',
+      content: 'Grid view lays sessions out spatially by room and time — best for drag-and-drop. List view is a sortable table of the same day\'s sessions — better for scanning or bulk review. Undo/Redo next to it steps back and forward through your recent moves.',
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-sv-conflicts',
+      title: 'Conflict Detection',
+      content: 'This summarizes every Room, Section, and Faculty conflict on the active day. Conflicts are detected automatically whenever two sessions overlap in time — a shared room, a section double-booked in two places at once, or a faculty member assigned to two sessions simultaneously.',
+      disableBeacon: true,
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-sv-conflicts',
+      title: 'Drag & Drop',
+      content: 'Drag any session card to a different room column or time slot to reschedule it. If the drop would overlap another session, you\'re asked to confirm the override before it\'s applied — nothing conflicting saves silently. Dropping one lecture block directly onto its sibling block (same course, same year, different block) merges the two into one shared session instead of flagging a conflict.',
+      placement: 'bottom',
+      disableScrolling: true,
+    },
+    {
+      target: '#tour-sv-conflicts',
+      title: 'Session Cards & Details',
+      content: 'Click any card to open its full detail modal — you can change its faculty, room, or time, review every conflict it\'s involved in, or batch-assign a faculty member across all of its merged/sibling sessions at once from there.',
+      placement: 'bottom',
+      disableScrolling: true,
+    },
   ], !loading)
   const [saveState,         setSaveState]     = useState('idle')
   const [error,             setError]         = useState(null)
@@ -1265,7 +1316,7 @@ export default function ScheduleViewPage({ isSubmittedView = false }) {
           )}
         </div>
         {!isEditingName && (
-          <div style={{ display:'flex', gap:5, alignItems:'center', flexShrink:0 }}>
+          <div id="tour-sv-save" style={{ display:'flex', gap:5, alignItems:'center', flexShrink:0 }}>
             {(initLoading || savedNames.length > 0) && (
               <ScheduleDropdown names={savedNames} activeName={activeName} loading={loading} initLoading={initLoading} onChange={loadSchedule} schedulesMeta={schedulesMeta} />
             )}
@@ -1314,6 +1365,7 @@ export default function ScheduleViewPage({ isSubmittedView = false }) {
       {/* ── Pending changes bar ───────────────────────────────────────────── */}
       {/* Appears below stats, above day selector — amber, prominent */}
     {!schedFinalized && (
+      <div id="tour-sv-pending">
       <PendingChangesBar
         pendingOverrides={dd.pendingOverrides}
         onSave={dd.saveAllOverrides}
@@ -1321,6 +1373,7 @@ export default function ScheduleViewPage({ isSubmittedView = false }) {
         saving={dd.saving}
         autoSaveIn={dd.autoSaveIn}
       />
+      </div>
     )}
  
 
@@ -1485,7 +1538,7 @@ export default function ScheduleViewPage({ isSubmittedView = false }) {
 {/* ── Day selector + View toggles ───────────────────────────────────── */}
       {allEvents.length > 0 && (
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:16, flexWrap:'wrap' }}>
-          <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+          <div id="tour-sv-days" style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
             {DAYS.map(d => (
               <button key={d} onClick={() => setActiveDay(d)}
                 className={`sv-day-btn${activeDay===d?' active':''}`}>
@@ -1512,7 +1565,7 @@ export default function ScheduleViewPage({ isSubmittedView = false }) {
                 </svg>
               </button>
             </div>
-            <div className="sv-view-group">
+            <div id="tour-sv-viewmode" className="sv-view-group">
               {[
                 ['grid', 'Grid', (
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1895,7 +1948,7 @@ export default function ScheduleViewPage({ isSubmittedView = false }) {
           display:'flex', flexDirection:'column', width:'100%', minWidth:0,
           padding:'12px 14px 0',
         }}>
-          <ConflictSummaryBar conflictMap={conflictMap} />
+          <div id="tour-sv-conflicts"><ConflictSummaryBar conflictMap={conflictMap} /></div>
           {visibleRooms.length === 0
             ? <EmptyState hasFilters={localHasFilters} onClear={handleClearAll} />
             : (
