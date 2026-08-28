@@ -9,6 +9,7 @@ import {
 import {
   ModalOverlay, ModalHeader, RoomChip, ConflictTable, TV,
 } from './svPrimitives'
+import { useTour } from '../../hooks/useTour.jsx'
 
 /* ── Inject styles once ────────────────────────────────────────────────────── */
 if (!document.getElementById('sm-style')) {
@@ -265,6 +266,41 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
 
   // ── Single-session state ──────────────────────────────────────────────────
   const [tab,         setTab]         = useState('details')
+
+  const { TourElement, startTour } = useTour('sessionModal', [
+    {
+      target: '#tour-sm-header',
+      title: 'Session Overview',
+      content: 'This is the session you clicked from the grid. The faculty chip on the right shows who\'s currently assigned — Unassigned means TBA. A "Merged Block" tag means this session shares its room/day/time with a sibling block; drag either card to a different slot from the grid to unmerge them.',
+      disableBeacon: true,
+      isPrimary: false,
+    },
+    {
+      target: '#tour-sm-tab-details',
+      title: 'Details Tab',
+      content: 'Edit this single session\'s day, time, and faculty directly. Changes here only apply to this one session — for a course taught across multiple blocks, this is the tab to use if you only want to change one of them.',
+      isPrimary: false,
+    },
+    {
+      target: '#tour-sm-tab-rooms',
+      title: 'Rooms Tab',
+      content: 'Pick a new room for this session. A red highlight on a room means moving there would create a conflict; a blue highlight means dropping into that room would instead merge this session with a sibling block.',
+      isPrimary: false,
+    },
+    {
+      target: '#tour-sm-tab-conflicts',
+      title: 'Conflicts Tab',
+      content: 'Lists every other session that overlaps this one in time, broken down by whether it\'s a Room, Section, or Faculty conflict, so you can see exactly what would need to change before this session can move.',
+      isPrimary: false,
+    },
+    {
+      target: '#tour-sm-tab-batch',
+      title: 'Assign All — Batch Faculty Assignment',
+      content: 'Assigns one faculty member to this session and every merged/sibling session at once (e.g. the same course\'s lecture and lab blocks, or every section taught across several days) instead of editing each one individually. It ranks candidates by availability and projects each one\'s resulting unit load against their cap, and flags any sibling session where that faculty member would already be double-booked — you confirm an override per conflict, the same as a normal drag-and-drop move, before anything saves.',
+      isPrimary: false,
+    },
+  ], true, { isPrimary: false })
+
   const [newRoom,     setNewRoom]     = useState(event.room)
   const [newDay,      setNewDay]      = useState(event.day)
   const [newFaculty,  setNewFaculty]  = useState(event.faculty)
@@ -718,6 +754,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
   return (
     <>
       <ModalOverlay onClose={onClose}>
+        {TourElement}
         <div style={{
           background:'#fff', borderRadius:16, width:1020, maxWidth:'98vw',
           maxHeight:'92vh', display:'flex', flexDirection:'column',
@@ -727,7 +764,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
         }}>
 
           {/* ── HEADER ─────────────────────────────────────────────────────── */}
-          <div style={{ padding:'20px 24px 0', flexShrink:0 }}>
+          <div id="tour-sm-header" style={{ padding:'20px 24px 0', flexShrink:0 }}>
 
             {/* Course identity row */}
             <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:16, gap:12 }}>
@@ -821,6 +858,12 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                 )}
 
                 <button
+                  type="button"
+                  onClick={() => startTour()}
+                  title="Take the tour"
+                  style={{ background:TV.pale, border:`1px solid ${TV.border}`, width:30, height:30, borderRadius:9, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:TV.muted, fontSize:13, fontWeight:700, flexShrink:0, fontFamily:'Inter,sans-serif' }}
+                >?</button>
+                <button
                   onClick={onClose}
                   style={{ background:TV.pale, border:`1px solid ${TV.border}`, width:30, height:30, borderRadius:9, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:TV.muted, fontSize:18, lineHeight:1, flexShrink:0, fontFamily:'inherit', transition:'all .15s' }}
                   onMouseEnter={e => { e.currentTarget.style.background=TV.light; e.currentTarget.style.color=TV.text }}
@@ -834,6 +877,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
               {TABS.map(t => (
                 <button
                   key={t.key}
+                  id={`tour-sm-tab-${t.key}`}
                   className={`sm-tab${tab === t.key ? ' active' : ''}${t.warn ? ' warn' : ''}`}
                   onClick={() => setTab(t.key)}
                   style={ t.merge && tab !== t.key ? { color:'#1d4ed8' } : undefined }
