@@ -566,15 +566,15 @@ export default function CoordMySchedulePage() {
         </div>
 
         {confirmModal && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ background: '#fff', borderRadius: 12, width: 400, maxWidth: '90%', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
-              <div style={{ padding: '20px 24px', borderBottom: '1px solid #eee' }}>
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#1A2F25' }}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(14, 42, 32, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 24, animation: 'bcFadeIn 0.2s ease forwards' }} onClick={() => setConfirmModal(null)}>
+            <div style={{ background: '#fff', borderRadius: 20, width: 400, maxWidth: '100%', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+              <div style={{ padding: '24px 28px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#111827', letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: 10 }}>
                   {confirmModal.action === 'submit' ? 'Submit Schedule' : 'Delete Schedule'}
                 </h3>
               </div>
-              <div style={{ padding: '24px' }}>
-                <p style={{ margin: 0, fontSize: 14, color: '#4B7060', lineHeight: 1.5 }}>
+              <div style={{ padding: '24px 28px' }}>
+                <p style={{ margin: 0, fontSize: 14, color: '#4B5563', lineHeight: 1.5, fontWeight: 500 }}>
                   {confirmModal.action === 'submit' 
                     ? 'Are you sure you want to submit this schedule for approval? You will not be able to edit it unless the admin recalls it.'
                     : confirmModal.action === 'bulkDelete'
@@ -582,11 +582,22 @@ export default function CoordMySchedulePage() {
                       : 'Are you sure you want to delete this schedule? This action cannot be undone.'}
                 </p>
               </div>
-              <div style={{ padding: '16px 24px', background: '#F9FAFB', display: 'flex', justifyContent: 'flex-end', gap: 12, borderRadius: '0 0 12px 12px' }}>
-                <button className="co-btn co-btn-ghost" onClick={() => setConfirmModal(null)}>Cancel</button>
+              <div style={{ padding: '20px 28px', borderTop: '1px solid #E2E8F0', background: '#F9FAFB', display: 'flex', justifyContent: 'flex-end', gap: 12, borderRadius: '0 0 20px 20px' }}>
                 <button 
-                  className="co-btn co-btn-primary" 
-                  style={confirmModal.action === 'submit' ? {} : { background: '#DC2626', borderColor: '#B91C1C' }}
+                  onClick={() => setConfirmModal(null)}
+                  style={{ padding: '10px 20px', borderRadius: 10, border: '1px solid #E2E8F0', fontFamily: "'Poppins', 'Inter', sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer', background: '#fff', color: '#6B7280', transition: 'all .2s' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 24px',
+                    borderRadius: 10, border: 'none', fontFamily: "'Poppins', 'Inter', sans-serif",
+                    fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    background: confirmModal.action === 'submit' ? '#15803d' : '#DC2626', color: '#ffffff', 
+                    boxShadow: confirmModal.action === 'submit' ? '0 4px 14px rgba(21,128,61,0.25)' : 'none',
+                    transition: 'all .2s',
+                  }}
                   onClick={() => {
                     if (confirmModal.action === 'submit') {
                       handleSubmit(confirmModal.id)
