@@ -204,16 +204,10 @@ def get_days():
 
 
 def load_all_caches():
-    """Call this once on startup to warm all caches.
-
-    Never raises — each cache fails independently and falls back to its
-    last known-good disk snapshot (or the in-memory default) rather than
-    taking down the whole app. Check logs for warnings if Firestore is
-    degraded; the app will keep serving stale-but-valid data in the
-    meantime instead of refusing to start.
-    """
-    refresh_courses_cache()
-    refresh_faculty_cache()
-    refresh_rooms_cache()
-    refresh_time_cache()
-    refresh_days_cache()
+  # Skip streaming entire Firestore collections if local snapshots exist
+  global _courses_cache, _faculty_cache
+  _courses_cache = _load_snapshot("courses", _courses_cache)
+  _faculty_cache = _load_snapshot("faculty", _faculty_cache)
+  refresh_rooms_cache()
+  refresh_time_cache()
+  refresh_days_cache()

@@ -135,7 +135,21 @@ def get_submitted_schedules(user: dict = Depends(admin_only)):
     # tile all read from this one endpoint, so all of them silently went
     # empty. "in" pulls both statuses; the frontend still splits them
     # into pending/approved buckets itself.
-    docs = db.collection("coordinator_schedules").where("status", "in", ["submitted", "approved"]).get()
+    #
+    # Scoped to the currently-active queue's term. An "approved" schedule's
+    # status never reverts, so without this filter the query scanned every
+    # schedule ever approved across every past semester — cost that only
+    # grows over time, on a dashboard polled every 20-45s. The admin only
+    # ever needs this term's submissions/approvals here; past terms are
+    # available through the finalized master schedule, not this endpoint.
+    query = db.collection("coordinator_schedules").where("status", "in", ["submitted", "approved"])
+    active_queues = db.collection("coordinator_queues").where("status", "==", "active").limit(1).get()
+    if active_queues:
+        active = active_queues[0].to_dict()
+        semester, academic_year = active.get("semester"), active.get("academicYear")
+        if semester and academic_year:
+            query = query.where("semester", "==", semester).where("academicYear", "==", academic_year)
+    docs = query.get()
     results = []
     for doc in docs:
         data = doc.to_dict()

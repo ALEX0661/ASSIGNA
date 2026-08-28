@@ -4,10 +4,17 @@
 /* ── Reset & base ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   font-family: 'Inter', sans-serif;
   background: var(--bg);
   color: var(--ink);
+  position: fixed;
+  width: 100%;
 }
 
 a { color: inherit; text-decoration: none; }
@@ -46,6 +53,37 @@ a { color: inherit; text-decoration: none; }
   flex-shrink: 0;
   z-index: 10;
   box-shadow: 0 1px 8px rgba(10,46,28,0.06);
+}
+
+@media (max-width: 768px) {
+  .topbar {
+    padding: 0 16px;
+  }
+  .topbar-left {
+    gap: 12px !important;
+    min-width: 0;
+  }
+  .topbar-badge {
+    display: none !important;
+  }
+  .topbar-time {
+    display: none !important;
+  }
+  .topbar-title {
+    font-size: 16px !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .topbar-logout {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+    gap: 4px !important;
+  }
+  .topbar-logout svg {
+    width: 11px !important;
+    height: 11px !important;
+  }
 }
 
 /* ── Cards ── */

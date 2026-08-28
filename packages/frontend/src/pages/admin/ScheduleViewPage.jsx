@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useParams, useLocation } from 'react-router-dom'
 import { useScheduleStore } from '../../store/scheduleStore'
-import { getSchedules, getRooms, getFaculty, saveSchedule, finalizeSchedule, unfinalizeSchedule, updateScheduleMeta } from '../../services/api'
+import { getSchedules, getRooms, getFaculty, saveSchedule, finalizeSchedule, unfinalizeSchedule, updateScheduleMeta, getSubmittedSchedule } from '../../services/api'
 import { buildConflictMap, DAYS, getEventId, getMergedIds } from '../../components/ScheduleView/svHelpers'
 import { TV, ConflictSummaryBar, Toast, FilterButton, FilterRow, PendingChangesBar, ProgramLegend, ModalOverlay, ModalHeader } from '../../components/ScheduleView/svPrimitives'
 import { useFilters, useDragDrop } from '../../components/ScheduleView/svHooks'
@@ -646,10 +646,24 @@ function svIsOtherDept(courseCode = "") {
 /* ════════════════════════════════════════════════════════════════════════════
    Main page
    ════════════════════════════════════════════════════════════════════════════ */
-export default function ScheduleViewPage() {
-  const { name: urlName } = useParams()
+import { useTour } from '../../hooks/useTour.jsx'
+
+const TOUR_SEEN_KEY = 'adminScheduleView_tourSeen'
+function isOnboardingCompleted() {
+  try { return localStorage.getItem(TOUR_SEEN_KEY) === '1' } catch { return true }
+}
+function markOnboardingCompleted() {
+  try { localStorage.setItem(TOUR_SEEN_KEY, '1') } catch {}
+}
+
+export default function ScheduleViewPage({ isSubmittedView = false }) {
+  const { name: urlName, id: urlId } = useParams()
   const location = useLocation()
   const { events:storeEvents, scheduleName:storeName, setEvents, setName } = useScheduleStore()
+
+  
+
+  
 
   const [localEvents,       setLocalEvents]   = useState(storeEvents)
   const [past,              setPast]          = useState([])
@@ -664,6 +678,11 @@ export default function ScheduleViewPage() {
   const [activeDay,         setActiveDay]     = useState('Monday')
   const [initLoading,       setInitLoading]   = useState(true)
   const [loading,           setLoading]       = useState(false)
+
+  const { TourElement, startTour } = useTour('adminScheduleView', [
+    { target: '#tour-sv-tools', content: 'Filter and view options for the schedule.' },
+    { target: '#tour-sv-grid', content: 'Drag and drop sessions directly onto the grid.' },
+  ], !loading)
   const [saveState,         setSaveState]     = useState('idle')
   const [error,             setError]         = useState(null)
   const [selectedEvent,     setSelectedEvent] = useState(null)
@@ -720,48 +739,56 @@ export default function ScheduleViewPage() {
   }, [])
 
   /* ── Load schedule ──────────────────────────────────────────────────────── */
-  async function loadSchedule(name, { force = false } = {}) {
-    if (!name || (!force && name === activeName)) return
+  async function loadSchedule(nameOrId, { force = false } = {}) {
+    if (!nameOrId || (!force && nameOrId === activeName)) return
     setLoading(true); setError(null); setSaveState('idle')
     try {
-      const data = await getSchedules(name)
-      setLocalEvents(data.events); setEvents(data.events)
-      setPast([]); setFuture([])
-      setActiveName(name); setName(name)
-      setSchedAY(data.academicYear || ''); setSchedSem(data.semester || '')
-      setSchedFinalized(data.finalized || false); setMetaDirty(false)
-      setHasUnsavedChanges(false) // Clear unsaved changes when loading
-      
-      // Set full metadata for the smart save component
-      setScheduleMeta({
-        version: data.version || 1,
-        createdAt: data.createdAt,
-        lastModified: data.lastModified,
-        savedAt: data.savedAt,
-        eventCount: data.eventCount || (data.events ? data.events.length : 0),
-        versionHistory: data.versionHistory || [],
-        // When the live doc is a restored preview (see POST /restore/{version}
-        // on the backend), these tell us the loaded content is NOT actually
-        // the doc's nominal `version` — it's an older snapshot. Cleared
-        // automatically once a real Save happens (the backend's /save does a
-        // full doc overwrite that drops these fields).
-        restoredFromVersion: data.restoredFromVersion || null,
-        restoredAt: data.restoredAt || null,
-      })
-    } catch { setError(`Failed to load "${name}".`) }
+      if (isSubmittedView) {
+        const data = await getSubmittedSchedule(nameOrId)
+        setLocalEvents(data.schedule || []); setEvents(data.schedule || [])
+        setPast([]); setFuture([])
+        setActiveName(data.name || nameOrId); setName(data.name || nameOrId)
+        setSchedAY(data.academicYear || ''); setSchedSem(data.semester || '')
+        setSchedFinalized(true); setMetaDirty(false)
+        setHasUnsavedChanges(false)
+        setScheduleMeta({ version: 1, eventCount: (data.schedule || []).length })
+      } else {
+        const data = await getSchedules(nameOrId)
+        setLocalEvents(data.events); setEvents(data.events)
+        setPast([]); setFuture([])
+        setActiveName(nameOrId); setName(nameOrId)
+        setSchedAY(data.academicYear || ''); setSchedSem(data.semester || '')
+        setSchedFinalized(data.finalized || false); setMetaDirty(false)
+        setHasUnsavedChanges(false) // Clear unsaved changes when loading
+        
+        // Set full metadata for the smart save component
+        setScheduleMeta({
+          version: data.version || 1,
+          createdAt: data.createdAt,
+          lastModified: data.lastModified,
+          savedAt: data.savedAt,
+          eventCount: data.eventCount || (data.events ? data.events.length : 0),
+          versionHistory: data.versionHistory || [],
+          restoredFromVersion: data.restoredFromVersion || null,
+          restoredAt: data.restoredAt || null,
+        })
+      }
+    } catch { setError(`Failed to load schedule.`) }
     finally   { setLoading(false) }
   }
 
   /* ── Auto-load from URL param ────────────────────────────────────────────── */
   useEffect(() => {
-    if (!initLoading && urlName) {
-      const decoded = decodeURIComponent(urlName)
-      // Always force-load from API so metadata (AY, semester, finalized) is
-      // always populated — even when the store already has the same name set.
-      loadSchedule(decoded, { force: true })
+    if (!initLoading) {
+      if (isSubmittedView && urlId) {
+        loadSchedule(urlId, { force: true })
+      } else if (!isSubmittedView && urlName) {
+        const decoded = decodeURIComponent(urlName)
+        loadSchedule(decoded, { force: true })
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initLoading, urlName])
+  }, [initLoading, urlName, urlId, isSubmittedView])
 
   /* ── Save schedule ──────────────────────────────────────────────────────── */
   
@@ -1169,7 +1196,7 @@ export default function ScheduleViewPage() {
   /* ════════════════════ RENDER ════════════════════════════════════════════ */
   return (
     <div className="page" style={{ padding:'15px 15px 30px', overflowX:'hidden', width:'100%', minWidth:0 }}>
-
+      {TourElement}
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:20, minWidth:0 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0, flex:'1 1 0' }}>
@@ -1304,7 +1331,7 @@ export default function ScheduleViewPage() {
  
       {/* ── Filters bar ──────────────────────────────────────────────────── */}
       {allEvents.length > 0 && (
-        <div style={{ background:'#fff', border:`1px solid ${TV.border}`, borderRadius:12, padding:'11px 14px', marginBottom:14, display:'flex', flexDirection:'column', gap:10 }}>
+        <div id="tour-sv-tools" style={{ background:'#fff', border:`1px solid ${TV.border}`, borderRadius:12, padding:'11px 14px', marginBottom:14, display:'flex', flexDirection:'column', gap:10 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
             <div style={{ position:'relative', flexShrink:0 }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={TV.muted} strokeWidth="2"
@@ -1862,7 +1889,7 @@ export default function ScheduleViewPage() {
           )}
         </div>
       ) : (
-        <div style={{
+        <div id="tour-sv-grid" style={{
           background:'#fff', border:`1px solid ${TV.border}`, borderRadius:14,
           overflow:'hidden', boxShadow:'0 1px 4px rgba(10,46,28,.07)',
           display:'flex', flexDirection:'column', width:'100%', minWidth:0,

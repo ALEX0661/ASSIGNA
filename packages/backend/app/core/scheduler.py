@@ -965,10 +965,9 @@ def events_to_pre_bookings(events, rooms_config, days, time_settings):
         for s in range(global_start, global_start + duration):
             section_occupied[sk].add(s)
 
-        # Faculty booking (skip GEC/unassigned)
-        faculty = ev.get('assigned_faculty')
-        code = ev.get('courseCode', '')
-        if faculty and faculty != 'TBA' and not code.upper().startswith('GEC'):
+        # Faculty booking (don't skip GEC, a person can't be in two rooms at once)
+        faculty = ev.get('faculty') or ev.get('assigned_faculty')
+        if faculty and faculty != 'TBA':
             faculty_bookings[faculty].append((global_start, global_start + duration))
 
     logger.info(
@@ -1010,7 +1009,11 @@ def generate_coordinator_schedule(
 
         # --- Inject pre-bookings from approved schedules ---
         if pre_booked_events:
-            rooms_config = get_rooms()  # Global rooms for slot-index mapping
+            # BUGFIX: We MUST map room indices using the solver's own shuffled
+            # normalized_rooms subset, NOT the global get_rooms(). Otherwise,
+            # pre-booked blocks land on the wrong indices and the solver books
+            # right over them, causing room conflicts across programs.
+            rooms_config = s.normalized_rooms
             days = get_days()
             time_cfg = get_time()
 
@@ -1057,13 +1060,7 @@ def generate_coordinator_schedule(
 
         # Pre-populate faculty slots from approved schedules to prevent
         # cross-program double-booking
-        if pre_booked_events:
-            rooms_config = get_rooms()
-            days = get_days()
-            time_cfg = get_time()
-            _, _, fac_bookings = events_to_pre_bookings(
-                pre_booked_events, rooms_config, days, time_cfg
-            )
+        if pre_booked_events and 'fac_bookings' in locals():
             assigner.inject_pre_booked_faculty(fac_bookings)
 
         res = assigner.assign(res)

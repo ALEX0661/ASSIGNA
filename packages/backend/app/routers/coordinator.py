@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime
 from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException, Query
 from pydantic import BaseModel
+from google.cloud import firestore
 
 from app.core.coordinator_auth import coordinator_only
 from app.core.auth import admin_only
@@ -197,13 +198,30 @@ def _diff_events(before: list, after: list) -> dict:
     }
 
 @router.get("/schedule/list")
-def list_schedules(user: dict = Depends(coordinator_only)):
+def list_schedules(
+    user: dict = Depends(coordinator_only),
+    # Optional cap for callers that don't need the full history — the
+    # coordinator dashboard's background poll passes this so it isn't
+    # reading every draft/duplicate/rejected schedule this program has
+    # ever created on every refresh; the full "My Schedules" page still
+    # calls this with no limit, since it deliberately shows everything,
+    # grouped by term, and only fetches on its own page load (not on a
+    # repeating timer).
+    limit: int = Query(None, ge=1, le=200),
+):
     program = user.get("coordinatorProgram")
     if not program:
         raise HTTPException(status_code=400, detail="User missing coordinatorProgram")
-        
+
+    query = db.collection("coordinator_schedules").where("programCode", "==", program)
+    if limit:
+        # Note: Removing order_by to avoid needing a composite index which causes 500 errors.
+        query = query.limit(limit)
+        docs = query.stream()
+    else:
+        docs = query.stream()
+
     schedules = []
-    docs = db.collection("coordinator_schedules").where("programCode", "==", program).stream()
     for doc in docs:
         data = doc.to_dict()
         schedules.append({
@@ -217,6 +235,30 @@ def list_schedules(user: dict = Depends(coordinator_only)):
             "semester": data.get("semester")          # Add this line
         })
     return schedules
+
+@router.get("/schedule/counts")
+def get_schedule_counts(user: dict = Depends(coordinator_only)):
+    """Status breakdown for the dashboard's stat card, without reading every
+    schedule document. Firestore's count() aggregation is billed as a single
+    read per query regardless of how many documents match, so this is 4
+    reads total (one per status + total) instead of one per schedule this
+    program has ever created — and that cost stays flat as history grows,
+    unlike GET /schedule/list without a limit."""
+    program = user.get("coordinatorProgram")
+    if not program:
+        raise HTTPException(status_code=400, detail="User missing coordinatorProgram")
+
+    base = db.collection("coordinator_schedules").where("programCode", "==", program)
+
+    def _count(query):
+        return query.count().get()[0][0].value
+
+    total = _count(base)
+    drafts = _count(base.where("status", "==", "draft"))
+    submitted = _count(base.where("status", "==", "submitted"))
+    approved = _count(base.where("status", "==", "approved"))
+
+    return {"total": total, "drafts": drafts, "submitted": submitted, "approved": approved}
 
 def _is_active(v):
     # Legacy/completed states: -2 cancelled, -1 failed (int), 100 complete.
@@ -685,15 +727,18 @@ def submit_schedule(schedule_id: str, user: dict = Depends(coordinator_only)):
     if data.get("status") != "draft":
         raise HTTPException(status_code=400, detail="Only draft schedules can be submitted")
 
-    conflict = _term_conflict(program, data.get("academicYear"), data.get("semester"), schedule_id)
-    if conflict:
-        term = f"{data.get('semester', '')} {data.get('academicYear', '')}".strip()
-        raise HTTPException(
-            status_code=409,
-            detail=f"'{conflict.get('name')}' is already {conflict.get('status')} for {term}. "
-                   f"Only one submission per academic term is allowed \u2014 withdraw or wait on that one first."
-        )
-
+    # Block submission if another schedule for the same term is already submitted/approved
+    ay = data.get("academicYear")
+    sem = data.get("semester")
+    if ay and sem:
+        existing = db.collection("coordinator_schedules") \
+            .where("programCode", "==", program) \
+            .where("academicYear", "==", ay) \
+            .where("semester", "==", sem) \
+            .where("status", "in", ["submitted", "approved"]) \
+            .get()
+        if len(existing) > 0:
+            raise HTTPException(status_code=400, detail=f"A schedule for {sem} {ay} is already submitted or approved.")
     doc_ref.update({
         "status": "submitted",
         "submittedAt": datetime.utcnow().isoformat(),
@@ -797,7 +842,24 @@ def check_queue_turn(user: dict = Depends(coordinator_only)):
     }
 
 @router.get("/queue/submitted-schedule")
-def get_submitted_master_schedule(user: dict = Depends(coordinator_only)):
+def get_submitted_master_schedule(
+    user: dict = Depends(coordinator_only),
+    include_events: bool = Query(
+        False,
+        description="Fetch the actual scheduled sessions from the master schedule's "
+                    "events subcollection. Costs one Firestore read per event in the "
+                    "master schedule, so only pass this when the caller actually needs "
+                    "the sessions (e.g. running a room/faculty conflict check) — not for "
+                    "a dashboard that only shows the approved-programs count.",
+    ),
+):
+    # BUGFIX: this used to read `data.get("schedule", [])` off the master
+    # doc's top-level fields, which always returned [] — approval.py moved
+    # master-schedule events into an `events` subcollection (to stay under
+    # Firestore's 1 MiB document size limit) and only ever writes metadata
+    # (approvedPrograms, semester, etc.) onto the parent doc itself. So the
+    # scheduler page's room/faculty conflict checks against the master board
+    # were silently running against an empty list the whole time.
     queues = db.collection("coordinator_queues").where("status", "==", "active").limit(1).get()
     if not queues:
         return {"schedule": [], "approvedPrograms": []}
@@ -807,9 +869,11 @@ def get_submitted_master_schedule(user: dict = Depends(coordinator_only)):
     if not docs:
         return {"schedule": [], "approvedPrograms": []}
 
-    data = docs[0].to_dict()
+    master_doc = docs[0]
+    data = master_doc.to_dict()
+    events = [d.to_dict() for d in master_doc.reference.collection("events").stream()] if include_events else []
     return {
-        "schedule": data.get("schedule", []),
+        "schedule": events,
         "approvedPrograms": data.get("approvedPrograms", []),
         "semester": data.get("semester"),
         "academicYear": data.get("academicYear"),

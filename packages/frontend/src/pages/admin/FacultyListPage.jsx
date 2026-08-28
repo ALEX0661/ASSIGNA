@@ -521,11 +521,25 @@ function FilterPill({ label, count, active, onClick, icon }) {
   )
 }
 
+import { useTour } from '../../hooks/useTour.jsx'
+
+const TOUR_SEEN_KEY = 'adminFaculty_tourSeen'
+function isOnboardingCompleted() {
+  try { return localStorage.getItem(TOUR_SEEN_KEY) === '1' } catch { return true }
+}
+function markOnboardingCompleted() {
+  try { localStorage.setItem(TOUR_SEEN_KEY, '1') } catch {}
+}
+
 /* ═══════════════════════════════════════════════════════════════
    MAIN PAGE
 ═══════════════════════════════════════════════════════════════ */
 export default function FacultyListPage() {
   const { toasts, toast } = useToast()
+
+  
+
+  
   const [activeFaculty,     setActiveFaculty]     = useState([])
   const [archivedFaculty,   setArchivedFaculty]   = useState([])
   const [search,            setSearch]            = useState('')
@@ -533,6 +547,42 @@ export default function FacultyListPage() {
   const [viewTab,           setViewTab]           = useState('active')
   const [viewMode,          setViewMode]          = useState('grid')   // 'grid' | 'list'
   const [loading,           setLoading]           = useState(true)
+
+  const { TourElement, startTour } = useTour('adminFaculty', [
+    {
+      target: '#tour-faculty-tabs',
+      title: 'Active vs. Archived',
+      content: 'Active is your working roster — everyone eligible for scheduling. Archive a faculty member instead of deleting them to keep their history without including them in future runs.',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-faculty-actions',
+      title: 'Bulk Import & Export',
+      content: 'Export the current list to Excel for records or offline edits, or upload a spreadsheet to add or update many faculty members at once instead of entering them one by one.',
+    },
+    {
+      target: '#tour-add-faculty-btn',
+      title: 'Add a Faculty Member',
+      content: 'Manually add one faculty member — set their department, specialization, unit cap, and availability individually.',
+    },
+    {
+      target: '#tour-faculty-search',
+      title: 'Search & Filter',
+      content: 'Find someone by name, department, or specialization, or open the advanced filters to narrow the list by status, load, or other criteria.',
+    },
+    {
+      target: '#tour-faculty-view-toggle',
+      title: 'Grid or List View',
+      content: 'Switch between a card-based grid for browsing and a denser list view when you need to scan or compare more faculty at once.',
+    },
+    {
+      target: '#tour-faculty-list-anchor',
+      spotlightTarget: '#tour-faculty-list',
+      title: 'Faculty Profiles',
+      content: 'Click any faculty member to open their full profile — schedule, teaching load, availability, and preferences — and edit it from there.',
+      placement: 'center',
+    },
+  ], !loading)
   const [selected,          setSelected]          = useState(new Set())
   const [busy,              setBusy]              = useState(false)
   const [showImport,        setShowImport]        = useState(false)
@@ -774,6 +824,7 @@ export default function FacultyListPage() {
   ────────────────────────────────────────────────────────────── */
   return (
     <div style={{ padding: '28px 32px', fontFamily: "'Inter',sans-serif", background: G.bg, minHeight: '100%' }}>
+      {TourElement}
       <style>{`
         @keyframes slideIn    { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
         @keyframes spin       { to{transform:rotate(360deg)} }
@@ -804,7 +855,7 @@ export default function FacultyListPage() {
       {/* ── Header row ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
         {/* Tab switcher */}
-        <div style={{ display: 'flex', gap: 3, background: '#fff', borderRadius: 10, padding: 3, border: `1px solid ${G.border}`, flexShrink: 0 }}>
+        <div id="tour-faculty-tabs" style={{ display: 'flex', gap: 3, background: '#fff', borderRadius: 10, padding: 3, border: `1px solid ${G.border}`, flexShrink: 0 }}>
           {[
             { key: 'active',   label: loading ? 'Active'   : `Active (${activeFaculty.length})` },
             { key: 'archived', label: loading ? 'Archived' : `Archived (${archivedFaculty.length})` },
@@ -825,7 +876,7 @@ export default function FacultyListPage() {
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
           {/* View mode toggle (Updated to match ScheduleView logic) */}
-          <div className="fac-view-group">
+          <div id="tour-faculty-view-toggle" className="fac-view-group">
             {[
               ['grid', 'Grid', (
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -849,33 +900,35 @@ export default function FacultyListPage() {
             ))}
           </div>
 
-          {/* Export */}
-          <button onClick={handleExport} disabled={!filtered.length} title="Export specialization matrix to Excel"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: `1px solid ${G.border}`, background: '#fff', color: G.muted2, fontSize: 11.5, fontWeight: 500, cursor: filtered.length ? 'pointer' : 'not-allowed', opacity: filtered.length ? 1 : 0.45, transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
-            onMouseEnter={e => { if (filtered.length) { e.currentTarget.style.background = G.hover; e.currentTarget.style.color = G.meadow }}}
-            onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = G.muted2 }}>
-           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            Export
-          </button>
+          <div id="tour-faculty-actions" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {/* Export */}
+            <button onClick={handleExport} disabled={!filtered.length} title="Export specialization matrix to Excel"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: `1px solid ${G.border}`, background: '#fff', color: G.muted2, fontSize: 11.5, fontWeight: 500, cursor: filtered.length ? 'pointer' : 'not-allowed', opacity: filtered.length ? 1 : 0.45, transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
+              onMouseEnter={e => { if (filtered.length) { e.currentTarget.style.background = G.hover; e.currentTarget.style.color = G.meadow }}}
+              onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = G.muted2 }}>
+             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Export
+            </button>
 
-          {/* Upload Faculty List */}
-          <button onClick={() => setShowImport(true)}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 16px', borderRadius: 10, border: `1px solid ${G.border}`, fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: '#fff', color: G.muted }}
-            onMouseEnter={e => { e.currentTarget.style.background = G.hover; e.currentTarget.style.borderColor = G.meadowBorder; e.currentTarget.style.color = G.meadow }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="17 8 12 3 7 8"/>
-              <line x1="12" y1="3" x2="12" y2="15"/>
-            </svg>
-            Upload Faculty List
-          </button>
+            {/* Upload Faculty List */}
+            <button onClick={() => setShowImport(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 16px', borderRadius: 10, border: `1px solid ${G.border}`, fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: '#fff', color: G.muted }}
+              onMouseEnter={e => { e.currentTarget.style.background = G.hover; e.currentTarget.style.borderColor = G.meadowBorder; e.currentTarget.style.color = G.meadow }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              Upload Faculty List
+            </button>
+          </div>
 
-          <button onClick={() => navigate('/dashboard/faculty/new')}
+          <button id="tour-add-faculty-btn" onClick={() => navigate('/dashboard/faculty/new')}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 18px', borderRadius: 10, border: 'none', fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: '#fff', boxShadow: '0 3px 12px rgba(21,128,61,0.32)' }}
             onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 5px 18px rgba(21,128,61,0.42)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
             onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 3px 12px rgba(21,128,61,0.32)'; e.currentTarget.style.transform = 'none' }}>
@@ -886,7 +939,7 @@ export default function FacultyListPage() {
       </div>
 
       {/* ── Search + Toolbar ── */}
-      <div style={{ background: '#fff', borderRadius: 14, border: `1px solid ${G.border}`, padding: '10px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', boxShadow: '0 2px 8px rgba(10,46,28,0.05)' }}>
+      <div id="tour-faculty-search" style={{ background: '#fff', borderRadius: 14, border: `1px solid ${G.border}`, padding: '10px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', boxShadow: '0 2px 8px rgba(10,46,28,0.05)' }}>
 
         {/* Search */}
         <div style={{ position: 'relative', flex: '1 1 220px', minWidth: 180 }}>
@@ -1220,83 +1273,87 @@ export default function FacultyListPage() {
       {/* ════════════════════════════════════════════
           CONTENT — grid or list
       ════════════════════════════════════════════ */}
-      {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14, animation: 'fadeIn 0.25s ease' }}>
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} style={{ background: '#fff', borderRadius: 12, border: `1.5px solid ${G.border}`, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              {/* Header — mirrors the green card header */}
-              <div style={{ background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, padding: '14px 14px 12px', flex: 1, position: 'relative' }}>
-                {/* Name */}
-                <Skel w="68%" h={13} r={4} style={{ background: 'rgba(255,255,255,0.28)' }}/>
-                {/* Academic rank */}
-                <Skel w="48%" h={9} r={3} style={{ marginTop: 5, background: 'rgba(255,255,255,0.18)' }}/>
-                {/* Department */}
-                <Skel w="58%" h={8} r={3} style={{ marginTop: 3, background: 'rgba(255,255,255,0.12)' }}/>
-                {/* Status pill */}
-                <Skel w={72} h={18} r={99} style={{ marginTop: 12, background: 'rgba(255,255,255,0.18)' }}/>
-                {/* Checkbox placeholder */}
-                <div style={{ position: 'absolute', top: 12, right: 12, width: 16, height: 16, borderRadius: 4, background: 'rgba(255,255,255,0.18)' }}/>
-              </div>
-              {/* Footer — mirrors the white bottom */}
-              <div style={{ padding: '9px 14px 0', flexShrink: 0 }}>
-                <Skel w={80} h={11} r={4}/>
-              </div>
-              <div style={{ height: 8 }}/>
+      <div id="tour-faculty-list-anchor" style={{ position: 'relative' }}>
+        <div id="tour-faculty-list">
+          {loading ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14, animation: 'fadeIn 0.25s ease' }}>
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} style={{ background: '#fff', borderRadius: 12, border: `1.5px solid ${G.border}`, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  {/* Header — mirrors the green card header */}
+                  <div style={{ background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, padding: '14px 14px 12px', flex: 1, position: 'relative' }}>
+                    {/* Name */}
+                    <Skel w="68%" h={13} r={4} style={{ background: 'rgba(255,255,255,0.28)' }}/>
+                    {/* Academic rank */}
+                    <Skel w="48%" h={9} r={3} style={{ marginTop: 5, background: 'rgba(255,255,255,0.18)' }}/>
+                    {/* Department */}
+                    <Skel w="58%" h={8} r={3} style={{ marginTop: 3, background: 'rgba(255,255,255,0.12)' }}/>
+                    {/* Status pill */}
+                    <Skel w={72} h={18} r={99} style={{ marginTop: 12, background: 'rgba(255,255,255,0.18)' }}/>
+                    {/* Checkbox placeholder */}
+                    <div style={{ position: 'absolute', top: 12, right: 12, width: 16, height: 16, borderRadius: 4, background: 'rgba(255,255,255,0.18)' }}/>
+                  </div>
+                  {/* Footer — mirrors the white bottom */}
+                  <div style={{ padding: '9px 14px 0', flexShrink: 0 }}>
+                    <Skel w={80} h={11} r={4}/>
+                  </div>
+                  <div style={{ height: 8 }}/>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: G.muted2, animation: 'fadeIn 0.3s' }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', background: G.hover, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={G.border} strokeWidth="1.5">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-            </svg>
-          </div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: G.muted, marginBottom: 4 }}>
-            {viewTab === 'archived'
-              ? (archivedFaculty.length === 0 ? 'No archived faculty' : 'No matches')
-              : (activeFaculty.length === 0 ? 'No faculty yet' : 'No faculty match your filters')}
-          </div>
-          <div style={{ fontSize: 12.5, color: G.muted2, marginBottom: hasAnyFilter ? 14 : 0 }}>
-            {viewTab === 'archived'
-              ? (archivedFaculty.length === 0 ? 'Archived members appear here.' : 'Try adjusting your filters.')
-              : (activeFaculty.length === 0 ? 'Add your first faculty member to get started.' : 'Try adjusting your search or filters.')}
-          </div>
-          {hasAnyFilter && (
-            <button onClick={resetAllFilters} style={{ padding: '8px 18px', borderRadius: 9, border: 'none', background: G.meadow, color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>
-              Clear all filters
-            </button>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: G.muted2, animation: 'fadeIn 0.3s' }}>
+              <div style={{ width: 56, height: 56, borderRadius: '50%', background: G.hover, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={G.border} strokeWidth="1.5">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                </svg>
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: G.muted, marginBottom: 4 }}>
+                {viewTab === 'archived'
+                  ? (archivedFaculty.length === 0 ? 'No archived faculty' : 'No matches')
+                  : (activeFaculty.length === 0 ? 'No faculty yet' : 'No faculty match your filters')}
+              </div>
+              <div style={{ fontSize: 12.5, color: G.muted2, marginBottom: hasAnyFilter ? 14 : 0 }}>
+                {viewTab === 'archived'
+                  ? (archivedFaculty.length === 0 ? 'Archived members appear here.' : 'Try adjusting your filters.')
+                  : (activeFaculty.length === 0 ? 'Add your first faculty member to get started.' : 'Try adjusting your search or filters.')}
+              </div>
+              {hasAnyFilter && (
+                <button onClick={resetAllFilters} style={{ padding: '8px 18px', borderRadius: 9, border: 'none', background: G.meadow, color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>
+                  Clear all filters
+                </button>
+              )}
+            </div>
+          ) : viewMode === 'list' ? (
+            <FacultyTable
+              faculty={filtered}
+              selected={selected}
+              selectionMode={selectionMode}
+              viewTab={viewTab}
+              onSelect={toggleOne}
+              onSelectAll={toggleSelectAll}
+              allSelected={allSelected}
+              someSelected={someSelected}
+              onArchive={handleCardArchive}
+              onUnarchive={handleCardUnarchive}
+              onDelete={handleCardDelete}
+              navigate={navigate}
+            />
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14, animation: 'fadeIn 0.25s ease' }}>
+              {filtered.map(f => (
+                <FacultyCard key={f.id} faculty={f} selected={selected.has(f.id)} selectionMode={selectionMode}
+                  viewTab={viewTab}
+                  onSelect={() => toggleOne(f.id)}
+                  onArchive={() => handleCardArchive(f.id, f.name)}
+                  onUnarchive={() => handleCardUnarchive(f.id, f.name)}
+                  onDelete={() => handleCardDelete(f.id, f.name)}
+                  onClick={() => { if (selectionMode) { toggleOne(f.id); return } navigate(`/dashboard/faculty/${f.id}`) }}
+                />
+              ))}
+            </div>
           )}
         </div>
-      ) : viewMode === 'list' ? (
-        <FacultyTable
-          faculty={filtered}
-          selected={selected}
-          selectionMode={selectionMode}
-          viewTab={viewTab}
-          onSelect={toggleOne}
-          onSelectAll={toggleSelectAll}
-          allSelected={allSelected}
-          someSelected={someSelected}
-          onArchive={handleCardArchive}
-          onUnarchive={handleCardUnarchive}
-          onDelete={handleCardDelete}
-          navigate={navigate}
-        />
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14, animation: 'fadeIn 0.25s ease' }}>
-          {filtered.map(f => (
-            <FacultyCard key={f.id} faculty={f} selected={selected.has(f.id)} selectionMode={selectionMode}
-              viewTab={viewTab}
-              onSelect={() => toggleOne(f.id)}
-              onArchive={() => handleCardArchive(f.id, f.name)}
-              onUnarchive={() => handleCardUnarchive(f.id, f.name)}
-              onDelete={() => handleCardDelete(f.id, f.name)}
-              onClick={() => { if (selectionMode) { toggleOne(f.id); return } navigate(`/dashboard/faculty/${f.id}`) }}
-            />
-          ))}
-        </div>
-      )}
+      </div>
 
       {!loading && filtered.length > 0 && (
         <div style={{ marginTop: 18, fontSize: 12, color: G.muted2, textAlign: 'right' }}>

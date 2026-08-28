@@ -77,7 +77,7 @@ function Skel({ w = '100%', h = 14, r = 8 }) {
 // ─── Card Header — matches FacultyCards CardHeader exactly ───────────────────
 function CardHeader({ title, sub, right }) {
   return (
-    <div style={{
+    <div className="fp-card-header" style={{
       padding: '14px 20px',
       background: T.headerBg,
       borderBottom: `1.5px solid ${T.headerBorder}`,
@@ -300,27 +300,38 @@ export default function FacultyProfilePage() {
         @keyframes fp-fadeUp  { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
         @keyframes fp-spin    { to{transform:rotate(360deg)} }
 
-        /* ── Tablet ── */
+        /* ── Tablet / Mobile (≤768px) — desktop styles above are untouched ── */
         @media (max-width: 768px) {
           .fp-layout       { flex-direction: column !important; }
           .fp-sidebar      { flex: none !important; width: 100% !important; min-width: 0 !important; }
-          .fp-grid-2       { grid-template-columns: 1fr 1fr !important; }
+          .fp-right-col    { width: 100% !important; min-width: 0 !important; }
+
+          /* Basic Information card — single column, full width, no overflow */
+          .fp-grid-2       { grid-template-columns: 1fr !important; min-width: 0 !important; }
+          .fp-grid-2 > *   { min-width: 0 !important; width: 100% !important; }
+
           .fp-hero h1      { font-size: 19px !important; }
           .fp-hero-wrap    { padding: 18px 18px !important; border-radius: 14px !important; margin-bottom: 14px !important; }
-          .fp-prefs-body   { flex-direction: column !important; gap: 16px !important; }
+          .fp-prefs-body   { flex-direction: column !important; gap: 12px !important; }
+          .fp-prefs-days-wrap { flex: none !important; width: 100% !important; }
           .fp-prefs-divider{ display: none !important; }
-          .fp-prefs-times  { flex-direction: row !important; flex-wrap: wrap !important; gap: 12px !important; }
-          .fp-cred-grid    { grid-template-columns: 1fr !important; }
-        }
 
-        /* ── Mobile ── */
-        @media (max-width: 480px) {
-          .fp-grid-2       { grid-template-columns: 1fr !important; }
+          /* Start/End time — stay in the same row, shrink to fit */
+          .fp-prefs-times  { flex: 1 1 100% !important; align-items: flex-end !important; gap: 10px !important; border-left: none !important; padding-left: 0 !important; width: 100% !important; }
+          .fp-time-field   { flex: 1 1 0 !important; min-width: 0 !important; }
+          .fp-select       { min-width: 0 !important; width: 100% !important; padding: 8px 12px !important; font-size: 12px !important; }
+
+          .fp-cred-grid    { grid-template-columns: 1fr !important; }
+          .fp-pass-row     { flex-wrap: wrap !important; }
+          .fp-pass-row > input { min-width: 100% !important; }
+          .fp-pass-row > button { flex: 1; }
           .fp-hero-wrap    { padding: 14px 14px !important; border-radius: 12px !important; }
-          .fp-hero h1      { font-size: 17px !important; }
+          .fp-hero         { font-size: 17px !important; }
           .fp-hero-badge   { display: none !important; }
-          .fp-card-header  { flex-wrap: wrap; gap: 8px !important; }
-          .fp-card-padding { padding: 14px 14px !important; }
+          .fp-sidebar-card-top { padding: 16px 14px 12px !important; gap: 8px !important; }
+          .fp-sidebar-avatar { width: 48px !important; height: 48px !important; font-size: 18px !important; }
+          .fp-card-header  { padding: 12px 14px !important; flex-wrap: wrap; gap: 8px !important; }
+          .fp-card-body    { padding: 16px 14px !important; gap: 14px !important; }
           .fp-prefs-days   { gap: 6px !important; }
           .fp-prefs-pill   { padding: 6px 12px !important; font-size: 11.5px !important; }
           .fp-page-wrap    { padding: 12px 12px 40px !important; }
@@ -378,13 +389,13 @@ export default function FacultyProfilePage() {
           {/* Profile card — dark green gradient header, matches FacultyCards ProfileCard */}
           <div style={{ background: T.bg, borderRadius: 16, border: `1px solid ${T.border}`, overflow: 'hidden', boxShadow: '0 4px 20px rgba(10,46,28,0.08)' }}>
             {/* Avatar header */}
-            <div style={{ background: `linear-gradient(160deg,#166534 0%,${T.greenDeep} 100%)`, padding: '28px 24px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, position: 'relative', overflow: 'hidden' }}>
+            <div className="fp-sidebar-card-top" style={{ background: `linear-gradient(160deg,#166534 0%,${T.greenDeep} 100%)`, padding: '28px 24px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: -30, right: -30, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
               <div style={{ position: 'absolute', bottom: -20, left: -14, width: 72, height: 72, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', pointerEvents: 'none' }} />
               {loading ? (
-                <Skel w={72} h={72} r={36} />
+                <Skel w={72} h={72} r={36} className="fp-sidebar-avatar" />
               ) : (
-                <div style={{ width: 72, height: 72, borderRadius: '50%', background: `linear-gradient(135deg,${avatarColor.bg},${avatarColor.bg}bb)`, color: avatarColor.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 700, border: '3px solid rgba(255,255,255,0.3)', fontFamily: "'Sora',sans-serif", position: 'relative', zIndex: 1, boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
+                <div className="fp-sidebar-avatar" style={{ width: 72, height: 72, borderRadius: '50%', background: `linear-gradient(135deg,${avatarColor.bg},${avatarColor.bg}bb)`, color: avatarColor.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 700, border: '3px solid rgba(255,255,255,0.3)', fontFamily: "'Sora',sans-serif", position: 'relative', zIndex: 1, boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
                   {initials}
                 </div>
               )}
@@ -444,7 +455,7 @@ export default function FacultyProfilePage() {
         </div>
 
         {/* ── Right column ── */}
-        <div style={{ flex: 1, minWidth: 280, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="fp-right-col" style={{ flex: 1, minWidth: 280, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           {/* ── Basic Information Card ── */}
           <div style={{ background: T.bg, borderRadius: 16, border: `1px solid ${T.border}`, overflow: 'hidden', boxShadow: '0 4px 20px rgba(10,46,28,0.08)', animation: 'fp-fadeUp 0.3s ease 0.05s both' }}>
@@ -452,7 +463,7 @@ export default function FacultyProfilePage() {
               title="Basic Information"
               right={<SaveBtn dirty={isInfoChanged} saving={infoSaving} saved={infoSaved} onClick={handleSaveInfo} />}
             />
-            <div style={{ padding: '24px 20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 24px' }}>
+            <div className="fp-grid-2 fp-card-body" style={{ padding: '24px 20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 24px' }}>
               {infoError && (
                 <div style={{ gridColumn: '1/-1', background: T.dangerSoft, border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', fontSize: 12.5, color: '#B91C1C', display: 'flex', gap: 8, alignItems: 'center' }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/></svg>{infoError}
@@ -531,10 +542,10 @@ export default function FacultyProfilePage() {
             sub="Preferred teaching days and time window"
             right={<SaveBtn dirty={isPrefsChanged} saving={prefSaving} saved={prefSaved} onClick={handleSavePrefs} />}
           />
-          <div className="fp-prefs-body" style={{ padding: '20px 24px', display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          <div className="fp-prefs-body fp-card-body" style={{ padding: '20px 24px', display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'flex-start' }}>
 
             {/* Days — pill style */}
-            <div style={{ flex: '1 1 300px' }}>
+            <div className="fp-prefs-days-wrap" style={{ flex: '1 1 300px' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 10 }}>
                 Preferred Teaching Days
               </div>
@@ -563,20 +574,19 @@ export default function FacultyProfilePage() {
               </div>
             </div>
 
-            {/* Vertical divider */}
-            <div className="fp-prefs-divider" style={{ width: 1, background: T.borderLight, alignSelf: 'stretch', flexShrink: 0, minHeight: 60 }} />
-
-            {/* Time selects */}
-            <div className="fp-prefs-times" style={{ flex: '0 0 auto', display: 'flex', gap: 20, alignItems: 'flex-end' }}>
+            {/* Time selects — divider is a left border on this block itself,
+                not a separate flex item, so it can never wrap onto its own
+                row and create empty vertical space when things stack. */}
+            <div className="fp-prefs-times" style={{ flex: '0 0 auto', display: 'flex', gap: 20, alignItems: 'flex-end', borderLeft: `1px solid ${T.borderLight}`, paddingLeft: 32 }}>
               {[
                 { label: 'Start Time', value: prefStart, onChange: e => setPrefStart(Number(e.target.value)), options: timeOptions.filter(h => h < prefEnd) },
                 { label: 'End Time',   value: prefEnd,   onChange: e => setPrefEnd(Number(e.target.value)),   options: timeOptions.filter(h => h > prefStart) },
               ].map(({ label, value, onChange, options }) => (
-                <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div key={label} className="fp-time-field" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <label style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.6px' }}>{label}</label>
                   {loading ? <Skel w={130} h={38} r={8} /> : (
                     <div style={{ position: 'relative' }}>
-                      <select value={value} onChange={onChange} style={{ appearance: 'none', padding: '9px 36px 9px 14px', borderRadius: 8, border: `1.5px solid ${T.border}`, fontSize: 13, fontWeight: 600, fontFamily: "'Inter',sans-serif", background: T.bg, color: T.textMain, cursor: 'pointer', outline: 'none', width: 130, transition: 'border-color .15s' }}
+                      <select className="fp-select" value={value} onChange={onChange} style={{ appearance: 'none', padding: '9px 36px 9px 14px', borderRadius: 8, border: `1.5px solid ${T.border}`, fontSize: 13, fontWeight: 600, fontFamily: "'Inter',sans-serif", background: T.bg, color: T.textMain, cursor: 'pointer', outline: 'none', width: '100%', minWidth: 130, transition: 'border-color .15s' }}
                         onFocus={e => e.target.style.borderColor = T.green}
                         onBlur={e => e.target.style.borderColor = T.border}
                       >
@@ -614,18 +624,18 @@ export default function FacultyProfilePage() {
             }
           />
           {!form.email && (
-            <div style={{ margin: '20px 20px 0', padding: '12px 16px', borderRadius: 8, background: '#FFFBEB', border: '1px solid #FEF3C7', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+             <div style={{ margin: '20px 20px 0', padding: '12px 16px', borderRadius: 8, background: '#FFFBEB', border: '1px solid #FEF3C7', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" style={{ flexShrink: 0, marginTop: 2 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               <span style={{ fontSize: 12, color: '#B45309', lineHeight: 1.5 }}>No login account yet. Set an email and password below to activate.</span>
             </div>
           )}
-          <div style={{ padding: '24px 20px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px 24px', alignItems: 'start' }}>
+          <div className="fp-cred-grid fp-card-body" style={{ padding: '24px 20px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px 24px', alignItems: 'start' }}>
             <FormField label="Login Email" hint={form.email ? 'Change the email used to sign in' : 'Required — will be used as login'}>
               <input type="email" value={credEmail} onChange={e => setCredEmail(e.target.value)} autoComplete="off" style={inputStyle} />
             </FormField>
 
             <FormField label="New Password" hint={form.email ? 'Leave blank to keep current' : 'Auto-generated if blank'}>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div className="fp-pass-row" style={{ display: 'flex', gap: 8 }}>
                 <input type={showCredPwd ? 'text' : 'password'} value={credPassword} onChange={e => setCredPassword(e.target.value)} autoComplete="new-password" placeholder={form.email ? 'Leave blank to keep' : 'Auto-generated if blank'} style={{ ...inputStyle, minWidth: 0, flex: 1 }} />
                 <button type="button" onClick={() => setShowCredPwd(v => !v)} style={{ padding: '10px 12px', borderRadius: 8, border: `1px solid ${T.border}`, background: T.bgAlt, color: T.textMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", flexShrink: 0 }}>{showCredPwd ? 'Hide' : 'Show'}</button>
                 <button type="button" onClick={() => { const ln = (form.name||'').trim().split(/\s+/).pop()||'faculty'; setCredPassword(ln+'GC2026'); setCredConfirm(ln+'GC2026'); setShowCredPwd(true) }} style={{ padding: '10px 12px', borderRadius: 8, border: `1.5px solid ${T.greenBorder}`, background: T.greenSoft, color: T.greenDeep, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", flexShrink: 0, whiteSpace: 'nowrap' }}>Generate</button>

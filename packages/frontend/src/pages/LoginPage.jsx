@@ -260,6 +260,9 @@ import icon1Img from '../assets/ASSIGNAV1.png'
     @media (max-width: 480px) {
       .login-form-side { padding: 16px; }
       .login-card { padding: 22px 18px 20px; border-radius: 16px; }
+      .role-selector { flex-wrap: wrap; }
+      .role-option { flex-basis: calc(50% - 3px); font-size: 11.5px; padding: 7px 4px; gap: 4px; }
+      .role-option:last-child { flex-basis: 100%; }
     }
     @keyframes errShake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 60%{transform:translateX(5px)} }
     @keyframes spin-login { to { transform: rotate(360deg); } }

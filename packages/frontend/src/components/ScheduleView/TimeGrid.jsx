@@ -258,7 +258,7 @@ function RoomColumn({
               compact={compact} slotH={slotH}
               onClick={onCardClick}
               onDragStart={e => onDragStart(e, event)} onDragEnd={onDragEnd}
-              locked={locked}
+              locked={locked || event._isReadonly}
               overlapIndex={overlapIndex}
               spreadOffset={spreadOffset}
               isInHoveredGroup={isInHoveredGroup}

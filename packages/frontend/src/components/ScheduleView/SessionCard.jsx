@@ -14,6 +14,7 @@ export default function SessionCard({
   isPotentialMerge = false,
   onDropOnCard,
   locked = false,
+  isAmbient = false,
 }) {
   const [isHovered,     setIsHovered]     = useState(false)
   const [isStackTarget, setIsStackTarget] = useState(false)
@@ -134,6 +135,7 @@ export default function SessionCard({
   const ambientMergeRing    = `0 0 0 1.5px #93c5fd, 0 0 0 3.5px rgba(59,130,246,.18), 0 4px 16px rgba(37,99,235,.28)`
 
   function computeShadow() {
+    if (isAmbient) return 'none'
     if (isStackTarget)                        return stackRing
     if (isConflictTarget && !isDragging)      return conflictRing
     if (isPotentialMerge && !isDragging)      return isHovered ? `0 0 0 2px #3b82f6, 0 0 0 5px rgba(59,130,246,.28), 0 6px 28px rgba(37,99,235,.45)` : ambientMergeRing
@@ -198,7 +200,7 @@ export default function SessionCard({
           padding: isTiny ? '0 4px' : '1px 5px',
           cursor: locked ? 'default' : 'grab', overflow: 'hidden',
           boxShadow: computeShadow(),
-          opacity: isDimmed ? 0.32 : isDragging ? 0.55 : 1,
+          opacity: isDimmed ? 0.32 : isDragging ? 0.55 : event._isOtherProgram ? 0.35 : 1,
           transform,
           transition: 'all .15s ease-out',
           zIndex,
@@ -285,7 +287,7 @@ export default function SessionCard({
         cursor: locked ? 'default' : isDragging ? 'grabbing' : 'grab',
         overflow: 'hidden',
         boxShadow: computeShadow(),
-        opacity: isDimmed ? 0.25 : isDragging ? 0.5 : 1,
+        opacity: isDimmed ? 0.25 : isDragging ? 0.5 : event._isOtherProgram ? 0.35 : 1,
         transform,
         transition: isDragging ? 'opacity .12s ease' : 'all .18s ease-out',
         zIndex,

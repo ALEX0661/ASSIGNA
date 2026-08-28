@@ -50,7 +50,7 @@ if (!document.getElementById('fsp-style')) {
     }
 
     .fsp-select {
-      appearance: none; border: 1px solid #D8E8DF;
+      appearance: none; border: 1px solid #D8E8DF; box-sizing: border-box;
       border-radius: 10px; padding: 8px 34px 8px 14px;
       font-size: 12.5px; font-weight: 600; color: #0E2A1C;
       background: #fafafa; cursor: pointer; outline: none;
@@ -68,7 +68,7 @@ if (!document.getElementById('fsp-style')) {
       min-width: 200px;
     }
     .fsp-search-input {
-      width: 100%;
+      width: 100%; box-sizing: border-box;
       appearance: none; border: 1px solid #D8E8DF;
       border-radius: 10px; padding: 8px 30px 8px 34px;
       font-size: 12.5px; font-weight: 500; color: #0E2A1C;
@@ -97,7 +97,7 @@ if (!document.getElementById('fsp-style')) {
       cursor: pointer; display: flex; align-items: center; gap: 8px;
       transition: all 0.15s; font-family: 'Inter', sans-serif;
       box-shadow: 0 1px 4px rgba(14,42,28,0.04);
-      flex-shrink: 0;
+      flex-shrink: 0; box-sizing: border-box;
     }
     .fsp-export-btn:hover:not(:disabled) {
       background: #E8F5EE; border-color: #1E7A4A; color: #1E7A4A;
@@ -141,6 +141,21 @@ if (!document.getElementById('fsp-style')) {
     .fsp-grid-card:hover {
       box-shadow: 0 12px 36px rgba(14,42,28,0.12);
       transform: translateY(-3px);
+    }
+
+    @media (max-width: 768px) {
+      .fsp-page-wrap { padding: 16px !important; }
+      .fsp-hero-wrap { padding: 16px 20px !important; border-radius: 16px !important; }
+      .fsp-hero-title { font-size: 18px !important; }
+      .fsp-hero-avatar { width: 48px !important; height: 48px !important; font-size: 16px !important; }
+      .fsp-filter-group { flex-direction: column; align-items: flex-start !important; width: 100%; gap: 6px !important; }
+      .fsp-filter-group > div { width: 100%; }
+      .fsp-select { width: 100% !important; min-width: 0 !important; }
+      .fsp-right-controls { flex-direction: column; align-items: stretch !important; width: 100%; gap: 6px !important; }
+      .fsp-search-wrapper { width: 100% !important; flex: none !important; min-width: 0 !important; }
+      .fsp-search-input { width: 100% !important; }
+      .fsp-export-btn { width: 100% !important; justify-content: center; }
+      .fsp-divider { display: none !important; }
     }
 
     .fsp-scrollable { overflow-y: auto; }
@@ -830,7 +845,7 @@ export default function FacultySchedulePage() {
   }
 
   return (
-    <div style={{ fontFamily:"'Inter',sans-serif", color:T.textMain, minHeight:'100vh', background:T.bgPage, padding:'28px 28px 48px' }}>
+    <div className="fsp-page-wrap" style={{ fontFamily:"'Inter',sans-serif", color:T.textMain, minHeight:'100vh', background:T.bgPage, padding:'28px 28px 48px' }}>
 
       {/* ══ MODAL ══ */}
       {selectedEvent && (
@@ -838,7 +853,7 @@ export default function FacultySchedulePage() {
       )}
 
       {/* ══ HERO HEADER ══ */}
-      <div style={{
+      <div className="fsp-hero-wrap" style={{
         background: `linear-gradient(135deg, ${T.forest} 0%, ${T.forestDeep} 60%, #265242 100%)`,
         borderRadius:20, padding:'24px 28px',
         marginBottom:20, position:'relative', overflow:'hidden',
@@ -853,7 +868,7 @@ export default function FacultySchedulePage() {
 
           {/* Faculty identity */}
           <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-            <div style={{
+            <div className="fsp-hero-avatar" style={{
               width:56, height:56, borderRadius:16, flexShrink:0,
               background: listLoading ? 'rgba(110,231,183,0.12)' : avatarColor.bg,
               color: listLoading ? '#6EE7B7' : avatarColor.fg,
@@ -882,7 +897,7 @@ export default function FacultySchedulePage() {
                   </span>
                 )}
               </div>
-              <h1 style={{ fontFamily:"'Sora',sans-serif", fontSize:22, fontWeight:800, color:'#fff', margin:0, lineHeight:1.15, letterSpacing:'-.4px' }}>
+              <h1 className="fsp-hero-title" style={{ fontFamily:"'Sora',sans-serif", fontSize:22, fontWeight:800, color:'#fff', margin:0, lineHeight:1.15, letterSpacing:'-.4px' }}>
                 {listLoading ? '…' : facultyName || 'Faculty Schedule'}
               </h1>
               {facultyMeta.rank && (
@@ -929,7 +944,7 @@ export default function FacultySchedulePage() {
       )}
 
       {/* ══ FILTER & CONTROLS ROW ══ */}
-      {!loading && myEvents.length > 0 && (
+      {!loading && scheduleNames.length > 0 && (
         <div style={{
           display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between',
           background: '#fff', padding: '14px 18px', borderRadius: 16, border: `1px solid ${T.border}`,
@@ -939,22 +954,8 @@ export default function FacultySchedulePage() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', flex: '1 1 auto' }}>
             
             {/* Schedule Selector — shows only finalized schedules */}
-            {scheduleNames.length === 1 ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.5px' }}>
-                  Schedule
-                </span>
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 5,
-                  padding: '4px 12px', borderRadius: 99, fontSize: 11, fontWeight: 700,
-                  background: '#DCFCE7', color: '#15803D', border: '1px solid #BBF7D0',
-                }}>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                  {scheduleLabel(scheduleNames[0])}
-                </span>
-              </div>
-            ) : scheduleNames.length > 1 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {scheduleNames.length > 0 && (
+              <div className="fsp-filter-group" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.5px' }}>
                   Schedule
                 </span>
@@ -978,10 +979,10 @@ export default function FacultySchedulePage() {
               </div>
             )}
 
-            <div style={{ width: 1, height: 24, background: T.border, display: scheduleNames.length ? 'block' : 'none' }} />
+            <div className="fsp-divider" style={{ width: 1, height: 24, background: T.border, display: scheduleNames.length ? 'block' : 'none' }} />
 
             {/* Session Type Filter */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="fsp-filter-group" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.5px' }}>
                 Session
               </span>
@@ -998,10 +999,10 @@ export default function FacultySchedulePage() {
           </div>
 
           {/* Right Side: Search & Export */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', flex: '1 1 auto', justifyContent: 'flex-end' }}>
+          <div className="fsp-right-controls" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', flex: '1 1 auto', justifyContent: 'flex-end' }}>
             
             {/* Search Input */}
-            <div className="fsp-search-wrapper">
+            <div className="fsp-search-wrapper" style={{ position: 'relative' }}>
               <input
                 type="text"
                 placeholder="Search class or room..."

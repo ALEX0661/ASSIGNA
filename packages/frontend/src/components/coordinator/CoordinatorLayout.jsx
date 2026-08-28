@@ -127,7 +127,20 @@ export default function CoordinatorLayout() {
   )
   const currentPageLabel = activeLink?.label ?? 'Dashboard'
   const [showLogoutModal, setShowLogoutModal] = useState(false)
-  const [collapsed, setCollapsed] = useState(false)
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 768)
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+      if (mobile) {
+        setCollapsed(true)
+      }
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const [now, setNow] = useState(new Date())
   useEffect(() => {
@@ -151,8 +164,8 @@ export default function CoordinatorLayout() {
         width: sidebarWidth,
         background: 'linear-gradient(180deg, #1A5C35 0%, #154D2C 60%, #0F3D22 100%)',
         display:'flex', flexDirection:'column', flexShrink:0,
-        boxShadow:'4px 0 20px rgba(10,40,20,0.22)', zIndex:20,
-        position:'sticky', top:0, height:'100vh', overflow:'visible',
+        boxShadow:'4px 0 20px rgba(10,40,20,0.22)', zIndex:100,
+        position: isMobile ? 'absolute' : 'sticky', top:0, left:0, height:'100vh', overflow:'visible',
         transition:'width 0.25s cubic-bezier(0.4,0,0.2,1)',
       }}>
 
@@ -231,26 +244,50 @@ export default function CoordinatorLayout() {
         </div>
       </aside>
 
+      {/* ── Overlay for mobile when expanded ── */}
+      {isMobile && !collapsed && (
+        <div 
+          onClick={() => setCollapsed(true)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 90, backdropFilter: 'blur(2px)' }} 
+        />
+      )}
+
       {/* ── Right panel ── */}
-      <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', height:'100vh', background:'var(--bg)', overflow:'hidden' }}>
+      <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', height:'100vh', background:'var(--bg)', overflow:'hidden', marginLeft: isMobile ? 58 : 0 }}>
         <header className="topbar" style={{ position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-            <span style={{ fontSize:18, fontWeight:700, color:'var(--ink)', letterSpacing:'-.3px', fontFamily:"'Sora',sans-serif" }}>
-              {currentPageLabel}
-            </span>
+          <div className="topbar-left" style={{ display: 'flex', alignItems: 'center', gap: 24, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span className="topbar-title" style={{ fontSize:18, fontWeight:700, color:'var(--ink)', letterSpacing:'-.3px', fontFamily:"'Sora',sans-serif", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {currentPageLabel}
+              </span>
+              <button 
+                onClick={() => window.dispatchEvent(new Event('start-tour'))}
+                title="Page Tour / Help"
+                style={{ 
+                  display:'flex', alignItems:'center', justifyContent:'center', 
+                  width: 24, height: 24, borderRadius: '50%', border: '1.5px solid var(--border)', 
+                  background: '#fff', color: 'var(--muted)', cursor: 'pointer', transition: 'all .15s', flexShrink: 0,
+                  fontSize: 13, fontWeight: 800, fontFamily: "'Inter',sans-serif", padding: 0, lineHeight: 1
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--meadowSoft)'; e.currentTarget.style.color = 'var(--meadowDeep)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--hover)'; e.currentTarget.style.color = 'var(--muted)' }}
+              >
+                ?
+              </button>
+            </div>
           </div>
 
           {/* TELEPORT DESTINATION: Absolutely centered in the middle of the header */}
           <div id="header-stepper-portal" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}></div>
 
           <div style={{ flex:1 }} />
-          <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-            <div style={{ display:'flex', flexDirection:'column', gap:1, textAlign:'right' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:16, marginLeft: 16 }}>
+            <div className="topbar-time" style={{ display:'flex', flexDirection:'column', gap:1, textAlign:'right' }}>
               <span style={{ fontSize:11.5, fontWeight:700, color:'var(--meadow)', fontVariantNumeric:'tabular-nums' }}>{timeStr}</span>
               <span style={{ fontSize:10.5, fontWeight:500, color:'var(--muted2)' }}>{dateStr}</span>
             </div>
             {collapsed && (
-              <button onClick={() => setShowLogoutModal(true)}
+              <button className="topbar-logout" onClick={() => setShowLogoutModal(true)}
                 style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 13px', borderRadius:9, border:'1.5px solid var(--border)', background:'var(--hover)', color:'var(--muted)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}
                 onMouseEnter={e => { e.currentTarget.style.background='#FFF0F0'; e.currentTarget.style.color='#C0392B'; }}
                 onMouseLeave={e => { e.currentTarget.style.background='var(--hover)'; e.currentTarget.style.color='var(--muted)'; }}

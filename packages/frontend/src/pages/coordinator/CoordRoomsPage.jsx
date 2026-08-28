@@ -4,6 +4,15 @@ import {
   coordGetRooms, coordSelectRooms, coordGetSelectedRooms,
   coordGetCourses, setCoursePreferredRoom
 } from '../../services/api'
+import { useTour } from '../../hooks/useTour.jsx'
+
+const TOUR_SEEN_KEY = 'coordRooms_tourSeen'
+function isOnboardingCompleted() {
+  try { return localStorage.getItem(TOUR_SEEN_KEY) === '1' } catch { return true }
+}
+function markOnboardingCompleted() {
+  try { localStorage.setItem(TOUR_SEEN_KEY, '1') } catch {}
+}
 
 import iconLab from '../../assets/LABROOM.png'
 import iconLec from '../../assets/LECROOM.png'
@@ -305,6 +314,23 @@ export default function CoordRoomsPage() {
   // Modal State
   const [modalState, setModalState] = useState({ isOpen: false, targetKey: null, rooms: [], title: '' })
 
+  const { TourElement, startTour } = useTour('coordRooms', [
+    { 
+      target: '.room-card-head', 
+      title: 'Select Program Rooms',
+      content: 'First, choose which rooms in the campus are available for your program to use. This narrows down the master list to just your spaces.',
+      placement: 'bottom'
+    },
+    { 
+      target: '#tour-assign-section .room-card-head', 
+      title: 'Assign Rooms to Courses',
+      content: 'Then, assign specific room pools to your courses (like a designated lab for a coding class) so the automated scheduler knows where to place them.',
+      placement: 'bottom'
+    },
+  ], !loading)
+
+  
+
   // Load Data
   useEffect(() => {
     Promise.all([
@@ -446,7 +472,7 @@ export default function CoordRoomsPage() {
 
   return (
     <div className="page" style={{ fontFamily:"'Inter', sans-serif", background: G.bg, minHeight: '100%', padding: '32px 40px' }}>
-      
+      {TourElement}
       {/* ── Top Row: Ultra-Compact Room Configuration ── */}
       <div className="room-card" style={{ marginBottom: 24 }}>
         <div className="room-card-head" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
@@ -530,7 +556,7 @@ export default function CoordRoomsPage() {
       </div>
 
       {/* ── Bottom Row: High-Density Course Assignments ── */}
-      <div className="room-card" style={{ position: 'relative' }}>
+      <div id="tour-assign-section" className="room-card" style={{ position: 'relative' }}>
         
         {/* Course Assignment Header - Now with Save/Discard Controls */}
         <div className="room-card-head" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>

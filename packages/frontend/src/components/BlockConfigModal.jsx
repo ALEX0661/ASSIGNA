@@ -87,15 +87,15 @@ if (!document.getElementById('block-config-modal-style')) {
       transform: translateY(-1px);
     }
     
-    /* Close Button (Matched strictly to Rooms Page) */
+    /* Close Button (Matched strictly to Import Modal) */
     .bc-close-btn { 
-      display: inline-flex; align-items: center; justify-content: center; 
-      width: 32px; height: 32px; border-radius: 8px; 
-      border: 1.5px solid ${G.meadowBorder}; cursor: pointer; 
-      background: ${G.meadowSoft}; color: ${G.meadowDeep}; transition: all 0.2s; flex-shrink: 0; 
-      padding: 0; 
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px; border-radius: 8px;
+      border: 1.5px solid #DCF3E4; cursor: pointer;
+      background: #EFFAF4; color: #2E9E5B; transition: all 0.2s; flex-shrink: 0;
+      padding: 0;
     }
-    .bc-close-btn:hover { background: #FFE8E8; border-color: #FECACA; color: #DC2626; transform: rotate(90deg); }
+    .bc-close-btn:hover { background: #FFE8E8; border-color: #FECACA; color: #DC2626; }
 
     .bc-cancel-btn:hover { background: ${G.hover} !important; color: ${G.meadowDeep} !important; border-color: ${G.meadowBorder} !important; }
     
