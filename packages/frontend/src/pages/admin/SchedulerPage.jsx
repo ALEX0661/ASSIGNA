@@ -6,6 +6,7 @@ import {
   triggerSolve, cancelSolve,
   saveSchedule, listSaved, loadSaved, deleteSaved,
   getPreDiagnostic, getDiagnostic,
+  getSchedulePhases,
 } from '../../services/api'
 import { useScheduleStore, useSolverStore } from '../../store/scheduleStore'
 import ScheduleGeneratorLoader from './ScheduleGeneratorLoader'
@@ -31,14 +32,16 @@ const G = {
 /* ─────────────────────────── constants ─────────────────────────── */
 
 const PHASES = [
-  { label: 'NSTP',         short: 'NSTP' },
-  { label: 'GEC / MAT',    short: 'GEC'  },
-  { label: 'Year 4',       short: 'Y4'   },
-  { label: 'Year 3',       short: 'Y3'   },
-  { label: 'Year 2',       short: 'Y2'   },
-  { label: 'Year 1',       short: 'Y1'   },
-  { label: 'PE / PATHFIT', short: 'PE'   },
+  { key: 'NSTP',       label: 'NSTP',         short: 'NSTP' },
+  { key: 'GEC_MAT',    label: 'GEC / MAT',    short: 'GEC'  },
+  { key: 'MAJORS_Y4',  label: 'Year 4',       short: 'Y4'   },
+  { key: 'MAJORS_Y3',  label: 'Year 3',       short: 'Y3'   },
+  { key: 'MAJORS_Y2',  label: 'Year 2',       short: 'Y2'   },
+  { key: 'MAJORS_Y1',  label: 'Year 1',       short: 'Y1'   },
+  { key: 'PE',         label: 'PE / PATHFIT', short: 'PE'   },
 ]
+const PHASE_BY_KEY = Object.fromEntries(PHASES.map(p => [p.key, p]))
+const DEFAULT_PHASE_KEYS = PHASES.map(p => p.key)
 
 const SEMESTER_OPTIONS = ['1st Semester', '2nd Semester', 'Midyear']
 
@@ -217,6 +220,51 @@ if (!document.getElementById('scheduler-page-style')) {
     .phase-connector { position:absolute; top:10px; left:50%; width:100%; height:2px; transition:background .4s; z-index:0; }
     .phase-dot   { width:22px; height:22px; border-radius:50%; z-index:1; display:flex; align-items:center; justify-content:center; transition:all .35s ease; }
     .phase-label { font-size:10px; margin-top:5px; font-weight:700; text-align:center; letter-spacing:0.5px; transition:color .3s; text-transform:uppercase; }
+
+    /* ── Reorderable phase list (editable priority order) — horizontal ── */
+    .phase-reorder-hint { display:flex; align-items:center; gap:6px; font-size:11.5px; color:${G.muted2}; font-weight:600; margin-bottom:14px; }
+    .phase-reorder-track { display:flex; align-items:flex-start; gap:0; width:100%; }
+    .phase-reorder-step { flex:1; display:flex; flex-direction:column; align-items:center; position:relative; min-width:0; }
+    .phase-reorder-connector { position:absolute; top:15px; left:50%; width:100%; height:2px; background:${G.border}; z-index:0; transition:background .2s; }
+    .phase-chip {
+      display:flex; flex-direction:column; align-items:center; gap:6px; width:100%;
+      cursor:grab; user-select:none; touch-action:none; position:relative; z-index:1;
+      transition:transform .15s cubic-bezier(.2,.8,.2,1);
+    }
+    .phase-chip:active { cursor:grabbing; }
+    .phase-chip.dragging { opacity:0.35; }
+    .phase-chip.drop-before::before,
+    .phase-chip.drop-after::after {
+      content:''; position:absolute; top:2px; width:3px; height:26px; border-radius:99px; background:${G.meadow};
+      box-shadow:0 0 0 3px rgba(21,128,61,0.15);
+    }
+    .phase-chip.drop-before::before { left:-2px; }
+    .phase-chip.drop-after::after   { right:-2px; }
+    .phase-chip.keyboard-grabbed .phase-chip-dot { border-color:${G.meadow} !important; box-shadow:0 0 0 4px rgba(21,128,61,0.18); }
+    .phase-chip-dot {
+      width:30px; height:30px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+      font-size:11px; font-weight:800; background:${G.meadowSoft}; color:${G.meadowDeep}; border:2px solid ${G.meadowBorder};
+      transition:all .15s; position:relative;
+    }
+    .phase-chip:hover .phase-chip-dot { background:${G.meadow}; color:#fff; border-color:${G.meadowDeep}; transform:scale(1.08); }
+    .phase-chip-order {
+      position:absolute; top:-5px; right:-5px; width:15px; height:15px; border-radius:50%; background:#fff;
+      border:1.5px solid ${G.border}; color:${G.muted2}; font-size:8.5px; font-weight:800;
+      display:flex; align-items:center; justify-content:center; transition:all .15s;
+    }
+    .phase-chip:hover .phase-chip-order { border-color:${G.meadowDeep}; color:${G.meadowDeep}; }
+    .phase-chip-label { font-size:10.5px; font-weight:700; text-align:center; letter-spacing:0.4px; text-transform:uppercase; color:${G.ink}; line-height:1.3; max-width:100%; }
+    .phase-chip-handle { display:flex; align-items:center; justify-content:center; color:${G.muted2}; opacity:0; transition:opacity .15s; margin-top:-2px; }
+    .phase-chip:hover .phase-chip-handle, .phase-chip:focus-within .phase-chip-handle { opacity:1; }
+    .phase-chip-arrows { display:flex; gap:3px; margin-top:2px; opacity:0; transition:opacity .15s; }
+    .phase-chip:hover .phase-chip-arrows, .phase-chip:focus-within .phase-chip-arrows { opacity:1; }
+    .phase-chip-arrow { width:18px; height:18px; padding:0; border-radius:5px; border:1px solid ${G.border}; background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; color:${G.muted2}; transition:all .15s; }
+    .phase-chip-arrow:hover:not(:disabled) { background:${G.meadowSoft}; border-color:${G.meadowBorder}; color:${G.meadowDeep}; }
+    .phase-chip-arrow:disabled { opacity:0.25; cursor:default; }
+    @media (max-width: 720px) {
+      .phase-reorder-track { flex-wrap:wrap; row-gap:22px; }
+      .phase-reorder-step { flex:0 0 25%; }
+    }
 
     .prog-bar-wrap { height:6px; background:${G.borderLight}; border-radius:99px; overflow:hidden; margin-top:10px; box-shadow:inset 0 1px 2px rgba(0,0,0,0.05); width: 100%; }
     .prog-bar-fill { height:100%; border-radius:99px; transition:width .6s cubic-bezier(.4,0,.2,1); }
@@ -824,30 +872,171 @@ function WorkloadRow({ f }) {
   )
 }
 
-function PhaseTimeline({ currentPhaseIdx, status, progress }) {
+function PhaseTimeline({ currentPhaseIdx, status, progress, order, defaultOrder, onReorder, onReset, editable }) {
   const idle = status === 'idle', done = status === 'complete'
+  const phaseKeys = (order && order.length ? order : DEFAULT_PHASE_KEYS)
+  const phases = phaseKeys.map(k => PHASE_BY_KEY[k]).filter(Boolean)
+  const isDefaultOrder = !defaultOrder || (phaseKeys.length === defaultOrder.length && phaseKeys.every((k, i) => k === defaultOrder[i]))
+  const canEdit = !!editable
+
   return (
     <div className="fadein">
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10, gap:12 }}>
         <span style={{ fontSize:13.5, fontWeight:700, color: idle ? G.muted2 : G.ink }}>
-          {idle ? '7 scheduling phases' : done ? 'All phases complete' : `Phase ${Math.min(currentPhaseIdx + 1, 7)} of 7 — ${PHASES[Math.min(currentPhaseIdx, 6)]?.label}`}
+          {idle ? '7 scheduling phases' : done ? 'All phases complete' : `Phase ${Math.min(currentPhaseIdx + 1, 7)} of 7 — ${phases[Math.min(currentPhaseIdx, 6)]?.label}`}
         </span>
-        <span style={{ fontSize:14, fontWeight:800, color: idle ? G.muted2 : done ? G.meadow : G.meadowDeep }}>{idle ? '—' : `${progress}%`}</span>
+        <div style={{ display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={onReset}
+              disabled={isDefaultOrder}
+              style={{ background:'none', border:'none', padding:0, fontSize:11.5, fontWeight:700, color: isDefaultOrder ? G.muted2 : G.meadowDeep, cursor: isDefaultOrder ? 'default' : 'pointer', opacity: isDefaultOrder ? 0.5 : 1 }}>
+              Reset to Default
+            </button>
+          )}
+          <span style={{ fontSize:14, fontWeight:800, color: idle ? G.muted2 : done ? G.meadow : G.meadowDeep }}>{idle ? '—' : `${progress}%`}</span>
+        </div>
       </div>
       <div className="prog-bar-wrap">
         <div className="prog-bar-fill" style={{ width:`${idle ? 0 : progress}%`, background: done ? `linear-gradient(90deg,${G.meadowSoft},${G.meadow})` : `linear-gradient(90deg,${G.meadowBorder},${G.meadowDeep})` }} />
       </div>
-      <div className="phase-track">
-        {PHASES.map((ph, i) => {
-          const phaseDone = done || i < currentPhaseIdx, phaseActive = !done && !idle && i === currentPhaseIdx
-          return (
-            <div key={ph.label} className="phase-step">
-              {i < PHASES.length - 1 && <div className="phase-connector" style={{ background: (phaseDone && !idle) ? G.meadow : G.border }} />}
-              <div className="phase-dot" style={{ background: idle ? G.hover : phaseDone ? G.meadow : phaseActive ? '#fff' : G.bg, border: idle ? `2px solid ${G.border}` : phaseActive ? `2.5px solid ${G.meadowDeep}` : phaseDone ? 'none' : `2px solid ${G.border}`, boxShadow: phaseActive ? `0 0 0 4px rgba(21,128,61,0.15)` : 'none' }}>
-                {phaseDone && !idle ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-                  : phaseActive ? <div style={{ width:10, height:10, borderRadius:'50%', background:G.meadowDeep }} /> : null}
+
+      {canEdit ? (
+        <PhaseReorderList phases={phases} onReorder={onReorder} />
+      ) : (
+        <div className="phase-track">
+          {phases.map((ph, i) => {
+            const phaseDone = done || i < currentPhaseIdx, phaseActive = !done && !idle && i === currentPhaseIdx
+            return (
+              <div key={ph.key} className="phase-step">
+                {i < phases.length - 1 && <div className="phase-connector" style={{ background: (phaseDone && !idle) ? G.meadow : G.border }} />}
+                <div className="phase-dot" style={{ background: idle ? G.hover : phaseDone ? G.meadow : phaseActive ? '#fff' : G.bg, border: idle ? `2px solid ${G.border}` : phaseActive ? `2.5px solid ${G.meadowDeep}` : phaseDone ? 'none' : `2px solid ${G.border}`, boxShadow: phaseActive ? `0 0 0 4px rgba(21,128,61,0.15)` : 'none' }}>
+                  {phaseDone && !idle ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                    : phaseActive ? <div style={{ width:10, height:10, borderRadius:'50%', background:G.meadowDeep }} /> : null}
+                </div>
+                <span className="phase-label" style={{ color: idle ? G.muted2 : phaseDone ? G.meadow : phaseActive ? G.ink : G.muted2 }}>{ph.short}</span>
               </div>
-              <span className="phase-label" style={{ color: idle ? G.muted2 : phaseDone ? G.meadow : phaseActive ? G.ink : G.muted2 }}>{ph.short}</span>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* Drag-and-drop (+ keyboard) reorderable list of scheduling phases.
+   - Mouse/touch: grab the handle and drag; a live insertion line previews
+     where the phase will land, and the list reorders as you pass over rows.
+   - Keyboard: focus the handle, press Enter/Space to "pick up" the row,
+     Arrow Up/Down to move it, Enter/Space again (or Escape) to drop it. */
+function PhaseReorderList({ phases, onReorder }) {
+  const [dragIndex, setDragIndex] = useState(null)
+  const [overIndex, setOverIndex] = useState(null)
+  const [grabbedIndex, setGrabbedIndex] = useState(null) // keyboard mode
+  const dragImgRef = useRef(null)
+
+  function handleDragStart(e, index) {
+    setDragIndex(index)
+    // Use a transparent 1px drag image so the browser's default ghost
+    // doesn't fight with our own CSS-driven "dragging" opacity state.
+    if (dragImgRef.current) e.dataTransfer.setDragImage(dragImgRef.current, 0, 0)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  function handleDragOver(e, index) {
+    e.preventDefault()
+    if (dragIndex === null || index === dragIndex) { setOverIndex(null); return }
+    setOverIndex(index)
+  }
+
+  function handleDrop(e, index) {
+    e.preventDefault()
+    if (dragIndex !== null && index !== dragIndex) onReorder(dragIndex, index)
+    setDragIndex(null); setOverIndex(null)
+  }
+
+  function handleDragEnd() {
+    setDragIndex(null); setOverIndex(null)
+  }
+
+  function handleHandleKeyDown(e, index) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      setGrabbedIndex(g => (g === index ? null : index))
+    } else if (e.key === 'Escape' && grabbedIndex !== null) {
+      e.preventDefault()
+      setGrabbedIndex(null)
+    } else if (grabbedIndex === index && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      e.preventDefault()
+      const target = index + (e.key === 'ArrowUp' ? -1 : 1)
+      if (target < 0 || target >= phases.length) return
+      onReorder(index, target)
+      setGrabbedIndex(target)
+    }
+  }
+
+  return (
+    <div role="listbox" aria-label="Scheduling phase order" id="tour-sch-phase-order">
+      {/* invisible 0x0 image used to suppress the native drag ghost */}
+      <div ref={dragImgRef} style={{ width:1, height:1, opacity:0, position:'absolute' }} />
+
+      <div className="phase-reorder-hint">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="9" cy="6" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="9" cy="18" r="1.3"/><circle cx="15" cy="6" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="15" cy="18" r="1.3"/></svg>
+        Drag a phase to reorder — earlier phases get first pick of rooms and faculty
+      </div>
+
+      <div className="phase-reorder-track">
+        {phases.map((ph, i) => {
+          const isDragging = dragIndex === i
+          const isGrabbed = grabbedIndex === i
+          const dropClass = overIndex === i ? (overIndex > dragIndex ? 'drop-after' : 'drop-before') : ''
+          return (
+            <div key={ph.key} className="phase-reorder-step">
+              {i < phases.length - 1 && <div className="phase-reorder-connector" />}
+              <div
+                className={`phase-chip${isDragging ? ' dragging' : ''}${isGrabbed ? ' keyboard-grabbed' : ''}${dropClass ? ' ' + dropClass : ''}`}
+                draggable
+                role="option"
+                aria-selected={isGrabbed}
+                onDragStart={e => handleDragStart(e, i)}
+                onDragOver={e => handleDragOver(e, i)}
+                onDrop={e => handleDrop(e, i)}
+                onDragEnd={handleDragEnd}
+              >
+                <div className="phase-chip-dot">
+                  {ph.short}
+                  <span className="phase-chip-order">{i + 1}</span>
+                </div>
+                <span className="phase-chip-label">{ph.label}</span>
+                <button
+                  type="button"
+                  className="phase-chip-handle"
+                  tabIndex={0}
+                  aria-label={`${ph.label}. Position ${i + 1} of ${phases.length}. Press Enter to pick up, then arrow keys to move.`}
+                  onKeyDown={e => handleHandleKeyDown(e, i)}
+                >
+                  <svg width="14" height="8" viewBox="0 0 14 8" fill="currentColor"><circle cx="2" cy="2" r="1.3"/><circle cx="7" cy="2" r="1.3"/><circle cx="12" cy="2" r="1.3"/><circle cx="2" cy="6" r="1.3"/><circle cx="7" cy="6" r="1.3"/><circle cx="12" cy="6" r="1.3"/></svg>
+                </button>
+                <div className="phase-chip-arrows">
+                  <button
+                    type="button"
+                    className="phase-chip-arrow"
+                    onClick={() => onReorder(i, i - 1)}
+                    disabled={i === 0}
+                    aria-label={`Move ${ph.label} earlier`}>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="15 18 9 12 15 6"/></svg>
+                  </button>
+                  <button
+                    type="button"
+                    className="phase-chip-arrow"
+                    onClick={() => onReorder(i, i + 1)}
+                    disabled={i === phases.length - 1}
+                    aria-label={`Move ${ph.label} later`}>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                </div>
+              </div>
             </div>
           )
         })}
@@ -1046,11 +1235,6 @@ function CheckPanel({ semester }) {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             Faculty Pools
             {summary && <span className="subtab-count">{issueCount}</span>}
-          </button>
-          <button className={`subtab-btn${subtab === 'workload' ? ' active' : ''}`} onClick={() => setSubtab('workload')}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-            Workload
-            {workload && <span className="subtab-count">{overloadedCount}</span>}
           </button>
         </div>
 
@@ -1344,50 +1528,6 @@ function CheckPanel({ semester }) {
             )}
           </div>
         )}
-
-        {/* ── Workload ── */}
-        {subtab === 'workload' && (
-          <div className="fadein">
-            {!workload && !poolLoading && (
-              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14, padding:'40px 24px', textAlign:'center', background: G.bg, borderRadius: 12, border: `1px dashed ${G.border}` }}>
-                <div style={{ width:56, height:56, borderRadius:'50%', background:G.hover, display:'flex', alignItems:'center', justifyContent:'center', border:`1px solid ${G.borderLight}` }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={G.muted2} strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                </div>
-                <p style={{ fontSize:14.5, fontWeight:800, color:G.ink, margin:0 }}>See current faculty workload</p>
-                <p style={{ fontSize:13, color:G.muted, maxWidth:340, lineHeight:1.5, margin:0 }}>Spot who's already near their unit cap before adding more sections.</p>
-                <button className="check-btn" onClick={runPoolCheck} disabled={poolLoading} style={{ marginTop: 4 }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                  Run check
-                </button>
-              </div>
-            )}
-
-            {poolLoading && !workload && (
-              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                <Skel h={40} r={10} /><Skel h={40} r={10} /><Skel h={40} r={10} />
-              </div>
-            )}
-
-            {workload && workload.length > 0 && (
-              <div>
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: 14 }}>
-                  <span style={{ fontSize:13, color:G.muted, fontWeight:600 }}>
-                    {overloadedCount > 0 ? `${overloadedCount} faculty already at their unit cap` : 'No faculty currently at their unit cap'}
-                  </span>
-                  <button className="check-btn" onClick={runPoolCheck} disabled={poolLoading}>
-                    {poolLoading
-                      ? <><svg className="spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Checking…</>
-                      : <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.2"/></svg>Recheck</>
-                    }
-                  </button>
-                </div>
-                <div style={{ background:'#fff', borderRadius:12, border:`1px solid ${G.border}`, padding:'4px 20px', maxHeight:400, overflowY:'auto' }}>
-                  {workload.map((f, i) => <WorkloadRow key={i} f={f} />)}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
       </div>
       )}
 
@@ -1497,38 +1637,38 @@ function Step1Configure({ scheduleNamePreset, setScheduleNamePreset, scheduleNam
         </div>
         <div className="sch-card-body" style={{ display:'flex', flexDirection:'column', gap:14 }}>
           <div style={{ display:'flex', flexWrap:'wrap', gap:16 }}>
-            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:6, flex: '1 1 180px' }}>
               <span style={{ fontSize:11, fontWeight:800, color:G.muted2, textTransform:'uppercase', letterSpacing:'0.8px' }}>Academic Term</span>
               <select className="sch-select" value={scheduleNamePreset}
                 onChange={e => { setScheduleNamePreset(e.target.value); setSaved(false) }}
-                disabled={status === 'running'} style={{ minWidth:300 }}>
+                disabled={status === 'running'} style={{ width: '100%' }}>
                 {PRESET_NAMES.map(n => <option key={n} value={n}>{n}</option>)}
               </select>
             </div>
             {scheduleNamePreset === 'Custom...' && (
               <>
-                <div style={{ display:'flex', flexDirection:'column', gap:6 }} className="fadein">
+                <div style={{ display:'flex', flexDirection:'column', gap:6, flex: '1 1 180px' }} className="fadein">
                   <span style={{ fontSize:11, fontWeight:800, color:G.muted2, textTransform:'uppercase', letterSpacing:'0.8px' }}>Schedule Name</span>
                   <input className="sch-input" placeholder="e.g. Summer 2026" value={scheduleNameCustom}
                     onChange={e => { setScheduleNameCustom(e.target.value); setSaved(false) }}
-                    disabled={status === 'running'} style={{ minWidth:200 }} />
+                    disabled={status === 'running'} style={{ width: '100%' }} />
                 </div>
-                <div style={{ display:'flex', flexDirection:'column', gap:6 }} className="fadein">
+                <div style={{ display:'flex', flexDirection:'column', gap:6, flex: '1 1 120px' }} className="fadein">
                   <span style={{ fontSize:11, fontWeight:800, color:G.muted2, textTransform:'uppercase', letterSpacing:'0.8px' }}>Academic Year</span>
                   <select className="sch-select" value={customAcademicYear}
                     onChange={e => { setCustomAcademicYear(e.target.value); setSaved(false) }}
-                    disabled={status === 'running'} style={{ minWidth:160 }}>
+                    disabled={status === 'running'} style={{ width: '100%' }}>
                     <option value="">— Select —</option>
                     {AY_OPTIONS.map(ay => (
                       <option key={ay} value={ay}>{ay}</option>
                     ))}
                   </select>
                 </div>
-                <div style={{ display:'flex', flexDirection:'column', gap:6 }} className="fadein">
+                <div style={{ display:'flex', flexDirection:'column', gap:6, flex: '1 1 140px' }} className="fadein">
                   <span style={{ fontSize:11, fontWeight:800, color:G.muted2, textTransform:'uppercase', letterSpacing:'0.8px' }}>Semester</span>
                   <select className="sch-select" value={customSemester}
                     onChange={e => setCustomSemester(e.target.value)}
-                    disabled={status === 'running'} style={{ minWidth:180 }}>
+                    disabled={status === 'running'} style={{ width: '100%' }}>
                     {SEMESTER_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
@@ -1708,6 +1848,11 @@ export default function SchedulerPage() {
     // wizStep === 3
     return [
       {
+        target: '#tour-sch-phase-order',
+        title: 'Phase Priority Order',
+        content: 'New! You can now drag and drop these phases to change the order in which the solver prioritizes them. Phases scheduled earlier get first pick of available rooms and faculty.',
+      },
+      {
         target: '#tour-sch-solve-area',
         title: 'Solve & Save',
         content: 'Run the constraint solver to auto-generate a timetable for the selected term. It\'s safe to navigate away while it runs — it continues in the background.',
@@ -1753,7 +1898,36 @@ export default function SchedulerPage() {
   const [saveLoading,  setSaveLoading]  = useState(false)
   const [termStats,    setTermStats]    = useState(null)
   const [termStatsLoading, setTermStatsLoading] = useState(false)
-  
+
+  // Editable solving phase order (shown on the Solve step). null = use
+  // backend default order end-to-end (nothing sent to /generate).
+  const [schedulePhases, setSchedulePhases] = useState(null)
+  const [defaultPhaseOrder, setDefaultPhaseOrder] = useState(null)
+  const [phaseOrder, setPhaseOrder] = useState(null)
+
+  // Fetch phase metadata + default order once on mount.
+  useEffect(() => {
+    let cancelled = false
+    getSchedulePhases().then(res => {
+      if (cancelled) return
+      setSchedulePhases(res.phases || [])
+      setDefaultPhaseOrder(res.default || null)
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [])
+
+  // Moves the phase at fromIndex to toIndex (arbitrary distance — used by
+  // both drag-and-drop and the arrow-button fallback, which just passes
+  // toIndex = fromIndex ± 1).
+  function reorderPhase(fromIndex, toIndex) {
+    const current = (phaseOrder && phaseOrder.length ? phaseOrder : defaultPhaseOrder) || DEFAULT_PHASE_KEYS
+    if (toIndex < 0 || toIndex >= current.length || fromIndex === toIndex) return
+    const next = current.slice()
+    const [moved] = next.splice(fromIndex, 1)
+    next.splice(toIndex, 0, moved)
+    setPhaseOrder(next)
+  }
+
   // Diagnostic state
   const [diagnostic, setDiagnostic] = useState(null)
   const [diagnosticLoading, setDiagnosticLoading] = useState(false)
@@ -1884,7 +2058,7 @@ export default function SchedulerPage() {
     }
     setStatus('running')
     try {
-      const res = await triggerSolve(targetSemester)
+      const res = await triggerSolve(targetSemester, phaseOrder)
       setProcessId(res.process_id)
     } catch (err) {
       setStatus('failed')
@@ -2158,7 +2332,8 @@ export default function SchedulerPage() {
 
                   {/* Phase timeline — single progress bar + phase dots */}
                   <div style={{ width:'100%', maxWidth:520, position:'relative', zIndex:1, flexShrink:0 }}>
-                    <PhaseTimeline currentPhaseIdx={currentPhaseIdx} status={status} progress={progress} />
+                    <PhaseTimeline currentPhaseIdx={currentPhaseIdx} status={status} progress={progress}
+                      order={phaseOrder || defaultPhaseOrder} defaultOrder={defaultPhaseOrder} editable={false} />
                   </div>
 
                   {/* Info note */}
@@ -2191,7 +2366,9 @@ export default function SchedulerPage() {
                   </div>
 
                   <div className="sch-card-body">
-                    <PhaseTimeline currentPhaseIdx={currentPhaseIdx} status={status} progress={progress} />
+                    <PhaseTimeline currentPhaseIdx={currentPhaseIdx} status={status} progress={progress}
+                      order={phaseOrder || defaultPhaseOrder} defaultOrder={defaultPhaseOrder}
+                      onReorder={reorderPhase} onReset={() => setPhaseOrder(null)} editable />
 
                     {status === 'failed' && (
                       <div className="fadein solve-result failed" style={{ marginTop:14 }}>

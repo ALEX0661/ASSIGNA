@@ -12,6 +12,7 @@ class Course(BaseModel):
     preferredRoom: Optional[str] = None   # e.g. "Room 407" — pins course to a specific room
 
 class CourseUpdate(BaseModel):
+    courseCode: Optional[str] = None
     title: Optional[str] = None
     program: Optional[str] = None
     yearLevel: Optional[int] = None

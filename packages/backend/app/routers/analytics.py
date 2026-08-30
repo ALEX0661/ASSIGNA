@@ -585,7 +585,7 @@ def dashboard_stats(user=Depends(admin_only)):
     active_faculty = [f for f in faculty if not f.get("archived", False)]
     full_time  = [f for f in active_faculty if f.get("status", "full-time") == "full-time"]
     part_time  = [f for f in active_faculty if f.get("status", "full-time") == "part-time"]
-    with_specs = [f for f in active_faculty if f.get("specializations")]
+    with_specs = [f for f in active_faculty if any(not s.get("isUnmatched") for s in f.get("specializations", []))]
 
     faculty_stats = {
         "total":                len(active_faculty),

@@ -278,9 +278,10 @@ export default function FacultyProfilePage() {
     if (!facultyId) return
     setCredSaving(true)
     try {
-      await updateCredentials(facultyId, { email: credEmail.trim(), password: credPassword || undefined })
-      setForm(f => ({ ...f, email: credEmail.trim() }))
-      setOriginalForm(f => f ? { ...f, email: credEmail.trim() } : f)
+      const finalEmail = credEmail.includes('@') ? credEmail.trim() : credEmail.trim() + '@gordoncollege.edu.ph'
+      await updateCredentials(facultyId, { email: finalEmail, password: credPassword || undefined })
+      setForm(f => ({ ...f, email: finalEmail }))
+      setOriginalForm(f => f ? { ...f, email: finalEmail } : f)
       setCredPassword(''); setCredConfirm('')
       setCredSuccess(credPassword ? 'Email and password updated.' : 'Email updated.')
       setTimeout(() => setCredSuccess(''), 3500)
@@ -631,7 +632,14 @@ export default function FacultyProfilePage() {
           )}
           <div className="fp-cred-grid fp-card-body" style={{ padding: '24px 20px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px 24px', alignItems: 'start' }}>
             <FormField label="Login Email" hint={form.email ? 'Change the email used to sign in' : 'Required — will be used as login'}>
-              <input type="email" value={credEmail} onChange={e => setCredEmail(e.target.value)} autoComplete="off" style={inputStyle} />
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input type="text" value={credEmail} onChange={e => setCredEmail(e.target.value)} autoComplete="off" style={{ ...inputStyle, paddingRight: !credEmail.includes('@') && credEmail.length > 0 ? 170 : 14 }} />
+                {!credEmail.includes('@') && credEmail.length > 0 && (
+                  <span style={{ position: 'absolute', right: 14, color: '#9CA3AF', fontSize: 13, pointerEvents: 'none' }}>
+                    @gordoncollege.edu.ph
+                  </span>
+                )}
+              </div>
             </FormField>
 
             <FormField label="New Password" hint={form.email ? 'Leave blank to keep current' : 'Auto-generated if blank'}>

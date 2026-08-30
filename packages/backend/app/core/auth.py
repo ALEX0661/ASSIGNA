@@ -11,7 +11,6 @@ async def verify_token(authorization: str = Header(...)):
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid or expired token.")
 
-
 async def admin_only(authorization: str = Header(...)):
     """Only users with role='admin' custom claim can pass."""
     user = await verify_token(authorization)

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Joyride, STATUS, EVENTS, ACTIONS } from 'react-joyride'
+import { useAuth } from './useAuth'
 
 // Module-level (shared across every useTour instance on the page) lock so
 // at most one tour can ever be running at a time — no matter whether it
@@ -10,6 +11,9 @@ import { Joyride, STATUS, EVENTS, ACTIONS } from 'react-joyride'
 let activeTourId = null
 
 export function useTour(tourId, steps, isReady = true, { isPrimary = true } = {}) {
+  const { user } = useAuth()
+  const storageKey = user?.uid ? `tour_${user.uid}_${tourId}` : `tour_${tourId}`
+
   const [run, setRun] = useState(false)
   const [stepIndex, setStepIndex] = useState(0)
 
@@ -25,18 +29,18 @@ export function useTour(tourId, steps, isReady = true, { isPrimary = true } = {}
     if (activeTourId === tourId) activeTourId = null
     setRun(false)
     setStepIndex(0)
-    if (markSeen) localStorage.setItem(`tour_${tourId}`, 'true')
-  }, [tourId])
+    if (markSeen) localStorage.setItem(storageKey, 'true')
+  }, [tourId, storageKey])
 
   // Auto-start if not seen
   useEffect(() => {
     if (!isReady) return
-    const hasSeen = localStorage.getItem(`tour_${tourId}`)
+    const hasSeen = localStorage.getItem(storageKey)
     if (!hasSeen) {
       const t = setTimeout(() => { tryStart() }, 1000)
       return () => clearTimeout(t)
     }
-  }, [tourId, isReady, tryStart])
+  }, [tourId, isReady, tryStart, storageKey])
 
   // Listen for the shared header trigger. The event can target a specific
   // tour via detail.tourId (e.g. { detail: { tourId: 'coordSchedulerYourTurn' } }).

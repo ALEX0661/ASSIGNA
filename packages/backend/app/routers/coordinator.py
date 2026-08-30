@@ -11,10 +11,15 @@ from app.core.coordinator_auth import coordinator_only
 from app.core.auth import admin_only
 from app.core.firebase import db, get_courses, get_rooms, get_time, get_days
 from app.core.globals import schedule_dict, progress_state, running_processes, cancel_flags, failure_details
-from app.core.scheduler import generate_coordinator_schedule
+from app.core.scheduler import generate_coordinator_schedule, validate_phase_order, DEFAULT_PHASE_ORDER
 from app.core.coordinator_auth import coordinator_only
 
 router = APIRouter()
+
+class GenerateScheduleRequest(BaseModel):
+    # None (the default) means "use the tested default order" end-to-end —
+    # this field is entirely opt-in.
+    phase_order: list[str] | None = None
 
 class SaveScheduleRequest(BaseModel):
     name: str
@@ -270,10 +275,18 @@ def _is_active(v):
     return 0 <= v < 100
 
 @router.post("/schedule/generate")
-def generate(background_tasks: BackgroundTasks, user: dict = Depends(coordinator_only)):
+def generate(background_tasks: BackgroundTasks,
+             req: GenerateScheduleRequest = GenerateScheduleRequest(),
+             user: dict = Depends(coordinator_only)):
     is_running = any(_is_active(v) for v in progress_state.values()) or bool(running_processes)
     if is_running:
         raise HTTPException(status_code=409, detail="Solver is already running")
+
+    if req.phase_order:
+        try:
+            validate_phase_order(req.phase_order)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
         
     program = user.get("coordinatorProgram")
     
@@ -322,10 +335,27 @@ def generate(background_tasks: BackgroundTasks, user: dict = Depends(coordinator
     progress_state[process_id] = 0  
     background_tasks.add_task(
         generate_coordinator_schedule,
-        process_id, program, semester, selected_rooms, pre_booked_events
+        process_id, program, semester, selected_rooms, pre_booked_events, req.phase_order
     )
 
     return {"process_id": process_id, "status": "started", "semester": semester, "academicYear": academic_year}
+
+@router.get("/schedule/phases")
+def get_coord_phases(user: dict = Depends(coordinator_only)):
+    """Same payload as the admin GET /schedule/phases, gated by
+    coordinator_only since coordinators can't hit the admin-only route."""
+    return {
+        "phases": [
+            {"key": "NSTP", "label": "NSTP (Fri/Sat only)"},
+            {"key": "GEC_MAT", "label": "GEC & MAT (Mon–Thu pattern)"},
+            {"key": "MAJORS_Y4", "label": "4th Year Majors (Practicum)"},
+            {"key": "MAJORS_Y3", "label": "3rd Year Majors"},
+            {"key": "MAJORS_Y2", "label": "2nd Year Majors"},
+            {"key": "MAJORS_Y1", "label": "1st Year Majors"},
+            {"key": "PE", "label": "PE (fills remaining gaps)"},
+        ],
+        "default": DEFAULT_PHASE_ORDER,
+    }
 
 @router.get("/schedule/status/{process_id}")
 def schedule_status(process_id: str, user: dict = Depends(coordinator_only)):

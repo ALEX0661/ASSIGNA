@@ -10,13 +10,20 @@ from app.core.unit_balancing import (
 from app.models.faculty import Faculty, FacultyUpdate
 import pandas as pd
 import io
-import base64
 import re
+import base64
 import logging
+import base64
 
 logger = logging.getLogger("faculty")
 router = APIRouter()
 
+def _require_admin_or_coordinator(user: dict):
+    if user.get("role") == "admin":
+        return
+    if user.get("coordinatorProgram"):
+        return
+    raise HTTPException(403, "Admin or Coordinator access required.")
 
 def _default_password(name: str) -> str:
     last_name = name.strip().split()[-1] if name.strip() else "Faculty"
@@ -214,12 +221,22 @@ def get_faculty(faculty_id: str, user=Depends(any_authenticated)):
 
 
 @router.post("/add")
-def add_faculty(data: dict, user=Depends(admin_only)):
+def add_faculty(data: dict, user=Depends(any_authenticated)):
+    _require_admin_or_coordinator(user)
     email = data.get("email", "").strip()
     name  = data.get("name",  "").strip()
 
     if not email:
         raise HTTPException(400, "Email is required to create a faculty account.")
+        
+    # Check for duplicate names
+    norm_name = re.sub(r"[^A-Z0-9]", "", name.upper())
+    docs = db.collection("faculty").stream()
+    for d in docs:
+        d_dict = d.to_dict()
+        n = (d_dict.get("name") or "").strip().upper()
+        if re.sub(r"[^A-Z0-9]", "", n) == norm_name:
+            raise HTTPException(400, f"A faculty member with the name '{name}' already exists.")
 
     temp_password = data.get("initial_password", "").strip() or _default_password(name)
 
@@ -264,8 +281,9 @@ def add_faculty(data: dict, user=Depends(admin_only)):
 def update_faculty(faculty_id: str, data: FacultyUpdate, user=Depends(any_authenticated)):
     role       = user.get("role")
     caller_uid = user.get("uid") or user.get("user_id")
+    is_coordinator = bool(user.get("coordinatorProgram"))
 
-    if role != "admin" and caller_uid != faculty_id:
+    if role != "admin" and not is_coordinator and caller_uid != faculty_id:
         raise HTTPException(403, "You can only update your own profile.")
     # -------------------------------
 
@@ -315,7 +333,8 @@ def update_faculty(faculty_id: str, data: FacultyUpdate, user=Depends(any_authen
 
 
 @router.delete("/delete/{faculty_id}")
-def delete_faculty(faculty_id: str, user=Depends(admin_only)):
+def delete_faculty(faculty_id: str, user=Depends(any_authenticated)):
+    _require_admin_or_coordinator(user)
     doc_ref = db.collection("faculty").document(faculty_id)
     if not doc_ref.get().exists:
         raise HTTPException(404, "Faculty not found")
@@ -341,8 +360,9 @@ def delete_faculty(faculty_id: str, user=Depends(admin_only)):
 def update_preferences(faculty_id: str, data: dict, user=Depends(any_authenticated)):
     role       = user.get("role")
     caller_uid = user.get("uid") or user.get("user_id")
+    is_coordinator = bool(user.get("coordinatorProgram"))
 
-    if role != "admin" and caller_uid != faculty_id:
+    if role != "admin" and not is_coordinator and caller_uid != faculty_id:
         raise HTTPException(403, "You can only update your own preferences.")
 
     allowed     = {"preferredDays", "preferredTimeStart", "preferredTimeEnd"}
@@ -356,7 +376,8 @@ def update_preferences(faculty_id: str, data: dict, user=Depends(any_authenticat
 
 
 @router.post("/assign")
-def assign_faculty(data: dict, user=Depends(admin_only)):
+def assign_faculty(data: dict, user=Depends(any_authenticated)):
+    _require_admin_or_coordinator(user)
     faculty_name = data.get("faculty_name")
     faculty_id   = data.get("faculty_id")
 
@@ -397,7 +418,8 @@ def _recalculate_units(faculty_name: str, faculty_id: str):
 
 
 @router.post("/link-auth")
-def link_existing_auth_user(data: dict, user=Depends(admin_only)):
+def link_existing_auth_user(data: dict, user=Depends(any_authenticated)):
+    _require_admin_or_coordinator(user)
     uid        = data.get("uid",        "").strip()
     old_doc_id = data.get("old_doc_id", "").strip()
 
@@ -438,7 +460,8 @@ def link_existing_auth_user(data: dict, user=Depends(admin_only)):
 
 
 @router.post("/upload")
-async def upload_faculty_excel(file: UploadFile = File(...), user=Depends(admin_only)):
+async def upload_faculty_excel(file: UploadFile = File(...), user=Depends(any_authenticated)):
+    _require_admin_or_coordinator(user)
     if not file.filename or not file.filename.lower().endswith((".xlsx", ".xls")):
         raise HTTPException(400, "Please upload an .xlsx or .xls file.")
 
@@ -459,7 +482,8 @@ async def upload_faculty_excel(file: UploadFile = File(...), user=Depends(admin_
 
 
 @router.post("/upload/extract")
-def extract_faculty_sheet(data: dict, user=Depends(admin_only)):
+def extract_faculty_sheet(data: dict, user=Depends(any_authenticated)):
+    _require_admin_or_coordinator(user)
     file_data   = data.get("fileData")
     sheet_names = data.get("sheetNames")
 
@@ -474,6 +498,36 @@ def extract_faculty_sheet(data: dict, user=Depends(admin_only)):
             sheet_names = xl.sheet_names
 
         faculty = _parse_faculty_matrix(contents, sheet_names)
+        
+        # Match against existing Course List
+        from app.core.firebase import get_courses
+        existing_courses = get_courses()
+        title_to_code = {c.get("title", "").strip().lower(): c.get("courseCode") for c in existing_courses if c.get("title")}
+        
+        for f in faculty:
+            valid_specs = []
+            # Deduplicate by courseCode just in case multiple titles map to same code
+            seen_codes = set()
+            for spec in f.get("specializations", []):
+                spec_title = spec.get("title") or spec.get("courseTitle", "")
+                match_title = spec_title.strip().lower() if spec_title else ""
+                
+                if match_title and match_title in title_to_code:
+                    matched_code = title_to_code[match_title]
+                    if matched_code not in seen_codes:
+                        spec["courseCode"] = matched_code
+                        spec["isUnmatched"] = False
+                        valid_specs.append(spec)
+                        seen_codes.add(matched_code)
+                else:
+                    # Unmatched! Keep it, but flag it
+                    raw_code = spec.get("courseCode")
+                    if raw_code and raw_code not in seen_codes:
+                        spec["isUnmatched"] = True
+                        valid_specs.append(spec)
+                        seen_codes.add(raw_code)
+            f["specializations"] = valid_specs
+            
     except HTTPException:
         raise
     except Exception as exc:
@@ -483,14 +537,26 @@ def extract_faculty_sheet(data: dict, user=Depends(admin_only)):
 
 
 @router.post("/upload/commit")
-def commit_faculty_upload(data: dict, user=Depends(admin_only)):
+def commit_faculty_upload(data: dict, user=Depends(any_authenticated)):
+    _require_admin_or_coordinator(user)
     faculty_list = data.get("faculty", [])
     if not faculty_list:
         raise HTTPException(400, "No faculty records provided.")
 
     saved  = 0
     failed = []
-    batch  = db.batch()
+    
+    # Pre-fetch existing faculty to prevent duplicates by name
+    existing_faculty = {}
+    docs = db.collection("faculty").stream()
+    for d in docs:
+        d_dict = d.to_dict()
+        n = (d_dict.get("name") or "").strip().upper()
+        norm_n = re.sub(r"[^A-Z0-9]", "", n)
+        if norm_n:
+            existing_faculty[norm_n] = d.id
+
+    batch = db.batch()
 
     for f in faculty_list:
         name   = (f.get("name") or "").strip()
@@ -500,26 +566,38 @@ def commit_faculty_upload(data: dict, user=Depends(admin_only)):
             failed.append({"faculty": f, "reason": "Missing name"})
             continue
 
-        doc_id = re.sub(r"[^A-Z0-9]", "_", name.upper())[:120]
-        ref    = db.collection("faculty").document(doc_id)
+        norm_name = re.sub(r"[^A-Z0-9]", "", name.upper())
+        if norm_name in existing_faculty:
+            doc_id = existing_faculty[norm_name]
+        else:
+            doc_id = re.sub(r"[^A-Z0-9]", "_", name.upper())[:120]
+            existing_faculty[norm_name] = doc_id
 
-        initial_max = compute_effective_max_units(status, 0)
+        ref = db.collection("faculty").document(doc_id)
 
-        batch.set(
-            ref,
-            {
-                "name":               name,
-                "status":             status,
-                "specializations":    f.get("specializations", []),
-                "units":              0.0,
-                "max_units":          initial_max,
-                "preferredDays":      [],
-                "preferredTimeStart": 7.0,
-                "preferredTimeEnd":   21.0,
-                "archived":           False,
-            },
-            merge=True,
-        )
+        # Base fields
+        update_data = {
+            "name":               name,
+            "status":             status,
+            "specializations":    f.get("specializations", []),
+            "archived":           False,
+        }
+        
+        # Only override initial_max if it's not present (preserve existing overrides)
+        doc = ref.get()
+        if not doc.exists:
+            update_data["units"] = 0.0
+            update_data["initial_max_units"] = compute_effective_max_units(status, 0)
+            update_data["max_units_override"] = 0.0
+        
+        # Merge basic info fields only if they are provided in the import
+        if f.get("email"): update_data["email"] = f.get("email")
+        if f.get("SexAtBirth"): update_data["SexAtBirth"] = f.get("SexAtBirth")
+        if f.get("AcademicRank"): update_data["AcademicRank"] = f.get("AcademicRank")
+        if f.get("Department"): update_data["Department"] = f.get("Department")
+        if f.get("Educational_attainment"): update_data["Educational_attainment"] = f.get("Educational_attainment")
+
+        batch.set(ref, update_data, merge=True)
         saved += 1
 
     try:
@@ -533,7 +611,8 @@ def commit_faculty_upload(data: dict, user=Depends(admin_only)):
 
 
 @router.put("/credentials/{faculty_id}")
-def update_faculty_credentials(faculty_id: str, data: dict, user=Depends(admin_only)):
+def update_faculty_credentials(faculty_id: str, data: dict, user=Depends(any_authenticated)):
+    _require_admin_or_coordinator(user)
     email    = (data.get("email")    or "").strip()
     password = (data.get("password") or "").strip()
 
@@ -607,3 +686,4 @@ def update_faculty_credentials(faculty_id: str, data: dict, user=Depends(admin_o
         "new_id":         new_uid,
         "temp_password":  display_password if auto_generated else None,
     }
+

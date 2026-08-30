@@ -7,6 +7,7 @@ import {
   coordSubmitSchedule, coordUnsubmitSchedule, coordGetRooms, getFaculty,
   coordRestoreScheduleVersion, coordGetScheduleVersionDiff,
   coordGetSubmittedSchedule, coordListSchedules, coordCheckTurn,
+  coordRenameSchedule,
 } from '../../services/api'
 
 // Special :id value used for the read-only "combined schedule so far" view —
@@ -34,9 +35,23 @@ function markOnboardingCompleted() {
 }
 
 /* ── Page-scoped styles ────────────────────────────────────────────────────── */
-if (!document.getElementById('sv-page-style')) {
-  const s = document.createElement('style')
-  s.id = 'sv-page-style'
+// IMPORTANT: this must upsert (create-or-update), never "insert once and
+// skip". A style tag with this id survives client-side route changes for
+// the lifetime of the tab, so a guard like `if (!document.getElementById(...))`
+// means any CSS added or changed here in a later edit is silently ignored
+// for as long as that old tag is still sitting in <head> — the elements
+// still get the right classNames, they just render with whatever CSS
+// happened to load first (in practice: unstyled block divs stacking
+// vertically instead of the intended flex row, and inputs overflowing
+// their container uncontained instead of being scrollable/contained).
+// Always overwrite textContent so a code change here always takes effect.
+{
+  let s = document.getElementById('sv-page-style')
+  if (!s) {
+    s = document.createElement('style')
+    s.id = 'sv-page-style'
+    document.head.appendChild(s)
+  }
   s.textContent = `
     @keyframes svSlideIn   { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
     @keyframes svFadeIn    { from{opacity:0} to{opacity:1} }
@@ -117,6 +132,20 @@ if (!document.getElementById('sv-page-style')) {
     .sv-view-btn.active { background:#DCFCE7; color:#0E2A20; font-weight:700; }
     .sv-view-btn:not(.active) { background:transparent; color:#4B7060; font-weight:400; }
     .sv-view-btn:not(.active):hover { background:#EBF4EF; color:#0F5C2C; }
+
+    /* Header toolbar — back/name/status on the left, schedule actions
+       (Approved So Far / Save / History / Export) pinned to the right via
+       space-between. No overflow clipping here: an overflow value other
+       than visible on this row would clip the Export dropdown's menu
+       (it's an absolutely-positioned child that opens below the row's own
+       height), so this row wraps to a second line instead of scrolling
+       if it ever gets too narrow to fit on one. */
+    .sv-header-row {
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px; flex-wrap:wrap; row-gap:8px; margin-bottom:12px;
+    }
+    .sv-header-cluster { display:flex; align-items:center; gap:10px; flex-shrink:0; white-space:nowrap; }
+    .sv-header-sep { width:1px; align-self:stretch; background:#D8E8DF; flex-shrink:0; margin:2px 0; }
 
     .sv-shimmer {
       background: linear-gradient(90deg,#EBF4EF 25%,#D8E8DF 50%,#EBF4EF 75%);
@@ -308,7 +337,6 @@ if (!document.getElementById('sv-page-style')) {
       margin-top: 2px;
     }
   `
-  document.head.appendChild(s)
 }
 
 /* ── Inline spinner ──────────────────────────────────────────────────────── */
@@ -500,7 +528,7 @@ function VersionHistory({ versionHistory, currentVersion, onClose }) {
                   Saved {formatTimeAgo(version.savedAt)}
                 </div>
                 <div className="sv-version-meta">
-                  {new Date(version.savedAt).toLocaleString('en-PH', { timeZone:'Asia/Manila', month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true })}
+                  {parseBackendDate(version.savedAt)?.toLocaleString('en-PH', { timeZone:'Asia/Manila', month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true })}
                   {version.eventCount ? ` · ${version.eventCount} events` : ''}
                   {version.user ? ` · ${version.user}` : ''}
                 </div>
@@ -512,10 +540,27 @@ function VersionHistory({ versionHistory, currentVersion, onClose }) {
     </div>
   )
 }
+// Backend timestamps are meant to be UTC ISO strings, but a naive string with
+// no trailing "Z" or "+HH:MM" offset (e.g. "2026-08-28T14:30:00", or a
+// Firestore-style "2026-08-28 14:30:00") gets parsed as LOCAL browser time by
+// `new Date()`, not UTC. In Manila (UTC+8) that silently shifts every elapsed-
+// time calculation by 8 hours — "Saved 2m ago" can render as "Saved 8h ago"
+// or even show a negative/near-zero diff right after saving. Force UTC
+// whenever the string has no explicit offset so the math is always right,
+// then let toLocaleString below handle the Asia/Manila *display* separately.
+function parseBackendDate(dateInput) {
+  if (!dateInput) return null
+  if (dateInput instanceof Date) return dateInput
+  if (typeof dateInput !== 'string') return new Date(dateInput)
+  const hasOffset = /Z$|[+-]\d{2}:?\d{2}$/.test(dateInput)
+  const normalized = hasOffset ? dateInput : `${dateInput.replace(' ', 'T')}Z`
+  return new Date(normalized)
+}
+
 function formatTimeAgo(dateInput) {
   if (!dateInput) return null
-  // Always parse from the raw value — backend sends UTC ISO strings
-  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput
+  const date = parseBackendDate(dateInput)
+  if (!date || isNaN(date.getTime())) return null
   const diff = Date.now() - date.getTime()
   const seconds = Math.floor(diff / 1000)
   const minutes = Math.floor(diff / (1000 * 60))
@@ -626,6 +671,9 @@ export default function CoordScheduleViewPage() {
   const [masterRooms,       setMasterRooms]   = useState({ lecture:[], lab:[] })
   const [masterFacultyList, setMasterFaculty] = useState([])
   const [activeName,        setActiveName]    = useState(storeName)
+  const [isEditingName,     setIsEditingName] = useState(false)
+  const [tempName,          setTempName]      = useState('')
+  const [renameState,       setRenameState]   = useState('idle') // 'idle' | 'saving' | 'error'
   const [schedAY,           setSchedAY]       = useState('')
   const [schedSem,          setSchedSem]      = useState('')
   const [activeDay,         setActiveDay]     = useState('Monday')
@@ -645,17 +693,43 @@ export default function CoordScheduleViewPage() {
   const [showAvailableOnly, setShowAvailableOnly] = useState(false)
 
   const { TourElement, startTour } = useTour('coordScheduleView', [
-    { 
-      target: '#tour-sv-filters', 
-      title: 'Advanced Filtering',
-      content: 'Filter the schedule by specific programs, faculty members, or rooms. This is the fastest way to hunt down conflicts or check a specific professor\'s workload.', 
-      placement: 'bottom' 
+    {
+      target: '#tour-sv-save',
+      title: 'Saving & Schedule Actions',
+      content: 'Save here once you\'ve made changes. History shows past versions you can restore, the copy icon duplicates the whole schedule, and Export downloads it as Excel.',
+      disableBeacon: true,
+      placement: 'bottom',
     },
-    { 
-      target: '#tour-sv-grid', 
+    {
+      target: '#tour-sv-pending',
+      title: 'Pending Changes & Auto-Save',
+      content: 'Every drag-and-drop move is queued here first, not saved instantly. It auto-saves 5 seconds after your last move — or click Save Now to push immediately, or Revert All to undo every queued move and go back to the last saved state.',
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-sv-filters',
+      title: 'Search & Filters',
+      content: 'Filter the schedule by specific programs, faculty members, or rooms. This is the fastest way to hunt down conflicts or check a specific professor\'s workload.',
+      disableBeacon: true,
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-sv-days',
+      title: 'Day Selector',
+      content: 'The grid, filters, and conflict count only ever show one day at a time — switch days here. The small number on each button is how many sessions fall on that day given your current filters.',
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-sv-viewmode',
+      title: 'Grid vs. List',
+      content: 'Grid view lays sessions out spatially by room and time — best for drag-and-drop. List view is a sortable table of the same day\'s sessions — better for scanning or bulk review.',
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-sv-grid',
       title: 'Interactive Grid',
-      content: 'Drag and drop sessions to assign faculty, change rooms, or move timeslots. The system will warn you if you create a conflict.', 
-      placement: 'left' 
+      content: 'Drag and drop sessions to assign faculty, change rooms, or move timeslots. The system will warn you if you create a conflict, and you can click any card for its full details.',
+      placement: 'left',
     },
   ], !loading)
 
@@ -691,6 +765,16 @@ export default function CoordScheduleViewPage() {
      save/submit logic below already treats as locked). */
   async function loadSchedule() {
     if (!id) return
+    // Snapshot which id this call is for. The page stays mounted across
+    // /coordinator/schedules/:id navigations (only the param changes), so
+    // if the user views schedule A then quickly views schedule B, both
+    // requests can be in flight at once. Without this guard, whichever
+    // response happens to resolve LAST wins and gets painted onto the
+    // screen — even if it's the stale one for A while the URL (and `id`)
+    // has already moved on to B. Every state-writing branch below checks
+    // `requestId !== id` right before committing and bails out if this
+    // call has been superseded by a newer navigation.
+    const requestId = id
     setLoading(true); setError(null); setSaveState('idle')
     try {
       if (isMasterView) {
@@ -707,6 +791,7 @@ export default function CoordScheduleViewPage() {
           coordListSchedules().catch(() => []),
           coordCheckTurn().catch(() => null),
         ])
+        if (requestId !== id) return // superseded by a newer navigation — drop this stale response
         const queueEvents = data?.schedule || []
         const approvedInMaster = data?.approvedPrograms || []
         const roundAY = turn?.academicYear
@@ -725,11 +810,13 @@ export default function CoordScheduleViewPage() {
               .filter(Boolean)
               .flatMap(d => d.schedule || [])
           : []
-          
+        if (requestId !== id) return // superseded by a newer navigation — drop this stale response
+
         let overlayEvents = []
         let overlayData = null
         if (overlayId) {
           overlayData = await coordLoadSchedule(overlayId).catch(() => null)
+          if (requestId !== id) return // superseded by a newer navigation — drop this stale response
           overlayEvents = overlayData?.schedule || []
         }
         
@@ -747,6 +834,7 @@ export default function CoordScheduleViewPage() {
           .map(e => ({ ...e, _isOtherProgram: false, _isReadonly: true }))
         
         const events = [...qEvents, ...myApprEvents, ...overEvents]
+        if (requestId !== id) return // superseded by a newer navigation — drop this stale response
         setLocalEvents(events); setEvents(events)
         setPast([]); setFuture([])
         
@@ -761,6 +849,7 @@ export default function CoordScheduleViewPage() {
         })
       } else {
         const data = await coordLoadSchedule(id)
+        if (requestId !== id) return // superseded by a newer navigation — drop this stale response
         const events = data.schedule || []
         setLocalEvents(events); setEvents(events)
         setPast([]); setFuture([])
@@ -777,8 +866,11 @@ export default function CoordScheduleViewPage() {
           restoredAt:          data.restoredAt || null,
         })
       }
-    } catch { setError(isMasterView ? 'Failed to load the combined schedule.' : 'Failed to load this schedule.') }
-    finally   { setLoading(false) }
+    } catch {
+      if (requestId === id) setError(isMasterView ? 'Failed to load the combined schedule.' : 'Failed to load this schedule.')
+    } finally {
+      if (requestId === id) setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -879,6 +971,26 @@ export default function CoordScheduleViewPage() {
       setActionState('error')
       setActionError(e?.response?.data?.detail || 'Unsubmit failed — please try again.')
       setTimeout(() => setActionState('idle'), 2200)
+    }
+  }
+
+  /* ── Rename ──────────────────────────────────────────────────────────────
+     Unlike the admin page (which just holds the new name locally and lets
+     the next Save persist it), the coordinator's schedule name is renamed
+     via its own endpoint so it takes effect immediately — matching the
+     behavior of the rename action on the My Schedules list page. */
+  async function handleSaveName() {
+    const next = tempName.trim()
+    if (!next || next === activeName || !id || isMasterView) { setIsEditingName(false); return }
+    setRenameState('saving')
+    try {
+      await coordRenameSchedule(id, { name: next })
+      setActiveName(next); setName(next)
+      setIsEditingName(false)
+      setRenameState('idle')
+    } catch {
+      setRenameState('error')
+      setTimeout(() => setRenameState('idle'), 2200)
     }
   }
 
@@ -1096,9 +1208,10 @@ export default function CoordScheduleViewPage() {
   return (
     <div className="page" style={{ padding:'15px 15px 30px', overflowX:'hidden', width:'100%', minWidth:0 }}>
       {TourElement}
-      {/* ── Header + day tabs, merged into one row to save vertical space ─── */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginBottom:16, minWidth:0, flexWrap:'wrap', rowGap:8 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0, flex:'1 1 auto' }}>
+      {/* ── Header + day tabs, one single row that scrolls horizontally
+             instead of wrapping when it doesn't all fit ─────────────────── */}
+      <div className="sv-header-row">
+        <div className="sv-header-cluster">
           <button
             onClick={() => navigate('/coordinator/schedules')}
             className="sv-icon-btn"
@@ -1107,63 +1220,86 @@ export default function CoordScheduleViewPage() {
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
 
-          <div style={{ minWidth:0, flexShrink:0 }}>
-            <h1 className="page-title" style={{ margin:0, fontSize:15, fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'20ch' }}>
-              {activeName || 'Schedule'}
-            </h1>
-            {(schedAY || schedSem) && (
-              <div style={{ fontSize:10.5, marginTop:1, color:TV.muted2, fontWeight:500, whiteSpace:'nowrap' }}>
-                {[schedAY, schedSem].filter(Boolean).join(' • ')}
+          {isEditingName ? (
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <input
+                autoFocus value={tempName}
+                onChange={e => setTempName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') setIsEditingName(false) }}
+                disabled={renameState === 'saving'}
+                style={{ fontSize:15, fontWeight:700, padding:'4px 10px', borderRadius:8, border:`2px solid ${TV.mid}`, outline:'none', width:200, fontFamily:'Inter,sans-serif' }}
+              />
+              <button onClick={handleSaveName} disabled={renameState === 'saving'}
+                style={{ padding:'5px 12px', background:TV.deep, color:'#fff', border:'none', borderRadius:8, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap' }}>
+                {renameState === 'saving' ? 'Saving…' : 'Save'}
+              </button>
+              <button onClick={() => setIsEditingName(false)} disabled={renameState === 'saving'}
+                style={{ padding:'5px 12px', background:'#fff', border:`1px solid ${TV.border}`, borderRadius:8, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap' }}>
+                Cancel
+              </button>
+              {renameState === 'error' && (
+                <span style={{ fontSize:11, color:'#dc2626', fontWeight:600, whiteSpace:'nowrap' }}>Rename failed — try again</span>
+              )}
+            </div>
+          ) : (
+            <div style={{ minWidth:0, flexShrink:0, display:'flex', alignItems:'center', gap:5 }}>
+              <div>
+                <h1 className="page-title" style={{ margin:0, fontSize:15, fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'20ch' }}>
+                  {activeName || 'Schedule'}
+                </h1>
+                {(schedAY || schedSem) && (
+                  <div style={{ fontSize:10.5, marginTop:1, color:TV.muted2, fontWeight:500, whiteSpace:'nowrap' }}>
+                    {[schedAY, schedSem].filter(Boolean).join(' • ')}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+              {activeName && !isMasterView && (
+                <button
+                  onClick={() => { setTempName(activeName); setIsEditingName(true) }}
+                  style={{ background:'transparent', border:'none', cursor:'pointer', color:TV.muted, display:'flex', alignItems:'center', padding:4, borderRadius:6, flexShrink:0 }}
+                  title="Rename"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Submit/Unsubmit — same row as title, replaces admin's Finalize/Unfinalize */}
-          {allEvents.length > 0 && (
+          {!isEditingName && allEvents.length > 0 && (
             status === 'submitted' ? (
               <div style={{ display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
-                <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'#FEF3C7', color:'#92400E', border:'1px solid #FDE68A' }}>
+                <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'#FEF3C7', color:'#92400E', border:'1px solid #FDE68A', whiteSpace:'nowrap' }}>
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                   Submitted
                 </span>
                 <button onClick={handleUnsubmit} disabled={actionState === 'working'}
-                  style={{ padding:'3px 10px', borderRadius:7, border:'1px solid #fecaca', background:'#fff8f8', color:'#dc2626', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
+                  style={{ padding:'3px 10px', borderRadius:7, border:'1px solid #fecaca', background:'#fff8f8', color:'#dc2626', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap' }}>
                   {actionState === 'working' ? 'Withdrawing…' : 'Unsubmit'}
                 </button>
               </div>
             ) : status === 'approved' ? (
-              <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'#DCFCE7', color:'#15803D', border:'1px solid #BBF7D0', flexShrink:0 }}>
+              <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'#DCFCE7', color:'#15803D', border:'1px solid #BBF7D0', flexShrink:0, whiteSpace:'nowrap' }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                 Approved
               </span>
             ) : (
               <button onClick={handleSubmit} disabled={actionState === 'working'}
-                style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 13px', borderRadius:8, border:'none', background:'linear-gradient(135deg,#15803D,#0F5C2C)', color:'#fff', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 2px 8px rgba(21,128,61,.25)', flexShrink:0 }}>
+                style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 13px', borderRadius:8, border:'none', background:'linear-gradient(135deg,#15803D,#0F5C2C)', color:'#fff', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 2px 8px rgba(21,128,61,.25)', flexShrink:0, whiteSpace:'nowrap' }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                 {actionState === 'working' ? 'Submitting…' : 'Submit'}
               </button>
             )
           )}
-
-          {/* Day tabs live in this same row now — no separate row just for them */}
-          {allEvents.length > 0 && (
-            <div style={{ display:'flex', gap:6, flexWrap:'wrap', minWidth:0 }}>
-              {DAYS.map(d => (
-                <button key={d} onClick={() => setActiveDay(d)}
-                  className={`sv-day-btn${activeDay===d?' active':''}`}>
-                  {d.slice(0,3)}
-                  {dayCounts[d] > 0 && (
-                    <span style={{ marginLeft:4, fontSize:9.5, fontWeight:700, opacity: activeDay===d ? 1 : .6 }}>
-                      {dayCounts[d]}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
-        <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0, flexWrap:'wrap', justifyContent:'flex-end' }}>
+        {/* Day tabs moved down to the view-toggles row (with Undo/Redo).
+            Everything below is pushed to the right edge via the row's
+            justify-content:space-between. */}
+        <div id="tour-sv-save" className="sv-header-cluster">
           {/* Combined-schedule tab — replaces the old separate "Approved so far"
               card/link on the My Schedules list; one click switches views right
               here instead of navigating through a different page. */}
@@ -1246,13 +1382,15 @@ export default function CoordScheduleViewPage() {
       {/* ── Pending changes bar ───────────────────────────────────────────── */}
       {/* Appears below stats, above day selector — amber, prominent */}
     {!locked && (
-      <PendingChangesBar
-        pendingOverrides={dd.pendingOverrides}
-        onSave={dd.saveAllOverrides}
-        onRevertAll={dd.revertAllOverrides}
-        saving={dd.saving}
-        autoSaveIn={dd.autoSaveIn}
-      />
+      <div id="tour-sv-pending">
+        <PendingChangesBar
+          pendingOverrides={dd.pendingOverrides}
+          onSave={dd.saveAllOverrides}
+          onRevertAll={dd.revertAllOverrides}
+          saving={dd.saving}
+          autoSaveIn={dd.autoSaveIn}
+        />
+      </div>
     )}
  
 
@@ -1414,10 +1552,24 @@ export default function CoordScheduleViewPage() {
         </div>
       )}
 
-{/* ── View toggles (day tabs now live in the header row above) ───────── */}
+{/* ── View toggles — day tabs on the left, everything else on the right ── */}
       {allEvents.length > 0 && (
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:8, marginBottom:16, flexWrap:'wrap' }}>
-          <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:16, flexWrap:'wrap', rowGap:8 }}>
+          <div id="tour-sv-days" style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+            {DAYS.map(d => (
+              <button key={d} onClick={() => setActiveDay(d)}
+                className={`sv-day-btn${activeDay===d?' active':''}`}>
+                {d.slice(0,3)}
+                {dayCounts[d] > 0 && (
+                  <span style={{ marginLeft:4, fontSize:9.5, fontWeight:700, opacity: activeDay===d ? 1 : .6 }}>
+                    {dayCounts[d]}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          <div id="tour-sv-viewmode" style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0, flexWrap:'wrap' }}>
             <div style={{ display:'flex', gap:6, alignItems:'center', borderRight: `1px solid ${TV.border}`, paddingRight: 8, marginRight: 2 }}>
               <button onClick={undo} disabled={past.length === 0} className="sv-icon-btn" title="Undo" style={{ opacity: past.length === 0 ? 0.4 : 1, cursor: past.length === 0 ? 'not-allowed' : 'pointer' }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

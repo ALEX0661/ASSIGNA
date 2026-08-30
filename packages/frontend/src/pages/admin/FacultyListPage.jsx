@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import * as XLSX from 'xlsx'
 import ImportFacultyModal from '../../components/ImportFacultyModal'
+import { generateExportWorkbook, downloadWorkbook } from '../../components/facultyExcelTemplate'
 import { getFaculty, getArchivedFaculty, deleteFaculty, archiveFaculty, unarchiveFaculty, getCourses } from '../../services/api'
 
 /* ── Design tokens ── */
@@ -96,8 +96,16 @@ function normalizeSpec(s) {
   if (typeof s === 'object') return { code: s.courseCode, title: s.courseTitle || s.title, rating: s.rating }
   return { code: s, title: undefined, rating: undefined }
 }
-function facultySpecs(faculty) {
-  return (faculty.specializations || []).map(normalizeSpec).filter(s => s && (s.title || s.code))
+function facultySpecs(faculty, courseTitleMap = {}) {
+  return (faculty.specializations || [])
+    .filter(s => {
+      if (typeof s !== 'object') return true;
+      if (!s.isUnmatched) return true;
+      const code = (s.courseCode || '').toUpperCase().replace(/\s+/g, '');
+      return !!courseTitleMap[code];
+    })
+    .map(normalizeSpec)
+    .filter(s => s && (s.title || s.code))
 }
 function specKey(s) { return (s.title || s.code || '').toLowerCase().trim() }
 
@@ -196,11 +204,11 @@ function ActionModal({ mode, name, count, onConfirm, onCancel, busy }) {
 }
 
 /* ── Faculty Card (enhanced) ── */
-function FacultyCard({ faculty, selected, onSelect, onClick, onArchive, onUnarchive, onDelete, selectionMode, viewTab }) {
+function FacultyCard({ faculty, courseTitleMap, selected, onSelect, onClick, onArchive, onUnarchive, onDelete, selectionMode, viewTab }) {
   const [hovered, setHovered] = useState(false)
   const isArchived = !!faculty.archived
   const isFullTime = faculty.status === 'full-time'
-  const specs      = useMemo(() => facultySpecs(faculty), [faculty])
+  const specs      = useMemo(() => facultySpecs(faculty, courseTitleMap), [faculty, courseTitleMap])
   const specCount  = specs.length
   const isCoord    = !!faculty.coordinatorProgram
 
@@ -613,7 +621,7 @@ export default function FacultyListPage() {
       ;(Array.isArray(courseList) ? courseList : []).forEach(c => {
         const code  = (c.courseCode || '').trim()
         const title = (c.title || '').trim()
-        if (code && title) titleMap[code.toUpperCase()] = title
+        if (code && title) { titleMap[code.toUpperCase()] = title; titleMap[code.toUpperCase().replace(/\s+/g, "")] = title }
       })
       setCourseTitleMap(titleMap)
     } finally { setLoading(false) }
@@ -768,39 +776,19 @@ export default function FacultyListPage() {
   const hasAnyFilter = search || statusFilter.length > 0 || activeModalFilterCount > 0
 
   /* ── Export ── */
-  function handleExport() {
+  async function handleExport() {
     if (!filtered.length) return
-    const wb = XLSX.utils.book_new()
-    const groups = {
-      'Full-time': filtered.filter(f => f.status === 'full-time'),
-      'Part-time':  filtered.filter(f => f.status === 'part-time'),
-    }
-    Object.entries(groups).forEach(([sheetLabel, members]) => {
-      if (!members.length) return
-      const allCodes = [...new Set(members.flatMap(f => (f.specializations || []).map(s => typeof s === 'object' ? s.courseCode : s)))].sort()
-      const lastNameRow  = ['COURSES CODE', 'COURSES NAME', ...members.map(f => { const p = f.name.split(','); return p[0]?.trim().toUpperCase() || f.name.toUpperCase() })]
-      const firstNameRow = ['', `↳ ${sheetLabel.toUpperCase()} FACULTY`, ...members.map(f => { const p = f.name.split(','); return p[1]?.trim().toUpperCase() || '' })]
-      const rows = [lastNameRow, firstNameRow]
-      allCodes.forEach(code => {
-        const row = [code, '', ...members.map(f => {
-          const spec = (f.specializations || []).find(s => (typeof s === 'object' ? s.courseCode : s) === code)
-          return spec ? (typeof spec === 'object' ? spec.rating : '') : ''
-        })]
-        rows.push(row)
-      })
-      const ws = XLSX.utils.aoa_to_sheet(rows)
-      ws['!cols'] = [{ wch: 18 }, { wch: 24 }, ...members.map(() => ({ wch: 16 }))]
-      XLSX.utils.book_append_sheet(wb, ws, sheetLabel)
-    })
+
+    const wb = await generateExportWorkbook(filtered, courseTitleMap)
 
     const filterParts = []
-    
+
     if (viewTab === 'archived') filterParts.push('Archived')
-    
+
     if (statusFilter.length > 0) {
       filterParts.push(statusFilter.map(s => s === 'full-time' ? 'FullTime' : 'PartTime').join('-'))
     }
-    
+
     if (departmentFilter.length > 0) {
       filterParts.push(departmentFilter.join('-'))
     }
@@ -814,8 +802,8 @@ export default function FacultyListPage() {
     // Clean up filename parts and construct final suffix
     const safeFilterString = filterParts.join('_').replace(/[^a-zA-Z0-9_-]/g, '')
     const filterSuffix = safeFilterString ? `-${safeFilterString}` : ''
-    
-    XLSX.writeFile(wb, `Faculty-Matrix${filterSuffix}-${new Date().toISOString().slice(0, 10)}.xlsx`)
+
+    await downloadWorkbook(wb, `Faculty-Matrix${filterSuffix}-${new Date().toISOString().slice(0, 10)}.xlsx`)
     toast('Exported successfully', 'success')
   }
 
@@ -1341,7 +1329,7 @@ export default function FacultyListPage() {
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14, animation: 'fadeIn 0.25s ease' }}>
               {filtered.map(f => (
-                <FacultyCard key={f.id} faculty={f} selected={selected.has(f.id)} selectionMode={selectionMode}
+                <FacultyCard key={f.id} faculty={f} courseTitleMap={courseTitleMap} selected={selected.has(f.id)} selectionMode={selectionMode}
                   viewTab={viewTab}
                   onSelect={() => toggleOne(f.id)}
                   onArchive={() => handleCardArchive(f.id, f.name)}
@@ -1362,7 +1350,7 @@ export default function FacultyListPage() {
         </div>
       )}
 
-      {showImport && <ImportFacultyModal onClose={() => setShowImport(false)} onImported={() => { load(); setShowImport(false); toast('Faculty imported', 'success') }}/>}
+      {showImport && <ImportFacultyModal onClose={() => setShowImport(false)} onImported={() => { load(); setShowImport(false); toast('Faculty imported', 'success') }} courses={Object.entries(courseTitleMap).filter(([k]) => !k.includes(" ")).map(([k, v]) => ({ courseCode: k, title: v }))} />}
       {pendingAction && <ActionModal mode={pendingAction.mode} name={pendingAction.name} count={pendingAction.bulk ? pendingAction.count : 1} busy={busy} onConfirm={handleConfirm} onCancel={() => { if (!busy) setPendingAction(null) }}/>}
       <ToastContainer toasts={toasts}/>
     </div>

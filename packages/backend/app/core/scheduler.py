@@ -25,9 +25,33 @@ class SchedulingPhase(Enum):
 PHYSICAL_SESSION_LIMIT = 6 
 MAX_PHYSICAL_SESSIONS_PER_DAY = 2 
 
+# The order solve() falls back to today: phases sorted by their enum value.
+# Exposed as a named constant so routers can advertise the default without
+# recomputing/duplicating the sort logic.
+DEFAULT_PHASE_ORDER = [p.name for p in sorted(SchedulingPhase, key=lambda p: p.value)]
+
+
+def validate_phase_order(order: list) -> list:
+    """Validate that `order` is an exact permutation of all phase names.
+
+    Returns the corresponding list of SchedulingPhase members (in the
+    given order) on success. Raises ValueError otherwise.
+    """
+    valid_names = {p.name for p in SchedulingPhase}
+    if set(order) != valid_names or len(order) != len(valid_names):
+        raise ValueError(
+            f"phase_order must contain exactly these phases once each: {sorted(valid_names)}"
+        )
+    return [SchedulingPhase[name] for name in order]
+
+
 class HierarchicalScheduler:
-    def __init__(self, process_id=None):
+    def __init__(self, process_id=None, phase_order=None):
         self.process_id = process_id
+        # list[str] of phase names, or None to use the tested default order
+        # (sorted by SchedulingPhase enum value). Validated lazily in
+        # solve() so a bad value never silently corrupts an in-progress run.
+        self.phase_order = phase_order
         self.all_courses = []
         self.rooms = {}
         self.time_settings = {}
@@ -78,7 +102,7 @@ class HierarchicalScheduler:
         
         courses = get_courses()
         
-        # Filter by semester if specified
+        self.semester_filter = semester_filter
         if semester_filter:
             courses = [c for c in courses if c.get('semester', '1st Semester') == semester_filter]
             logger.info(f"Filtered to {len(courses)} courses for semester: {semester_filter}")
@@ -121,6 +145,7 @@ class HierarchicalScheduler:
         courses = [c for c in courses if c.get('program') == program]
         logger.info(f"Coordinator solve: {len(courses)} courses for program {program}")
 
+        self.semester_filter = semester_filter
         if semester_filter:
             courses = [c for c in courses if c.get('semester', '1st Semester') == semester_filter]
             logger.info(f"Filtered to {len(courses)} courses for semester: {semester_filter}")
@@ -250,7 +275,14 @@ class HierarchicalScheduler:
             phases[phase].append(course)
             
         combined_schedule = []
-        sorted_phases = sorted(phases.keys(), key=lambda p: p.value)
+        if self.phase_order:
+            try:
+                sorted_phases = validate_phase_order(self.phase_order)
+            except ValueError as e:
+                logger.warning(f"Invalid phase_order, falling back to default: {e}")
+                sorted_phases = sorted(phases.keys(), key=lambda p: p.value)
+        else:
+            sorted_phases = sorted(phases.keys(), key=lambda p: p.value)
         total_p = len(sorted_phases)
         
         for i, phase in enumerate(sorted_phases, 1):
@@ -430,7 +462,7 @@ class HierarchicalScheduler:
         
         is_practicum = "PRACTICUM" in title or "422" in code or "131" in code
         if is_practicum:
-            return self.create_practicum_sessions(model, course, section_intervals)
+            return self.create_practicum_sessions(model, course, section_intervals, room_intervals)
 
         try:
             lec_u = float(course.get("unitsLecture", 0))
@@ -511,7 +543,7 @@ class HierarchicalScheduler:
             
         return all_sess
 
-    def create_practicum_sessions(self, model, course, section_intervals):
+    def create_practicum_sessions(self, model, course, section_intervals, room_intervals):
         code = course["courseCode"]
         num_blocks = int(course.get("blocks", 1))
         block_letters = [chr(ord('A') + b) for b in range(num_blocks)]
@@ -571,11 +603,35 @@ class HierarchicalScheduler:
                 if prev_day_var is not None: model.Add(d == prev_day_var + 1)
                 
                 prev_day_var = d
+                
+                rv = None
+                rtype_to_use = 'practicum'
+                if getattr(self, 'semester_filter', None) == 'Midyear':
+                    # Find a physical room to use, fallback to lecture if lab is not available
+                    rooms_avail = self.normalized_rooms.get('laboratory', [])
+                    rtype_to_use = 'laboratory'
+                    if not rooms_avail:
+                        rooms_avail = self.normalized_rooms.get('lecture', [])
+                        rtype_to_use = 'lecture'
+                        
+                    if rooms_avail:
+                        r_indices = list(range(len(rooms_avail)))
+                        rv = model.NewIntVarFromDomain(cp_model.Domain.FromValues(r_indices), f"r_{sid}")
+                        for rid in r_indices:
+                            lit = model.NewBoolVar(f"u_{sid}_{rid}")
+                            model.Add(rv == rid).OnlyEnforceIf(lit)
+                            model.Add(rv != rid).OnlyEnforceIf(lit.Not())
+                            
+                            room_intervals[(rtype_to_use, rid)].append(
+                                model.NewOptionalIntervalVar(s, slots_per_day, e, lit, f"opt_{sid}_{rid}")
+                            )
+                
                 all_practicum_sess.append({
                     'id': sid, 'code': code, 'title': course['title'], 
                     'prog': course['program'], 'yr': course['yearLevel'], 
                     'blk': blk, 'type': 'practicum', 
-                    'start': s, 'end': e, 'day': d, 'room': None, 
+                    'room_type': rtype_to_use if rv is not None else None,
+                    'start': s, 'end': e, 'day': d, 'room': rv, 
                     'duration': slots_per_day
                 })
 
@@ -733,7 +789,8 @@ class HierarchicalScheduler:
     def extract_phase_solution(self, solver, sessions):
         sched = []
         for s in sessions:
-            r_name = "online"; r_type = s['type']; r_idx = -1
+            r_type = s.get('room_type') or s['type']
+            r_name = "online"; r_idx = -1
             if s['room'] is not None:
                 r_idx = solver.Value(s['room'])
                 avail = self.normalized_rooms.get(r_type.lower(), [])
@@ -771,11 +828,11 @@ class HierarchicalScheduler:
             if e['_room_type'] and e['_room_idx'] != -1:
                 self.occupied_slots[(e['_room_type'], e['_room_idx'])].update(slots)
 
-def generate_schedule(process_id=None, semester=None):
+def generate_schedule(process_id=None, semester=None, phase_order=None):
     if process_id:
         running_processes.add(process_id)
     try:
-        s = HierarchicalScheduler(process_id)
+        s = HierarchicalScheduler(process_id, phase_order=phase_order)
 
         if s.is_cancelled():
             if process_id: progress_state[process_id] = -2
@@ -978,7 +1035,7 @@ def events_to_pre_bookings(events, rooms_config, days, time_settings):
 
 
 def generate_coordinator_schedule(
-    process_id, program, semester, selected_rooms, pre_booked_events
+    process_id, program, semester, selected_rooms, pre_booked_events, phase_order=None
 ):
     """Generate a schedule scoped to one program, respecting previously
     approved schedules as pre-booked constraints.
@@ -999,7 +1056,7 @@ def generate_coordinator_schedule(
     if process_id:
         running_processes.add(process_id)
     try:
-        s = HierarchicalScheduler(process_id)
+        s = HierarchicalScheduler(process_id, phase_order=phase_order)
 
         if s.is_cancelled():
             if process_id: progress_state[process_id] = -2

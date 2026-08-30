@@ -238,13 +238,19 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
   function toggleAdmin() {
     const next = !selectedIsAdmin
     setSelectedIsAdmin(next)
-    // Admin + Coordinator is not a valid combo — turning Admin on clears Coordinator.
-    if (next) { setSelectedCoordinator(false); setSelectedProgram('') }
+    if (next) { 
+      setSelectedIsFaculty(false)
+      setSelectedCoordinator(false)
+      setSelectedProgram('') 
+    }
   }
 
   function toggleFaculty() {
     const next = !selectedIsFaculty
     setSelectedIsFaculty(next)
+    if (next) {
+      setSelectedIsAdmin(false)
+    }
     // Coordinator requires Faculty — turning Faculty off clears Coordinator.
     if (!next) { setSelectedCoordinator(false); setSelectedProgram('') }
   }
@@ -382,7 +388,7 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
                         </button>
                       ))}
                   </div>
-                  <div style={{ fontSize:10.5, color:T.textMuted, marginTop:6 }}>Both can be selected at once — Admin+Faculty is allowed.</div>
+                  <div style={{ fontSize:10.5, color:T.textMuted, marginTop:6 }}>Admin and Faculty are mutually exclusive.</div>
                 </div>
 
                 {/* Rank-based suggestion — never auto-applied, just a one-click nudge */}
@@ -635,7 +641,14 @@ export function CredentialsCard({ form, credEmail, setCredEmail, credPassword, s
       )}
       <div style={{ padding:'24px 20px', display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'20px 24px', alignItems:'start' }}>
         <FormField label="Login Email" hint={form.email?'Change the email used to sign in':'Required — will be used as login'}>
-          <input type="email" value={credEmail} onChange={e => setCredEmail(e.target.value)} autoComplete="off" style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Inter',sans-serif", width:'100%', boxSizing:'border-box', outline:'none', background:T.bg, color:T.textMain }}/>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <input type="text" value={credEmail} onChange={e => setCredEmail(e.target.value)} autoComplete="off" style={{ padding:'10px 14px', paddingRight: !credEmail.includes('@') && credEmail.length > 0 ? 170 : 14, borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Inter',sans-serif", width:'100%', boxSizing:'border-box', outline:'none', background:T.bg, color:T.textMain }}/>
+            {!credEmail.includes('@') && credEmail.length > 0 && (
+              <span style={{ position: 'absolute', right: 14, color: '#9CA3AF', fontSize: 13, pointerEvents: 'none' }}>
+                @gordoncollege.edu.ph
+              </span>
+            )}
+          </div>
         </FormField>
         <FormField label="New Password" hint={form.email?'Leave blank to keep current':'Auto-generated if blank'}>
           <div style={{ display:'flex', gap:8 }}>
@@ -731,13 +744,23 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
   function toggleAdmin() {
     const next = !selectedIsAdmin
     setSelectedIsAdmin(next)
-    if (next) { setSelectedCoordinator(false); setSelectedProgram('') }
+    if (next) { 
+      setSelectedIsFaculty(false)
+      setSelectedCoordinator(false)
+      setSelectedProgram('') 
+    }
   }
 
   function toggleFaculty() {
     const next = !selectedIsFaculty
     setSelectedIsFaculty(next)
-    if (!next) { setSelectedCoordinator(false); setSelectedProgram('') }
+    if (next) {
+      setSelectedIsAdmin(false)
+    }
+    if (!next) { 
+      setSelectedCoordinator(false)
+      setSelectedProgram('') 
+    }
   }
 
   const hasChanges = selectedIsAdmin !== currentIsAdmin ||
@@ -824,7 +847,7 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
       )}
 
       <div style={{ padding:'24px 20px', display:'flex', flexDirection:'column', gap:20 }}>
-        <FormField label="System Role" hint="Both can be selected at once — Admin+Faculty is allowed">
+        <FormField label="System Role" hint="Admin and Faculty are mutually exclusive.">
           <div style={{ display:'flex', gap:8 }}>
             <button
               type="button"

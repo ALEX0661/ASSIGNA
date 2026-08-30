@@ -1,7 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
 import * as XLSX from 'xlsx'
 import { uploadFaculty, extractFacultySheets, commitFaculty } from '../services/api'
-import facultyTemplate from '../assets/templates/CCS-Faculty-Specialization-Matrix-Template.xlsx';
+import SpecializationModal from './FacultyDetail/SpecializationModal'
+import { ACADEMIC_RANKS, DEPARTMENTS } from './FacultyDetail/fdShared'
+import {
+  generateBlankTemplateWorkbook, downloadWorkbook,
+  readFileAsArrayBuffer, parseFacultyInfoSheet, mergeFacultyInfo,
+} from './facultyExcelTemplate'
 
 if (!document.getElementById('ifm-style')) {
   const s = document.createElement('style')
@@ -90,13 +95,9 @@ if (!document.getElementById('ifm-style')) {
 }
 
 // ─── Template download ─────────────────────────────────────────────────────────
-function downloadTemplate() {
-  const a = document.createElement('a')
-  a.href = facultyTemplate
-  a.download = 'CCS-Faculty-Specialization-Matrix_Template.xlsx'
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
+async function downloadTemplate(courses) {
+  const wb = await generateBlankTemplateWorkbook(courses)
+  await downloadWorkbook(wb, 'CCS-Faculty-Import-Template.xlsx')
 }
 
 // ─── Template validation ───────────────────────────────────────────────────────
@@ -277,7 +278,7 @@ function Steps({ current }) {
 }
 
 /* ─── Step 1: Upload ─────────────────────────────────────────────────────── */
-function UploadStep({ onUploaded }) {
+function UploadStep({ onUploaded, courses }) {
   const [dragging,   setDragging]   = useState(false)
   const [loading,    setLoading]    = useState(false)
   const [validating, setValidating] = useState(false)
@@ -310,7 +311,7 @@ function UploadStep({ onUploaded }) {
         setError('No sheets found in the file.')
         return
       }
-      onUploaded(res.sheets, res.fileData)
+      onUploaded(res.sheets, res.fileData, file)
     } catch (err) {
       setError(err.response?.data?.detail || 'Could not read the file. Check the format and try again.')
     } finally {
@@ -381,10 +382,10 @@ function UploadStep({ onUploaded }) {
 
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
         <p style={{ fontSize:11.5, color:'#7DAB8E', margin:0, lineHeight:1.5 }}>
-          Columns = faculty names · Rows = course codes · Cells = rating (1–5)
+          Matrix sheet(s) for ratings · "Faculty Info" sheet for basic info, login &amp; schedule (dropdowns included)
         </p>
         <button
-          onClick={e => { e.stopPropagation(); downloadTemplate() }}
+          onClick={e => { e.stopPropagation(); downloadTemplate(courses) }}
           style={{
             background:'none', border:'none', padding:0, cursor:'pointer',
             display:'inline-flex', alignItems:'center', gap:4,
@@ -393,7 +394,7 @@ function UploadStep({ onUploaded }) {
           }}
           onMouseEnter={e => e.currentTarget.style.color='#2E9E5B'}
           onMouseLeave={e => e.currentTarget.style.color='#6FC795'}
-          title="Download the blank Faculty Specialization Matrix template"
+          title="Download the Faculty Import template (specialization matrix + Faculty Info sheet)"
         >
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -408,7 +409,7 @@ function UploadStep({ onUploaded }) {
 }
 
 /* ─── Step 2: Sheet selection ────────────────────────────────────────────── */
-function SheetStep({ sheets, fileData, onParsed, onBack }) {
+function SheetStep({ sheets, fileData, rawFile, onParsed, onBack }) {
   const [selected, setSelected] = useState(new Set())
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
@@ -453,7 +454,18 @@ function SheetStep({ sheets, fileData, onParsed, onBack }) {
         return { ...faculty, specializations: [...seen.values()] }
       })
 
-      onParsed(splitPreview)
+      let merged = splitPreview
+      if (rawFile) {
+        try {
+          const buffer = await readFileAsArrayBuffer(rawFile)
+          const infoMap = parseFacultyInfoSheet(buffer)
+          merged = mergeFacultyInfo(splitPreview, infoMap)
+        } catch {
+          // Faculty Info sheet is optional — fall back to specialization-only data
+        }
+      }
+
+      onParsed(merged)
     } catch (err) {
       setError(err.response?.data?.detail || 'Error parsing the selected sheets.')
       setLoading(false)
@@ -526,14 +538,13 @@ function SheetStep({ sheets, fileData, onParsed, onBack }) {
 }
 
 /* ─── Faculty card ───────────────────────────────────────────────────────── */
-function FacultyCard({ faculty, onRemove, animDelay }) {
-  const [expanded, setExpanded] = useState(false)
+function FacultyCard({ faculty, onRemove, onEdit, animDelay }) {
   const specs     = faculty.specializations || []
   const topSpecs  = specs.filter(s => s.rating >= 4).slice(0, 5)
   const totalGood = specs.filter(s => s.rating >= 3).length
 
   return (
-    <div className="ifm-card" style={{ flexDirection:'column', alignItems:'stretch', animationDelay:`${animDelay}ms`, cursor:'pointer' }} onClick={() => setExpanded(e => !e)}>
+    <div className="ifm-card" style={{ flexDirection:'column', alignItems:'stretch', animationDelay:`${animDelay}ms`, cursor:'pointer' }} onClick={onEdit}>
       <div style={{ display:'flex', alignItems:'center', gap:12 }}>
         <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,#E5F9EC,#C9ECD6)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:13, fontWeight:700, color:'#2E9E5B' }}>
           {faculty.name.split(',')[0].charAt(0)}
@@ -549,10 +560,6 @@ function FacultyCard({ faculty, onRemove, animDelay }) {
           </div>
         </div>
 
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#A8D9BB" strokeWidth="2.5" style={{ transition:'transform .2s', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink:0 }}>
-          <polyline points="6 9 12 15 18 9"/>
-        </svg>
-
         <button className="ifm-remove" onClick={e => { e.stopPropagation(); onRemove() }} title="Remove faculty">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -560,7 +567,7 @@ function FacultyCard({ faculty, onRemove, animDelay }) {
         </button>
       </div>
 
-      {!expanded && topSpecs.length > 0 && (
+      {topSpecs.length > 0 && (
         <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginTop:8, marginLeft:48 }}>
           {topSpecs.map(s => (
             <span 
@@ -576,43 +583,136 @@ function FacultyCard({ faculty, onRemove, animDelay }) {
           )}
         </div>
       )}
-
-      {expanded && (
-        <div style={{ marginTop:10, marginLeft:48, display:'flex', flexDirection:'column', gap:6 }} onClick={e => e.stopPropagation()}>
-          {[5, 4, 3, 2, 1].map(r => {
-            const group = specs.filter(s => s.rating === r)
-            if (!group.length) return null
-            return (
-              <div key={r} style={{ display:'flex', alignItems:'flex-start', gap:8 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:5, flexShrink:0, marginTop:3 }}>
-                  <div style={{ width:7, height:7, borderRadius:'50%', background: ratingColor(r), flexShrink:0 }} />
-                  <span style={{ fontSize:11, fontWeight:700, color: ratingColor(r), minWidth:14 }}>{r}</span>
-                </div>
-                <div style={{ display:'flex', flexWrap:'wrap', gap:4 }}>
-                  {group.map(s => (
-                    <span 
-                      key={`${s.courseTitle || s.title || 'untitled'}-${s.courseCode}`} 
-                      style={{ fontSize:10.5, padding:'2px 8px', borderRadius:99, background:'#F1FBF5', color:'#1F7A45', border:'1px solid #DCF3E4', fontWeight:500 }}
-                    >
-                      {s.courseTitle || s.title || s.courseCode}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
     </div>
   )
 }
 
 /* ─── Step 3: Review & Import ────────────────────────────────────────────── */
+function EditPreviewStep({ initialFaculty, onSave, onBack }) {
+  const [form, setForm] = useState(() => {
+    let fn = '', ln = ''
+    if (initialFaculty.name) {
+      const parts = initialFaculty.name.split(',')
+      ln = (parts[0] || '').trim()
+      fn = (parts[1] || '').trim()
+    }
+    return { ...initialFaculty, firstName: fn, lastName: ln }
+  })
+  const [showSpec, setShowSpec] = useState(false)
+  
+  return (
+    <div style={{ animation:'ifmFadeIn .2s ease' }}>
+      <h3 style={{ margin:'0 0 16px', color:'#0E2A20', fontSize:15, fontWeight:700 }}>Edit Faculty Info</h3>
+      
+      <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+        <div style={{ display:'flex', gap:14 }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
+            <label style={{ fontSize:11.5, fontWeight:600, color:'#5C8A6E' }}>Last Name *</label>
+            <input style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid #DCF3E4', outline:'none', fontSize:12.5, textTransform:'uppercase' }} value={form.lastName || ''} onChange={e => { const v = e.target.value.toUpperCase(); setForm(f => { const fn = f.firstName || ''; return {...f, lastName:v, name: v && fn ? `${v}, ${fn}` : v || fn }})}} />
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
+            <label style={{ fontSize:11.5, fontWeight:600, color:'#5C8A6E' }}>First Name *</label>
+            <input style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid #DCF3E4', outline:'none', fontSize:12.5, textTransform:'uppercase' }} value={form.firstName || ''} onChange={e => { const v = e.target.value.toUpperCase(); setForm(f => { const ln = f.lastName || ''; return {...f, firstName:v, name: ln && v ? `${ln}, ${v}` : ln || v }})}} />
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
+            <label style={{ fontSize:11.5, fontWeight:600, color:'#5C8A6E' }}>Status *</label>
+            <select style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid #DCF3E4', outline:'none', fontSize:12.5, background:'#fff' }} value={form.status || 'full-time'} onChange={e => setForm({...form, status:e.target.value})}>
+              <option value="full-time">Full-time</option>
+              <option value="part-time">Part-time</option>
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display:'flex', gap:14 }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
+            <label style={{ fontSize:11.5, fontWeight:600, color:'#5C8A6E' }}>Email Address</label>
+            <input type="email" placeholder="faculty@university.edu" style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid #DCF3E4', outline:'none', fontSize:12.5 }} value={form.email || ''} onChange={e => setForm({...form, email:e.target.value})} />
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
+            <label style={{ fontSize:11.5, fontWeight:600, color:'#5C8A6E' }}>Sex at Birth</label>
+            <select style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid #DCF3E4', outline:'none', fontSize:12.5, background:'#fff' }} value={form.SexAtBirth || ''} onChange={e => setForm({...form, SexAtBirth:e.target.value})}>
+              <option value="">Select...</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display:'flex', gap:14 }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
+            <label style={{ fontSize:11.5, fontWeight:600, color:'#5C8A6E' }}>Academic Rank</label>
+            <select style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid #DCF3E4', outline:'none', fontSize:12.5, background:'#fff' }} value={form.AcademicRank || ''} onChange={e => setForm({...form, AcademicRank:e.target.value})}>
+              <option value="">Select rank...</option>
+              {ACADEMIC_RANKS.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
+            <label style={{ fontSize:11.5, fontWeight:600, color:'#5C8A6E' }}>Department</label>
+            <select style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid #DCF3E4', outline:'none', fontSize:12.5, background:'#fff' }} value={form.Department || ''} onChange={e => setForm({...form, Department:e.target.value})}>
+              <option value="">Select department...</option>
+              {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+          <label style={{ fontSize:11.5, fontWeight:600, color:'#5C8A6E' }}>Educational Attainment</label>
+          <input type="text" placeholder="e.g. Master's Degree, PhD" style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid #DCF3E4', outline:'none', fontSize:12.5 }} value={form.Educational_attainment || ''} onChange={e => setForm({...form, Educational_attainment:e.target.value})} />
+        </div>
+
+        {form.status === 'part-time' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+            <label style={{ fontSize:11.5, fontWeight:600, color:'#5C8A6E' }}>Preferred Days</label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => {
+                const isActive = (form.preferredDays || []).includes(d)
+                return (
+                  <button key={d} onClick={() => {
+                    const days = form.preferredDays || []
+                    setForm({ ...form, preferredDays: isActive ? days.filter(x => x !== d) : [...days, d] })
+                  }} style={{ padding: '6px 12px', borderRadius: 8, border: `1.5px solid ${isActive ? '#15803D' : '#DCF3E4'}`, background: isActive ? '#DCFCE7' : '#fff', color: isActive ? '#15803D' : '#5C8A6E', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', transition: 'all 0.1s' }}>
+                    {d}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+          <label style={{ fontSize:11.5, fontWeight:600, color:'#5C8A6E' }}>Specializations</label>
+          <button className="ifm-ghost" onClick={() => setShowSpec(true)} style={{ justifyContent:'center', background:'#fff', color:'#2E9E5B' }}>
+            Manage {form.specializations?.length || 0} specializations...
+          </button>
+        </div>
+      </div>
+      
+      <div style={{ display:'flex', gap:8, marginTop:24 }}>
+        <button className="ifm-primary" onClick={() => {
+          if (!form.name.trim()) return;
+          onSave(form)
+        }}>Save Changes</button>
+        <button className="ifm-ghost" onClick={onBack}>Cancel</button>
+      </div>
+
+      {showSpec && (
+        <SpecializationModal
+          specializations={form.specializations || []}
+          onSave={specs => { setForm(f => ({...f, specializations: specs})); setShowSpec(false) }}
+          onClose={() => setShowSpec(false)}
+        />
+      )}
+    </div>
+  )
+}
+
 function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
   const [saving,  setSaving]  = useState(false)
   const [results, setResults] = useState(null)
   const [error,   setError]   = useState('')
   const [query,   setQuery]   = useState('')
+  const [editTarget, setEditTarget] = useState(null)
 
   const filtered  = query.trim() ? faculty.filter(f => f.name.toLowerCase().includes(query.trim().toLowerCase())) : faculty
   const fullTime  = faculty.filter(f => f.status === 'full-time').length
@@ -630,6 +730,21 @@ function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
 
   function removeFaculty(name) {
     setFaculty(prev => prev.filter(f => f.name !== name))
+  }
+
+  function saveEdit(updatedFaculty) {
+    setFaculty(prev => prev.map(f => f.name === editTarget.name ? updatedFaculty : f))
+    setEditTarget(null)
+  }
+
+  if (editTarget) {
+    return (
+      <EditPreviewStep 
+        initialFaculty={editTarget} 
+        onSave={saveEdit} 
+        onBack={() => setEditTarget(null)} 
+      />
+    )
   }
 
   if (results) {
@@ -687,7 +802,7 @@ function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
         </span>
         <span style={{ fontSize:10.5, padding:'2px 9px', borderRadius:99, background:'#EEF9F0', color:'#16A34A', border:'1px solid #A7F3D0', fontWeight:600 }}>{fullTime} full-time</span>
         <span style={{ fontSize:10.5, padding:'2px 9px', borderRadius:99, background:'#FFF7ED', color:'#D97706', border:'1px solid #FDE68A', fontWeight:600 }}>{partTime} part-time</span>
-        <span style={{ fontSize:11, color:'#7DAB8E', marginLeft:'auto' }}>Click a card to expand</span>
+        <span style={{ fontSize:11, color:'#7DAB8E', marginLeft:'auto' }}>Click a card to edit</span>
       </div>
 
       <div style={{ position:'relative' }}>
@@ -710,6 +825,7 @@ function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
             faculty={f}
             animDelay={i * 30}
             onRemove={() => removeFaculty(f.name)}
+            onEdit={() => setEditTarget(f)}
           />
         ))}
       </div>
@@ -717,7 +833,7 @@ function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
       <ErrBox msg={error} />
 
       <HintBox>
-        <strong style={{ color:'#2E9E5B' }}>Note:</strong> This saves faculty profiles and their specialization ratings. To enable login, open each faculty profile and add their email address after importing.
+        <strong style={{ color:'#2E9E5B' }}>Note:</strong> Specialization ratings come from the matrix sheet(s) you selected. Basic info, login email, and preferred schedule come from the "Faculty Info" sheet if you filled it in — otherwise add them per profile after importing.
       </HintBox>
 
       <div style={{ display:'flex', gap:8, alignItems:'center' }}>
@@ -741,10 +857,11 @@ function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
 }
 
 /* ─── Main Modal ─────────────────────────────────────────────────────────── */
-export default function ImportFacultyModal({ onClose, onImported }) {
+export default function ImportFacultyModal({ onClose, onImported, courses = [] }) {
   const [step,    setStep]    = useState(1)
   const [sheets,  setSheets]  = useState([])
   const [fileData, setFileData] = useState(null)
+  const [rawFile, setRawFile] = useState(null)
   const [faculty, setFaculty] = useState([])
   const [ready,   setReady]   = useState(false)
 
@@ -754,7 +871,14 @@ export default function ImportFacultyModal({ onClose, onImported }) {
     return () => clearTimeout(t)
   }, [])
 
-  function handleUploaded(s, b) { setSheets(s); setFileData(b); setStep(2) }
+  function handleUploaded(s, b, f) {
+    const skip = ['faculty info', '_lists', 'course list']
+    const validSheets = s.filter(name => !skip.includes(name.trim().toLowerCase()))
+    setSheets(validSheets)
+    setFileData(b)
+    setRawFile(f)
+    setStep(2)
+  }
   function handleParsed(preview)   { setFaculty(preview); setStep(3) }
 
   const stepTitles = ['', 'Import Faculty from Excel', 'Select Sheets', 'Review & Import']
@@ -802,8 +926,8 @@ export default function ImportFacultyModal({ onClose, onImported }) {
 
         <Steps current={step} />
 
-        {step === 1 && <UploadStep onUploaded={handleUploaded} />}
-        {step === 2 && <SheetStep sheets={sheets} fileData={fileData} onParsed={handleParsed} onBack={() => setStep(1)} />}
+        {step === 1 && <UploadStep onUploaded={handleUploaded} courses={courses} />}
+        {step === 2 && <SheetStep sheets={sheets} fileData={fileData} rawFile={rawFile} onParsed={handleParsed} onBack={() => setStep(1)} />}
         {step === 3 && <ReviewStep faculty={faculty} setFaculty={setFaculty} onBack={() => setStep(2)} onImported={onImported} />}
       </div>
     </div>

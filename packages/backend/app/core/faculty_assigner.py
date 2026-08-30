@@ -167,6 +167,8 @@ class FacultyAssigner:
         target_title = self._normalise_title(self._course_title_map.get(target_code, ""))
 
         for s in faculty.get("specializations", []):
+            if s.get("isUnmatched"):
+                continue
             # Primary: match on courseTitle (new format)
             stored_title = self._normalise_title(s.get("courseTitle", ""))
             if stored_title and target_title and stored_title == target_title:
@@ -182,6 +184,8 @@ class FacultyAssigner:
         target_title = self._normalise_title(self._course_title_map.get(target_code, ""))
 
         for s in faculty.get("specializations", []):
+            if s.get("isUnmatched"):
+                continue
             stored_title = self._normalise_title(s.get("courseTitle", ""))
             if stored_title and target_title and stored_title == target_title:
                 return int(s.get("rating", 1))
@@ -208,22 +212,21 @@ class FacultyAssigner:
     ) -> bool:
         name = faculty["name"]
 
-        # Gate 1 – specialization
-        if not self._has_specialization(faculty, course_code):
-            return False
-
-        # Gate 2 – unit headroom
-        effective_max = self._current_max(faculty)
-        used          = self._assigned_units.get(name, 0.0)
-        # Part-time gets a small emergency valve (mirrors unit_balancing logic)
-        buffer = 3.0 if faculty.get("status", "full-time").lower() == "part-time" else 0.0
-        if used + unit_cost > effective_max + buffer:
-            return False
-
-        # Gate 3 – no time conflict
         if start_slot is not None and duration is not None:
             if self._overlaps(self._faculty_slots[name], start_slot, start_slot + duration):
                 return False
+
+        is_minor = course_code.upper().startswith(("GEC", "MAT", "PE", "NSTP", "GE"))
+        has_spec = self._has_specialization(faculty, course_code)
+        
+        effective_max = self._current_max(faculty)
+        used          = self._assigned_units.get(name, 0.0)
+        buffer = 3.0 if faculty.get("status", "full-time").lower() == "part-time" else 0.0
+        is_full = (used + unit_cost > effective_max + buffer)
+
+        if is_minor:
+            if not has_spec: return False
+            if is_full: return False
 
         return True
 
@@ -246,7 +249,25 @@ class FacultyAssigner:
         status = faculty.get("status", "full-time").lower()
         score  = 0.0
 
-        # ── Static factors ────────────────────────────────────────────────────
+        has_spec = self._has_specialization(faculty, course_code)
+        effective_max = self._current_max(faculty)
+        used          = self._assigned_units.get(name, 0.0)
+        unit_cost     = self._total_unit_cost(events)
+        buffer = 3.0 if faculty.get("status", "full-time").lower() == "part-time" else 0.0
+        is_full = (used + unit_cost > effective_max + buffer)
+
+        if not has_spec and not is_full:
+            score -= 5000
+        elif has_spec and is_full:
+            score -= 10000
+        elif not has_spec and is_full:
+            score -= 15000
+            
+        if is_full:
+            overage = (used + unit_cost) - (effective_max + buffer)
+            score -= overage * 100
+
+        # Static factors ────────────────────────────────────────────────────
         # Specialization quality
         score += self._spec_rating(faculty, course_code) * W_SPEC_RATING
 
