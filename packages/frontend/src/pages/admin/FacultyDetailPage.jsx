@@ -175,12 +175,13 @@ export default function FacultyDetailPage() {
     if (credPassword && credPassword !== credConfirm) { setCredError('Passwords do not match.'); return }
     setCredSaving(true)
     try {
-      const result = await updateCredentials(id, { email: credEmail.trim(), password: credPassword || undefined })
+      const finalEmail = credEmail.includes('@') ? credEmail.trim() : credEmail.trim() + '@gordoncollege.edu.ph'
+      const result = await updateCredentials(id, { email: finalEmail, password: credPassword || undefined })
       if (result.migrated) {
         setCredActivated({ newId: result.new_id, tempPassword: result.temp_password })
       } else {
-        setForm(f => ({ ...f, email: credEmail.trim() }))
-        setSavedInfo(s => s ? { ...s, email: credEmail.trim() } : s)
+        setForm(f => ({ ...f, email: finalEmail }))
+        setSavedInfo(s => s ? { ...s, email: finalEmail } : s)
         setCredPassword(''); setCredConfirm('')
         setCredSuccess(credPassword ? 'Email and password updated.' : 'Email updated.')
         setTimeout(() => setCredSuccess(''), 3000)

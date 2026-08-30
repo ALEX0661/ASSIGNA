@@ -210,7 +210,12 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
   const existingCodes  = useMemo(() => new Set(specs.map(s => (s.courseCode || '').toLowerCase().trim())), [specs])
   const courseTitleMap = useMemo(() => {
     const m = {}
-    courses.forEach(c => { if (c.courseCode) m[c.courseCode.toLowerCase().trim()] = c.title || '' })
+    courses.forEach(c => { 
+      if (c.courseCode) {
+        const normalized = c.courseCode.toLowerCase().replace(/\s+/g, '')
+        m[normalized] = c.title || '' 
+      }
+    })
     return m
   }, [courses])
 
@@ -238,9 +243,12 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
     })
   }, [coursesBySemester, activeSem, browseQ, existingCodes, pending])
 
+  const validSpecs = useMemo(() => specs.filter(s => !s.isUnmatched || courseTitleMap[(s.courseCode || '').toLowerCase().replace(/\s+/g, '')]), [specs, courseTitleMap])
+  const unmatchedList = useMemo(() => specs.filter(s => s.isUnmatched && !courseTitleMap[(s.courseCode || '').toLowerCase().replace(/\s+/g, '')]), [specs, courseTitleMap])
+
   const filteredSpecs = useMemo(() => {
     const q   = currentQ.toLowerCase()
-    const src = [...specs]
+    const src = [...validSpecs]
     if (sortBy === 'code-asc')    src.sort((a, b) => (a.courseCode || '').localeCompare(b.courseCode || ''))
     if (sortBy === 'rating-desc') src.sort((a, b) => (b.rating || 3) - (a.rating || 3))
     if (sortBy === 'rating-asc')  src.sort((a, b) => (a.rating || 3) - (b.rating || 3))
@@ -250,11 +258,26 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
       const title = (s.title || courseTitleMap[code] || '').toLowerCase()
       return code.includes(q) || title.includes(q)
     })
-  }, [specs, sortBy, currentQ, courseTitleMap])
+  }, [validSpecs, sortBy, currentQ, courseTitleMap])
+
+  const unmatchedSpecs = useMemo(() => {
+    const q   = currentQ.toLowerCase()
+    const src = [...unmatchedList]
+    if (sortBy === 'code-asc')    src.sort((a, b) => (a.courseCode || '').localeCompare(b.courseCode || ''))
+    if (sortBy === 'rating-desc') src.sort((a, b) => (b.rating || 3) - (a.rating || 3))
+    if (sortBy === 'rating-asc')  src.sort((a, b) => (a.rating || 3) - (b.rating || 3))
+    if (!q) return src
+    return src.filter(s => {
+      const code  = (s.courseCode || '').toLowerCase()
+      const title = (s.title || courseTitleMap[code] || '').toLowerCase()
+      return code.includes(q) || title.includes(q)
+    })
+  }, [unmatchedList, sortBy, currentQ, courseTitleMap])
 
   const pendingList   = useMemo(() => Object.entries(pending).map(([code, info]) => ({ code, ...info })), [pending])
   const pendingCount  = pendingList.length
-  const specCount     = specs.length
+  const specCount     = validSpecs.length
+  const unmatchedCount = unmatchedList.length
 
   const { TourElement, startTour } = useTour('facultySpecModal', [
     {
@@ -287,9 +310,9 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
 
   const breakdown = useMemo(() => {
     const counts = {}
-    specs.forEach(s => { const r = s.rating || 3; counts[r] = (counts[r] || 0) + 1 })
+    validSpecs.forEach(s => { const r = s.rating || 3; counts[r] = (counts[r] || 0) + 1 })
     return LEVELS.slice().reverse().filter(l => counts[l.rating]).map(l => ({ ...l, count: counts[l.rating] }))
-  }, [specs])
+  }, [validSpecs])
 
   // Stage / unstage a course from browse
   const togglePending = useCallback((course, rating) => {
@@ -393,6 +416,11 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
               <NavBtn active={tab === 'browse'} onClick={() => setTab('browse')}
                 icon={<><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></>}
                 label="Browse Catalog" badge={pendingCount || null} />
+              {unmatchedCount > 0 && (
+                <NavBtn active={tab === 'unmatched'} onClick={() => setTab('unmatched')}
+                  icon={<><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>}
+                  label="Needs Review" badge={unmatchedCount} />
+              )}
             </div>
 
             {specCount > 0 && (
@@ -491,6 +519,57 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                       })}
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {tab === 'unmatched' && (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <div style={{ padding: '16px 20px', background: '#FFFBEB', borderBottom: '1px solid #FDE68A', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  <div>
+                    <h3 style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: '#92400E' }}>Needs Review</h3>
+                    <p style={{ margin: 0, fontSize: 12, color: '#B45309', lineHeight: 1.4 }}>
+                      These courses were imported or orphaned, but don't match anything in the current Course List. They are kept here for your reference.
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', background: '#F9F9FB' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {unmatchedSpecs.map((s, i) => {
+                      const code  = s.courseCode || ''
+                      const title = s.title || ''
+                      const rating = s.rating || 3
+                      return (
+                        <div key={`${code}-${i}`} style={{ background: '#fff', borderRadius: 10, padding: 14, border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <input 
+                                value={code} 
+                                onChange={(e) => {
+                                  const newCode = e.target.value
+                                  setSpecs(p => p.map(x => x === s ? { ...x, courseCode: newCode } : x))
+                                }}
+                                style={{ fontSize: 13.5, fontWeight: 700, color: '#0E2A20', letterSpacing: '-0.2px', border: '1.5px solid #D1D5DB', borderRadius: 6, padding: '4px 8px', width: 120, outline: 'none' }}
+                              />
+                              <span style={{ fontSize: 10, fontWeight: 600, color: '#9CA3AF', background: '#F3F4F6', padding: '2px 6px', borderRadius: 4 }}>Unmatched</span>
+                            </div>
+                            {title && <span style={{ fontSize: 11.5, color: '#9CA3AF' }}>{title}</span>}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <LevelBadge rating={rating} />
+                            <button
+                              title="Delete record"
+                              onClick={() => setSpecs(p => p.filter(x => x !== s))}
+                              style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid #FEE2E2', background: '#FFF5F5', color: '#DC2626', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
             )}
@@ -710,7 +789,16 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
               style={{ padding: '8px 18px', borderRadius: 9, border: '1.5px solid #D8E8DF', background: '#fff', color: '#4B7060', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}>
               Cancel
             </button>
-            <button onClick={() => onSave(specs)} disabled={isSaving}
+            <button onClick={() => {
+              const cleaned = specs.map(s => {
+                if (s.isUnmatched && courseTitleMap[(s.courseCode || '').toLowerCase().replace(/\s+/g, '')]) {
+                  const { isUnmatched, ...rest } = s
+                  return rest
+                }
+                return s
+              })
+              onSave(cleaned)
+            }} disabled={isSaving}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 20px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#15803D,#0F5C2C)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: isSaving ? 'default' : 'pointer', fontFamily: "'Inter', sans-serif", opacity: isSaving ? 0.65 : 1, boxShadow: '0 4px 14px rgba(15,92,44,0.28)' }}>
               {isSaving
                 ? <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'spin 0.8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>Saving…</>

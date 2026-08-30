@@ -112,7 +112,8 @@ export const getTime   = async ()  => axios.get(`${BASE}/settings/time`,   { hea
 export const saveTime  = async (d) => axios.post(`${BASE}/settings/time`,  d, { headers: await authHeaders() }).then(r => r.data)
 
 // ── Schedule ──────────────────────────────────────────────────────────────────
-export const triggerSolve   = async (semester) => axios.get(`${BASE}/schedule/generate`,                    { headers: await authHeaders(), params: semester ? { semester } : {} }).then(r => r.data)
+export const triggerSolve   = async (semester, phaseOrder) => axios.get(`${BASE}/schedule/generate`,        { headers: await authHeaders(), params: { ...(semester ? { semester } : {}), ...(phaseOrder ? { phase_order: phaseOrder.join(',') } : {}) } }).then(r => r.data)
+export const getSchedulePhases = async () => axios.get(`${BASE}/schedule/phases`,                           { headers: await authHeaders() }).then(r => r.data)
 export const getSolveStatus = async (pid)  => axios.get(`${BASE}/schedule/status/${pid}`,               { headers: await authHeaders() }).then(r => r.data)
 export const cancelSolve    = async (pid)  => axios.delete(`${BASE}/schedule/cancel/${pid}`,             { headers: await authHeaders() }).then(r => r.data)
 export const getDiagnostic  = async (semester) => axios.get(`${BASE}/schedule/diagnostic`,               { headers: await authHeaders(), params: semester ? { semester } : {} }).then(r => r.data)
@@ -210,7 +211,8 @@ export const applyBlockConfigs = async (semester) => axios.post(`${BASE}/block-c
 // Omit it (as CoordMySchedulePage does) to get the full list.
 export const coordListSchedules   = async (limit)  => axios.get(`${BASE}/coordinator/schedule/list`, { headers: await authHeaders(), params: limit ? { limit } : {} }).then(r => r.data)
 export const coordGetScheduleCounts = async ()     => axios.get(`${BASE}/coordinator/schedule/counts`, { headers: await authHeaders() }).then(r => r.data)
-export const coordGenerate        = async (sem)  => axios.post(`${BASE}/coordinator/schedule/generate`,   { semester: sem }, { headers: await authHeaders() }).then(r => r.data)
+export const coordGenerate        = async (sem, phaseOrder)  => axios.post(`${BASE}/coordinator/schedule/generate`,   { semester: sem, ...(phaseOrder ? { phase_order: phaseOrder } : {}) }, { headers: await authHeaders() }).then(r => r.data)
+export const getCoordSchedulePhases = async () => axios.get(`${BASE}/coordinator/schedule/phases`, { headers: await authHeaders() }).then(r => r.data)
 export const coordSolveStatus     = async (pid)  => axios.get(`${BASE}/coordinator/schedule/status/${pid}`, { headers: await authHeaders() }).then(r => r.data)
 export const coordGetResult       = async ()     => axios.get(`${BASE}/coordinator/schedule/result`,      { headers: await authHeaders() }).then(r => r.data)
 export const coordCancelSolve     = async (pid)  => axios.delete(`${BASE}/coordinator/schedule/cancel/${pid}`, { headers: await authHeaders() }).then(r => r.data)

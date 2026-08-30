@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
 from app.core.auth import admin_only, any_authenticated
 from app.core.firebase import db
 from app.core.globals import schedule_dict, progress_state, running_processes, cancel_flags, failure_details, phase_state
-from app.core.scheduler import generate_schedule
+from app.core.scheduler import generate_schedule, validate_phase_order, DEFAULT_PHASE_ORDER
 import uuid
 import hashlib
 import json
@@ -188,7 +188,8 @@ def _diff_events(before: list, after: list) -> dict:
 
 
 @router.get("/generate")
-def trigger_solve(background_tasks: BackgroundTasks, semester: str = None, user=Depends(admin_only)):
+def trigger_solve(background_tasks: BackgroundTasks, semester: str = None,
+                   phase_order: str = None, user=Depends(admin_only)):
     # running_processes reflects whether a solve is *physically* executing.
     # A cancelled solve stays in this set until its loop actually notices
     # cancel_flags and exits, so this correctly blocks a restart from
@@ -197,10 +198,36 @@ def trigger_solve(background_tasks: BackgroundTasks, semester: str = None, user=
     if is_running:
         raise HTTPException(status_code=409, detail="A solve is already running. Please wait for it to stop before starting a new one.")
 
+    # phase_order is a comma-separated list of phase names, or omitted
+    # entirely — omitted means "use the tested default order" end-to-end.
+    order_list = phase_order.split(",") if phase_order else None
+    if order_list:
+        try:
+            validate_phase_order(order_list)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
     process_id = str(uuid.uuid4())
     progress_state[process_id] = 0
-    background_tasks.add_task(generate_schedule, process_id, semester)
+    background_tasks.add_task(generate_schedule, process_id, semester, order_list)
     return {"process_id": process_id, "status": "started"}
+
+@router.get("/phases")
+def get_phases(user=Depends(admin_only)):
+    """Read-only phase metadata so the frontend never hardcodes phase
+    names/labels for the reorder UI."""
+    return {
+        "phases": [
+            {"key": "NSTP", "label": "NSTP (Fri/Sat only)"},
+            {"key": "GEC_MAT", "label": "GEC & MAT (Mon–Thu pattern)"},
+            {"key": "MAJORS_Y4", "label": "4th Year Majors (Practicum)"},
+            {"key": "MAJORS_Y3", "label": "3rd Year Majors"},
+            {"key": "MAJORS_Y2", "label": "2nd Year Majors"},
+            {"key": "MAJORS_Y1", "label": "1st Year Majors"},
+            {"key": "PE", "label": "PE (fills remaining gaps)"},
+        ],
+        "default": DEFAULT_PHASE_ORDER,
+    }
 
 @router.get("/status/{process_id}")
 def get_status(process_id: str, user=Depends(admin_only)):

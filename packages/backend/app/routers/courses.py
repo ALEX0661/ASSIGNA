@@ -68,7 +68,8 @@ def _require_program_access(user: dict, program: str):
     coordinatorProgram claim matches the program being written to.
     Mirrors the ownership check pattern used in coordinator.py.
     """
-    if user.get("isAdmin"):
+    print("DEBUG _require_program_access ->", user.get("role"), user.get("email"))
+    if user.get("role") == "admin":
         return
     coord_program = user.get("coordinatorProgram")
     if not coord_program:
@@ -150,6 +151,114 @@ def _parse_excel(contents: bytes, sheet_name: str) -> list[dict]:
     return courses
 
 
+def _cascade_course_update(old_code: str, new_code: str, new_title: str = None):
+    faculty_docs = db.collection("faculty").stream()
+    batch = db.batch()
+    batch_count = 0
+    for doc in faculty_docs:
+        data = doc.to_dict()
+        specs = data.get("specializations", [])
+        changed = False
+        for i, spec in enumerate(specs):
+            if isinstance(spec, dict):
+                if spec.get("courseCode") == old_code:
+                    if new_code:
+                        spec["courseCode"] = new_code
+                    if new_title:
+                        spec["courseTitle"] = new_title
+                        spec["title"] = new_title
+                    changed = True
+            elif isinstance(spec, str):
+                if spec == old_code and new_code:
+                    specs[i] = new_code
+                    changed = True
+        if changed:
+            batch.update(doc.reference, {"specializations": specs})
+            batch_count += 1
+            if batch_count >= 400:
+                batch.commit()
+                batch = db.batch()
+                batch_count = 0
+    if batch_count > 0:
+        batch.commit()
+
+    # Cascade to schedules
+    for coll_name in ["final_schedules", "coordinator_schedules", "master_schedules"]:
+        sched_docs = db.collection(coll_name).stream()
+        batch = db.batch()
+        batch_count = 0
+        for doc in sched_docs:
+            data = doc.to_dict()
+            events = data.get("events", [])
+            changed = False
+            for ev in events:
+                if ev.get("courseCode") == old_code:
+                    if new_code:
+                        ev["courseCode"] = new_code
+                        ev["baseCourseCode"] = new_code
+                    if new_title:
+                        ev["title"] = new_title
+                    changed = True
+            if changed:
+                batch.update(doc.reference, {"events": events})
+                batch_count += 1
+                if batch_count >= 400:
+                    batch.commit()
+                    batch = db.batch()
+                    batch_count = 0
+        if batch_count > 0:
+            batch.commit()
+
+def _cascade_course_deletion(old_code: str):
+    faculty_docs = db.collection("faculty").stream()
+    batch = db.batch()
+    batch_count = 0
+    for doc in faculty_docs:
+        data = doc.to_dict()
+        specs = data.get("specializations", [])
+        changed = False
+        for i, s in enumerate(specs):
+            if isinstance(s, dict):
+                if s.get("courseCode") == old_code:
+                    s["isUnmatched"] = True
+                    changed = True
+            elif isinstance(s, str):
+                if s == old_code:
+                    specs[i] = {"courseCode": s, "isUnmatched": True}
+                    changed = True
+        if changed:
+            batch.update(doc.reference, {"specializations": specs})
+            batch_count += 1
+            if batch_count >= 400:
+                batch.commit()
+                batch = db.batch()
+                batch_count = 0
+    if batch_count > 0:
+        batch.commit()
+
+    # Cascade unlinking to schedules
+    for coll_name in ["final_schedules", "coordinator_schedules", "master_schedules"]:
+        sched_docs = db.collection(coll_name).stream()
+        batch = db.batch()
+        batch_count = 0
+        for doc in sched_docs:
+            data = doc.to_dict()
+            events = data.get("events", [])
+            changed = False
+            for ev in events:
+                if ev.get("courseCode") == old_code:
+                    ev["isUnmatched"] = True
+                    changed = True
+            if changed:
+                batch.update(doc.reference, {"events": events})
+                batch_count += 1
+                if batch_count >= 400:
+                    batch.commit()
+                    batch = db.batch()
+                    batch_count = 0
+        if batch_count > 0:
+            batch.commit()
+
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
 @router.get("/")
@@ -164,10 +273,13 @@ def get_all_courses(semester: str = None, user=Depends(any_authenticated)):
 @router.post("/add")
 def add_course(data: Course, user=Depends(any_authenticated)):
     _require_program_access(user, data.program)
+    existing = db.collection("courses").where("courseCode", "==", data.courseCode).get()
+    if existing:
+        conflict_title = existing[0].to_dict().get("title", "another course")
+        raise HTTPException(400, f"This code is already used by '{conflict_title}'")
+        
     doc_id = f"{data.courseCode}_{data.program}"
     ref = db.collection("courses").document(doc_id)
-    if ref.get().exists:
-        raise HTTPException(400, f"Course {doc_id} already exists")
     ref.set(data.dict())
     refresh_courses_cache()
     return {"id": doc_id, "message": "Course added"}
@@ -201,16 +313,40 @@ def update_course(course_code: str, program: str, data: CourseUpdate, user=Depen
 
     # Coordinators may not move a course to a different program via update —
     # only admins can re-assign programs.
-    if not user.get("isAdmin") and "program" in update_data and update_data["program"] != program:
+    if user.get("role") != "admin" and "program" in update_data and update_data["program"] != program:
         raise HTTPException(403, "You can't change a course's program.")
 
     if not update_data:
         # Nothing actually changed — return success without hitting Firestore.
         return {"updated": doc_id}
 
-    doc_ref.update(update_data)
+    new_code = update_data.get("courseCode")
+    new_title = update_data.get("title")
+    code_changed = new_code and new_code != course_code
+
+    if code_changed:
+        # Check global uniqueness of new code
+        existing = db.collection("courses").where("courseCode", "==", new_code).get()
+        if existing:
+            conflict_title = existing[0].to_dict().get("title", "another course")
+            raise HTTPException(400, f"This code is already used by '{conflict_title}'")
+            
+        # Create new document and delete old one
+        old_data = doc_ref.get().to_dict()
+        old_data.update(update_data)
+        new_doc_id = f"{new_code}_{program}"
+        db.collection("courses").document(new_doc_id).set(old_data, merge=True)
+        doc_ref.delete()
+        _cascade_course_update(course_code, new_code, new_title)
+        final_doc_id = new_doc_id
+    else:
+        doc_ref.update(update_data)
+        if new_title:
+            _cascade_course_update(course_code, course_code, new_title)
+        final_doc_id = doc_id
+
     refresh_courses_cache()
-    return {"updated": doc_id}
+    return {"updated": final_doc_id}
 
 
 @router.delete("/delete/{course_code}/{program}")
@@ -227,6 +363,7 @@ def delete_course(course_code: str, program: str, user=Depends(any_authenticated
     data["archivedAt"] = datetime.utcnow().isoformat()
     db.collection("archived_courses").document(doc_id).set(data)
     doc_ref.delete()
+    _cascade_course_deletion(course_code)
     refresh_courses_cache()
     return {"deleted": doc_id, "archived": True}
 
@@ -238,7 +375,8 @@ async def upload_courses_excel(file: UploadFile = File(...), user=Depends(any_au
     Validates that every sheet in the file belongs to the known template sheets,
     then returns the valid sheet list and a base64-encoded copy of the file.
     """
-    if not user.get("isAdmin") and not user.get("coordinatorProgram"):
+    is_admin = user.get("role") == "admin"
+    if not is_admin and not user.get("coordinatorProgram"):
         raise HTTPException(403, "Not authorized to upload courses.")
 
     if not file.filename.lower().endswith((".xlsx", ".xls")):
@@ -285,7 +423,7 @@ def extract_selected_sheet(data: dict, user=Depends(any_authenticated)):
     Takes the base64 encoded file and the selected sheet name, 
     then parses the courses from that specific sheet.
     """
-    if not user.get("isAdmin") and not user.get("coordinatorProgram"):
+    if not (user.get("role") == "admin") and not user.get("coordinatorProgram"):
         raise HTTPException(403, "Not authorized to upload courses.")
 
     sheet_name = data.get("sheetName")
@@ -311,7 +449,7 @@ def extract_selected_sheet(data: dict, user=Depends(any_authenticated)):
     # contains other programs — this mirrors the frontend's lockedProgram
     # filter but is enforced here so it can't be bypassed by calling the
     # API directly.
-    if not user.get("isAdmin"):
+    if not (user.get("role") == "admin"):
         coord_program = user.get("coordinatorProgram")
         courses = [c for c in courses if c.get("program") == coord_program]
 
@@ -324,14 +462,14 @@ def commit_uploaded_courses(data: dict, user=Depends(any_authenticated)):
     Bulk upsert courses from the upload preview.
     Returns per-course success/failure so the frontend can surface partial errors.
     """
-    if not user.get("isAdmin") and not user.get("coordinatorProgram"):
+    if not (user.get("role") == "admin") and not user.get("coordinatorProgram"):
         raise HTTPException(403, "Not authorized to upload courses.")
 
     courses = data.get("courses", [])
     if not courses:
         raise HTTPException(400, "No courses provided.")
 
-    is_admin      = user.get("isAdmin", False)
+    is_admin      = user.get("role") == "admin"
     coord_program = user.get("coordinatorProgram")
 
     saved  = 0

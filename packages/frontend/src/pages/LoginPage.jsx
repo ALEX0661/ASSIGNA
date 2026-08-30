@@ -198,15 +198,15 @@ import icon1Img from '../assets/ASSIGNAV1.png'
       color: var(--slate); cursor: pointer; transition: all 0.2s ease;
       display: flex; align-items: center; justify-content: center; gap: 6px;
     }
-    .role-option:hover:not(.role-option-active) { background: #A7F0C4; color: var(--meadow-deep); }
+    .role-option:hover:not(.role-option-active) { background: rgba(21,128,61,0.06); color: var(--ink); }
     .role-option:focus-visible { outline: 2px solid var(--meadow); outline-offset: 2px; }
-    .role-option-active {
+    .role-selector .role-option-active {
       background: linear-gradient(135deg, var(--meadow) 0%, var(--meadow-deep) 100%);
       color: #fff; box-shadow: 0 2px 10px rgba(21,128,61,0.28);
     }
-    .role-option-active:hover {
-      background: #0F5C2C;
-      color: #0F5C2C;
+    .role-selector .role-option-active:hover {
+      background: linear-gradient(135deg, var(--meadow) 0%, var(--meadow-deep) 100%);
+      filter: brightness(1.08);
     }
 
     .login-label { font-size: 11.5px; font-weight: 600; color: var(--ink); display: block; margin-bottom: 5px; }
@@ -343,7 +343,8 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      const result = await signInWithEmailAndPassword(auth, email.trim(), password)
+      const finalEmail = email.includes('@') ? email.trim() : email.trim() + '@gordoncollege.edu.ph'
+      const result = await signInWithEmailAndPassword(auth, finalEmail, password)
       const token  = await result.user.getIdTokenResult()
       const userRole      = token.claims.role
       const isCoordinator = token.claims.isCoordinator || false
@@ -456,10 +457,16 @@ export default function LoginPage() {
                 <svg className="login-field-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
                 </svg>
-                <input className="login-input" type="email" value={email}
+                <input className="login-input" type="text" value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="you@ccs.edu" required autoComplete="email"
+                  placeholder="juan.delacruz" required autoComplete="email"
+                  style={{ paddingRight: !email.includes('@') && email.length > 0 ? 170 : 14 }}
                   autoFocus disabled={loading} />
+                {!email.includes('@') && email.length > 0 && (
+                  <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF', fontSize: 14, pointerEvents: 'none' }}>
+                    @gordoncollege.edu.ph
+                  </span>
+                )}
               </div>
             </div>
 

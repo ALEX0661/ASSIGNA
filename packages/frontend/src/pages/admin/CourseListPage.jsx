@@ -261,7 +261,7 @@ function CourseModal({ mode, initial, onSave, onClose, saving, error }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <label style={{ fontSize: 11.5, fontWeight: 600, color: G.ink }}>Course Code *</label>
-              <input className="cp-inp" value={form.courseCode} onChange={e => !isEdit && set('courseCode', e.target.value)} placeholder="e.g. CS 101" readOnly={isEdit} style={isEdit ? { background: G.hover, color: G.muted } : {}} autoFocus={isDuplicate} />
+              <input className="cp-inp" value={form.courseCode} onChange={e => set('courseCode', e.target.value)} placeholder="e.g. CS 101" autoFocus={isDuplicate} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <label style={{ fontSize: 11.5, fontWeight: 600, color: G.ink }}>Program *</label>
@@ -636,7 +636,7 @@ export default function CourseListPage() {
   async function handleEdit(data) {
     setSaving(true); setError('')
     try {
-      await updateCourse(data.courseCode, data.program, data)
+      await updateCourse(editTarget.courseCode, editTarget.program, data)
       setEditTarget(null)
       load()
       toast('Course updated successfully', 'success')

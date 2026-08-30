@@ -6,6 +6,7 @@ class Specialization(BaseModel):
     courseCode: str
     title: Optional[str] = None   # human-readable course name (e.g. "Data Structures")
     rating: int
+    isUnmatched: Optional[bool] = False
 
 
 class Faculty(BaseModel):

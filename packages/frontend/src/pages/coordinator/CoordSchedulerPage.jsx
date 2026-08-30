@@ -7,7 +7,7 @@ import {
   coordSaveSchedule, coordListSchedules, coordDeleteSchedule,
   coordRenameSchedule, coordDuplicateSchedule, coordSubmitSchedule, coordUnsubmitSchedule,
   coordGetRooms, coordGetSelectedRooms, coordSelectRooms, coordGetCourses,
-  coordGetSettings, coordGetSubmittedSchedule
+  coordGetSettings, coordGetSubmittedSchedule, getCoordSchedulePhases
 } from '../../services/api'
 import { useTour } from '../../hooks/useTour.jsx'
 import { useCoordSolverStore } from '../../store/scheduleStore'
@@ -29,14 +29,16 @@ const G = {
 }
 
 const PHASES = [
-  { label: 'NSTP',         short: 'NSTP' },
-  { label: 'GEC / MAT',    short: 'GEC'  },
-  { label: 'Year 4',       short: 'Y4'   },
-  { label: 'Year 3',       short: 'Y3'   },
-  { label: 'Year 2',       short: 'Y2'   },
-  { label: 'Year 1',       short: 'Y1'   },
-  { label: 'PE / PATHFIT', short: 'PE'   },
+  { key: 'NSTP',       label: 'NSTP',         short: 'NSTP' },
+  { key: 'GEC_MAT',    label: 'GEC / MAT',    short: 'GEC'  },
+  { key: 'MAJORS_Y4',  label: 'Year 4',       short: 'Y4'   },
+  { key: 'MAJORS_Y3',  label: 'Year 3',       short: 'Y3'   },
+  { key: 'MAJORS_Y2',  label: 'Year 2',       short: 'Y2'   },
+  { key: 'MAJORS_Y1',  label: 'Year 1',       short: 'Y1'   },
+  { key: 'PE',         label: 'PE / PATHFIT', short: 'PE'   },
 ]
+const PHASE_BY_KEY = Object.fromEntries(PHASES.map(p => [p.key, p]))
+const DEFAULT_PHASE_KEYS = PHASES.map(p => p.key)
 
 const VERDICT_META = {
   feasible:        { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder, label: 'Feasible',           icon: '✓' },
@@ -251,6 +253,51 @@ if (!document.getElementById('coord-scheduler-style')) {
     .phase-connector { position:absolute; top:10px; left:50%; width:100%; height:2px; transition:background .4s; z-index:0; }
     .phase-dot   { width:22px; height:22px; border-radius:50%; z-index:1; display:flex; align-items:center; justify-content:center; transition:all .35s ease; }
     .phase-label { font-size:10px; margin-top:5px; font-weight:700; text-align:center; letter-spacing:0.5px; transition:color .3s; text-transform:uppercase; }
+
+    /* ── Reorderable phase list (editable priority order) — horizontal ── */
+    .phase-reorder-hint { display:flex; align-items:center; gap:6px; font-size:11.5px; color:${G.muted2}; font-weight:600; margin-bottom:14px; }
+    .phase-reorder-track { display:flex; align-items:flex-start; gap:0; width:100%; }
+    .phase-reorder-step { flex:1; display:flex; flex-direction:column; align-items:center; position:relative; min-width:0; }
+    .phase-reorder-connector { position:absolute; top:15px; left:50%; width:100%; height:2px; background:${G.border}; z-index:0; transition:background .2s; }
+    .phase-chip {
+      display:flex; flex-direction:column; align-items:center; gap:6px; width:100%;
+      cursor:grab; user-select:none; touch-action:none; position:relative; z-index:1;
+      transition:transform .15s cubic-bezier(.2,.8,.2,1);
+    }
+    .phase-chip:active { cursor:grabbing; }
+    .phase-chip.dragging { opacity:0.35; }
+    .phase-chip.drop-before::before,
+    .phase-chip.drop-after::after {
+      content:''; position:absolute; top:2px; width:3px; height:26px; border-radius:99px; background:${G.meadow};
+      box-shadow:0 0 0 3px rgba(21,128,61,0.15);
+    }
+    .phase-chip.drop-before::before { left:-2px; }
+    .phase-chip.drop-after::after   { right:-2px; }
+    .phase-chip.keyboard-grabbed .phase-chip-dot { border-color:${G.meadow} !important; box-shadow:0 0 0 4px rgba(21,128,61,0.18); }
+    .phase-chip-dot {
+      width:30px; height:30px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+      font-size:11px; font-weight:800; background:${G.meadowSoft}; color:${G.meadowDeep}; border:2px solid ${G.meadowBorder};
+      transition:all .15s; position:relative;
+    }
+    .phase-chip:hover .phase-chip-dot { background:${G.meadow}; color:#fff; border-color:${G.meadowDeep}; transform:scale(1.08); }
+    .phase-chip-order {
+      position:absolute; top:-5px; right:-5px; width:15px; height:15px; border-radius:50%; background:#fff;
+      border:1.5px solid ${G.border}; color:${G.muted2}; font-size:8.5px; font-weight:800;
+      display:flex; align-items:center; justify-content:center; transition:all .15s;
+    }
+    .phase-chip:hover .phase-chip-order { border-color:${G.meadowDeep}; color:${G.meadowDeep}; }
+    .phase-chip-label { font-size:10.5px; font-weight:700; text-align:center; letter-spacing:0.4px; text-transform:uppercase; color:${G.ink}; line-height:1.3; max-width:100%; }
+    .phase-chip-handle { display:flex; align-items:center; justify-content:center; color:${G.muted2}; opacity:0; transition:opacity .15s; margin-top:-2px; }
+    .phase-chip:hover .phase-chip-handle, .phase-chip:focus-within .phase-chip-handle { opacity:1; }
+    .phase-chip-arrows { display:flex; gap:3px; margin-top:2px; opacity:0; transition:opacity .15s; }
+    .phase-chip:hover .phase-chip-arrows, .phase-chip:focus-within .phase-chip-arrows { opacity:1; }
+    .phase-chip-arrow { width:18px; height:18px; padding:0; border-radius:5px; border:1px solid ${G.border}; background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; color:${G.muted2}; transition:all .15s; }
+    .phase-chip-arrow:hover:not(:disabled) { background:${G.meadowSoft}; border-color:${G.meadowBorder}; color:${G.meadowDeep}; }
+    .phase-chip-arrow:disabled { opacity:0.25; cursor:default; }
+    @media (max-width: 720px) {
+      .phase-reorder-track { flex-wrap:wrap; row-gap:22px; }
+      .phase-reorder-step { flex:0 0 25%; }
+    }
 
     .prog-bar-wrap { height:6px; background:${G.borderLight}; border-radius:99px; overflow:hidden; margin-top:10px; box-shadow:inset 0 1px 2px rgba(0,0,0,0.05); width: 100%; }
     .prog-bar-fill { height:100%; border-radius:99px; transition:width .6s cubic-bezier(.4,0,.2,1); }
@@ -510,30 +557,174 @@ function StepHeader({ number, title, subtitle, badge }) {
   )
 }
 
-function PhaseTimeline({ currentPhaseIdx, status, progress }) {
+function PhaseTimeline({ currentPhaseIdx, status, progress, order, defaultOrder, onReorder, onReset, editable }) {
   const idle = status === 'idle', done = status === 'complete'
+  const phaseKeys = (order && order.length ? order : DEFAULT_PHASE_KEYS)
+  const phases = phaseKeys.map(k => PHASE_BY_KEY[k]).filter(Boolean)
+  const isDefaultOrder = !defaultOrder || (phaseKeys.length === defaultOrder.length && phaseKeys.every((k, i) => k === defaultOrder[i]))
+  const canEdit = !!editable
+
   return (
     <div className="fadein">
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10, gap:12 }}>
         <span style={{ fontSize:13.5, fontWeight:700, color: idle ? G.muted2 : G.ink }}>
-          {idle ? '7 scheduling phases' : done ? 'All phases complete' : `Phase ${Math.min(currentPhaseIdx + 1, 7)} of 7 — ${PHASES[Math.min(currentPhaseIdx, 6)]?.label}`}
+          {idle ? '7 scheduling phases' : done ? 'All phases complete' : `Phase ${Math.min(currentPhaseIdx + 1, 7)} of 7 — ${phases[Math.min(currentPhaseIdx, 6)]?.label}`}
         </span>
-        <span style={{ fontSize:14, fontWeight:800, color: idle ? G.muted2 : done ? G.meadow : G.meadowDeep }}>{idle ? '—' : `${progress}%`}</span>
+        <div style={{ display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={onReset}
+              disabled={isDefaultOrder}
+              style={{ background:'none', border:'none', padding:0, fontSize:11.5, fontWeight:700, color: isDefaultOrder ? G.muted2 : G.meadowDeep, cursor: isDefaultOrder ? 'default' : 'pointer', opacity: isDefaultOrder ? 0.5 : 1 }}>
+              Reset to Default
+            </button>
+          )}
+          <span style={{ fontSize:14, fontWeight:800, color: idle ? G.muted2 : done ? G.meadow : G.meadowDeep }}>{idle ? '—' : `${progress}%`}</span>
+        </div>
       </div>
       <div className="prog-bar-wrap">
         <div className="prog-bar-fill" style={{ width:`${idle ? 0 : progress}%`, background: done ? `linear-gradient(90deg,${G.meadowSoft},${G.meadow})` : `linear-gradient(90deg,${G.meadowBorder},${G.meadowDeep})` }} />
       </div>
-      <div className="phase-track">
-        {PHASES.map((ph, i) => {
-          const phaseDone = done || i < currentPhaseIdx, phaseActive = !done && !idle && i === currentPhaseIdx
-          return (
-            <div key={ph.label} className="phase-step">
-              {i < PHASES.length - 1 && <div className="phase-connector" style={{ background: (phaseDone && !idle) ? G.meadow : G.border }} />}
-              <div className="phase-dot" style={{ background: idle ? G.hover : phaseDone ? G.meadow : phaseActive ? '#fff' : G.bg, border: idle ? `2px solid ${G.border}` : phaseActive ? `2.5px solid ${G.meadowDeep}` : phaseDone ? 'none' : `2px solid ${G.border}`, boxShadow: phaseActive ? `0 0 0 4px rgba(21,128,61,0.15)` : 'none' }}>
-                {phaseDone && !idle ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-                  : phaseActive ? <div style={{ width:10, height:10, borderRadius:'50%', background:G.meadowDeep }} /> : null}
+
+      {canEdit ? (
+        <PhaseReorderList phases={phases} onReorder={onReorder} />
+      ) : (
+        <div className="phase-track">
+          {phases.map((ph, i) => {
+            const phaseDone = done || i < currentPhaseIdx, phaseActive = !done && !idle && i === currentPhaseIdx
+            return (
+              <div key={ph.key} className="phase-step">
+                {i < phases.length - 1 && <div className="phase-connector" style={{ background: (phaseDone && !idle) ? G.meadow : G.border }} />}
+                <div className="phase-dot" style={{ background: idle ? G.hover : phaseDone ? G.meadow : phaseActive ? '#fff' : G.bg, border: idle ? `2px solid ${G.border}` : phaseActive ? `2.5px solid ${G.meadowDeep}` : phaseDone ? 'none' : `2px solid ${G.border}`, boxShadow: phaseActive ? `0 0 0 4px rgba(21,128,61,0.15)` : 'none' }}>
+                  {phaseDone && !idle ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                    : phaseActive ? <div style={{ width:10, height:10, borderRadius:'50%', background:G.meadowDeep }} /> : null}
+                </div>
+                <span className="phase-label" style={{ color: idle ? G.muted2 : phaseDone ? G.meadow : phaseActive ? G.ink : G.muted2 }}>{ph.short}</span>
               </div>
-              <span className="phase-label" style={{ color: idle ? G.muted2 : phaseDone ? G.meadow : phaseActive ? G.ink : G.muted2 }}>{ph.short}</span>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* Drag-and-drop (+ keyboard) reorderable list of scheduling phases.
+   - Mouse/touch: grab a phase and drag; a thin green marker previews where
+     it will land, and the phase fades while it's being dragged.
+   - Keyboard: tab to the handle, press Enter/Space to "pick up" the phase,
+     Arrow Up/Down to move it, Enter/Space again (or Escape) to drop it.
+   Each dot shows the phase's short name (e.g. "Y1") with its position
+   number as a small badge, so the order is readable at a glance while
+   still keying the badge to the arrow buttons underneath. */
+function PhaseReorderList({ phases, onReorder }) {
+  const [dragIndex, setDragIndex] = useState(null)
+  const [overIndex, setOverIndex] = useState(null)
+  const [grabbedIndex, setGrabbedIndex] = useState(null) // keyboard mode
+  const dragImgRef = useRef(null)
+
+  function handleDragStart(e, index) {
+    setDragIndex(index)
+    // Use a transparent 1px drag image so the browser's default ghost
+    // doesn't fight with our own CSS-driven "dragging" opacity state.
+    if (dragImgRef.current) e.dataTransfer.setDragImage(dragImgRef.current, 0, 0)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  function handleDragOver(e, index) {
+    e.preventDefault()
+    if (dragIndex === null || index === dragIndex) { setOverIndex(null); return }
+    setOverIndex(index)
+  }
+
+  function handleDrop(e, index) {
+    e.preventDefault()
+    if (dragIndex !== null && index !== dragIndex) onReorder(dragIndex, index)
+    setDragIndex(null); setOverIndex(null)
+  }
+
+  function handleDragEnd() {
+    setDragIndex(null); setOverIndex(null)
+  }
+
+  function handleHandleKeyDown(e, index) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      setGrabbedIndex(g => (g === index ? null : index))
+    } else if (e.key === 'Escape' && grabbedIndex !== null) {
+      e.preventDefault()
+      setGrabbedIndex(null)
+    } else if (grabbedIndex === index && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      e.preventDefault()
+      const target = index + (e.key === 'ArrowUp' ? -1 : 1)
+      if (target < 0 || target >= phases.length) return
+      onReorder(index, target)
+      setGrabbedIndex(target)
+    }
+  }
+
+  return (
+    <div role="listbox" aria-label="Scheduling phase order" id="tour-sch-phase-order">
+      {/* invisible 0x0 image used to suppress the native drag ghost */}
+      <div ref={dragImgRef} style={{ width:1, height:1, opacity:0, position:'absolute' }} />
+
+      <div className="phase-reorder-hint">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="9" cy="6" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="9" cy="18" r="1.3"/><circle cx="15" cy="6" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="15" cy="18" r="1.3"/></svg>
+        Drag a phase to reorder — earlier phases get first pick of rooms and faculty
+      </div>
+
+      <div className="phase-reorder-track">
+        {phases.map((ph, i) => {
+          const isDragging = dragIndex === i
+          const isGrabbed = grabbedIndex === i
+          const dropClass = overIndex === i ? (overIndex > dragIndex ? 'drop-after' : 'drop-before') : ''
+          return (
+            <div key={ph.key} className="phase-reorder-step">
+              {i < phases.length - 1 && <div className="phase-reorder-connector" />}
+              <div
+                className={`phase-chip${isDragging ? ' dragging' : ''}${isGrabbed ? ' keyboard-grabbed' : ''}${dropClass ? ' ' + dropClass : ''}`}
+                draggable
+                role="option"
+                aria-selected={isGrabbed}
+                onDragStart={e => handleDragStart(e, i)}
+                onDragOver={e => handleDragOver(e, i)}
+                onDrop={e => handleDrop(e, i)}
+                onDragEnd={handleDragEnd}
+              >
+                <div className="phase-chip-dot">
+                  {ph.short}
+                  <span className="phase-chip-order">{i + 1}</span>
+                </div>
+                <span className="phase-chip-label">{ph.label}</span>
+                <button
+                  type="button"
+                  className="phase-chip-handle"
+                  tabIndex={0}
+                  aria-label={`${ph.label}. Position ${i + 1} of ${phases.length}. Press Enter to pick up, then arrow keys to move.`}
+                  onKeyDown={e => handleHandleKeyDown(e, i)}
+                >
+                  <svg width="14" height="8" viewBox="0 0 14 8" fill="currentColor"><circle cx="2" cy="2" r="1.3"/><circle cx="7" cy="2" r="1.3"/><circle cx="12" cy="2" r="1.3"/><circle cx="2" cy="6" r="1.3"/><circle cx="7" cy="6" r="1.3"/><circle cx="12" cy="6" r="1.3"/></svg>
+                </button>
+                <div className="phase-chip-arrows">
+                  <button
+                    type="button"
+                    className="phase-chip-arrow"
+                    onClick={() => onReorder(i, i - 1)}
+                    disabled={i === 0}
+                    aria-label={`Move ${ph.label} earlier`}>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="15 18 9 12 15 6"/></svg>
+                  </button>
+                  <button
+                    type="button"
+                    className="phase-chip-arrow"
+                    onClick={() => onReorder(i, i + 1)}
+                    disabled={i === phases.length - 1}
+                    aria-label={`Move ${ph.label} later`}>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                </div>
+              </div>
             </div>
           )
         })}
@@ -942,9 +1133,9 @@ export default function CoordSchedulerPage() {
           disableBeacon: true,
         },
         {
-          target: '#tour-phase-timeline',
-          title: 'Phase Progress',
-          content: 'This tracks the solver through its 7 scheduling phases in order, so you can see roughly where it is and how far it has left — no need to guess whether it\'s stuck.',
+          target: '#tour-sch-phase-order',
+          title: 'Phase Priority Order',
+          content: 'New! You can now drag and drop these phases to change the order in which the solver prioritizes them. Phases scheduled earlier get first pick of available rooms and faculty.',
           placement: 'top',
         },
       ]
@@ -1004,6 +1195,34 @@ export default function CoordSchedulerPage() {
   const [masterEvents, setMasterEvents] = useState([])
   const [globalSettings, setGlobalSettings] = useState(null)
 
+  // Editable solving phase order (shown on the Solve step). null = use
+  // backend default order end-to-end (nothing sent to /generate).
+  const [schedulePhases, setSchedulePhases] = useState(null)
+  const [defaultPhaseOrder, setDefaultPhaseOrder] = useState(null)
+  const [phaseOrder, setPhaseOrder] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    getCoordSchedulePhases().then(res => {
+      if (cancelled) return
+      setSchedulePhases(res.phases || [])
+      setDefaultPhaseOrder(res.default || null)
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [])
+
+  // Moves the phase at fromIndex to toIndex (arbitrary distance — used by
+  // both drag-and-drop and the arrow-button fallback, which just passes
+  // toIndex = fromIndex ± 1).
+  function reorderPhase(fromIndex, toIndex) {
+    const current = (phaseOrder && phaseOrder.length ? phaseOrder : defaultPhaseOrder) || DEFAULT_PHASE_KEYS
+    if (toIndex < 0 || toIndex >= current.length || fromIndex === toIndex) return
+    const next = current.slice()
+    const [moved] = next.splice(fromIndex, 1)
+    next.splice(toIndex, 0, moved)
+    setPhaseOrder(next)
+  }
+
   const roomUsage = useMemo(() => {
     const hours = summarizeRoomHours(masterEvents)
     const activeDays = (globalSettings?.days || []).length || 6
@@ -1034,6 +1253,7 @@ export default function CoordSchedulerPage() {
   const [saveName, setSaveName] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [savedScheduleId, setSavedScheduleId] = useState(null)
   const [resultSearch, setResultSearch] = useState('')
   // True from the moment Stop is clicked until the backend actually confirms
   // the solve has unwound (see handleCancel). The solver only checks for a
@@ -1192,6 +1412,7 @@ export default function CoordSchedulerPage() {
   useEffect(() => {
     if (statusState === 'complete' && result) {
       setSaved(false)
+      setSavedScheduleId(null)
       setMaxReached(m => Math.max(m, 4))
       goStep(4)
       setSaveName(prev => prev || [roundSemester, roundAY].filter(Boolean).join(' ').trim())
@@ -1217,9 +1438,10 @@ export default function CoordSchedulerPage() {
     setErrorKind(null)
     setResult(null)
     setSaved(false)
+    setSavedScheduleId(null)
     setProgress(0)
     try {
-      const r = await coordGenerate(roundSemester)
+      const r = await coordGenerate(roundSemester, phaseOrder)
       setProcessId(r.processId || r.process_id)
       setLabel([coordinatorProgram, roundSemester].filter(Boolean).join(' — '))
     } catch (err) {
@@ -1260,10 +1482,29 @@ export default function CoordSchedulerPage() {
     if (!result) return
     setSaving(true)
     try {
-      await coordSaveSchedule({ name: saveName || 'My Schedule' })
+      const savedName = saveName || 'My Schedule'
+      // coordSaveSchedule just proxies whatever the backend returns for
+      // POST /coordinator/schedule/save, and that shape isn't something we
+      // can rely on from the frontend. Instead of guessing at response
+      // fields, diff the schedule list before/after the save: whichever
+      // draft is new and has the name we just saved under is the one we
+      // just created. This works regardless of list ordering or how the
+      // backend responds to the save call itself.
+      const prevIds = new Set(schedules.map(s => s.id))
+      await coordSaveSchedule({ name: savedName })
       toast('Schedule saved!', 'success')
       setSaved(true)
-      loadAll()
+
+      const list = await coordListSchedules().catch(() => null)
+      if (Array.isArray(list)) {
+        setSchedules(list)
+        const freshMatch = list.find(s => !prevIds.has(s.id) && s.name === savedName)
+        const anyMatch = freshMatch || [...list].reverse().find(s => s.name === savedName)
+        setSavedScheduleId(anyMatch?.id ?? null)
+      } else {
+        setSavedScheduleId(null)
+        loadAll()
+      }
     } catch (err) {
       toast(err?.response?.data?.detail || 'Failed to save schedule.', 'error')
     } finally {
@@ -1669,7 +1910,8 @@ export default function CoordSchedulerPage() {
                   </div>
 
                   <div style={{ width:'100%', maxWidth:520, position:'relative', zIndex:1, flexShrink:0 }}>
-                    <PhaseTimeline currentPhaseIdx={Math.floor((progress / 100) * 7)} status={statusState} progress={progress} />
+                    <PhaseTimeline currentPhaseIdx={Math.floor((progress / 100) * 7)} status={statusState} progress={progress}
+                      order={phaseOrder || defaultPhaseOrder} defaultOrder={defaultPhaseOrder} editable={false} />
                   </div>
 
                   <p style={{ position:'relative', zIndex:1, fontSize:12, color:G.muted, fontWeight:500, textAlign:'center', margin:0, lineHeight:1.5, flexShrink:0 }}>
@@ -1697,7 +1939,9 @@ export default function CoordSchedulerPage() {
 
                   <div className="sch-card-body">
                     <div id="tour-phase-timeline">
-                      <PhaseTimeline currentPhaseIdx={Math.floor((progress / 100) * 7)} status={statusState} progress={progress} />
+                      <PhaseTimeline currentPhaseIdx={Math.floor((progress / 100) * 7)} status={statusState} progress={progress}
+                        order={phaseOrder || defaultPhaseOrder} defaultOrder={defaultPhaseOrder}
+                        onReorder={reorderPhase} onReset={() => setPhaseOrder(null)} editable />
                     </div>
 
                     {!isMyTurn && statusState === 'idle' && (
@@ -1963,7 +2207,18 @@ export default function CoordSchedulerPage() {
                         <div style={{ fontSize: 15, fontWeight: 800, color: G.meadowDeep, marginBottom: 2 }}>Saved as a draft</div>
                         <div style={{ fontSize: 13, color: G.meadowDeep, opacity: 0.8, fontWeight: 500 }}>Your schedule is safe. You can find it in your My Schedules list to submit for approval when you're ready.</div>
                       </div>
-                      <button className="btn-outline" onClick={() => navigate('/coordinator/schedules')} style={{ padding: '10px 20px', fontSize: 13, background: '#fff' }}>Go to My Schedules</button>
+                      <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
+                        {savedScheduleId && (
+                          <button
+                            className="btn-primary"
+                            onClick={() => navigate(`/coordinator/schedules/${savedScheduleId}`)}
+                            style={{ padding: '10px 20px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            View & Edit Schedule
+                          </button>
+                        )}
+                        <button className="btn-outline" onClick={() => navigate('/coordinator/schedules')} style={{ padding: '10px 20px', fontSize: 13, background: '#fff' }}>Go to My Schedules</button>
+                      </div>
                     </div>
                   )}
                 </>
