@@ -224,6 +224,11 @@ export default function SettingsPage() {
       title: 'Daily Time Boundaries',
       content: 'Set the earliest opening and latest closing time for the day. Everything in between gets split into 30-minute slots the scheduler can assign.',
     },
+    {
+      target: '#tour-stg-theme',
+      title: 'Color Theme & Dark Mode',
+      content: 'Personalize your experience by selecting a custom accent color and toggling between light and dark modes. Your preference is saved locally.',
+    },
   ])
 
   
@@ -472,7 +477,7 @@ export default function SettingsPage() {
             </div>
 
         {/* Card 3 - Color Theme */}
-        <div className="stg-card">
+        <div id="tour-stg-theme" className="stg-card">
           <div className="stg-card-head">
             <div className="stg-icon-box" style={{ background: G.meadowSoft, border: `1px solid ${G.meadowBorder}` }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={G.meadow} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
