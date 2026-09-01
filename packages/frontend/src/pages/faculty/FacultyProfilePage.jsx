@@ -559,7 +559,7 @@ export default function FacultyProfilePage() {
                     return (
                       <button key={day} type="button" onClick={() => toggleDay(day)} className="fp-prefs-pill" style={{
                         padding: '7px 18px', fontSize: 12.5, borderRadius: 99, fontFamily: "'Inter',sans-serif",
-                        background: on ? T.green : T.bgAlt, color: on ? 'var(--surface)' : T.textMuted,
+                        background: on ? T.green : T.bgAlt, color: on ? '#fff' : T.textMuted,
                         border: on ? '1.5px solid transparent' : `1.5px solid ${T.border}`,
                         cursor: 'pointer', fontWeight: on ? 700 : 500, transition: 'all 0.15s',
                         boxShadow: on ? '0 2px 8px rgba(0,0,0,0.28)' : 'none',

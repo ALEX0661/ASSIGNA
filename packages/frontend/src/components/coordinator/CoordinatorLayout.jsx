@@ -69,7 +69,7 @@ function CoordToastContainer({ toasts }) {
           fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:600, whiteSpace:'nowrap',
           boxShadow:'0 8px 24px rgba(0,0,0,0.15)', pointerEvents:'auto',
           background: t.type === 'success' ? 'var(--meadow)' : 'var(--surface)',
-          color: t.type === 'success' ? 'var(--surface)' : t.type === 'error' ? '#EF4444' : 'var(--meadow-deep)',
+          color: t.type === 'success' ? '#fff' : t.type === 'error' ? '#EF4444' : 'var(--meadow-deep)',
           border: t.type === 'success' ? '1px solid var(--meadow-deep)' : t.type === 'error' ? '1px solid #FECACA' : '1px solid var(--meadow-border)',
         }}>
           {t.message}

@@ -382,7 +382,7 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
                     ].map(opt => (
                         <button key={opt.key} type="button"
                           onClick={opt.onClick}
-                          style={{ flex:1, padding:'9px 12px', borderRadius:'9px', fontSize:12.5, fontFamily:"'Inter',sans-serif", background: opt.active ? `linear-gradient(135deg,${T.green},${T.greenDeep})` : T.bgAlt, color: opt.active ? 'var(--surface)' : T.textMuted, border: opt.active ? 'none' : `1.5px solid ${T.border}`, cursor:'pointer', fontWeight:600, transition:'all 0.18s', display:'flex', alignItems:'center', justifyContent:'center', gap:7, boxShadow: opt.active ? `0 3px 10px rgba(0,0,0,0.28)` : 'none' }}
+                          style={{ flex:1, padding:'9px 12px', borderRadius:'9px', fontSize:12.5, fontFamily:"'Inter',sans-serif", background: opt.active ? `linear-gradient(135deg,${T.green},${T.greenDeep})` : T.bgAlt, color: opt.active ? '#fff' : T.textMuted, border: opt.active ? 'none' : `1.5px solid ${T.border}`, cursor:'pointer', fontWeight:600, transition:'all 0.18s', display:'flex', alignItems:'center', justifyContent:'center', gap:7, boxShadow: opt.active ? `0 3px 10px rgba(0,0,0,0.28)` : 'none' }}
                         >
                           {opt.icon}{opt.label}
                         </button>
@@ -437,7 +437,7 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
                         const active = selectedProgram === prog
                         return (
                           <button key={prog} type="button" onClick={() => setSelectedProgram(prog)}
-                            style={{ padding:'7px 16px', borderRadius:'99px', fontSize:12, fontFamily:"'Inter',sans-serif", background: active ? T.greenDeep : T.bgAlt, color: active ? 'var(--surface)' : T.textMuted, border: active ? 'none' : `1.5px solid ${T.border}`, cursor:'pointer', fontWeight:600, transition:'all 0.18s', boxShadow: active ? `0 2px 8px rgba(0,0,0,0.28)` : 'none' }}
+                            style={{ padding:'7px 16px', borderRadius:'99px', fontSize:12, fontFamily:"'Inter',sans-serif", background: active ? T.greenDeep : T.bgAlt, color: active ? '#fff' : T.textMuted, border: active ? 'none' : `1.5px solid ${T.border}`, cursor:'pointer', fontWeight:600, transition:'all 0.18s', boxShadow: active ? `0 2px 8px rgba(0,0,0,0.28)` : 'none' }}
                           >
                             {prog}
                           </button>
@@ -546,7 +546,7 @@ export function SchedulePrefsCard({ form, setForm, isNew, prefsChanged, prefSavi
                 <button key={day} type="button" onClick={() => toggleDay(day)} style={{
                   padding:'7px 18px', fontSize:12.5, borderRadius:'99px', fontFamily:"'Inter',sans-serif",
                   background:active ? T.green : T.bgAlt,
-                  color:active ? 'var(--surface)' : T.textMuted,
+                  color: active ? '#fff' : T.textMuted,
                   border:active ? `1.5px solid transparent` : `1.5px solid ${T.border}`,
                   cursor:'pointer', fontWeight:active ? 700 : 500,
                   transition:'all 0.15s',

@@ -907,7 +907,7 @@ export default function CoordCoursesPage() {
                 style={{
                   padding: '5px 16px', borderRadius: 7, fontSize: 12, fontWeight: isActive ? 700 : 500,
                   background: isActive ? G.meadow : 'transparent',
-                  color: isActive ? 'var(--surface)' : G.muted,
+                  color: isActive ? '#fff' : G.muted,
                   border: isActive ? 'none' : '1px solid transparent',
                   cursor: 'pointer', transition: 'all 0.15s', fontFamily: "'Inter',sans-serif",
                   boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.28)' : 'none',
@@ -996,7 +996,7 @@ export default function CoordCoursesPage() {
           display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 13px', borderRadius: 99, fontSize: 11.5,
           fontWeight: activeModalFilterCount ? 600 : 500,
           background: activeModalFilterCount ? G.meadow : G.hover,
-          color: activeModalFilterCount ? 'var(--surface)' : G.muted,
+          color: activeModalFilterCount ? '#fff' : G.muted,
           border: `1.5px solid ${activeModalFilterCount ? 'transparent' : G.border}`,
           cursor: 'pointer', transition: 'all .15s', whiteSpace: 'nowrap', fontFamily: "'Inter',sans-serif",
           boxShadow: activeModalFilterCount ? '0 2px 8px rgba(0,0,0,0.28)' : 'none',

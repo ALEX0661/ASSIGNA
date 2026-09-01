@@ -9,7 +9,7 @@ const LEVELS = [
   { rating: 2, label: 'Developing', short: 'DEV',  color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.05)', border: 'rgba(245, 158, 11, 0.25)', dot: '#F59E0B', hoverBg: 'rgba(245, 158, 11, 0.1)' },
   { rating: 3, label: 'Competent',  short: 'COMP', color: '#A78BFA', bg: 'rgba(124, 58, 237, 0.1)', border: 'color-mix(in srgb, #6D28D9 30%, transparent)', dot: '#7C3AED', hoverBg: 'color-mix(in srgb, #6D28D9 15%, transparent)' },
   { rating: 4, label: 'Proficient', short: 'PROF', color: '#60A5FA', bg: 'rgba(37, 99, 235, 0.1)', border: '#BFDBFE', dot: '#3B82F6', hoverBg: 'rgba(59, 130, 246, 0.1)' },
-  { rating: 5, label: 'Expert',     short: 'EXP',  color: 'var(--meadow)', bg: 'var(--meadow-soft)', border: '#A7F3D0', dot: '#10B981', hoverBg: 'var(--meadow-soft)' },
+  { rating: 5, label: 'Expert',     short: 'EXP',  color: 'var(--meadow)', bg: 'var(--meadow-soft)', border: 'var(--meadow-border)', dot: '#10B981', hoverBg: 'var(--meadow-soft)' },
 ]
 const getLvl = r => LEVELS.find(l => l.rating === (r || 3)) || LEVELS[2]
 
@@ -117,7 +117,7 @@ function NavBtn({ active, onClick, icon, label, badge }) {
         <span style={{
           minWidth: 19, height: 19, borderRadius: 99,
           background: active ? 'var(--meadow)' : 'var(--hover)',
-          color: active ? 'var(--surface)' : 'var(--muted)',
+          color: active ? '#fff' : 'var(--muted)',
           fontSize: 10, fontWeight: 700,
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px',
         }}>{badge}</span>

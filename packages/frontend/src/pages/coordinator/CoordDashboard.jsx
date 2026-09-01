@@ -320,7 +320,7 @@ function SetupChecklist({ steps, onNavigate, loading }) {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 12, fontWeight: 800, fontFamily: "'Sora',sans-serif",
                 background: step.done ? G.meadow : i === nextIdx ? G.meadowSoft : G.hover,
-                color: step.done ? 'var(--surface)' : i === nextIdx ? G.meadowDeep : G.muted2,
+                color: step.done ? '#fff' : i === nextIdx ? G.meadowDeep : G.muted2,
                 border: i === nextIdx && !step.done ? `2px solid ${G.meadow}` : '2px solid transparent',
               }}>
                 {step.done

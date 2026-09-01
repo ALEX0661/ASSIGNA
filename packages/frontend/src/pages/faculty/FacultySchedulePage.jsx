@@ -240,7 +240,7 @@ function Badge({ children, type = 'default', size = 'sm' }) {
     lec:     { bg:'rgba(37, 99, 235, 0.1)', color:'#60A5FA', border:'#BFDBFE' },
     lab:     { bg:'rgba(217, 119, 6, 0.05)', color:'#F59E0B', border:'rgba(245, 158, 11, 0.25)' },
     room:    { bg: T.greenSoft, color: T.greenDeep, border: T.greenBorder },
-    merged:  { bg:'var(--meadow-soft)', color:'var(--meadow)', border:'#A7F3D0' },
+    merged:  { bg:'var(--meadow-soft)', color:'var(--meadow)', border:'var(--meadow-border)' },
     conflict:{ bg:'rgba(239, 68, 68, 0.05)', color:'#EF4444', border:'rgba(220, 38, 38, 0.25)' },
     default: { bg: T.bgAlt, color: T.textMid, border: T.border },
   }
@@ -924,7 +924,7 @@ export default function FacultySchedulePage() {
                   onClick={() => setViewMode(mode)}
                   style={{
                     background: viewMode === mode ? 'rgba(255,255,255,0.22)' : 'transparent',
-                    color:      viewMode === mode ? 'var(--surface)' : 'rgba(255,255,255,0.50)',
+                    color: viewMode === mode ? '#fff' : 'rgba(255,255,255,0.50)',
                     boxShadow:  viewMode === mode ? '0 1px 4px rgba(0,0,0,0.15)' : 'none',
                   }}
                 >{icon}</button>

@@ -70,7 +70,7 @@ function Pill({ label, value, selectedSet, onToggle, color }) {
       padding:'4px 11px', borderRadius:99, fontSize:11.5,
       fontWeight: active ? 700 : 500,
       background: active ? c : 'var(--surface)',
-      color: active ? 'var(--surface)' : 'var(--muted)',
+      color: active ? '#fff' : 'var(--muted)',
       border: `1.5px solid ${active ? 'transparent' : 'var(--border)'}`,
       cursor:'pointer', transition:'all .12s', whiteSpace:'nowrap',
       boxShadow: active ? `0 2px 6px ${c}44` : 'none',
