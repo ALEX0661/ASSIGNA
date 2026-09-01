@@ -397,7 +397,7 @@ export default function LoginPage() {
       <div className="login-panel">
         <div className="panel-inner">
           <div className="panel-brand">
-            <img src={icon1Img} alt="Assigna" />
+            <img src={icon1Img} alt="Assigna" className="no-theme-filter" />
             <div>
               <span className="panel-brand-name">Assigna</span>
               <span className="panel-brand-sub">Academic Scheduler</span>
@@ -422,7 +422,7 @@ export default function LoginPage() {
         <div className="login-card">
 
           <div className="card-logo-wrap">
-            <img src={logoImg} alt="Assigna" />
+            <img src={logoImg} alt="Assigna" className="no-theme-filter" />
           </div>
 
           <div className="card-heading">

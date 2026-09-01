@@ -95,7 +95,7 @@ function LandingChoice({ onPick, pendingCount, queueActive }) {
                 <div className="sh-choice-head" style={{ background: c.accent, padding: '32px 26px 26px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                     <div className="sh-choice-icon" style={{ width: 52, height: 52, borderRadius: 13, background: 'rgba(255,255,255,0.22)' }}>
-                      <img src={c.image} alt={c.title} style={{ width: 32, height: 32, objectFit: 'contain' }} />
+                      <img src={c.image} alt={c.title} className="no-theme-filter" style={{ width: 32, height: 32, objectFit: 'contain' }} />
                     </div>
                     <div className="sh-choice-title" style={{ fontSize: 18 }}>{c.title}</div>
                   </div>
