@@ -379,7 +379,7 @@ function SetupChecklist({ steps, onNavigate, loading }) {
         <div style={{ borderRadius:'0 0 12px 12px', overflow:'hidden' }}>
           {steps.map((step, i) => (
             <div key={step.label}
-              style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderBottom: i < steps.length - 1 ? '1px solid var(--hover)' : 'none', background: step.done ? '#F8FBF9' : i === nextIdx ? 'var(--meadow-soft)' : '#ffffff' }}
+              style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderBottom: i < steps.length - 1 ? '1px solid var(--hover)' : 'none', background: step.done ? 'var(--hover)' : i === nextIdx ? 'var(--meadow-soft)' : 'var(--surface)' }}
             >
               {/* Circle */}
               <div style={{
