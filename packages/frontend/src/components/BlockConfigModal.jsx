@@ -3,20 +3,20 @@ import { getCourses, getBlockConfigs, saveBlockConfigs, applyBlockConfigs } from
 
 /* ── Design tokens (Unified Green Theme) ── */
 const G = {
-  meadow:       '#15803D',
-  meadowDeep:   '#0F5C2C',
-  meadowMid:    '#166534',
-  meadowSoft:   '#DCFCE7',
-  meadowBorder: '#BBF7D0',
-  ink:          '#0E2A20',
+  meadow: 'var(--meadow, var(--meadow))',
+  meadowDeep:   'var(--meadow-deep)',
+  meadowMid:    'var(--meadow-mid)',
+  meadowSoft:   'var(--meadow-soft)',
+  meadowBorder: 'var(--meadow-border)',
+  ink: 'var(--ink, #0E2A20)',
   inkMid:       '#1C3D2A',
-  muted:        '#4B7060',
-  muted2:       '#6B8C7A',
-  border:       '#D8E8DF',
-  borderLight:  '#EBF4EF',
-  bg:           '#F2F7F4',
-  surface:      '#FFFFFF',
-  hover:        '#EBF4EF',
+  muted: 'var(--muted, #4B7060)',
+  muted2: 'var(--muted2, #6B8C7A)',
+  border:       'var(--border)',
+  borderLight:  'var(--hover)',
+  bg: 'var(--bg, #F2F7F4)',
+  surface: 'var(--surface, #FFFFFF)',
+  hover:        'var(--hover)',
 }
 
 // Helper for ordinal numbers (1st, 2nd, etc.)
@@ -46,13 +46,13 @@ if (!document.getElementById('block-config-modal-style')) {
     /* Minimalist Stepper */
     .bc-stepper-container {
       display: inline-flex; align-items: center;
-      background: #fff; border: 1.5px solid ${G.border};
+      background: var(--surface); border: 1.5px solid ${G.border};
       border-radius: 10px; overflow: hidden;
       transition: all 0.2s;
     }
     .bc-stepper-container:focus-within {
-      border-color: ${G.meadow}; background: #fff;
-      box-shadow: 0 0 0 3px rgba(21,128,61,0.1);
+      border-color: ${G.meadow}; background: var(--surface);
+      box-shadow: 0 0 0 3px rgba(0,0,0,0.1);
     }
     .bc-stepper-btn {
       width: 32px; height: 32px; background: transparent;
@@ -76,14 +76,14 @@ if (!document.getElementById('block-config-modal-style')) {
     /* Modern Cards */
     .bc-group-card {
       border: 1.5px solid ${G.border}; border-radius: 14px;
-      background: #ffffff; padding: 16px;
+      background: var(--surface); padding: 16px;
       display: flex; align-items: center; justify-content: space-between; gap: 16px;
       transition: all 0.2s ease;
       box-shadow: 0 1px 2px rgba(0,0,0,0.02);
     }
     .bc-group-card:hover { 
       border-color: ${G.meadowBorder}; 
-      box-shadow: 0 4px 12px rgba(21,128,61,0.06); 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06); 
       transform: translateY(-1px);
     }
     
@@ -200,16 +200,16 @@ export default function BlockConfigModal({ semester, onClose, onApplied }) {
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div style={{
-        background:'#ffffff', borderRadius:16, width:'100%', maxWidth:720,
+        background: 'var(--surface)', borderRadius:16, width:'100%', maxWidth:720,
         maxHeight:'85vh', display:'flex', flexDirection:'column',
         fontFamily:"'Poppins', 'Inter', sans-serif",
-        boxShadow:'0 24px 48px rgba(10,46,28,0.25)',
+        boxShadow:'0 24px 48px rgba(0,0,0,0.25)',
         animation:'bcSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
         overflow: 'hidden'
       }}>
 
         {/* ── Header ── */}
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', padding:'24px 28px', borderBottom:`1px solid ${G.border}`, flexShrink:0, background: '#fff' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', padding:'24px 28px', borderBottom:`1px solid ${G.border}`, flexShrink:0, background: 'var(--surface)' }}>
           <div>
             <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:4 }}>
               <div style={{ width:36, height:36, borderRadius:10, background:G.meadowSoft, border:`1px solid ${G.meadowBorder}`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color:G.meadowDeep }}>
@@ -314,7 +314,7 @@ export default function BlockConfigModal({ semester, onClose, onApplied }) {
         </div>
 
         {/* ── Footer ── */}
-        <div style={{ padding:'20px 28px', borderTop:`1px solid ${G.border}`, display:'flex', alignItems:'center', gap:12, flexShrink:0, background:'#ffffff' }}>
+        <div style={{ padding:'20px 28px', borderTop:`1px solid ${G.border}`, display:'flex', alignItems:'center', gap:12, flexShrink:0, background: 'var(--surface)' }}>
           <p style={{ fontSize:13, color:G.muted, margin:0, flex:1, fontWeight: 500 }}>
             {applied ? "Sections mapped successfully." : "Apply block configs to courses in this semester."}
           </p>
@@ -322,7 +322,7 @@ export default function BlockConfigModal({ semester, onClose, onApplied }) {
           <button
             onClick={onClose}
             className="bc-cancel-btn"
-            style={{ padding:'10px 20px', borderRadius:10, border:`1px solid ${G.border}`, fontFamily:"'Poppins', 'Inter', sans-serif", fontSize:13, fontWeight:600, cursor:'pointer', background:'#fff', color:G.muted, transition:'all .2s' }}
+            style={{ padding:'10px 20px', borderRadius:10, border:`1px solid ${G.border}`, fontFamily:"'Poppins', 'Inter', sans-serif", fontSize:13, fontWeight:600, cursor:'pointer', background: 'var(--surface)', color:G.muted, transition:'all .2s' }}
           >
             Cancel
           </button>
@@ -335,7 +335,7 @@ export default function BlockConfigModal({ semester, onClose, onApplied }) {
               borderRadius:10, border:'none', fontFamily:"'Poppins', 'Inter', sans-serif",
               fontSize:13, fontWeight:600, cursor: applying ? 'not-allowed' : 'pointer',
               background: applied ? G.inkMid : G.meadow, color:'#ffffff', 
-              boxShadow: applying ? 'none' : applied ? 'none' : '0 4px 14px rgba(21,128,61,0.25)',
+              boxShadow: applying ? 'none' : applied ? 'none' : '0 4px 14px rgba(0,0,0,0.25)',
               opacity: applying ? 0.7 : 1, transition:'all .2s',
             }}
             onMouseOver={e => { if(!applying && !applied) e.currentTarget.style.background = G.meadowDeep }}

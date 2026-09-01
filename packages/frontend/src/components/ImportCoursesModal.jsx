@@ -28,65 +28,65 @@ if (!document.getElementById('import-modal-style')) {
       padding:9px 20px; border-radius:10px; border:none;
       font-family:'Poppins',sans-serif; font-size:12.5px; font-weight:600;
       cursor:pointer; transition:all .15s;
-      background:linear-gradient(135deg,#2E9E5B,#1F7A45); color:#fff;
-      box-shadow:0 3px 12px rgba(46,158,91,.32);
+      background:linear-gradient(135deg,var(--meadow),var(--meadow-deep)); color:#fff;
+      box-shadow:0 3px 12px rgba(0,0,0,.32);
     }
-    .im-primary:hover:not(:disabled) { background:linear-gradient(135deg,#4BB377,#27914F); transform:translateY(-1px); box-shadow:0 5px 18px rgba(46,158,91,.4); }
+    .im-primary:hover:not(:disabled) { background:linear-gradient(135deg,var(--meadow-mid),var(--meadow-deep)); transform:translateY(-1px); box-shadow:0 5px 18px rgba(0,0,0,.4); }
     .im-primary:active:not(:disabled) { transform:translateY(0); }
     .im-primary:disabled { opacity:.45; cursor:default; transform:none; box-shadow:none; }
 
     .im-ghost {
       display:inline-flex; align-items:center; gap:6px;
       padding:8px 15px; border-radius:10px;
-      border:1.5px solid #DCF3E4; font-family:'Poppins',sans-serif;
+      border:1.5px solid var(--meadow-border); font-family:'Poppins',sans-serif;
       font-size:12px; font-weight:500; cursor:pointer;
-      background:#fff; color:#5C8A6E; transition:all .13s;
+      background:#fff; color:var(--muted); transition:all .13s;
     }
-    .im-ghost:hover:not(:disabled) { background:#EFFAF4; border-color:#9EDDB7; color:#1F7A45; }
+    .im-ghost:hover:not(:disabled) { background:var(--meadow-soft); border-color:var(--meadow-border); color:var(--meadow-deep); }
     .im-ghost:disabled { opacity:.45; cursor:default; }
 
     .im-download {
       display:inline-flex; align-items:center; gap:6px;
       padding:7px 14px; border-radius:9px;
-      border:1.5px solid #DCF3E4; font-family:'Poppins',sans-serif;
+      border:1.5px solid var(--meadow-border); font-family:'Poppins',sans-serif;
       font-size:11.5px; font-weight:600; cursor:pointer;
-      background:#F1FBF5; color:#2E9E5B; transition:all .13s;
+      background:var(--meadow-soft); color:var(--meadow); transition:all .13s;
     }
-    .im-download:hover { background:#EFFAF4; border-color:#9EDDB7; color:#1F7A45; transform:translateY(-1px); box-shadow:0 3px 10px rgba(46,158,91,.15); }
+    .im-download:hover { background:var(--meadow-soft); border-color:var(--meadow-border); color:var(--meadow-deep); transform:translateY(-1px); box-shadow:0 3px 10px rgba(0,0,0,.15); }
     .im-download:active { transform:translateY(0); box-shadow:none; }
 
     .im-close {
       display: inline-flex; align-items: center; justify-content: center;
       width: 32px; height: 32px; border-radius: 8px;
-      border: 1.5px solid #DCF3E4; cursor: pointer;
-      background: #EFFAF4; color: #2E9E5B; transition: all 0.2s; flex-shrink: 0;
+      border: 1.5px solid var(--meadow-border); cursor: pointer;
+      background: var(--meadow-soft); color: var(--meadow); transition: all 0.2s; flex-shrink: 0;
       padding: 0;
     }
     .im-close:hover { background:#FFE8E8; border-color:#FECACA; color:#DC2626; }
 
     .im-sheet-btn {
       text-align:left; display:flex; align-items:center; gap:10px;
-      padding:12px 16px; border-radius:10px; border:1.5px solid #DCF3E4;
-      background:#F7FCF9; cursor:pointer; transition:all .13s;
-      font-family:'Poppins',sans-serif; font-size:13px; font-weight:600; color:#0E2A20;
+      padding:12px 16px; border-radius:10px; border:1.5px solid var(--meadow-border);
+      background:var(--bg); cursor:pointer; transition:all .13s;
+      font-family:'Poppins',sans-serif; font-size:13px; font-weight:600; color:var(--ink);
     }
-    .im-sheet-btn:hover:not(:disabled) { background:#EFFAF4; border-color:#9EDDB7; }
-    .im-sheet-btn.active { background:#EFFAF4; border-color:#6FC795; }
+    .im-sheet-btn:hover:not(:disabled) { background:var(--meadow-soft); border-color:var(--meadow-border); }
+    .im-sheet-btn.active { background:var(--meadow-soft); border-color:var(--meadow-mid); }
     .im-sheet-btn:disabled { opacity:.5; cursor:wait; }
 
     .im-row-save {
-      padding: 3px 9px; border-radius: 7px; border: 1.5px solid #6FC795;
-      background: #EFFAF4; color: #1F7A45; font-family: 'Poppins',sans-serif;
+      padding: 3px 9px; border-radius: 7px; border: 1.5px solid var(--meadow-mid);
+      background: var(--meadow-soft); color: var(--meadow-deep); font-family: 'Poppins',sans-serif;
       font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.12s;
     }
-    .im-row-save:hover { background: #E5F9EC; }
+    .im-row-save:hover { background: var(--meadow-soft); }
 
     .im-row-cancel {
-      padding: 3px 9px; border-radius: 7px; border: 1.5px solid #DCF3E4;
-      background: #fff; color: #5C8A6E; font-family: 'Poppins',sans-serif;
+      padding: 3px 9px; border-radius: 7px; border: 1.5px solid var(--meadow-border);
+      background: #fff; color: var(--muted); font-family: 'Poppins',sans-serif;
       font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.12s;
     }
-    .im-row-cancel:hover { background: #EFFAF4; border-color: #9EDDB7; color: #2E9E5B; }
+    .im-row-cancel:hover { background: var(--meadow-soft); border-color: var(--meadow-border); color: var(--meadow); }
 
     .im-remove {
       width: 24px; height: 24px; border-radius: 7px;
@@ -106,23 +106,23 @@ if (!document.getElementById('import-modal-style')) {
     /* ── Block Config Stepper ── */
     .im-stepper {
       display: inline-flex; align-items: center;
-      background: #F8F7FD; border: 1.5px solid #DCF3E4;
+      background: #F8F7FD; border: 1.5px solid var(--meadow-border);
       border-radius: 10px; overflow: hidden;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .im-stepper:focus-within { border-color: #2E9E5B; box-shadow: 0 0 0 3px rgba(46,158,91,0.1); }
+    .im-stepper:focus-within { border-color: var(--meadow); box-shadow: 0 0 0 3px rgba(0,0,0,0.1); }
     .im-stepper-btn {
       width: 32px; height: 32px; background: transparent;
-      border: none; color: #2E9E5B; font-size: 16px; font-weight: 500;
+      border: none; color: var(--meadow); font-size: 16px; font-weight: 500;
       cursor: pointer; transition: all 0.15s;
       display: flex; align-items: center; justify-content: center;
     }
-    .im-stepper-btn:hover:not(:disabled) { background: #E5F9EC; }
+    .im-stepper-btn:hover:not(:disabled) { background: var(--meadow-soft); }
     .im-stepper-btn:active:not(:disabled) { background: #E2DDF5; }
     .im-stepper-btn:disabled { opacity: 0.3; cursor: not-allowed; }
     .im-stepper-input {
       width: 36px; text-align: center; border: none; background: transparent;
-      font-weight: 600; font-size: 14px; color: #0E2A20;
+      font-weight: 600; font-size: 14px; color: var(--ink);
       font-family: 'Poppins', sans-serif; outline: none; -moz-appearance: textfield;
     }
     .im-stepper-input::-webkit-outer-spin-button,
@@ -130,13 +130,13 @@ if (!document.getElementById('import-modal-style')) {
 
     /* ── Block Config Group Card ── */
     .im-group-card {
-      border: 1.5px solid #DCF3E4; border-radius: 14px; background: #ffffff;
+      border: 1.5px solid var(--meadow-border); border-radius: 14px; background: #ffffff;
       padding: 14px 16px; display: flex; align-items: center;
       justify-content: space-between; gap: 16px; transition: all 0.2s ease;
     }
     .im-group-card:hover {
-      border-color: #9EDDB7;
-      box-shadow: 0 4px 20px rgba(46,158,91,0.06);
+      border-color: var(--meadow-border);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
       transform: translateY(-1px);
     }
   `
@@ -154,7 +154,7 @@ function downloadTemplate() {
 }
 
 const Spin = () => (
-  <div style={{ width:16, height:16, border:'2px solid #DCF3E4', borderTopColor:'#2E9E5B', borderRadius:'50%', animation:'imSpin .8s linear infinite', flexShrink:0 }} />
+  <div style={{ width:16, height:16, border:'2px solid var(--meadow-border)', borderTopColor:'var(--meadow)', borderRadius:'50%', animation:'imSpin .8s linear infinite', flexShrink:0 }} />
 )
 
 const ErrBox = ({ msg }) => !msg ? null : (
@@ -165,7 +165,7 @@ const ErrBox = ({ msg }) => !msg ? null : (
 )
 
 const HintBox = ({ children }) => (
-  <div style={{ background:'#F1FBF5', border:'1px solid #DCF3E4', borderRadius:10, padding:'11px 14px', fontSize:12, color:'#5C8A6E', lineHeight:1.65 }}>
+  <div style={{ background:'var(--meadow-soft)', border:'1px solid var(--meadow-border)', borderRadius:10, padding:'11px 14px', fontSize:12, color:'var(--muted)', lineHeight:1.65 }}>
     {children}
   </div>
 )
@@ -174,29 +174,29 @@ const HintBox = ({ children }) => (
 function Steps({ current }) {
   const steps = ['Upload', 'Select Sheet', 'Configure Blocks', 'Review']
   return (
-    <div style={{ display:'flex', alignItems:'center', marginBottom:26, padding:'0 2px' }}>
+    <div style={{ display:'flex', alignItems:'center', marginBottom:36, padding:'0 16px' }}>
       {steps.map((label, i) => {
         const idx = i + 1, done = idx < current, active = idx === current
         return (
           <div key={label} style={{ display:'flex', alignItems:'center', flex: i < steps.length - 1 ? 1 : 'none' }}>
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
+            <div style={{ position: 'relative', display:'flex', flexDirection:'column', alignItems:'center' }}>
               <div style={{
                 width:30, height:30, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center',
                 fontSize:12, fontWeight:700, flexShrink:0, transition:'all .2s',
-                background: done ? 'linear-gradient(135deg,#2E9E5B,#1F7A45)' : active ? 'linear-gradient(135deg,#6FC795,#2E9E5B)' : '#DCF3E4',
-                color: (done || active) ? '#fff' : '#A8D9BB',
-                boxShadow: active ? '0 3px 12px rgba(46,158,91,.35)' : done ? '0 2px 8px rgba(46,158,91,.2)' : 'none',
+                background: done ? 'var(--meadow-deep)' : active ? 'var(--meadow)' : 'var(--meadow-soft)',
+                color: (done || active) ? '#fff' : 'var(--meadow)',
+                boxShadow: active ? '0 3px 12px var(--meadow-border)' : 'none',
               }}>
                 {done
                   ? <svg width="12" height="9" viewBox="0 0 12 9" fill="none"><polyline points="1,4.5 4.5,8 11,1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   : idx}
               </div>
-              <span style={{ fontSize:10.5, fontWeight:active?700:500, color:active?'#2E9E5B':done?'#6FC795':'#A8D9BB', whiteSpace:'nowrap', letterSpacing:'.3px' }}>
+              <span style={{ position: 'absolute', top: 38, fontSize:10.5, fontWeight:active?700:500, color:active?'var(--meadow)':done?'var(--meadow-deep)':'var(--muted)', whiteSpace:'nowrap', letterSpacing:'.3px' }}>
                 {label}
               </span>
             </div>
             {i < steps.length - 1 && (
-              <div style={{ flex:1, height:2, margin:'0 8px 18px', borderRadius:99, background: done ? 'linear-gradient(90deg,#2E9E5B,#6FC795)' : '#DCF3E4', transition:'background .3s' }} />
+              <div style={{ flex:1, height:2, margin:'0 12px', borderRadius:99, background: done ? 'var(--meadow)' : 'var(--meadow-border)', transition:'background .3s' }} />
             )}
           </div>
         )
@@ -250,30 +250,30 @@ function UploadStep({ onUploaded }) {
         onDrop={e => { e.preventDefault(); setDragging(false); processFile(e.dataTransfer.files[0]) }}
         onClick={() => !loading && inputRef.current?.click()}
         style={{
-          border:`2px dashed ${dragging ? '#2E9E5B' : '#9EDDB7'}`, borderRadius:14,
+          border:`2px dashed ${dragging ? 'var(--meadow)' : 'var(--meadow-border)'}`, borderRadius:14,
           padding:'44px 24px', textAlign:'center',
-          background: dragging ? '#F1FBF5' : '#F7FCF9',
+          background: dragging ? 'var(--meadow-soft)' : 'var(--bg)',
           cursor: loading ? 'wait' : 'pointer', transition:'all .15s',
         }}
       >
         {loading ? (
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
-            <div style={{ width:40, height:40, borderRadius:'50%', border:'3px solid #DCF3E4', borderTopColor:'#2E9E5B', animation:'imSpin 0.8s linear infinite' }} />
-            <p style={{ fontSize:13, color:'#5C8A6E', fontWeight:500, margin:0 }}>Reading file…</p>
+            <div style={{ width:40, height:40, borderRadius:'50%', border:'3px solid var(--meadow-border)', borderTopColor:'var(--meadow)', animation:'imSpin 0.8s linear infinite' }} />
+            <p style={{ fontSize:13, color:'var(--muted)', fontWeight:500, margin:0 }}>Reading file…</p>
           </div>
         ) : (
           <>
-            <div style={{ width:54, height:54, margin:'0 auto 14px', borderRadius:14, display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s', background:dragging?'linear-gradient(135deg,#2E9E5B,#1F7A45)':'linear-gradient(135deg,#E5F9EC,#E0D9F7)', boxShadow:dragging?'0 6px 20px rgba(46,158,91,0.35)':'none' }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={dragging?'#fff':'#2E9E5B'} strokeWidth="2">
+            <div style={{ width:54, height:54, margin:'0 auto 14px', borderRadius:14, display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s', background:dragging?'linear-gradient(135deg,var(--meadow),var(--meadow-deep))':'linear-gradient(135deg,var(--meadow-soft),#E0D9F7)', boxShadow:dragging?'0 6px 20px rgba(0,0,0,0.35)':'none' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={dragging?'#fff':'var(--meadow)'} strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
             </div>
-            <p style={{ fontWeight:700, fontSize:14, color:'#0E2A20', marginBottom:4 }}>
+            <p style={{ fontWeight:700, fontSize:14, color:'var(--ink)', marginBottom:4 }}>
               {dragging ? 'Drop it here!' : 'Drop your Course List Excel file'}
             </p>
-            <p style={{ fontSize:12, color:'#7DAB8E', margin:0 }}>
-              or <span style={{ color:'#2E9E5B', fontWeight:600 }}>click to browse</span> · .xlsx or .xls
+            <p style={{ fontSize:12, color:'var(--muted)', margin:0 }}>
+              or <span style={{ color:'var(--meadow)', fontWeight:600 }}>click to browse</span> · .xlsx or .xls
             </p>
           </>
         )}
@@ -292,7 +292,7 @@ function UploadStep({ onUploaded }) {
       )}
 
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
-        <p style={{ fontSize:11.5, color:'#7DAB8E', margin:0, lineHeight:1.5 }}>
+        <p style={{ fontSize:11.5, color:'var(--muted)', margin:0, lineHeight:1.5 }}>
           Official CCS Course List template only · Semester read from sheet name
         </p>
         <button
@@ -319,8 +319,8 @@ const SEM_DETECT_MAP = [
   { patterns: ['midyear', 'mid year', 'mid-year', 'summer'], value: 'Midyear' },
 ]
 const SEM_BADGE = {
-  '1st Semester': { bg:'#E5F9EC', color:'#2E9E5B', border:'#9EDDB7', short:'1st Sem' },
-  '2nd Semester': { bg:'#E6FAF3', color:'#059669', border:'#A7F3D0', short:'2nd Sem' },
+  '1st Semester': { bg:'var(--meadow-soft)', color:'var(--meadow)', border:'var(--meadow-border)', short:'1st Sem' },
+  '2nd Semester': { bg:'#E6FAF3', color:'var(--meadow)', border:'#A7F3D0', short:'2nd Sem' },
   'Midyear':      { bg:'#FEF3CD', color:'#D97706', border:'#FCD34D', short:'Midyear' },
 }
 function detectSemester(sheetName) {
@@ -388,9 +388,9 @@ function SheetSelectionStep({ sheets, fileData, lockedProgram, onParsed, onBack 
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-      <p style={{ fontSize:13, color:'#5C8A6E', margin:0 }}>
+      <p style={{ fontSize:13, color:'var(--muted)', margin:0 }}>
         Select the sheet(s) that contain course data. You can import all at once.
-        {lockedProgram && <> Only <strong style={{ color:'#0E2A20' }}>{lockedProgram}</strong> courses will be pulled in — other programs in the sheet are skipped automatically.</>}
+        {lockedProgram && <> Only <strong style={{ color:'var(--ink)' }}>{lockedProgram}</strong> courses will be pulled in — other programs in the sheet are skipped automatically.</>}
       </p>
 
       {sheets.length > 1 && (
@@ -398,10 +398,10 @@ function SheetSelectionStep({ sheets, fileData, lockedProgram, onParsed, onBack 
           onClick={handleImportAll}
           disabled={loading}
           className={`im-sheet-btn${active === '__all__' ? ' active' : ''}`}
-          style={{ background: active === '__all__' ? '#EFFAF4' : '#fff' }}
+          style={{ background: active === '__all__' ? 'var(--meadow-soft)' : '#fff' }}
         >
-          <div style={{ width:28, height:28, borderRadius:7, background:'#E5F9EC', display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2E9E5B" strokeWidth="2.5">
+          <div style={{ width:28, height:28, borderRadius:7, background:'var(--meadow-soft)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2.5">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
             </svg>
@@ -417,8 +417,8 @@ function SheetSelectionStep({ sheets, fileData, lockedProgram, onParsed, onBack 
           const isSelected = active === name
           return (
             <button key={name} onClick={() => handleSelect(name)} disabled={loading} className={`im-sheet-btn${isSelected ? ' active' : ''}`}>
-              <div style={{ width:28, height:28, borderRadius:7, background:'#F7FCF9', border:'1px solid #DCF3E4', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2E9E5B" strokeWidth="2">
+              <div style={{ width:28, height:28, borderRadius:7, background:'var(--bg)', border:'1px solid var(--meadow-border)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                   <polyline points="14 2 14 8 20 8"/>
                   <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
@@ -454,12 +454,12 @@ function SheetSelectionStep({ sheets, fileData, lockedProgram, onParsed, onBack 
 
 /* ─── Block config helpers ──────────────────────────────────────────────── */
 const ICM_PROG_META = {
-  'BSCS':      { color: '#2E9E5B', bg: '#E5F9EC' },
-  'BSIT':      { color: '#059669', bg: '#E6FAF3' },
+  'BSCS':      { color: 'var(--meadow)', bg: 'var(--meadow-soft)' },
+  'BSIT':      { color: 'var(--meadow)', bg: '#E6FAF3' },
   'BSEMC-GD':  { color: '#D97706', bg: '#FEF3CD' },
   'BSEMC-DAT': { color: '#DC2626', bg: '#FFF5F5' },
 }
-const ICM_PROG_META_DEFAULT = { color: '#2E9E5B', bg: '#E5F9EC' }
+const ICM_PROG_META_DEFAULT = { color: 'var(--meadow)', bg: 'var(--meadow-soft)' }
 
 function BlockStepper({ value, onChange }) {
   const num = value === '' ? '' : Number(value)
@@ -516,21 +516,21 @@ function BlockConfigStep({ courses, onBack, onSubmit }) {
   }
 
   const semBadge = {
-    '1st Semester': { bg:'#E5F9EC', color:'#2E9E5B', short:'1st Sem' },
-    '2nd Semester': { bg:'#E6FAF3', color:'#059669', short:'2nd Sem' },
+    '1st Semester': { bg:'var(--meadow-soft)', color:'var(--meadow)', short:'1st Sem' },
+    '2nd Semester': { bg:'#E6FAF3', color:'var(--meadow)', short:'2nd Sem' },
     'Midyear':      { bg:'#FEF3CD', color:'#D97706', short:'Midyear' },
   }
 
   return (
     <form onSubmit={handleSubmit} style={{ display:'flex', flexDirection:'column', gap:16 }}>
-      <p style={{ fontSize:13, color:'#5C8A6E', margin:0 }}>
+      <p style={{ fontSize:13, color:'var(--muted)', margin:0 }}>
         Set how many sections (blocks) exist for each program-year group.
       </p>
 
       {semesters.length > 1 && (
-        <div style={{ display:'flex', gap:3, background:'#EFFAF4', padding:4, borderRadius:10, border:'1px solid #DCF3E4' }}>
+        <div style={{ display:'flex', gap:3, background:'var(--meadow-soft)', padding:4, borderRadius:10, border:'1px solid var(--meadow-border)' }}>
           {semesters.map(sem => {
-            const badge = semBadge[sem] || { bg:'#EFFAF4', color:'#5C8A6E', short: sem }
+            const badge = semBadge[sem] || { bg:'var(--meadow-soft)', color:'var(--muted)', short: sem }
             const count = allGroups.filter(g => g.semester === sem).length
             return (
               <button key={sem} type="button" onClick={() => setActiveSem(sem)}
@@ -538,15 +538,15 @@ function BlockConfigStep({ courses, onBack, onSubmit }) {
                   display:'inline-flex', alignItems:'center', gap:5, padding:'6px 14px', borderRadius:8,
                   border:'none', fontFamily:'Poppins,sans-serif', fontSize:12, fontWeight:600, cursor:'pointer',
                   transition:'all 0.15s',
-                  background: activeSem === sem ? 'linear-gradient(135deg,#2E9E5B,#1F7A45)' : 'transparent',
-                  color: activeSem === sem ? '#fff' : '#5C8A6E',
-                  boxShadow: activeSem === sem ? '0 2px 8px rgba(46,158,91,0.25)' : 'none',
+                  background: activeSem === sem ? 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))' : 'transparent',
+                  color: activeSem === sem ? '#fff' : 'var(--muted)',
+                  boxShadow: activeSem === sem ? '0 2px 8px rgba(0,0,0,0.25)' : 'none',
                 }}>
                 {badge.short}
                 <span style={{
                   fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:99,
-                  background: activeSem === sem ? 'rgba(255,255,255,0.2)' : '#DCF3E4',
-                  color: activeSem === sem ? '#fff' : '#5C8A6E',
+                  background: activeSem === sem ? 'rgba(255,255,255,0.2)' : 'var(--meadow-border)',
+                  color: activeSem === sem ? '#fff' : 'var(--muted)',
                 }}>{count}</span>
               </button>
             )
@@ -554,7 +554,7 @@ function BlockConfigStep({ courses, onBack, onSubmit }) {
         </div>
       )}
 
-      <div style={{ display:'flex', flexDirection:'column', gap:20, background:'#F7FCF9', borderRadius:12, padding:16, border:'1px solid #DCF3E4' }}>
+      <div style={{ display:'flex', flexDirection:'column', gap:20, background:'var(--bg)', borderRadius:12, padding:16, border:'1px solid var(--meadow-border)' }}>
         {activePrograms.map(prog => {
           const meta = ICM_PROG_META[prog] || ICM_PROG_META_DEFAULT
           const progGroups = filteredGroups.filter(g => g.program === prog)
@@ -564,8 +564,8 @@ function BlockConfigStep({ courses, onBack, onSubmit }) {
                 <span style={{ fontSize:12, fontWeight:600, padding:'4px 12px', borderRadius:8, background: meta.bg, color: meta.color, border: `1px solid ${meta.color}20` }}>
                   {prog}
                 </span>
-                <div style={{ flex:1, height:1, background:'#DCF3E4' }} />
-                <span style={{ fontSize:12, color:'#7DAB8E', fontWeight:500 }}>
+                <div style={{ flex:1, height:1, background:'var(--meadow-border)' }} />
+                <span style={{ fontSize:12, color:'var(--muted)', fontWeight:500 }}>
                   {progGroups.reduce((s, g) => s + g.count, 0)} courses
                 </span>
               </div>
@@ -575,10 +575,10 @@ function BlockConfigStep({ courses, onBack, onSubmit }) {
                     <div style={{ display:'flex', gap:12, alignItems:'center' }}>
                       <div style={{ width:4, height:32, borderRadius:4, background: meta.color, flexShrink:0 }} />
                       <div>
-                        <div style={{ fontSize:14, fontWeight:600, color:'#0E2A20', marginBottom:2 }}>
+                        <div style={{ fontSize:14, fontWeight:600, color:'var(--ink)', marginBottom:2 }}>
                           {ORDINAL(g.yearLevel)} Year
                         </div>
-                        <div style={{ fontSize:12, color:'#5C8A6E' }}>
+                        <div style={{ fontSize:12, color:'var(--muted)' }}>
                           {g.count} course{g.count !== 1 ? 's' : ''}
                         </div>
                       </div>
@@ -619,22 +619,22 @@ function EditableRow({ course, invalid, lockedProgram, onEdit, onRemove }) {
   const cellInp = (field, opts={}) => (
     <input value={draft[field]??''} onChange={e=>setDraft(d=>({...d,[field]:e.target.value}))}
       onClick={e=>e.stopPropagation()}
-      style={{ width:'100%', minWidth:opts.wide?100:52, fontSize:12, padding:'3px 6px', borderRadius:6, border:'1.5px solid #9EDDB7', fontFamily:'Poppins,sans-serif', outline:'none' }}
+      style={{ width:'100%', minWidth:opts.wide?100:52, fontSize:12, padding:'3px 6px', borderRadius:6, border:'1.5px solid var(--meadow-border)', fontFamily:'Poppins,sans-serif', outline:'none' }}
       type={opts.number?'number':'text'} min={opts.min} />
   )
 
   if (editing) return (
-    <tr style={{ background:'#F1FBF5' }}>
+    <tr style={{ background:'var(--meadow-soft)' }}>
       <td style={{ padding:'6px 8px' }}>{cellInp('courseCode')}</td>
       <td style={{ padding:'6px 8px' }}>{cellInp('title',{wide:true})}</td>
       <td style={{ padding:'6px 8px' }}>
         {lockedProgram ? (
-          <span style={{ display:'inline-block', padding:'3px 8px', background:'#DCF3E4', color:'#1F7A45', borderRadius:6, fontSize:11.5, fontWeight:700 }} title="Locked to your program">
+          <span style={{ display:'inline-block', padding:'3px 8px', background:'var(--meadow-border)', color:'var(--meadow-deep)', borderRadius:6, fontSize:11.5, fontWeight:700 }} title="Locked to your program">
             {draft.program}
           </span>
         ) : (
           <select value={draft.program} onChange={e=>setDraft(d=>({...d,program:e.target.value}))} onClick={e=>e.stopPropagation()}
-            style={{ fontSize:12, padding:'3px 6px', borderRadius:6, border:'1.5px solid #9EDDB7', fontFamily:'Poppins,sans-serif', outline:'none' }}>
+            style={{ fontSize:12, padding:'3px 6px', borderRadius:6, border:'1.5px solid var(--meadow-border)', fontFamily:'Poppins,sans-serif', outline:'none' }}>
             {PROGRAMS.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
         )}
@@ -655,20 +655,20 @@ function EditableRow({ course, invalid, lockedProgram, onEdit, onRemove }) {
   return (
     <tr onClick={()=>setEditing(true)} style={{ background:invalid?'#FFF8F8':'transparent', cursor:'pointer' }}>
       <td style={{ padding:'8px 8px' }}>
-        <span style={{ display:'inline-block', padding:'2px 8px', background:invalid?'#FFE8E8':'#E5F9EC', color:invalid?'#DC2626':'#2E9E5B', borderRadius:99, fontSize:11, fontWeight:700 }}>
+        <span style={{ display:'inline-block', padding:'2px 8px', background:invalid?'#FFE8E8':'var(--meadow-soft)', color:invalid?'#DC2626':'var(--meadow)', borderRadius:99, fontSize:11, fontWeight:700 }}>
           {course.courseCode||'—'}
         </span>
       </td>
-      <td style={{ padding:'8px 8px', fontWeight:500, color:'#0E2A20', fontSize:12.5 }}>{course.title||<span style={{color:'#FECACA'}}>—</span>}</td>
+      <td style={{ padding:'8px 8px', fontWeight:500, color:'var(--ink)', fontSize:12.5 }}>{course.title||<span style={{color:'#FECACA'}}>—</span>}</td>
       <td style={{ padding:'8px 8px' }}>
-        <span style={{ display:'inline-block', padding:'2px 8px', background:'#DCF3E4', color:'#1F7A45', borderRadius:99, fontSize:11, fontWeight:600 }}>{course.program||'—'}</span>
+        <span style={{ display:'inline-block', padding:'2px 8px', background:'var(--meadow-border)', color:'var(--meadow-deep)', borderRadius:99, fontSize:11, fontWeight:600 }}>{course.program||'—'}</span>
       </td>
-      <td style={{ textAlign:'center', fontSize:12, color:'#5C8A6E', padding:'8px 8px' }}>{course.yearLevel}</td>
-      <td style={{ textAlign:'center', fontSize:12, color:'#5C8A6E', padding:'8px 8px' }}>{course.unitsLecture}</td>
-      <td style={{ textAlign:'center', fontSize:12, color:'#5C8A6E', padding:'8px 8px' }}>{course.unitsLab}</td>
+      <td style={{ textAlign:'center', fontSize:12, color:'var(--muted)', padding:'8px 8px' }}>{course.yearLevel}</td>
+      <td style={{ textAlign:'center', fontSize:12, color:'var(--muted)', padding:'8px 8px' }}>{course.unitsLecture}</td>
+      <td style={{ textAlign:'center', fontSize:12, color:'var(--muted)', padding:'8px 8px' }}>{course.unitsLab}</td>
       <td style={{ textAlign:'center', padding:'8px 8px' }}>
         {Number(course.blocks)>=1
-          ? <span style={{ fontSize:12, fontWeight:700, color:'#2E9E5B' }}>{course.blocks}</span>
+          ? <span style={{ fontSize:12, fontWeight:700, color:'var(--meadow)' }}>{course.blocks}</span>
           : <span style={{ color:'#DC2626', fontWeight:700, fontSize:12 }}>!</span>}
       </td>
       <td style={{ padding:'8px 10px' }}>
@@ -708,36 +708,36 @@ function ReviewStep({ courses, lockedProgram, onBack, onCommit, onRemove, onEdit
       <div style={{ display:'flex', flexDirection:'column', gap:16, animation:'imPop .2s ease' }}>
         {allGood ? (
           <div style={{ textAlign:'center', padding:'36px 0', display:'flex', flexDirection:'column', alignItems:'center', gap:14 }}>
-            <div style={{ width:60, height:60, borderRadius:'50%', background:'linear-gradient(135deg,#2E9E5B,#1F7A45)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 6px 20px rgba(46,158,91,.35)' }}>
+            <div style={{ width:60, height:60, borderRadius:'50%', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 6px 20px rgba(0,0,0,.35)' }}>
               <svg width="26" height="20" viewBox="0 0 26 20" fill="none"><polyline points="2,10 9,17 24,2" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
             <div>
-              <p style={{ fontWeight:700, fontSize:17, color:'#0E2A20', marginBottom:5 }}>
+              <p style={{ fontWeight:700, fontSize:17, color:'var(--ink)', marginBottom:5 }}>
                 {results.saved} course{results.saved!==1?'s':''} imported!
               </p>
-              <p style={{ color:'#5C8A6E', fontSize:13, margin:0 }}>You can now use these courses in the scheduler.</p>
+              <p style={{ color:'var(--muted)', fontSize:13, margin:0 }}>You can now use these courses in the scheduler.</p>
             </div>
           </div>
         ) : (
           <>
             <div style={{ background:'#FEF3CD', border:'1px solid #F0C040', borderRadius:10, padding:'12px 16px' }}>
-              <p style={{ fontWeight:700, fontSize:13, color:'#0E2A20', marginBottom:3 }}>{results.saved} saved · {results.failed.length} failed</p>
-              <p style={{ fontSize:12, color:'#5C8A6E', margin:0 }}>These courses couldn't be saved — they may already exist or have invalid data.</p>
+              <p style={{ fontWeight:700, fontSize:13, color:'var(--ink)', marginBottom:3 }}>{results.saved} saved · {results.failed.length} failed</p>
+              <p style={{ fontSize:12, color:'var(--muted)', margin:0 }}>These courses couldn't be saved — they may already exist or have invalid data.</p>
             </div>
-            <div style={{ maxHeight:320, overflowY:'auto', overflowX:'auto', border:'1px solid #DCF3E4', borderRadius:10 }}>
+            <div style={{ maxHeight:320, overflowY:'auto', overflowX:'auto', border:'1px solid var(--meadow-border)', borderRadius:10 }}>
                <table style={{ width:'100%', borderCollapse:'collapse' }}>
-                <thead style={{ position:'sticky', top:0, background:'#F7FCF9', zIndex:1 }}>
+                <thead style={{ position:'sticky', top:0, background:'var(--bg)', zIndex:1 }}>
                   <tr>
-                    <th style={{ padding:'8px', fontSize:10.5, fontWeight:700, color:'#7DAB8E', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Code</th>
-                    <th style={{ padding:'8px', fontSize:10.5, fontWeight:700, color:'#7DAB8E', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Title</th>
-                    <th style={{ padding:'8px', fontSize:10.5, fontWeight:700, color:'#7DAB8E', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Program</th>
-                    <th style={{ padding:'8px', fontSize:10.5, fontWeight:700, color:'#7DAB8E', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Reason</th>
+                    <th style={{ padding:'8px', fontSize:10.5, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Code</th>
+                    <th style={{ padding:'8px', fontSize:10.5, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Title</th>
+                    <th style={{ padding:'8px', fontSize:10.5, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Program</th>
+                    <th style={{ padding:'8px', fontSize:10.5, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Reason</th>
                   </tr>
                 </thead>
                 <tbody>
                   {results.failed.map((f,i) => (
-                    <tr key={i} style={{ borderTop:'1px solid #DCF3E4' }}>
-                      <td style={{ padding:'8px' }}><span style={{ display:'inline-block', padding:'2px 8px', background:'#E5F9EC', color:'#2E9E5B', borderRadius:99, fontSize:11, fontWeight:700 }}>{f.course.courseCode}</span></td>
+                    <tr key={i} style={{ borderTop:'1px solid var(--meadow-border)' }}>
+                      <td style={{ padding:'8px' }}><span style={{ display:'inline-block', padding:'2px 8px', background:'var(--meadow-soft)', color:'var(--meadow)', borderRadius:99, fontSize:11, fontWeight:700 }}>{f.course.courseCode}</span></td>
                       <td style={{ padding:'8px', fontWeight:500, fontSize:12 }}>{f.course.title}</td>
                       <td style={{ padding:'8px', fontSize:12 }}>{f.course.program}</td>
                       <td style={{ padding:'8px', color:'#DC2626', fontSize:12 }}>{f.reason}</td>
@@ -760,8 +760,8 @@ function ReviewStep({ courses, lockedProgram, onBack, onCommit, onRemove, onEdit
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-          <span style={{ fontSize:13, color:'#5C8A6E' }}>
-            <strong style={{ color:'#0E2A20' }}>{courses.length}</strong> course{courses.length!==1?'s':''} ready
+          <span style={{ fontSize:13, color:'var(--muted)' }}>
+            <strong style={{ color:'var(--ink)' }}>{courses.length}</strong> course{courses.length!==1?'s':''} ready
           </span>
           {invalidCount > 0 && (
             <span style={{ background:'#FFF0F0', color:'#DC2626', fontSize:11, fontWeight:700, padding:'2px 9px', borderRadius:99, border:'1px solid #FECACA' }}>
@@ -769,11 +769,11 @@ function ReviewStep({ courses, lockedProgram, onBack, onCommit, onRemove, onEdit
             </span>
           )}
         </div>
-        <span style={{ fontSize:11, color:'#7DAB8E' }}>Click a row to edit</span>
+        <span style={{ fontSize:11, color:'var(--muted)' }}>Click a row to edit</span>
       </div>
 
       {semesters.length > 1 && (
-        <div style={{ display:'flex', gap:3, background:'#EFFAF4', padding:4, borderRadius:10, border:'1px solid #DCF3E4' }}>
+        <div style={{ display:'flex', gap:3, background:'var(--meadow-soft)', padding:4, borderRadius:10, border:'1px solid var(--meadow-border)' }}>
           {semesters.map(sem => {
             const count = courses.filter(c => (c.semester || '1st Semester') === sem).length
             return (
@@ -782,15 +782,15 @@ function ReviewStep({ courses, lockedProgram, onBack, onCommit, onRemove, onEdit
                   display:'inline-flex', alignItems:'center', gap:5, padding:'6px 14px', borderRadius:8,
                   border:'none', fontFamily:'Poppins,sans-serif', fontSize:12, fontWeight:600, cursor:'pointer',
                   transition:'all 0.15s',
-                  background: activeSem === sem ? 'linear-gradient(135deg,#2E9E5B,#1F7A45)' : 'transparent',
-                  color: activeSem === sem ? '#fff' : '#5C8A6E',
-                  boxShadow: activeSem === sem ? '0 2px 8px rgba(46,158,91,0.25)' : 'none',
+                  background: activeSem === sem ? 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))' : 'transparent',
+                  color: activeSem === sem ? '#fff' : 'var(--muted)',
+                  boxShadow: activeSem === sem ? '0 2px 8px rgba(0,0,0,0.25)' : 'none',
                 }}>
                 {(semBadge[sem] || { short: sem }).short}
                 <span style={{
                   fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:99,
-                  background: activeSem === sem ? 'rgba(255,255,255,0.2)' : '#DCF3E4',
-                  color: activeSem === sem ? '#fff' : '#5C8A6E',
+                  background: activeSem === sem ? 'rgba(255,255,255,0.2)' : 'var(--meadow-border)',
+                  color: activeSem === sem ? '#fff' : 'var(--muted)',
                 }}>{count}</span>
               </button>
             )
@@ -798,17 +798,17 @@ function ReviewStep({ courses, lockedProgram, onBack, onCommit, onRemove, onEdit
         </div>
       )}
 
-      <div style={{ maxHeight:200, overflowY:'auto', overflowX:'auto', border:'1px solid #DCF3E4', borderRadius:10 }}>
+      <div style={{ maxHeight:200, overflowY:'auto', overflowX:'auto', border:'1px solid var(--meadow-border)', borderRadius:10 }}>
         <table style={{ width:'100%', borderCollapse:'collapse' }}>
-          <thead style={{ position:'sticky', top:0, background:'#F7FCF9', zIndex:1 }}>
+          <thead style={{ position:'sticky', top:0, background:'var(--bg)', zIndex:1 }}>
             <tr>
-              <th style={{ padding:'8px 8px', fontSize:10.5, fontWeight:700, color:'#7DAB8E', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Code</th>
-              <th style={{ padding:'8px 8px', fontSize:10.5, fontWeight:700, color:'#7DAB8E', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Title</th>
-              <th style={{ padding:'8px 8px', fontSize:10.5, fontWeight:700, color:'#7DAB8E', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Program</th>
-              <th style={{ padding:'8px 8px', textAlign:'center', fontSize:10.5, fontWeight:700, color:'#7DAB8E', textTransform:'uppercase', letterSpacing:'.5px' }}>Yr</th>
-              <th style={{ padding:'8px 8px', textAlign:'center', fontSize:10.5, fontWeight:700, color:'#7DAB8E', textTransform:'uppercase', letterSpacing:'.5px' }}>Lec</th>
-              <th style={{ padding:'8px 8px', textAlign:'center', fontSize:10.5, fontWeight:700, color:'#7DAB8E', textTransform:'uppercase', letterSpacing:'.5px' }}>Lab</th>
-              <th style={{ padding:'8px 8px', textAlign:'center', fontSize:10.5, fontWeight:700, color:'#7DAB8E', textTransform:'uppercase', letterSpacing:'.5px' }}>Blk</th>
+              <th style={{ padding:'8px 8px', fontSize:10.5, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Code</th>
+              <th style={{ padding:'8px 8px', fontSize:10.5, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Title</th>
+              <th style={{ padding:'8px 8px', fontSize:10.5, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.5px', textAlign:'left' }}>Program</th>
+              <th style={{ padding:'8px 8px', textAlign:'center', fontSize:10.5, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.5px' }}>Yr</th>
+              <th style={{ padding:'8px 8px', textAlign:'center', fontSize:10.5, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.5px' }}>Lec</th>
+              <th style={{ padding:'8px 8px', textAlign:'center', fontSize:10.5, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.5px' }}>Lab</th>
+              <th style={{ padding:'8px 8px', textAlign:'center', fontSize:10.5, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.5px' }}>Blk</th>
               <th style={{ width:36 }}></th>
             </tr>
           </thead>
@@ -901,7 +901,7 @@ export default function ImportCoursesModal({ onClose, onImported, lockedProgram 
           background:'#fff', borderRadius:18, padding:'26px 28px',
           width: step === 4 ? 760 : step === 3 ? 700 : 540, maxWidth:'95vw', maxHeight:'90vh',
           overflowY:'auto', fontFamily:"'Poppins',sans-serif",
-          boxShadow:'0 24px 64px rgba(14,42,32,0.24),0 4px 16px rgba(46,158,91,0.12)',
+          boxShadow:'0 24px 64px rgba(14,42,32,0.24),0 4px 16px rgba(0,0,0,0.12)',
           transition:'width 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
         onClick={e => e.stopPropagation()}
@@ -910,17 +910,17 @@ export default function ImportCoursesModal({ onClose, onImported, lockedProgram 
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:22 }}>
           <div>
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4 }}>
-              <div style={{ width:34, height:34, borderRadius:10, background:'linear-gradient(135deg,#E5F9EC,#9EDDB7)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2E9E5B" strokeWidth="2">
+              <div style={{ width:34, height:34, borderRadius:10, background:'linear-gradient(135deg,var(--meadow-soft),var(--meadow-border))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                   <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
                 </svg>
               </div>
-              <h2 style={{ fontSize:16, fontWeight:700, color:'#0E2A20', margin:0 }}>{stepTitles[step]}</h2>
+              <h2 style={{ fontSize:16, fontWeight:700, color:'var(--ink)', margin:0 }}>{stepTitles[step]}</h2>
             </div>
-            <p style={{ fontSize:11.5, color:'#7DAB8E', margin:0, marginLeft:44 }}>
+            <p style={{ fontSize:11.5, color:'var(--muted)', margin:0, marginLeft:44 }}>
               Step {step} of 4 · Upload → Sheet → Sections → Review
-              {lockedProgram && <span style={{ marginLeft:8, display:'inline-block', padding:'1px 8px', background:'#E5F9EC', color:'#2E9E5B', borderRadius:99, fontSize:10.5, fontWeight:700 }}>Scoped to {lockedProgram}</span>}
+              {lockedProgram && <span style={{ marginLeft:8, display:'inline-block', padding:'1px 8px', background:'var(--meadow-soft)', color:'var(--meadow)', borderRadius:99, fontSize:10.5, fontWeight:700 }}>Scoped to {lockedProgram}</span>}
             </p>
           </div>
           <button className="im-close" onClick={onClose} aria-label="Close">

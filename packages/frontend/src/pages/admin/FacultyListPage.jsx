@@ -6,20 +6,20 @@ import { getFaculty, getArchivedFaculty, deleteFaculty, archiveFaculty, unarchiv
 
 /* ── Design tokens ── */
 const G = {
-  meadow:       '#15803D',
-  meadowDeep:   '#0F5C2C',
-  meadowMid:    '#166534',
-  meadowSoft:   '#DCFCE7',
-  meadowBorder: '#BBF7D0',
-  ink:          '#0E2A20',
+  meadow: 'var(--meadow, var(--meadow))',
+  meadowDeep:   'var(--meadow-deep)',
+  meadowMid:    'var(--meadow-mid)',
+  meadowSoft:   'var(--meadow-soft)',
+  meadowBorder: 'var(--meadow-border)',
+  ink: 'var(--ink, #0E2A20)',
   inkMid:       '#1C3D2A',
-  muted:        '#4B7060',
-  muted2:       '#6B8C7A',
-  border:       '#D8E8DF',
-  borderLight:  '#EBF4EF',
-  bg:           '#F2F7F4',
-  surface:      '#FFFFFF',
-  hover:        '#EBF4EF',
+  muted: 'var(--muted, #4B7060)',
+  muted2: 'var(--muted2, #6B8C7A)',
+  border:       'var(--border)',
+  borderLight:  'var(--hover)',
+  bg: 'var(--bg, #F2F7F4)',
+  surface: 'var(--surface, #FFFFFF)',
+  hover:        'var(--hover)',
 }
 
 /* ── Skeleton ── */
@@ -60,7 +60,7 @@ function Checkbox({ checked, indeterminate }) {
       background: active ? G.meadow : 'transparent',
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       transition: 'all 0.15s',
-      boxShadow: active ? '0 2px 6px rgba(21,128,61,0.3)' : 'none',
+      boxShadow: active ? '0 2px 6px rgba(0,0,0,0.3)' : 'none',
       pointerEvents: 'none',
     }}>
       {indeterminate && !checked && (
@@ -84,7 +84,7 @@ function TogglePill({ label, active, onClick }) {
       color: active ? '#fff' : G.muted,
       border: `1.5px solid ${active ? 'transparent' : G.border}`,
       cursor: 'pointer', transition: 'all 0.15s',
-      boxShadow: active ? '0 2px 8px rgba(21,128,61,0.28)' : 'none',
+      boxShadow: active ? '0 2px 8px rgba(0,0,0,0.28)' : 'none',
       whiteSpace: 'nowrap', fontFamily: "'Inter',sans-serif",
     }}>{label}</button>
   )
@@ -169,7 +169,7 @@ function ActionModal({ mode, name, count, onConfirm, onCancel, busy }) {
       btnBg: 'linear-gradient(135deg,#D97706,#B45309)', btnLabel: busy ? 'Archiving…' : isBulk ? `Archive ${count}` : 'Archive',
     },
     unarchive: {
-      iconBg: '#E6FAF3', iconStroke: '#059669',
+      iconBg: '#E6FAF3', iconStroke: 'var(--meadow)',
       iconPath: <><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></>,
       title: isBulk ? `Restore ${count} Faculty Members?` : 'Restore Faculty Member?',
       body: isBulk ? `These ${count} members will be moved back to the active roster.`
@@ -188,14 +188,14 @@ function ActionModal({ mode, name, count, onConfirm, onCancel, busy }) {
   const c = cfg[mode] || cfg.delete
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(10,30,18,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ background: '#fff', borderRadius: 18, padding: '28px 28px 24px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(10,30,18,0.22)', textAlign: 'center' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 18, padding: '28px 28px 24px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(10,30,18,0.22)', textAlign: 'center' }}>
         <div style={{ width: 52, height: 52, borderRadius: '50%', background: c.iconBg, margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.iconStroke} strokeWidth="2">{c.iconPath}</svg>
         </div>
         <div style={{ fontSize: 16, fontWeight: 700, color: G.ink, marginBottom: 8 }}>{c.title}</div>
         <div style={{ fontSize: 13, color: G.muted2, marginBottom: 24, lineHeight: 1.5 }}>{c.body}</div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onCancel} disabled={busy} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: '#fff', fontSize: 13, fontWeight: 600, color: G.muted, cursor: busy ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>Cancel</button>
+          <button onClick={onCancel} disabled={busy} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: 'var(--surface)', fontSize: 13, fontWeight: 600, color: G.muted, cursor: busy ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>Cancel</button>
           <button onClick={onConfirm} disabled={busy} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: c.btnBg, fontSize: 13, fontWeight: 700, color: '#fff', cursor: busy ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: busy ? 0.7 : 1 }}>{c.btnLabel}</button>
         </div>
       </div>
@@ -223,14 +223,14 @@ function FacultyCard({ faculty, courseTitleMap, selected, onSelect, onClick, onA
       onMouseLeave={() => setHovered(false)}
       onClick={onClick}
       style={{
-        background: '#fff', borderRadius: 12,
+        background: 'var(--surface)', borderRadius: 12,
         border: `1.5px solid ${selected ? G.meadow : hovered ? G.meadowBorder : G.border}`,
         cursor: 'pointer', overflow: 'hidden',
         opacity: isArchived ? 0.85 : 1,
         display: 'flex', flexDirection: 'column',
         boxShadow: selected
-          ? `0 0 0 3px rgba(21,128,61,0.14), 0 2px 8px rgba(10,46,28,0.08)`
-          : hovered ? `0 4px 16px rgba(10,46,28,0.10)` : `0 1px 4px rgba(10,46,28,0.05)`,
+          ? `0 0 0 3px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08)`
+          : hovered ? `0 4px 16px rgba(0,0,0,0.10)` : `0 1px 4px rgba(0,0,0,0.05)`,
         transform: hovered && !selected ? 'translateY(-2px)' : 'none',
         transition: 'all 0.15s ease',
         position: 'relative',
@@ -357,7 +357,7 @@ function FacultyCard({ faculty, courseTitleMap, selected, onSelect, onClick, onA
 /* ── Faculty Table (list view) ── */
 function FacultyTable({ faculty, selected, selectionMode, viewTab, onSelect, onSelectAll, allSelected, someSelected, onArchive, onUnarchive, onDelete, navigate }) {
   return (
-    <div style={{ background: '#fff', borderRadius: 12, border: `1.5px solid ${G.border}`, overflow: 'hidden', boxShadow: '0 2px 8px rgba(10,46,28,0.06)' }}>
+    <div style={{ background: 'var(--surface)', borderRadius: 12, border: `1.5px solid ${G.border}`, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
         <thead>
           <tr style={{ background: G.hover, borderBottom: `1.5px solid ${G.border}` }}>
@@ -511,12 +511,12 @@ function FilterPill({ label, count, active, onClick, icon }) {
     <button onClick={onClick} style={{
       padding: '6px 14px', borderRadius: 10, fontSize: 12,
       fontFamily: "'Inter',sans-serif", fontWeight: active ? 600 : 500,
-      background: active ? '#E5F9EC' : '#fff',
+      background: active ? 'var(--meadow-soft)' : '#fff',
       color: active ? G.meadowDeep : G.muted,
       border: `1px solid ${active ? G.meadowBorder : G.border}`,
       cursor: 'pointer', transition: 'all .15s',
       display: 'flex', alignItems: 'center', gap: 6,
-      boxShadow: active ? '0 2px 8px rgba(21,128,61,0.08)' : '0 1px 2px rgba(0,0,0,0.02)'
+      boxShadow: active ? '0 2px 8px rgba(0,0,0,0.08)' : '0 1px 2px rgba(0,0,0,0.02)'
     }}
     onMouseEnter={e => { if(!active) { e.currentTarget.style.borderColor = G.meadowBorder; e.currentTarget.style.color = G.meadow } }}
     onMouseLeave={e => { if(!active) { e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted } }}
@@ -822,14 +822,14 @@ export default function FacultyListPage() {
         @keyframes facToastIn { from{opacity:0;transform:scale(.96) translateY(12px)} to{opacity:1;transform:scale(1) translateY(0)} }
         .fac-toast-wrap { position:fixed;bottom:24px;left:50%;z-index:9999;display:flex;flex-direction:column;gap:10px;align-items:center;pointer-events:none;transform:translateX(-50%); }
         .fac-toast { display:flex;align-items:center;gap:10px;padding:12px 20px;border-radius:12px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;animation:facToastIn .22s cubic-bezier(.4,0,.2,1);white-space:nowrap;pointer-events:auto; }
-        .fac-toast.success { background:linear-gradient(135deg,${G.meadow},${G.meadowDeep});color:#fff;box-shadow:0 8px 24px rgba(21,128,61,0.3);border:1px solid ${G.meadowBorder}; }
-        .fac-toast.error   { background:#fff;color:#DC2626;border:1.5px solid #FECACA;box-shadow:0 8px 24px rgba(220,38,38,0.15); }
-        .fac-toast.info    { background:#fff;color:${G.meadow};border:1.5px solid ${G.meadowBorder};box-shadow:0 8px 24px rgba(21,128,61,0.15); }
-        .fac-search:focus  { border-color:${G.meadow}!important;box-shadow:0 0 0 3px rgba(21,128,61,0.12)!important;background:#fff!important; }
+        .fac-toast.success { background:linear-gradient(135deg,${G.meadow},${G.meadowDeep});color:#fff;box-shadow:0 8px 24px rgba(0,0,0,0.3);border:1px solid ${G.meadowBorder}; }
+        .fac-toast.error   { background: var(--surface);color:#DC2626;border:1.5px solid #FECACA;box-shadow:0 8px 24px rgba(220,38,38,0.15); }
+        .fac-toast.info    { background: var(--surface);color:${G.meadow};border:1.5px solid ${G.meadowBorder};box-shadow:0 8px 24px rgba(0,0,0,0.15); }
+        .fac-search:focus  { border-color:${G.meadow}!important;box-shadow:0 0 0 3px rgba(0,0,0,0.12)!important;background: var(--surface)!important; }
         .fac-tr-hover:hover td { background:${G.hover}; }
 
         /* ── Segmented Button Styles (Unified with ScheduleView) ── */
-        .fac-view-group { display:flex; border:1px solid ${G.border}; border-radius:8px; overflow:hidden; background:#fff; }
+        .fac-view-group { display:flex; border:1px solid ${G.border}; border-radius:8px; overflow:hidden; background: var(--surface); }
         .fac-view-btn {
           display:flex; align-items:center; gap:5px; padding:5px 11px;
           font-size:11.5px; font-family:'Inter',sans-serif;
@@ -843,7 +843,7 @@ export default function FacultyListPage() {
       {/* ── Header row ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
         {/* Tab switcher */}
-        <div id="tour-faculty-tabs" style={{ display: 'flex', gap: 3, background: '#fff', borderRadius: 10, padding: 3, border: `1px solid ${G.border}`, flexShrink: 0 }}>
+        <div id="tour-faculty-tabs" style={{ display: 'flex', gap: 3, background: 'var(--surface)', borderRadius: 10, padding: 3, border: `1px solid ${G.border}`, flexShrink: 0 }}>
           {[
             { key: 'active',   label: loading ? 'Active'   : `Active (${activeFaculty.length})` },
             { key: 'archived', label: loading ? 'Archived' : `Archived (${archivedFaculty.length})` },
@@ -856,7 +856,7 @@ export default function FacultyListPage() {
                 color: isActive ? '#fff' : G.muted,
                 border: isActive ? 'none' : '1px solid transparent',
                 cursor: 'pointer', transition: 'all 0.15s', fontFamily: "'Inter',sans-serif",
-                boxShadow: isActive ? '0 2px 8px rgba(21,128,61,0.28)' : 'none',
+                boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.28)' : 'none',
               }}>{label}</button>
             )
           })}
@@ -891,9 +891,9 @@ export default function FacultyListPage() {
           <div id="tour-faculty-actions" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {/* Export */}
             <button onClick={handleExport} disabled={!filtered.length} title="Export specialization matrix to Excel"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: `1px solid ${G.border}`, background: '#fff', color: G.muted2, fontSize: 11.5, fontWeight: 500, cursor: filtered.length ? 'pointer' : 'not-allowed', opacity: filtered.length ? 1 : 0.45, transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: `1px solid ${G.border}`, background: 'var(--surface)', color: G.muted2, fontSize: 11.5, fontWeight: 500, cursor: filtered.length ? 'pointer' : 'not-allowed', opacity: filtered.length ? 1 : 0.45, transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
               onMouseEnter={e => { if (filtered.length) { e.currentTarget.style.background = G.hover; e.currentTarget.style.color = G.meadow }}}
-              onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = G.muted2 }}>
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.color = G.muted2 }}>
              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="7 10 12 15 17 10"/>
@@ -904,9 +904,9 @@ export default function FacultyListPage() {
 
             {/* Upload Faculty List */}
             <button onClick={() => setShowImport(true)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 16px', borderRadius: 10, border: `1px solid ${G.border}`, fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: '#fff', color: G.muted }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 16px', borderRadius: 10, border: `1px solid ${G.border}`, fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: 'var(--surface)', color: G.muted }}
               onMouseEnter={e => { e.currentTarget.style.background = G.hover; e.currentTarget.style.borderColor = G.meadowBorder; e.currentTarget.style.color = G.meadow }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="17 8 12 3 7 8"/>
@@ -917,9 +917,9 @@ export default function FacultyListPage() {
           </div>
 
           <button id="tour-add-faculty-btn" onClick={() => navigate('/dashboard/faculty/new')}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 18px', borderRadius: 10, border: 'none', fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: '#fff', boxShadow: '0 3px 12px rgba(21,128,61,0.32)' }}
-            onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 5px 18px rgba(21,128,61,0.42)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
-            onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 3px 12px rgba(21,128,61,0.32)'; e.currentTarget.style.transform = 'none' }}>
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 18px', borderRadius: 10, border: 'none', fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: '#fff', boxShadow: '0 3px 12px rgba(0,0,0,0.32)' }}
+            onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 5px 18px rgba(0,0,0,0.42)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 3px 12px rgba(0,0,0,0.32)'; e.currentTarget.style.transform = 'none' }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Add Faculty
           </button>
@@ -927,7 +927,7 @@ export default function FacultyListPage() {
       </div>
 
       {/* ── Search + Toolbar ── */}
-      <div id="tour-faculty-search" style={{ background: '#fff', borderRadius: 14, border: `1px solid ${G.border}`, padding: '10px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', boxShadow: '0 2px 8px rgba(10,46,28,0.05)' }}>
+      <div id="tour-faculty-search" style={{ background: 'var(--surface)', borderRadius: 14, border: `1px solid ${G.border}`, padding: '10px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
 
         {/* Search */}
         <div style={{ position: 'relative', flex: '1 1 220px', minWidth: 180 }}>
@@ -958,7 +958,7 @@ export default function FacultyListPage() {
           color: activeModalFilterCount ? '#fff' : G.muted,
           border: `1.5px solid ${activeModalFilterCount ? 'transparent' : G.border}`,
           cursor: 'pointer', transition: 'all .15s', whiteSpace: 'nowrap', fontFamily: "'Inter',sans-serif",
-          boxShadow: activeModalFilterCount ? '0 2px 8px rgba(21,128,61,0.28)' : 'none',
+          boxShadow: activeModalFilterCount ? '0 2px 8px rgba(0,0,0,0.28)' : 'none',
         }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
@@ -1019,18 +1019,18 @@ export default function FacultyListPage() {
       {filterModalOpen && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(14,42,32,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
           onClick={() => setFilterModalOpen(false)}>
-          <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 720, maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(14,42,32,0.24)', overflow: 'hidden' }}
+          <div style={{ background: 'var(--surface)', borderRadius: 20, width: '100%', maxWidth: 720, maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(14,42,32,0.24)', overflow: 'hidden' }}
             onClick={e => e.stopPropagation()}>
 
             {/* Modal header */}
-            <div style={{ padding: '20px 24px', borderBottom: `1px solid ${G.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff' }}>
+            <div style={{ padding: '20px 24px', borderBottom: `1px solid ${G.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface)' }}>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: G.ink, fontFamily: "'Inter',sans-serif" }}>Advanced Filters</div>
                 <div style={{ fontSize: 12, color: G.muted2, marginTop: 4 }}>Narrow down faculty by position, department, load, and course expertise</div>
               </div>
-              <button onClick={() => setFilterModalOpen(false)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${G.border}`, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, transition: 'all .15s' }}
+              <button onClick={() => setFilterModalOpen(false)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${G.border}`, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, transition: 'all .15s' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#FFE8E8'; e.currentTarget.style.borderColor = '#FECACA'; e.currentTarget.style.color = '#DC2626' }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
@@ -1162,16 +1162,16 @@ export default function FacultyListPage() {
                     <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                   </svg>
                   <input placeholder="Search course title or code…" value={specQuery} onChange={e => setSpecQuery(e.target.value)}
-                    style={{ width: '100%', padding: '9px 12px 9px 36px', borderRadius: 10, border: `1px solid ${G.border}`, fontSize: 12.5, fontFamily: "'Inter',sans-serif", background: '#fff', outline: 'none', boxSizing: 'border-box', color: G.ink, transition: 'all .15s', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}
-                    onFocus={e => { e.currentTarget.style.borderColor = G.meadow; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(21,128,61,0.1)' }}
+                    style={{ width: '100%', padding: '9px 12px 9px 36px', borderRadius: 10, border: `1px solid ${G.border}`, fontSize: 12.5, fontFamily: "'Inter',sans-serif", background: 'var(--surface)', outline: 'none', boxSizing: 'border-box', color: G.ink, transition: 'all .15s', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}
+                    onFocus={e => { e.currentTarget.style.borderColor = G.meadow; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,0,0,0.1)' }}
                     onBlur={e => { e.currentTarget.style.borderColor = G.border; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.02)' }}
                   />
                 </div>
 
                 {allSpecializations.length === 0 ? (
-                  <div style={{ fontSize: 12, color: G.muted2, padding: '8px 0', textAlign: 'center', background: '#FAFAFE', borderRadius: 10, border: `1px dashed ${G.borderLight}` }}>No course data for {viewTab} faculty yet.</div>
+                  <div style={{ fontSize: 12, color: G.muted2, padding: '8px 0', textAlign: 'center', background: 'var(--bg)', borderRadius: 10, border: `1px dashed ${G.borderLight}` }}>No course data for {viewTab} faculty yet.</div>
                 ) : visibleSpecs.length === 0 ? (
-                  <div style={{ fontSize: 12, color: G.muted2, padding: '8px 0', textAlign: 'center', background: '#FAFAFE', borderRadius: 10, border: `1px dashed ${G.borderLight}` }}>No courses match "{specQuery}".</div>
+                  <div style={{ fontSize: 12, color: G.muted2, padding: '8px 0', textAlign: 'center', background: 'var(--bg)', borderRadius: 10, border: `1px dashed ${G.borderLight}` }}>No courses match "{specQuery}".</div>
                 ) : (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, maxHeight: 200, overflowY: 'auto', paddingRight: 4 }}>
                     {visibleSpecs.map(s => {
@@ -1183,7 +1183,7 @@ export default function FacultyListPage() {
                           background: active ? G.meadowSoft : '#fff', color: active ? G.meadowDeep : G.ink,
                           border: `1px solid ${active ? G.meadowBorder : G.border}`,
                           cursor: 'pointer', transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 6,
-                          boxShadow: active ? '0 2px 8px rgba(21,128,61,0.08)' : '0 1px 2px rgba(0,0,0,0.02)'
+                          boxShadow: active ? '0 2px 8px rgba(0,0,0,0.08)' : '0 1px 2px rgba(0,0,0,0.02)'
                         }}
                         onMouseEnter={e => { if(!active) { e.currentTarget.style.borderColor = G.meadowBorder; e.currentTarget.style.color = G.meadow } }}
                         onMouseLeave={e => { if(!active) { e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.ink } }}
@@ -1201,7 +1201,7 @@ export default function FacultyListPage() {
             </div>
 
             {/* Modal footer */}
-            <div style={{ padding: '16px 24px', borderTop: `1px solid ${G.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FAFAFE' }}>
+            <div style={{ padding: '16px 24px', borderTop: `1px solid ${G.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg)' }}>
               <div style={{ fontSize: 12.5, color: G.muted2, fontWeight: 500 }}>
                 {(() => {
                   const total = activeModalFilterCount + statusFilter.length
@@ -1212,15 +1212,15 @@ export default function FacultyListPage() {
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={() => { setRankFilter([]); setDepartmentFilter([]); setEducationFilter([]); setCoordinatorFilter(''); setSpecializationFilter([]); setSpecQuery(''); setSpecMinRating(0) }}
-                  style={{ padding: '8px 18px', borderRadius: 10, border: `1.5px solid ${G.border}`, background: '#fff', color: G.muted, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", transition: 'all .15s' }}
+                  style={{ padding: '8px 18px', borderRadius: 10, border: `1.5px solid ${G.border}`, background: 'var(--surface)', color: G.muted, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", transition: 'all .15s' }}
                   onMouseEnter={e => { e.currentTarget.style.background = '#FFF5F5'; e.currentTarget.style.borderColor = '#FECACA'; e.currentTarget.style.color = '#DC2626' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
+                  onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
                   Reset All
                 </button>
                 <button onClick={() => setFilterModalOpen(false)}
-                  style={{ padding: '8px 22px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", boxShadow: '0 4px 14px rgba(21,128,61,0.3)', transition: 'all .15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(21,128,61,0.4)' }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(21,128,61,0.3)' }}>
+                  style={{ padding: '8px 22px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", boxShadow: '0 4px 14px rgba(0,0,0,0.3)', transition: 'all .15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)' }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.3)' }}>
                   Show {filtered.length} Results
                 </button>
               </div>
@@ -1231,7 +1231,7 @@ export default function FacultyListPage() {
 
       {/* ── Bulk action bar ── */}
       {selectedCount > 0 && (
-        <div style={{ background: `linear-gradient(135deg,${G.meadowDeep},${G.inkMid})`, borderRadius: 12, padding: '10px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 6px 20px rgba(10,46,28,0.28)', animation: 'slideIn 0.18s ease' }}>
+        <div style={{ background: `linear-gradient(135deg,${G.meadowDeep},${G.inkMid})`, borderRadius: 12, padding: '10px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 6px 20px rgba(0,0,0,0.28)', animation: 'slideIn 0.18s ease' }}>
           <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
@@ -1266,7 +1266,7 @@ export default function FacultyListPage() {
           {loading ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14, animation: 'fadeIn 0.25s ease' }}>
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} style={{ background: '#fff', borderRadius: 12, border: `1.5px solid ${G.border}`, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <div key={i} style={{ background: 'var(--surface)', borderRadius: 12, border: `1.5px solid ${G.border}`, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                   {/* Header — mirrors the green card header */}
                   <div style={{ background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, padding: '14px 14px 12px', flex: 1, position: 'relative' }}>
                     {/* Name */}

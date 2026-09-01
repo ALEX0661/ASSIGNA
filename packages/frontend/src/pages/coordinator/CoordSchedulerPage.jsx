@@ -18,11 +18,11 @@ import roomsIcon from '../../assets/ROOMS.png'
 /* ─────────────────────────── CONSTANTS & SETTINGS ─────────────────────────── */
 
 const G = {
-  meadow: '#15803D', meadowDeep: '#0F5C2C', meadowMid: '#166534',
-  meadowSoft: '#DCFCE7', meadowBorder: '#BBF7D0',
-  ink: '#0E2A20', inkMid: '#1C3D2A', muted: '#4B7060', muted2: '#6B8C7A',
-  border: '#D8E8DF', borderLight: '#EBF4EF', bg: '#F2F7F4',
-  surface: '#FFFFFF', hover: '#EBF4EF', amber: '#D97706',
+  meadow: 'var(--meadow, var(--meadow))', meadowDeep: 'var(--meadow-deep)', meadowMid: 'var(--meadow-mid)',
+  meadowSoft: 'var(--meadow-soft)', meadowBorder: 'var(--meadow-border)',
+  ink: 'var(--ink, #0E2A20)', inkMid: '#1C3D2A', muted: 'var(--muted, #4B7060)', muted2: 'var(--muted2, #6B8C7A)',
+  border: 'var(--border)', borderLight: 'var(--hover)', bg: 'var(--bg, #F2F7F4)',
+  surface: 'var(--surface, #FFFFFF)', hover: 'var(--hover)', amber: '#D97706',
   amberSoft: '#FEF3C7', amberBorder: '#FDE68A',
   blue: '#0369A1', blueSoft: '#E0F2FE', blueBorder: '#BAE6FD',
   red: '#DC2626', redSoft: '#FEE2E2', redBorder: '#FECACA',
@@ -100,7 +100,7 @@ const REC_META = {
 }
 
 const Q_META = {
-  waiting:    { bg: '#F1F5F9', color: '#64748B', dot: '#94A3B8', label: 'Waiting' },
+  waiting:    { bg: '#F1F5F9', color: 'var(--muted2)', dot: '#94A3B8', label: 'Waiting' },
   active:     { bg: G.meadowSoft, color: G.meadowDeep, dot: G.meadow, label: 'Their turn' },
   generating: { bg: '#EFF6FF', color: '#1D4ED8', dot: '#3B82F6', label: 'Generating' },
   submitted:  { bg: G.amberSoft, color: '#92400E', dot: G.amber, label: 'Submitted' },
@@ -134,14 +134,14 @@ if (!document.getElementById('coord-scheduler-style')) {
     .sch-wizard-shell { display:flex; flex-direction:column; height:100%; overflow:hidden; }
 
     .wiz-topbar { display:flex; align-items:center; justify-content:center; padding:0; background:transparent; border:none; flex-shrink:0; z-index:10; }
-    .wiz-steps { display:flex; align-items:center; gap:4px; position:relative; background:#fff; padding:6px 12px; border-radius:99px; border:1px solid ${G.border}; box-shadow:0 2px 8px rgba(10,46,28,0.04); }
+    .wiz-steps { display:flex; align-items:center; gap:4px; position:relative; background: var(--surface); padding:6px 12px; border-radius:99px; border:1px solid ${G.border}; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
     .wiz-step-node { display:flex; align-items:center; gap:6px; padding:4px 12px; border-radius:99px; transition:all .2s; }
     .wiz-step-node.active { background:${G.meadowSoft}; }
     .wiz-step-node.done { cursor:pointer; }
     .wiz-step-node.done:hover { background:${G.hover}; }
     .wiz-step-circle { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:800; flex-shrink:0; transition:all .2s; border:2px solid transparent; }
     .wiz-step-circle.done   { background:${G.meadow}; color:#fff; }
-    .wiz-step-circle.active { background:${G.meadow}; color:#fff; border-color:${G.meadowBorder}; box-shadow:0 0 0 3px rgba(21,128,61,0.15); }
+    .wiz-step-circle.active { background:${G.meadow}; color:#fff; border-color:${G.meadowBorder}; box-shadow:0 0 0 3px rgba(0,0,0,0.15); }
     .wiz-step-circle.todo   { background:${G.hover}; color:${G.muted2}; border-color:${G.border}; }
     .wiz-step-label { font-size:11.5px; font-weight:700; transition:color .2s; white-space:nowrap; }
     .wiz-step-label.active { color:${G.meadowDeep}; }
@@ -157,7 +157,7 @@ if (!document.getElementById('coord-scheduler-style')) {
     @keyframes wizSlideIn  { from { opacity:0; transform:translateX(48px) scale(0.98); } to { opacity:1; transform:translateX(0) scale(1); } }
     @keyframes wizSlideBack { from { opacity:0; transform:translateX(-48px) scale(0.98); } to { opacity:1; transform:translateX(0) scale(1); } }
 
-    .sch-card { background:#fff; border-radius:12px; border:1px solid ${G.border}; box-shadow:0 2px 12px rgba(10,46,28,0.03); overflow:hidden; }
+    .sch-card { background: var(--surface); border-radius:12px; border:1px solid ${G.border}; box-shadow:0 2px 12px rgba(0,0,0,0.03); overflow:hidden; }
     .sch-card-header { display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid ${G.border}; }
     .sch-card-title { font-size:15px; font-weight:800; color:${G.ink}; margin:0; letter-spacing:-0.1px; }
     .sch-card-sub { font-size:11.5px; color:${G.muted}; margin-top:2px; font-weight:500; }
@@ -192,7 +192,7 @@ if (!document.getElementById('coord-scheduler-style')) {
        warning vs. an all-clear. The queue order rail is the card's main
        content: it spreads across the full card width on its own equal-
        width columns instead of being squeezed into a narrow strip. */
-    .queue-card { background:#fff; border-radius:12px; border:1px solid ${G.border}; box-shadow:0 1px 3px rgba(10,46,28,0.04); overflow:hidden; flex-shrink:0; }
+    .queue-card { background: var(--surface); border-radius:12px; border:1px solid ${G.border}; box-shadow:0 1px 3px rgba(0,0,0,0.04); overflow:hidden; flex-shrink:0; }
 
     .queue-head { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:9px 16px; background:linear-gradient(135deg, ${G.meadowDeep}, ${G.meadow}); color:#fff; }
     .queue-head-title { font-size:12px; font-weight:800; letter-spacing:-.1px; line-height:1.3; }
@@ -209,43 +209,43 @@ if (!document.getElementById('coord-scheduler-style')) {
 
     .wiz-footer { position:sticky; bottom:0; display:flex; align-items:center; justify-content:space-between; padding:12px 28px; background:rgba(255,255,255,0.92); backdrop-filter:blur(12px); border-top:1px solid ${G.border}; z-index:40; flex-shrink:0; }
     .wiz-nav-btn { display:inline-flex; align-items:center; gap:8px; padding:11px 24px; border-radius:10px; font-family:'Inter',sans-serif; font-size:13.5px; font-weight:700; cursor:pointer; transition:all .18s; }
-    .wiz-nav-btn.back { background:#fff; color:${G.muted}; border:1px solid ${G.border}; }
+    .wiz-nav-btn.back { background: var(--surface); color:${G.muted}; border:1px solid ${G.border}; }
     .wiz-nav-btn.back:hover { background:${G.hover}; color:${G.ink}; border-color:${G.meadowBorder}; }
-    .wiz-nav-btn.next { background:${G.meadow}; color:#fff; border:none; box-shadow:0 4px 14px rgba(21,128,61,0.2); }
-    .wiz-nav-btn.next:hover:not(:disabled) { background:${G.meadowDeep}; transform:translateY(-1px); box-shadow:0 6px 20px rgba(21,128,61,0.3); }
+    .wiz-nav-btn.next { background:${G.meadow}; color:#fff; border:none; box-shadow:0 4px 14px rgba(0,0,0,0.2); }
+    .wiz-nav-btn.next:hover:not(:disabled) { background:${G.meadowDeep}; transform:translateY(-1px); box-shadow:0 6px 20px rgba(0,0,0,0.3); }
     .wiz-nav-btn.next:disabled { opacity:.5; cursor:not-allowed; transform:none; box-shadow:none; }
 
-    .cp-inp, .cp-sel { padding:9px 12px; border-radius:10px; border:1px solid ${G.border}; font-family:'Inter',sans-serif; font-size:12.5px; color:${G.ink}; background:#fff; outline:none; transition:all .15s; width:100%; box-sizing:border-box; }
-    .cp-inp:focus, .cp-sel:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(21,128,61,0.1); }
+    .cp-inp, .cp-sel { padding:9px 12px; border-radius:10px; border:1px solid ${G.border}; font-family:'Inter',sans-serif; font-size:12.5px; color:${G.ink}; background: var(--surface); outline:none; transition:all .15s; width:100%; box-sizing:border-box; }
+    .cp-inp:focus, .cp-sel:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
     
-    .btn-outline { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; border:1px solid ${G.border}; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; background:#fff; color:${G.muted}; transition:all .13s; }
+    .btn-outline { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; border:1px solid ${G.border}; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; background: var(--surface); color:${G.muted}; transition:all .13s; }
     .btn-outline:hover:not(:disabled) { background:${G.hover}; color:${G.ink}; border-color:${G.meadowBorder}; }
-    .btn-primary { display:inline-flex; align-items:center; gap:6px; padding:7px 16px; border-radius:8px; border:none; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; background:${G.meadow}; color:#fff; box-shadow:0 3px 10px rgba(21,128,61,0.25); }
+    .btn-primary { display:inline-flex; align-items:center; gap:6px; padding:7px 16px; border-radius:8px; border:none; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; background:${G.meadow}; color:#fff; box-shadow:0 3px 10px rgba(0,0,0,0.25); }
     .btn-primary:hover:not(:disabled) { background:${G.meadowDeep}; transform:translateY(-1px); }
-    .btn-danger { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; border:1px solid #FECACA; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; background:#fff; color:#DC2626; transition:all .13s; }
+    .btn-danger { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; border:1px solid #FECACA; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; background: var(--surface); color:#DC2626; transition:all .13s; }
     .btn-danger:hover:not(:disabled) { background:#FEF2F2; border-color:#DC2626; }
     
     .csh-prog-chip { display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:7px; font-size:11.5px; font-weight:700; border:1px solid transparent; }
     
-    .csh-room-chip { display:inline-flex; align-items:center; justify-content:center; gap:4px; padding:3px 9px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid ${G.border}; background:#fff; color:${G.muted}; transition:all .13s; user-select:none; min-width: 40px; }
+    .csh-room-chip { display:inline-flex; align-items:center; justify-content:center; gap:4px; padding:3px 9px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid ${G.border}; background: var(--surface); color:${G.muted}; transition:all .13s; user-select:none; min-width: 40px; }
     .csh-room-chip:hover { border-color:${G.meadowBorder}; background:${G.hover}; }
-    .csh-room-chip.picked { background:#DCFCE7; border-color:${G.meadow}; color:${G.meadowDeep}; }
+    .csh-room-chip.picked { background:var(--meadow-soft); border-color:${G.meadow}; color:${G.meadowDeep}; }
     
-    .saved-item { display:flex; align-items:flex-start; gap:12px; padding:16px 20px; border-bottom:1px solid ${G.borderLight}; background:#fff; transition:background .15s; }
+    .saved-item { display:flex; align-items:flex-start; gap:12px; padding:16px 20px; border-bottom:1px solid ${G.borderLight}; background: var(--surface); transition:background .15s; }
     .saved-item:last-child { border-bottom:none; }
     .saved-item:hover { background:${G.hover}; }
     .saved-name { font-size:13.5px; font-weight:700; color:${G.ink}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; }
     .saved-sub { font-size:11.5px; color:${G.muted}; font-weight:500; margin-top:3px; display:block; }
 
-    .check-btn { display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:8px; border:1px solid ${G.border}; background:#fff; color:${G.ink}; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; transition:all .15s; box-shadow:0 1px 2px rgba(0,0,0,0.02); white-space:nowrap; }
+    .check-btn { display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:8px; border:1px solid ${G.border}; background: var(--surface); color:${G.ink}; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; transition:all .15s; box-shadow:0 1px 2px rgba(0,0,0,0.02); white-space:nowrap; }
     .check-btn:hover:not(:disabled) { background:${G.hover}; color:${G.meadowDeep}; border-color:${G.meadowBorder}; }
     
     .diag-check-row { display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid ${G.borderLight}; }
     .diag-check-row:last-child { border-bottom:none; }
     .diag-rec { padding:12px 16px; border-radius:10px; display:flex; gap:12px; align-items:flex-start; border:1px solid transparent; transition:transform .15s; margin-bottom:12px; }
     
-    .r-tab { display:inline-flex; align-items:center; gap:5px; padding:8px 16px; border-radius:8px; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; transition:all .15s; border:1px solid ${G.border}; background:#fff; color:${G.muted}; box-shadow:0 1px 2px rgba(0,0,0,0.02); }
-    .r-tab.active { background:${G.meadow}; color:#fff; border-color:${G.meadowDeep}; box-shadow:0 3px 10px rgba(21,128,61,0.25); }
+    .r-tab { display:inline-flex; align-items:center; gap:5px; padding:8px 16px; border-radius:8px; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; transition:all .15s; border:1px solid ${G.border}; background: var(--surface); color:${G.muted}; box-shadow:0 1px 2px rgba(0,0,0,0.02); }
+    .r-tab.active { background:${G.meadow}; color:#fff; border-color:${G.meadowDeep}; box-shadow:0 3px 10px rgba(0,0,0,0.25); }
     .r-tab:hover:not(.active) { background:${G.hover}; border-color:${G.meadowBorder}; color:${G.ink}; }
 
     .phase-track { display:flex; align-items:flex-start; gap:0; margin-top:12px; width: 100%; }
@@ -269,11 +269,11 @@ if (!document.getElementById('coord-scheduler-style')) {
     .phase-chip.drop-before::before,
     .phase-chip.drop-after::after {
       content:''; position:absolute; top:2px; width:3px; height:26px; border-radius:99px; background:${G.meadow};
-      box-shadow:0 0 0 3px rgba(21,128,61,0.15);
+      box-shadow:0 0 0 3px rgba(0,0,0,0.15);
     }
     .phase-chip.drop-before::before { left:-2px; }
     .phase-chip.drop-after::after   { right:-2px; }
-    .phase-chip.keyboard-grabbed .phase-chip-dot { border-color:${G.meadow} !important; box-shadow:0 0 0 4px rgba(21,128,61,0.18); }
+    .phase-chip.keyboard-grabbed .phase-chip-dot { border-color:${G.meadow} !important; box-shadow:0 0 0 4px rgba(0,0,0,0.18); }
     .phase-chip-dot {
       width:30px; height:30px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center;
       font-size:11px; font-weight:800; background:${G.meadowSoft}; color:${G.meadowDeep}; border:2px solid ${G.meadowBorder};
@@ -281,7 +281,7 @@ if (!document.getElementById('coord-scheduler-style')) {
     }
     .phase-chip:hover .phase-chip-dot { background:${G.meadow}; color:#fff; border-color:${G.meadowDeep}; transform:scale(1.08); }
     .phase-chip-order {
-      position:absolute; top:-5px; right:-5px; width:15px; height:15px; border-radius:50%; background:#fff;
+      position:absolute; top:-5px; right:-5px; width:15px; height:15px; border-radius:50%; background: var(--surface);
       border:1.5px solid ${G.border}; color:${G.muted2}; font-size:8.5px; font-weight:800;
       display:flex; align-items:center; justify-content:center; transition:all .15s;
     }
@@ -291,7 +291,7 @@ if (!document.getElementById('coord-scheduler-style')) {
     .phase-chip:hover .phase-chip-handle, .phase-chip:focus-within .phase-chip-handle { opacity:1; }
     .phase-chip-arrows { display:flex; gap:3px; margin-top:2px; opacity:0; transition:opacity .15s; }
     .phase-chip:hover .phase-chip-arrows, .phase-chip:focus-within .phase-chip-arrows { opacity:1; }
-    .phase-chip-arrow { width:18px; height:18px; padding:0; border-radius:5px; border:1px solid ${G.border}; background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; color:${G.muted2}; transition:all .15s; }
+    .phase-chip-arrow { width:18px; height:18px; padding:0; border-radius:5px; border:1px solid ${G.border}; background: var(--surface); display:flex; align-items:center; justify-content:center; cursor:pointer; color:${G.muted2}; transition:all .15s; }
     .phase-chip-arrow:hover:not(:disabled) { background:${G.meadowSoft}; border-color:${G.meadowBorder}; color:${G.meadowDeep}; }
     .phase-chip-arrow:disabled { opacity:0.25; cursor:default; }
     @media (max-width: 720px) {
@@ -311,10 +311,10 @@ if (!document.getElementById('coord-scheduler-style')) {
     
     .csh-skeleton { background:linear-gradient(90deg,${G.hover} 25%,${G.borderLight} 50%,${G.hover} 75%); background-size:600px 100%; animation:cshShimmer 1.4s ease-in-out infinite; border-radius:7px; }
     .cp-toast-wrap { position:fixed; bottom:24px; left:50%; z-index:9999; display:flex; flex-direction:column; gap:10px; align-items:center; pointer-events:none; transform:translateX(-50%); margin-left: 110px; }
-    .cp-toast { display:flex; align-items:center; gap:10px; padding:14px 22px; border-radius:12px; font-family:'Inter',sans-serif; font-size:13.5px; font-weight:600; animation:cpToastIn .25s cubic-bezier(.4,0,.2,1); white-space:nowrap; pointer-events:auto; box-shadow:0 8px 24px rgba(10,46,28,0.15); }
+    .cp-toast { display:flex; align-items:center; gap:10px; padding:14px 22px; border-radius:12px; font-family:'Inter',sans-serif; font-size:13.5px; font-weight:600; animation:cpToastIn .25s cubic-bezier(.4,0,.2,1); white-space:nowrap; pointer-events:auto; box-shadow:0 8px 24px rgba(0,0,0,0.15); }
     .cp-toast.success { background:${G.meadow}; color:#fff; border:1px solid ${G.meadowBorder}; }
-    .cp-toast.error { background:#fff; color:#DC2626; border:1px solid #FECACA; }
-    .cp-toast.info { background:#fff; color:${G.meadowDeep}; border:1px solid ${G.meadowBorder}; }
+    .cp-toast.error { background: var(--surface); color:#DC2626; border:1px solid #FECACA; }
+    .cp-toast.info { background: var(--surface); color:${G.meadowDeep}; border:1px solid ${G.meadowBorder}; }
     
     .cp-tr-hover:nth-child(even) { background: #FAFDFB; }
     .cp-tr-hover:hover { background: ${G.meadowSoft} !important; }
@@ -332,10 +332,10 @@ if (!document.getElementById('coord-scheduler-style')) {
     .solve-result-body p, .solve-result-body div { overflow-wrap:break-word; word-break:break-word; }
     .solve-result-actions { display:flex; flex-wrap:wrap; gap:10px; padding:16px 28px; border-top:1px solid #FECACA; background:#FEF2F2; justify-content:flex-end; }
     .solve-action-btn { display:inline-flex; align-items:center; gap:8px; padding:10px 20px; border-radius:9px; font-family:'Inter',sans-serif; font-size:13px; font-weight:700; cursor:pointer; transition:all .2s; }
-    .solve-action-btn.primary { background:${G.meadow}; color:#fff; border:none; box-shadow:0 4px 12px rgba(21,128,61,0.2); }
-    .solve-action-btn.primary:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 16px rgba(21,128,61,0.3); background:${G.meadowDeep}; }
+    .solve-action-btn.primary { background:${G.meadow}; color:#fff; border:none; box-shadow:0 4px 12px rgba(0,0,0,0.2); }
+    .solve-action-btn.primary:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,0.3); background:${G.meadowDeep}; }
     .solve-action-btn.primary:disabled { opacity:.5; cursor:not-allowed; transform:none; box-shadow:none; }
-    .solve-action-btn.ghost { background:#fff; color:${G.ink}; border:1px solid ${G.border}; }
+    .solve-action-btn.ghost { background: var(--surface); color:${G.ink}; border:1px solid ${G.border}; }
     .solve-action-btn.ghost:hover { background:${G.bg}; border-color:${G.meadowBorder}; color:${G.meadowDeep}; }
   `
   document.head.appendChild(s)
@@ -425,7 +425,7 @@ function QueueRail({ queue, myProgram, currentProgram }) {
                 background: status === 'active' ? G.meadow : meta.bg,
                 border: isMine ? `2.5px solid ${G.meadowDeep}` : `1.5px solid ${meta.dot}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: status === 'active' ? '0 0 0 4px rgba(21,128,61,0.15)' : isMine ? '0 0 0 3px rgba(21,128,61,0.12)' : 'none',
+                boxShadow: status === 'active' ? '0 0 0 4px rgba(0,0,0,0.15)' : isMine ? '0 0 0 3px rgba(0,0,0,0.12)' : 'none',
                 transition: 'all .25s',
               }}>
                 {status === 'approved'
@@ -541,7 +541,7 @@ function StepHeader({ number, title, subtitle, badge }) {
   return (
     <div style={{ display:'flex', alignItems:'center', gap:14, padding:'16px 22px', borderRadius:14,
       background: `linear-gradient(135deg, ${G.meadowDeep}, ${G.meadow})`, 
-      boxShadow: '0 4px 14px rgba(21,128,61,0.15)',
+      boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
       marginBottom:16, position:'relative', overflow:'hidden', flexShrink: 0 }}>
       <div style={{ position:'absolute', top:-30, right:-20, width:100, height:100, borderRadius:'50%', background:'rgba(255,255,255,0.05)', pointerEvents:'none' }} />
       <div style={{ width:32, height:32, borderRadius:'50%', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)',
@@ -596,7 +596,7 @@ function PhaseTimeline({ currentPhaseIdx, status, progress, order, defaultOrder,
             return (
               <div key={ph.key} className="phase-step">
                 {i < phases.length - 1 && <div className="phase-connector" style={{ background: (phaseDone && !idle) ? G.meadow : G.border }} />}
-                <div className="phase-dot" style={{ background: idle ? G.hover : phaseDone ? G.meadow : phaseActive ? '#fff' : G.bg, border: idle ? `2px solid ${G.border}` : phaseActive ? `2.5px solid ${G.meadowDeep}` : phaseDone ? 'none' : `2px solid ${G.border}`, boxShadow: phaseActive ? `0 0 0 4px rgba(21,128,61,0.15)` : 'none' }}>
+                <div className="phase-dot" style={{ background: idle ? G.hover : phaseDone ? G.meadow : phaseActive ? '#fff' : G.bg, border: idle ? `2px solid ${G.border}` : phaseActive ? `2.5px solid ${G.meadowDeep}` : phaseDone ? 'none' : `2px solid ${G.border}`, boxShadow: phaseActive ? `0 0 0 4px rgba(0,0,0,0.15)` : 'none' }}>
                   {phaseDone && !idle ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                     : phaseActive ? <div style={{ width:10, height:10, borderRadius:'50%', background:G.meadowDeep }} /> : null}
                 </div>
@@ -932,7 +932,7 @@ function CoordinatorCheckPanel({ semester, masterEvents }) {
 
   if (!semester) {
     return (
-      <div className="sch-card" style={{ padding: '40px 20px', textAlign: 'center', background: '#F8FAF9' }}>
+      <div className="sch-card" style={{ padding: '40px 20px', textAlign: 'center', background: 'var(--bg)' }}>
         <div style={{ fontSize: 13, color: G.muted, fontWeight: 500 }}>Waiting for the active queue to determine the academic term...</div>
       </div>
     )
@@ -1705,10 +1705,10 @@ export default function CoordSchedulerPage() {
                     ) : null}
                   </div>
 
-                  <div id="tour-room-selection" style={{ background: '#fff', border: `1px solid ${G.border}`, borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(10,46,28,0.03)', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+                  <div id="tour-room-selection" style={{ background: 'var(--surface)', border: `1px solid ${G.border}`, borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
                     <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{ width: 34, height: 34, borderRadius: 9, background: '#F2F7F4', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${G.border}`, overflow: 'hidden', flexShrink: 0 }}>
+                          <div style={{ width: 34, height: 34, borderRadius: 9, background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${G.border}`, overflow: 'hidden', flexShrink: 0 }}>
                              <img src={roomsIcon} alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} />
                           </div>
                           <div>
@@ -1717,7 +1717,7 @@ export default function CoordSchedulerPage() {
                           </div>
                        </div>
                        {!roomsLoading && (
-                         <div style={{ padding: '5px 12px', background: totalRoomsPicked ? '#DCFCE7' : G.amberSoft, color: totalRoomsPicked ? '#065F46' : '#92400E', fontSize: 11.5, fontWeight: 700, borderRadius: 99, flexShrink: 0 }}>
+                         <div style={{ padding: '5px 12px', background: totalRoomsPicked ? 'var(--meadow-soft)' : G.amberSoft, color: totalRoomsPicked ? 'var(--meadow-deep)' : '#92400E', fontSize: 11.5, fontWeight: 700, borderRadius: 99, flexShrink: 0 }}>
                            {totalRoomsPicked} selected
                          </div>
                        )}
@@ -1992,7 +1992,7 @@ export default function CoordSchedulerPage() {
 
                               {/* Actionable Suggestions */}
                               {genErrorDetails?.suggestions?.length > 0 && (
-                                <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: '#FFF', border: '1px solid #FECACA' }}>
+                                <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'var(--surface)', border: '1px solid #FECACA' }}>
                                   <div style={{ fontSize: 12, fontWeight: 800, color: '#991B1B', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
                                     Suggested Actions:
                                   </div>
@@ -2020,9 +2020,9 @@ export default function CoordSchedulerPage() {
 
                     {statusState === 'complete' && (
                       <div className="fadein solve-result complete" style={{ marginTop:14 }}>
-                        <div className="solve-result-body" style={{ background:'#F0FDF4' }}>
-                          <div style={{ width:44, height:44, borderRadius:'50%', background:'#D1FAE5', border:'1.5px solid #6EE7B7', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        <div className="solve-result-body" style={{ background:'var(--meadow-soft)' }}>
+                          <div style={{ width:44, height:44, borderRadius:'50%', background:'var(--meadow-soft)', border:'1.5px solid var(--mint)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                           </div>
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ fontSize:16, fontWeight:800, color:G.ink, marginBottom:3 }}>Schedule Generated Successfully</div>
@@ -2070,7 +2070,7 @@ export default function CoordSchedulerPage() {
                         { val: resultStats.rooms, label: 'Rooms Used' },
                         { val: resultStats.days, label: 'Days Used' },
                       ].map(s => (
-                        <div key={s.label} style={{ background: '#fff', border: `1px solid ${G.border}`, borderRadius: 10, padding: '12px 14px', boxShadow: '0 1px 6px rgba(10,46,28,0.03)' }}>
+                        <div key={s.label} style={{ background: 'var(--surface)', border: `1px solid ${G.border}`, borderRadius: 10, padding: '12px 14px', boxShadow: '0 1px 6px rgba(0,0,0,0.03)' }}>
                           <div style={{ fontSize: 20, fontWeight: 800, color: G.meadowDeep, lineHeight: 1 }}>{s.val}</div>
                           <div style={{ fontSize: 10.5, color: G.muted, fontWeight: 700, marginTop: 5, textTransform: 'uppercase', letterSpacing: '.4px' }}>{s.label}</div>
                         </div>
@@ -2135,7 +2135,7 @@ export default function CoordSchedulerPage() {
                       ) : (
                         <div style={{
                           display: 'flex', flexDirection: 'column', height: '100%', minHeight: 450, padding: '12px 16px',
-                          ...(isMaximized ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: '#fff', zIndex: 9999, minHeight: '100vh', padding: '24px 32px' } : {})
+                          ...(isMaximized ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--surface)', zIndex: 9999, minHeight: '100vh', padding: '24px 32px' } : {})
                         }}>
                           <div style={{ display: 'flex', gap: 12, marginBottom: 16, overflowX: 'auto', paddingBottom: 4, alignItems: 'center' }}>
                             <div style={{ display: 'flex', gap: 6 }}>
@@ -2147,19 +2147,19 @@ export default function CoordSchedulerPage() {
                                     background: activeDay === d ? `linear-gradient(135deg, ${G.meadow}, ${G.meadowDeep})` : '#fff',
                                     color: activeDay === d ? '#fff' : G.muted,
                                     transition: 'all .15s', whiteSpace: 'nowrap',
-                                    boxShadow: activeDay === d ? '0 2px 8px rgba(21,128,61,.3)' : 'none'
+                                    boxShadow: activeDay === d ? '0 2px 8px rgba(0,0,0,.3)' : 'none'
                                   }}>
                                   {d}
                                 </button>
                               ))}
                             </div>
                             <div style={{ flex: 1 }} />
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, fontWeight: 600, color: G.muted2, cursor: 'pointer', background: '#F8FAF9', padding: '6px 12px', borderRadius: 8, border: `1px solid ${G.border}` }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, fontWeight: 600, color: G.muted2, cursor: 'pointer', background: 'var(--bg)', padding: '6px 12px', borderRadius: 8, border: `1px solid ${G.border}` }}>
                               <input type="checkbox" checked={overlayMaster} onChange={e => setOverlayMaster(e.target.checked)} style={{ cursor: 'pointer' }} />
                               Show Other Programs (Background)
                             </label>
                             <button onClick={() => setIsMaximized(m => !m)} title={isMaximized ? "Restore size" : "Maximize"}
-                              style={{ padding: '6px', borderRadius: 8, background: '#F8FAF9', border: `1px solid ${G.border}`, color: G.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              style={{ padding: '6px', borderRadius: 8, background: 'var(--bg)', border: `1px solid ${G.border}`, color: G.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                               {isMaximized ? (
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
                               ) : (
@@ -2179,7 +2179,7 @@ export default function CoordSchedulerPage() {
                         </div>
                       )}
                     </div>
-                    <div id="tour-save-schedule" style={{ padding: '18px 20px', borderTop: `1px solid ${G.border}`, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center', background: '#F8FAF9' }}>
+                    <div id="tour-save-schedule" style={{ padding: '18px 20px', borderTop: `1px solid ${G.border}`, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg)' }}>
                       <div style={{ width: 38, height: 38, borderRadius: 10, background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={G.meadowDeep} strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                       </div>
@@ -2200,8 +2200,8 @@ export default function CoordSchedulerPage() {
 
                   {saved && (
                     <div className="fadein sch-card" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: 16, background: G.meadowSoft, border: `1px solid ${G.meadowBorder}` }}>
-                      <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#D1FAE5', border: '1.5px solid #6EE7B7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                      <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--meadow-soft)', border: '1.5px solid var(--mint)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 15, fontWeight: 800, color: G.meadowDeep, marginBottom: 2 }}>Saved as a draft</div>
@@ -2217,7 +2217,7 @@ export default function CoordSchedulerPage() {
                             View & Edit Schedule
                           </button>
                         )}
-                        <button className="btn-outline" onClick={() => navigate('/coordinator/schedules')} style={{ padding: '10px 20px', fontSize: 13, background: '#fff' }}>Go to My Schedules</button>
+                        <button className="btn-outline" onClick={() => navigate('/coordinator/schedules')} style={{ padding: '10px 20px', fontSize: 13, background: 'var(--surface)' }}>Go to My Schedules</button>
                       </div>
                     </div>
                   )}

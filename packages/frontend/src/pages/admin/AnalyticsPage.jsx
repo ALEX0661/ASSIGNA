@@ -36,7 +36,7 @@ const ANALYTICS_STYLE = `
   }
   /* Green-tinted shimmer — matches DashboardPage .skel */
   .a-skel {
-    background: linear-gradient(90deg,#EBF4EF 25%,#D8EEE3 50%,#EBF4EF 75%);
+    background: linear-gradient(90deg,var(--hover) 25%,#D8EEE3 50%,var(--hover) 75%);
     background-size: 600px 100%;
     animation: shimmer 1.4s ease-in-out infinite;
     border-radius: 7px;
@@ -45,7 +45,7 @@ const ANALYTICS_STYLE = `
     background: var(--surface);
     border-radius: 16px;
     border: 1px solid var(--border);
-    box-shadow: 0 2px 12px rgba(10,46,28,0.07);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
     overflow: hidden;
     animation: fadeUp .35s ease both;
   }
@@ -53,7 +53,7 @@ const ANALYTICS_STYLE = `
     background: var(--surface);
     border-radius: 14px;
     border: 1px solid var(--border);
-    box-shadow: 0 1px 6px rgba(10,46,28,0.06);
+    box-shadow: 0 1px 6px rgba(0,0,0,0.06);
     padding: 16px 18px;
     display: flex;
     align-items: center;
@@ -63,7 +63,7 @@ const ANALYTICS_STYLE = `
     cursor: default;
   }
   .a-stat-card:hover {
-    box-shadow: 0 6px 22px rgba(10,46,28,0.11);
+    box-shadow: 0 6px 22px rgba(0,0,0,0.11);
     transform: translateY(-2px);
   }
 `;
@@ -71,7 +71,7 @@ const ANALYTICS_STYLE = `
 // ── Colour palette (matches Dashboard green system) ───────────────────────────
 // These mirror the exact colours used in DashboardPage for consistency.
 const C = {
-  green:   "#15803D",   // primary accent — Dashboard's main colour
+  green:   "var(--meadow)",   // primary accent — Dashboard's main colour
   blue:    "#2563EB",
   amber:   "#D97706",
   purple:  "#7C3AED",
@@ -84,7 +84,7 @@ const C = {
 // ── Distinct palette for pie / bar charts ─────────────────────────────────────
 // 8 high-contrast colours so every segment is clearly distinguishable
 const PALETTE = [
-  C.green,   // #15803D  forest green
+  C.green,   // var(--meadow)  forest green
   C.blue,    // #2563EB  royal blue
   C.amber,   // #D97706  amber
   C.purple,  // #7C3AED  violet
@@ -114,7 +114,7 @@ const pct = (n, total) => total ? `${Math.round((n / total) * 100)}%` : "0%";
 const loadColor = (row) => {
   if (row.overloaded)     return C.red;
   if (row.load_pct >= 85) return C.amber;
-  if (row.load_pct <= 30) return "#86EFAC"; // light green — low load
+  if (row.load_pct <= 30) return "var(--mint)"; // light green — low load
   return C.green;
 };
 
@@ -162,8 +162,8 @@ function InsightNote({ text, type = "info" }) {
   if (!text) return null;
   const isWarn = type === "warn" || type === "danger";
   const color  = isWarn ? C.red : C.green;
-  const bg     = isWarn ? "#FFF5F5" : "#F0FDF4";
-  const border = isWarn ? "#FECACA" : "#BBF7D0";
+  const bg     = isWarn ? "#FFF5F5" : "var(--meadow-soft)";
+  const border = isWarn ? "#FECACA" : "var(--meadow-border)";
   return (
     <div style={{
       marginTop: 14, padding: "10px 14px", borderRadius: 8,
@@ -211,7 +211,7 @@ function StatCard({ label, value, sub, icon, color, bg, loading }) {
 function ScoreCard({ loading, autoAssignPct, pctInWindow }) {
   const hasData = autoAssignPct !== null && autoAssignPct !== undefined;
   const status = !hasData  ? null
-    : autoAssignPct >= 90  ? { label: "Excellent", color: C.green,  bg: "#DCFCE7", bar: C.green  }
+    : autoAssignPct >= 90  ? { label: "Excellent", color: C.green,  bg: "var(--meadow-soft)", bar: C.green  }
     : autoAssignPct >= 70  ? { label: "Good",      color: C.blue,   bg: "#DBEAFE", bar: C.blue   }
     : autoAssignPct >= 50  ? { label: "Fair",       color: C.amber,  bg: "#FEF3CD", bar: C.amber  }
     :                        { label: "Needs work", color: C.red,    bg: "#FFE8E8", bar: C.red    };
@@ -313,7 +313,7 @@ const TooltipStyle = {
   background: "var(--surface)",
   border: "1px solid var(--border)",
   borderRadius: 8,
-  boxShadow: "0 4px 12px rgba(10,46,28,0.10)",
+  boxShadow: "0 4px 12px rgba(0,0,0,0.10)",
   padding: "10px 14px",
   fontSize: 12,
   color: "var(--ink)",
@@ -611,7 +611,7 @@ export default function AnalyticsPage() {
         <StatCard
           label="Assigned Sessions" sub={`of ${dist?.totalSessions ?? 0} total`}
           value={loading ? null : (dist?.facultyCoverage?.covered ?? 0)}
-          color={C.green} bg="#DCFCE7" loading={loading}
+          color={C.green} bg="var(--meadow-soft)" loading={loading}
           icon={<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>}
         />
 
@@ -763,7 +763,7 @@ export default function AnalyticsPage() {
                     axisLine={false} tickLine={false}
                     tick={{ fill: "var(--muted2)", fontSize: 11, fontFamily: "Poppins" }}
                   />
-                  <Tooltip cursor={{ fill: "rgba(10,46,28,0.04)" }} content={<StandardTooltip />} />
+                  <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} content={<StandardTooltip />} />
                   <Bar dataKey="sessions" radius={[6, 6, 0, 0]} maxBarSize={52}>
                     {dayData.map((d, i) => (
                       <Cell key={i} fill={DAY_COLORS[d.day] ?? C.green} />
@@ -825,7 +825,7 @@ export default function AnalyticsPage() {
                     <YAxis type="category" dataKey="name" axisLine={false} tickLine={false}
                       width={120} tick={{ fontSize: 11, fill: "var(--ink)", fontFamily: "Poppins" }}
                       tickFormatter={formatName} />
-                    <Tooltip cursor={{ fill: "rgba(10,46,28,0.04)" }} contentStyle={TooltipStyle} />
+                    <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} contentStyle={TooltipStyle} />
                     {/* Capacity bar — subtle track */}
                     <Bar dataKey="effective_max" fill="#D1EAD9" radius={4} barSize={10} />
                     {/* Assigned bar — coloured by load status */}
@@ -844,7 +844,7 @@ export default function AnalyticsPage() {
                     { label: "Balanced",    color: C.green },
                     { label: "Near cap",    color: C.amber },
                     { label: "Overloaded",  color: C.red   },
-                    { label: "Low load",    color: "#86EFAC" },
+                    { label: "Low load",    color: "var(--mint)" },
                   ].map(x => (
                     <div key={x.label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
                       <div style={{ width: 8, height: 8, borderRadius: 2, background: x.color }} />
@@ -880,7 +880,7 @@ export default function AnalyticsPage() {
                       tick={{ fontSize: 11, fill: "var(--muted2)", fontFamily: "Poppins" }} />
                     <YAxis type="category" dataKey="room" axisLine={false} tickLine={false}
                       width={70} tick={{ fontSize: 11, fill: "var(--ink)", fontFamily: "Poppins" }} />
-                    <Tooltip cursor={{ fill: "rgba(10,46,28,0.04)" }} contentStyle={TooltipStyle} />
+                    <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} contentStyle={TooltipStyle} />
                     <Bar dataKey="sessions" radius={[0, 5, 5, 0]} barSize={16}>
                       {roomData.map((_, i) => (
                         <Cell key={i} fill={PALETTE[i % PALETTE.length]} />

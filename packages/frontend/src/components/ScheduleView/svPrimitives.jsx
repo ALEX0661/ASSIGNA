@@ -3,13 +3,13 @@ import { programColor, sectionColor, PROGRAM_SHADE_PALETTE } from './svHelpers'
 
 // ── Green theme tokens (unified with other pages) ──────────────────────
 export const TV = {
-  deep:   '#15803D',
-  mid:    '#6EE7B7',
-  light:  '#BBF7D0',
-  pale:   '#DCFCE7',
-  border: '#D8E8DF',
-  text:   '#0E2A20',
-  muted:  '#4B7060',
+  deep:   'var(--meadow, var(--meadow))',
+  mid:    'var(--mint)',
+  light:  'var(--meadow-border)',
+  pale:   'var(--meadow-soft)',
+  border: 'var(--border)',
+  text:   'var(--ink)',
+  muted: 'var(--muted, #4B7060)',
 }
 
 // ── Modal overlay ─────────────────────────────────────────────────────────────
@@ -62,7 +62,7 @@ export function ModalFooter({ selectedCount, onClose }) {
         onClick={onClose}
         style={{
           padding: '7px 18px', fontSize: 12.5, fontWeight: 600,
-          background: 'linear-gradient(135deg,#15803D,#0F5C2C)',
+          background: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))',
           color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer',
           fontFamily: 'Inter, sans-serif',
         }}
@@ -151,7 +151,7 @@ export function MergedBadge() {
   return (
     <span style={{
       fontSize: 9.5, fontWeight: 700,
-      background: '#D1FAE5', color: TV.deep,
+      background: 'var(--meadow-soft)', color: TV.deep,
       border: `1px solid ${TV.light}`,
       borderRadius: 4, padding: '1px 6px', whiteSpace: 'nowrap',
     }}>
@@ -253,7 +253,7 @@ export function ProgramLegend({ events = [] }) {
 
   return (
     <div style={{
-      background: '#fff', border: `1px solid ${TV.border}`,
+      background: 'var(--surface)', border: `1px solid ${TV.border}`,
       borderRadius: 10, overflow: 'hidden', marginBottom: 10,
       fontFamily: 'Inter, sans-serif',
     }}>
@@ -410,9 +410,9 @@ export function Toast({ message, type, onDismiss }) {
       style={{
         position: 'fixed', bottom: 28, right: 28, zIndex: 9999,
         padding: '12px 18px', borderRadius: 12,
-        background: isErr ? '#fef2f2' : '#f0fdf4',
-        border: `1px solid ${isErr ? '#fecaca' : '#bbf7d0'}`,
-        color: isErr ? '#b91c1c' : '#166534',
+        background: isErr ? '#fef2f2' : 'var(--hover)',
+        border: `1px solid ${isErr ? '#fecaca' : 'var(--meadow-border)'}`,
+        color: isErr ? '#b91c1c' : 'var(--meadow-mid)',
         fontSize: 13, fontWeight: 600, cursor: 'pointer',
         boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
         animation: 'svSlideIn .25s ease',
@@ -469,7 +469,7 @@ export function RoomChip({ room, selected, hasRoomConflict, hasMergePreview = fa
   } else if (selected && hasMergePreview) {
     bg = '#1d4ed8'; border = '#1d4ed8'; color = '#fff'; shadow = '0 0 0 2px rgba(37,99,235,.22)'
   } else if (selected) {
-    bg = TV.deep; border = TV.deep; color = '#fff'; shadow = `0 0 0 2px rgba(21,128,61,.2)`
+    bg = TV.deep; border = TV.deep; color = '#fff'; shadow = `0 0 0 2px rgba(0,0,0,.2)`
   } else if (hasRoomConflict) {
     bg = '#fef2f2'; border = '#fca5a5'; color = '#b91c1c'; shadow = 'none'
   } else if (hasMergePreview) {
@@ -571,7 +571,7 @@ export function PendingChangesBar({ pendingOverrides, onSave, onRevertAll, savin
           title="Undo all pending moves"
           style={{
             padding: '5px 13px', fontSize: 11.5, fontWeight: 600,
-            background: '#fff', color: '#92400e',
+            background: 'var(--surface)', color: '#92400e',
             border: '1.5px solid #fcd34d', borderRadius: 7,
             cursor: saving ? 'not-allowed' : 'pointer',
             fontFamily: 'Inter, sans-serif', opacity: saving ? .5 : 1,

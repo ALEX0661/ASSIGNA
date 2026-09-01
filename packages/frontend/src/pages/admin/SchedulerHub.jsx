@@ -8,9 +8,9 @@ import manageQueueImage from '../../assets/MANAGECOORQUE1.png'
 
 /* ── Design tokens (matches SchedulerPage / ApprovalDashboardPage) ── */
 const G = {
-  meadow: '#15803D', meadowDeep: '#0F5C2C', meadowMid: '#166534', meadowSoft: '#DCFCE7', meadowBorder: '#BBF7D0',
-  ink: '#0E2A20', inkMid: '#1C3D2A', muted: '#4B7060', muted2: '#6B8C7A',
-  border: '#D8E8DF', borderLight: '#EBF4EF', bg: '#F2F7F4', hover: '#EBF4EF',
+  meadow: 'var(--meadow, var(--meadow))', meadowDeep: 'var(--meadow-deep)', meadowMid: 'var(--meadow-mid)', meadowSoft: 'var(--meadow-soft)', meadowBorder: 'var(--meadow-border)',
+  ink: 'var(--ink, #0E2A20)', inkMid: '#1C3D2A', muted: 'var(--muted, #4B7060)', muted2: 'var(--muted2, #6B8C7A)',
+  border: 'var(--border)', borderLight: 'var(--hover)', bg: 'var(--bg, #F2F7F4)', hover: 'var(--hover)',
   amber: '#D97706', amberSoft: '#FEF3C7', amberBorder: '#FDE68A',
 }
 
@@ -20,17 +20,17 @@ if (!document.getElementById('scheduler-hub-style')) {
   s.textContent = `
     @keyframes shPulse { 0%,100%{box-shadow:0 0 0 0 rgba(217,119,6,0.35)} 50%{box-shadow:0 0 0 5px rgba(217,119,6,0)} }
     @keyframes shFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-    .sh-choice-card { background:#fff; border:1px solid ${G.border}; border-radius:16px; padding:0; margin:0;
+    .sh-choice-card { background: var(--surface); border:1px solid ${G.border}; border-radius:16px; padding:0; margin:0;
       cursor:pointer; transition:box-shadow .15s, transform .15s; text-align:left; font:inherit; appearance:none;
       display:flex; flex-direction:column; animation:shFadeIn .35s ease both; font-family:'Poppins',sans-serif;
-      box-shadow:0 1px 4px rgba(10,46,28,0.04); overflow:hidden; }
-    .sh-choice-card:hover { box-shadow:0 10px 26px rgba(10,46,28,0.12); transform:translateY(-3px); }
+      box-shadow:0 1px 4px rgba(0,0,0,0.04); overflow:hidden; }
+    .sh-choice-card:hover { box-shadow:0 10px 26px rgba(0,0,0,0.12); transform:translateY(-3px); }
     .sh-choice-head { padding:26px 22px 22px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
     .sh-choice-icon { width:44px; height:44px; border-radius:11px; display:flex; align-items:center; justify-content:center;
       flex-shrink:0; background:rgba(255,255,255,0.22); }
     .sh-choice-pill { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:6px;
       font-size:10px; font-weight:700; letter-spacing:.3px; white-space:nowrap; background:rgba(255,255,255,0.22); color:#fff; }
-    .sh-choice-pill-dot { width:5px; height:5px; border-radius:50%; flex-shrink:0; background:#fff; }
+    .sh-choice-pill-dot { width:5px; height:5px; border-radius:50%; flex-shrink:0; background: var(--surface); }
     .sh-choice-body { padding:16px 22px 20px; display:flex; flex-direction:column; gap:12px; flex:1; }
     .sh-choice-title { font-size:16px; font-weight:800; font-family:"'Poppins',sans-serif"; color:#fff; }
     .sh-choice-meta { display:flex; align-items:center; gap:7px; font-size:11.5px; color:${G.muted2}; font-weight:600;
@@ -39,7 +39,7 @@ if (!document.getElementById('scheduler-hub-style')) {
     .sh-badge { display:inline-flex; align-items:center; justify-content:center; min-width:19px; height:19px; padding:0 5px;
       border-radius:99px; background:${G.amber}; color:#fff; font-size:10.5px; font-weight:800; animation:shPulse 2s infinite; }
     .sh-back-btn { display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:8px;
-      border:1.5px solid ${G.border}; background:#fff; color:${G.muted}; font-size:11.5px; font-weight:700;
+      border:1.5px solid ${G.border}; background: var(--surface); color:${G.muted}; font-size:11.5px; font-weight:700;
       cursor:pointer; font-family:'Poppins',sans-serif; transition:all .15s; }
     .sh-back-btn:hover { border-color:${G.meadowBorder}; color:${G.meadowDeep}; background:${G.hover}; }
   `

@@ -4,14 +4,14 @@ import { useCoordSolverStore } from '../store/scheduleStore'
 import { coordCancelSolve } from '../services/api'
 
 const G = {
-  meadow:       '#15803D',
-  meadowDeep:   '#0F5C2C',
-  meadowSoft:   '#DCFCE7',
-  meadowBorder: '#BBF7D0',
-  ink:          '#0E2A20',
-  muted:        '#4B7060',
-  border:       '#D8E8DF',
-  bg:           '#F2F7F4',
+  meadow: 'var(--meadow, var(--meadow))',
+  meadowDeep:   'var(--meadow-deep)',
+  meadowSoft:   'var(--meadow-soft)',
+  meadowBorder: 'var(--meadow-border)',
+  ink: 'var(--ink, #0E2A20)',
+  muted: 'var(--muted, #4B7060)',
+  border:       'var(--border)',
+  bg: 'var(--bg, #F2F7F4)',
 }
 
 const PHASES = ['NSTP', 'GEC / MAT', 'Year 4', 'Year 3', 'Year 2', 'Year 1', 'PE / PATHFIT']
@@ -26,8 +26,8 @@ if (!document.getElementById('solver-pill-style')) {
     .solver-pill {
       position: fixed; z-index: 950;
       display: flex; align-items: center; gap: 10px;
-      background: #fff; border: 1px solid ${G.border}; border-radius: 14px;
-      box-shadow: 0 10px 28px rgba(10,46,28,0.18);
+      background: var(--surface); border: 1px solid ${G.border}; border-radius: 14px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.18);
       padding: 10px 14px;
       cursor: pointer;
       font-family: 'Inter', sans-serif;
@@ -36,8 +36,8 @@ if (!document.getElementById('solver-pill-style')) {
       user-select: none;
       transition: box-shadow .15s, transform .15s;
     }
-    .solver-pill:hover { box-shadow: 0 14px 36px rgba(10,46,28,0.24); transform: translateY(-1px); }
-    .solver-pill.dragging { cursor: grabbing; box-shadow: 0 18px 40px rgba(10,46,28,0.28); transform: none; }
+    .solver-pill:hover { box-shadow: 0 14px 36px rgba(0,0,0,0.24); transform: translateY(-1px); }
+    .solver-pill.dragging { cursor: grabbing; box-shadow: 0 18px 40px rgba(0,0,0,0.28); transform: none; }
 
     .solver-pill-ring { position: relative; width: 36px; height: 36px; flex-shrink: 0; }
     .solver-pill-ring svg { transform: rotate(-90deg); display: block; }
@@ -77,8 +77,8 @@ if (!document.getElementById('solver-pill-style')) {
       padding: 14px 22px; border-radius: 12px;
       font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 600;
       white-space: nowrap; pointer-events: none;
-      box-shadow: 0 8px 24px rgba(10,46,28,0.15);
-      background: #fff; color: ${G.meadowDeep}; border: 1px solid ${G.meadowBorder};
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      background: var(--surface); color: ${G.meadowDeep}; border: 1px solid ${G.meadowBorder};
       animation: pillSlideIn .25s cubic-bezier(.4,0,.2,1);
     }
 
@@ -89,8 +89,8 @@ if (!document.getElementById('solver-pill-style')) {
       animation: pillFadeIn .18s ease;
     }
     .solver-redirect-box {
-      background: #fff; border-radius: 18px; width: 360px; padding: 28px;
-      box-shadow: 0 24px 60px rgba(10,46,28,0.28); border: 1px solid ${G.border};
+      background: var(--surface); border-radius: 18px; width: 360px; padding: 28px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.28); border: 1px solid ${G.border};
       font-family: 'Inter', sans-serif;
       animation: pillSlideIn .22s cubic-bezier(0.16,1,0.3,1);
     }
@@ -165,7 +165,7 @@ function PillModal({ status, label, onClose, onGoScheduler, onStopConfirm }) {
 
           <button
             onClick={onClose}
-            style={{ padding:'9px', borderRadius:9, border:`1px solid ${G.border}`, background:'#fff', color:G.muted, fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', textAlign:'center' }}
+            style={{ padding:'9px', borderRadius:9, border:`1px solid ${G.border}`, background: 'var(--surface)', color:G.muted, fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', textAlign:'center' }}
           >
             Dismiss
           </button>

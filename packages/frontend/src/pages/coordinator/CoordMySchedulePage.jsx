@@ -17,11 +17,11 @@ function markOnboardingCompleted() {
 
 /* ── Design tokens (unified with CoordSchedulerPage / CourseListPage) ── */
 const G = {
-  meadow: '#15803D', meadowDeep: '#0F5C2C', meadowMid: '#166534',
-  meadowSoft: '#DCFCE7', meadowBorder: '#BBF7D0',
-  ink: '#0E2A20', inkMid: '#1C3D2A', muted: '#4B7060', muted2: '#6B8C7A',
-  border: '#D8E8DF', borderLight: '#EBF4EF', bg: '#F2F7F4',
-  surface: '#FFFFFF', hover: '#EBF4EF', amber: '#D97706',
+  meadow: 'var(--meadow, var(--meadow))', meadowDeep: 'var(--meadow-deep)', meadowMid: 'var(--meadow-mid)',
+  meadowSoft: 'var(--meadow-soft)', meadowBorder: 'var(--meadow-border)',
+  ink: 'var(--ink, #0E2A20)', inkMid: '#1C3D2A', muted: 'var(--muted, #4B7060)', muted2: 'var(--muted2, #6B8C7A)',
+  border: 'var(--border)', borderLight: 'var(--hover)', bg: 'var(--bg, #F2F7F4)',
+  surface: 'var(--surface, #FFFFFF)', hover: 'var(--hover)', amber: '#D97706',
   amberSoft: '#FEF3C7', amberBorder: '#FDE68A',
   red: '#C0392B', redSoft: '#FFF0F0', redBorder: '#FECACA',
   blue: '#1D4ED8', blueSoft: '#DBEAFE', blueBorder: '#BFDBFE',
@@ -33,38 +33,38 @@ const CO_STYLE = `
   @keyframes shimmer { 0% { background-position:-600px 0 } 100% { background-position:600px 0 } }
   @keyframes spin { to { transform:rotate(360deg) } }
   .co-skel { background:linear-gradient(90deg,${G.hover} 25%,${G.meadowSoft} 50%,${G.hover} 75%); background-size:600px 100%; animation:shimmer 1.4s ease-in-out infinite; border-radius:6px; }
-  .co-card { background:${G.surface}; border-radius:14px; border:1px solid ${G.border}; box-shadow:0 1px 8px rgba(10,46,28,0.06); overflow:hidden; animation:fadeUp .28s ease both; }
+  .co-card { background:${G.surface}; border-radius:14px; border:1px solid ${G.border}; box-shadow:0 1px 8px rgba(0,0,0,0.06); overflow:hidden; animation:fadeUp .28s ease both; }
   .co-row { display:flex; align-items:center; gap:14px; padding:12px 20px; border-bottom:1px solid ${G.borderLight}; transition:background .12s; }
   .co-row:last-child { border-bottom:none; }
   .co-row:hover { background:#F8FBFA; }
   .co-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 15px; border-radius:9px; font-size:12px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; transition:opacity .15s; border:none; }
   .co-btn:hover { opacity:.88; }
   .co-btn:disabled { opacity:.5; cursor:default; }
-  .co-btn-primary { background:linear-gradient(135deg,${G.meadow},${G.meadowDeep}); color:#fff; box-shadow:0 3px 12px rgba(15,92,44,0.22); }
+  .co-btn-primary { background:linear-gradient(135deg,${G.meadow},${G.meadowDeep}); color:#fff; box-shadow:0 3px 12px rgba(0,0,0,0.22); }
   .co-btn-ghost { background:${G.bg}; color:${G.inkMid}; border:1.5px solid ${G.border} !important; }
   .co-btn-danger { background:${G.redSoft}; color:${G.red}; border:1px solid ${G.redBorder} !important; }
   .co-btn-amber { background:${G.amberSoft}; color:#92400E; border:1px solid ${G.amberBorder} !important; }
-  .co-input { width:100%; padding:9px 12px; border-radius:9px; border:1.5px solid ${G.border}; font-size:13px; font-family:'Inter',sans-serif; outline:none; box-sizing:border-box; transition:all .15s; background:#fff; }
-  .co-input:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(21,128,61,0.1); }
+  .co-input { width:100%; padding:9px 12px; border-radius:9px; border:1.5px solid ${G.border}; font-size:13px; font-family:'Inter',sans-serif; outline:none; box-sizing:border-box; transition:all .15s; background: var(--surface); }
+  .co-input:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
   .co-tab { padding:5px 14px; border-radius:8px; font-size:11.5px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; transition:all .15s; border:1.5px solid ${G.border}; background:${G.bg}; color:#4A5568; }
   .co-tab.active { border-color:${G.meadow}; background:${G.meadowSoft}; color:${G.meadowMid}; }
 
   /* Segmented status filter, matching CourseListPage's tab switcher */
-  .co-seg { display:flex; gap:3px; background:#fff; border-radius:10px; padding:3px; border:1px solid ${G.border}; flex-shrink:0; }
+  .co-seg { display:flex; gap:3px; background: var(--surface); border-radius:10px; padding:3px; border:1px solid ${G.border}; flex-shrink:0; }
   .co-seg-btn { padding:6px 15px; border-radius:7px; font-size:12px; font-weight:500; cursor:pointer; font-family:'Inter',sans-serif; transition:all .15s; border:1px solid transparent; background:transparent; color:${G.muted}; display:flex; align-items:center; gap:6px; }
-  .co-seg-btn.active { background:${G.meadow}; color:#fff; font-weight:700; box-shadow:0 2px 8px rgba(21,128,61,0.28); }
+  .co-seg-btn.active { background:${G.meadow}; color:#fff; font-weight:700; box-shadow:0 2px 8px rgba(0,0,0,0.28); }
   .co-seg-count { font-size:10.5px; color:inherit; opacity:.75; }
 
   /* Toolbar icon buttons */
-  .co-icon-btn { display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:8px; border:1px solid ${G.border}; background:#fff; color:${G.muted}; cursor:pointer; transition:all .15s; padding:0; flex-shrink:0; }
+  .co-icon-btn { display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:8px; border:1px solid ${G.border}; background: var(--surface); color:${G.muted}; cursor:pointer; transition:all .15s; padding:0; flex-shrink:0; }
   .co-icon-btn:hover { background:${G.hover}; color:${G.meadow}; border-color:${G.meadowBorder}; }
   .co-icon-btn.active { background:${G.meadowSoft}; color:${G.meadowDeep}; border-color:${G.meadowBorder}; }
 
   /* Row action icon buttons (smaller, with color variants) */
-  .co-row-icon-btn { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:8px; border:1px solid ${G.border}; background:#fff; color:${G.muted}; cursor:pointer; transition:all .15s; padding:0; flex-shrink:0; }
+  .co-row-icon-btn { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:8px; border:1px solid ${G.border}; background: var(--surface); color:${G.muted}; cursor:pointer; transition:all .15s; padding:0; flex-shrink:0; }
   .co-row-icon-btn:hover { background:${G.hover}; color:${G.meadowDeep}; border-color:${G.meadowBorder}; }
   .co-row-icon-btn:disabled { opacity:.45; cursor:default; }
-  .co-row-icon-btn.primary { background:linear-gradient(135deg,${G.meadow},${G.meadowDeep}); color:#fff; border-color:transparent; box-shadow:0 2px 8px rgba(15,92,44,0.22); }
+  .co-row-icon-btn.primary { background:linear-gradient(135deg,${G.meadow},${G.meadowDeep}); color:#fff; border-color:transparent; box-shadow:0 2px 8px rgba(0,0,0,0.22); }
   .co-row-icon-btn.primary:hover { opacity:.88; color:#fff; }
   .co-row-icon-btn.danger { background:${G.redSoft}; color:${G.red}; border-color:${G.redBorder}; }
   .co-row-icon-btn.danger:hover { background:${G.red}; color:#fff; border-color:${G.red}; }
@@ -72,9 +72,9 @@ const CO_STYLE = `
   .co-row-icon-btn.amber:hover { background:${G.amber}; color:#fff; border-color:${G.amber}; }
 
   /* Sort select */
-  .co-sel { padding:6px 30px 6px 12px; border-radius:9px; border:1.5px solid ${G.border}; font-size:12px; font-weight:500; font-family:'Inter',sans-serif; color:${G.inkMid}; background:#fff; outline:none; cursor:pointer; appearance:none; transition:all .15s;
+  .co-sel { padding:6px 30px 6px 12px; border-radius:9px; border:1.5px solid ${G.border}; font-size:12px; font-weight:500; font-family:'Inter',sans-serif; color:${G.inkMid}; background: var(--surface); outline:none; cursor:pointer; appearance:none; transition:all .15s;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%236B8C7A' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; }
-  .co-sel:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(21,128,61,0.1); }
+  .co-sel:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
 
   /* Session count chip */
   .co-chip { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:${G.muted}; }
@@ -185,8 +185,8 @@ function Toast({ msg, onClose }) {
     <div style={{
       position: 'fixed', bottom: 28, right: 28, zIndex: 9999,
       padding: '12px 20px', borderRadius: 11, fontSize: 13, fontWeight: 600,
-      background: isErr ? '#FFF0F0' : '#ECFDF5', color: isErr ? '#C0392B' : '#15803D',
-      boxShadow: '0 8px 28px rgba(0,0,0,0.14)', border: `1px solid ${isErr ? '#FECACA' : '#BBF7D0'}`,
+      background: isErr ? '#FFF0F0' : 'var(--meadow-soft)', color: isErr ? '#C0392B' : 'var(--meadow)',
+      boxShadow: '0 8px 28px rgba(0,0,0,0.14)', border: `1px solid ${isErr ? '#FECACA' : 'var(--meadow-border)'}`,
       display: 'flex', alignItems: 'center', gap: 9, animation: 'fadeUp .2s ease',
     }}>
       {isErr
@@ -207,7 +207,7 @@ function Toast({ msg, onClose }) {
         background: active ? G.meadow : 'transparent',
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         transition: 'all 0.15s', cursor: 'pointer',
-        boxShadow: active ? '0 2px 6px rgba(21,128,61,0.3)' : 'none',
+        boxShadow: active ? '0 2px 6px rgba(0,0,0,0.3)' : 'none',
       }}>
         {indeterminate && !checked && <svg width="8" height="2" viewBox="0 0 8 2" fill="none"><rect width="8" height="2" rx="1" fill="#fff"/></svg>}
         {checked && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><polyline points="1,3.5 3.5,6 8,1" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
@@ -577,7 +577,7 @@ export default function CoordMySchedulePage() {
           const busy = deleting
           return (
             <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(10,30,18,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => !busy && setConfirmModal(null)}>
-              <div style={{ background: '#fff', borderRadius: 18, padding: '28px 28px 24px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(10,30,18,0.22)', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+              <div style={{ background: 'var(--surface)', borderRadius: 18, padding: '28px 28px 24px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(10,30,18,0.22)', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
                 <div style={{ width: 52, height: 52, borderRadius: '50%', background: isSubmit ? G.meadowSoft : G.redSoft, margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {isSubmit ? (
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={G.meadow} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/></svg>
@@ -588,7 +588,7 @@ export default function CoordMySchedulePage() {
                 <div style={{ fontSize: 16, fontWeight: 700, color: G.ink, marginBottom: 8, fontFamily: 'Inter,sans-serif' }}>{title}</div>
                 <div style={{ fontSize: 13, color: G.muted2, marginBottom: 24, lineHeight: 1.5, fontFamily: 'Inter,sans-serif' }}>{desc}</div>
                 <div style={{ display: 'flex', gap: 10 }}>
-                  <button onClick={() => setConfirmModal(null)} disabled={busy} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: '#fff', fontSize: 13, fontWeight: 600, color: G.muted, cursor: busy ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
+                  <button onClick={() => setConfirmModal(null)} disabled={busy} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: 'var(--surface)', fontSize: 13, fontWeight: 600, color: G.muted, cursor: busy ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
                     Cancel
                   </button>
                   <button
@@ -630,7 +630,7 @@ export default function CoordMySchedulePage() {
                 ) : (
                   <>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 3, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 13.5, fontWeight: 700, color: '#0E2A20' }}>{s.name}</span>
+                      <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>{s.name}</span>
                       <Badge status={s.status} />
                       {termLabel(s) && (
                         <span style={{ fontSize: 10.5, fontWeight: 600, color: G.meadowDeep, background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, padding: '1.5px 8px', borderRadius: 99 }}>
@@ -638,7 +638,7 @@ export default function CoordMySchedulePage() {
                         </span>
                       )}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 11.5, color: '#6B8C7A' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 11.5, color: 'var(--muted2)' }}>
                       <span className="co-chip">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
                         {s.eventCount ?? 0} session{(s.eventCount ?? 0) === 1 ? '' : 's'}

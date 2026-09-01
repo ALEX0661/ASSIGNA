@@ -67,10 +67,10 @@ function CoordToastContainer({ toasts }) {
         <div key={t.id} style={{
           display:'flex', alignItems:'center', gap:10, padding:'12px 20px', borderRadius:12,
           fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:600, whiteSpace:'nowrap',
-          boxShadow:'0 8px 24px rgba(10,46,28,0.15)', pointerEvents:'auto',
-          background: t.type === 'success' ? '#15803D' : '#fff',
-          color: t.type === 'success' ? '#fff' : t.type === 'error' ? '#DC2626' : '#0F5C2C',
-          border: t.type === 'success' ? '1px solid #0F5C2C' : t.type === 'error' ? '1px solid #FECACA' : '1px solid #BBF7D0',
+          boxShadow:'0 8px 24px rgba(0,0,0,0.15)', pointerEvents:'auto',
+          background: t.type === 'success' ? 'var(--meadow)' : '#fff',
+          color: t.type === 'success' ? '#fff' : t.type === 'error' ? '#DC2626' : 'var(--meadow-deep)',
+          border: t.type === 'success' ? '1px solid var(--meadow-deep)' : t.type === 'error' ? '1px solid #FECACA' : '1px solid var(--meadow-border)',
         }}>
           {t.message}
         </div>
@@ -91,12 +91,12 @@ function LogoutModal({ onConfirm, onCancel }) {
             </svg>
           </div>
           <div>
-            <p style={{ fontSize:14, fontWeight:700, color:'#0E2A20' }}>Confirm Logout</p>
-            <p style={{ fontSize:12, color:'#6B8C7A', marginTop:3 }}>Are you sure you want to exit?</p>
+            <p style={{ fontSize:14, fontWeight:700, color: 'var(--ink)' }}>Confirm Logout</p>
+            <p style={{ fontSize:12, color: 'var(--muted2)', marginTop:3 }}>Are you sure you want to exit?</p>
           </div>
         </div>
         <div style={{ display:'flex', gap:9, justifyContent:'flex-end' }}>
-          <button onClick={onCancel} style={{ padding:'8px 18px', borderRadius:10, border:'1.5px solid #D8E8DF', background:'#F2F7F4', color:'#1C3D2A', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
+          <button onClick={onCancel} style={{ padding:'8px 18px', borderRadius:10, border:'1.5px solid #D8E8DF', background: 'var(--bg)', color: 'var(--ink2)', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
             Cancel
           </button>
           <button onClick={onConfirm} style={{ padding:'8px 18px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#EF4444,#C0392B)', color:'#fff', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 4px 14px rgba(192,57,43,0.3)' }}>
@@ -162,7 +162,7 @@ export default function CoordinatorLayout() {
       {/* ── Sidebar ── */}
       <aside style={{
         width: sidebarWidth,
-        background: 'linear-gradient(180deg, #1A5C35 0%, #154D2C 60%, #0F3D22 100%)',
+        background: 'linear-gradient(180deg, var(--meadow-mid) 0%, var(--meadow-deep) 100%)',
         display:'flex', flexDirection:'column', flexShrink:0,
         boxShadow:'4px 0 20px rgba(10,40,20,0.22)', zIndex:100,
         position: isMobile ? 'absolute' : 'sticky', top:0, left:0, height:'100vh', overflow:'visible',
@@ -266,7 +266,7 @@ export default function CoordinatorLayout() {
                 style={{ 
                   display:'flex', alignItems:'center', justifyContent:'center', 
                   width: 24, height: 24, borderRadius: '50%', border: '1.5px solid var(--border)', 
-                  background: '#fff', color: 'var(--muted)', cursor: 'pointer', transition: 'all .15s', flexShrink: 0,
+                  background: 'var(--surface)', color: 'var(--muted)', cursor: 'pointer', transition: 'all .15s', flexShrink: 0,
                   fontSize: 13, fontWeight: 800, fontFamily: "'Inter',sans-serif", padding: 0, lineHeight: 1
                 }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'var(--meadowSoft)'; e.currentTarget.style.color = 'var(--meadowDeep)' }}

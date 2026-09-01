@@ -11,20 +11,20 @@ import iconPrograms from '../../assets/PROGRAMS.png'
 
 /* ── Design tokens (Unified with FacultyListPage) ── */
 const G = {
-  meadow:       '#15803D',
-  meadowDeep:   '#0F5C2C',
-  meadowMid:    '#166534',
-  meadowSoft:   '#DCFCE7',
-  meadowBorder: '#BBF7D0',
-  ink:          '#0E2A20',
+  meadow: 'var(--meadow, var(--meadow))',
+  meadowDeep:   'var(--meadow-deep)',
+  meadowMid:    'var(--meadow-mid)',
+  meadowSoft:   'var(--meadow-soft)',
+  meadowBorder: 'var(--meadow-border)',
+  ink: 'var(--ink, #0E2A20)',
   inkMid:       '#1C3D2A',
-  muted:        '#4B7060',
-  muted2:       '#6B8C7A',
-  border:       '#D8E8DF',
-  borderLight:  '#EBF4EF',
-  bg:           '#F2F7F4',
-  surface:      '#FFFFFF',
-  hover:        '#EBF4EF',
+  muted: 'var(--muted, #4B7060)',
+  muted2: 'var(--muted2, #6B8C7A)',
+  border:       'var(--border)',
+  borderLight:  'var(--hover)',
+  bg: 'var(--bg, #F2F7F4)',
+  surface: 'var(--surface, #FFFFFF)',
+  hover:        'var(--hover)',
   amber:        '#D97706',
   amberSoft:    '#FEF3C7',
   amberBorder:  '#FDE68A',
@@ -67,15 +67,15 @@ const LS_VIEW_PREFS = 'cp-view-prefs'
 
     .cp-toast-wrap { position:fixed;bottom:24px;left:50%;z-index:9999;display:flex;flex-direction:column;gap:10px;align-items:center;pointer-events:none;transform:translateX(-50%); }
     .cp-toast { display:flex;align-items:center;gap:10px;padding:12px 20px;border-radius:12px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;animation:cpToastIn .22s cubic-bezier(.4,0,.2,1);white-space:nowrap;pointer-events:auto; }
-    .cp-toast.success { background:linear-gradient(135deg,${G.meadow},${G.meadowDeep});color:#fff;box-shadow:0 8px 24px rgba(21,128,61,0.3);border:1px solid ${G.meadowBorder}; }
-    .cp-toast.error   { background:#fff;color:#DC2626;border:1.5px solid #FECACA;box-shadow:0 8px 24px rgba(220,38,38,0.15); }
-    .cp-toast.info    { background:#fff;color:${G.meadow};border:1.5px solid ${G.meadowBorder};box-shadow:0 8px 24px rgba(21,128,61,0.15); }
+    .cp-toast.success { background:linear-gradient(135deg,${G.meadow},${G.meadowDeep});color:#fff;box-shadow:0 8px 24px rgba(0,0,0,0.3);border:1px solid ${G.meadowBorder}; }
+    .cp-toast.error   { background: var(--surface);color:#DC2626;border:1.5px solid #FECACA;box-shadow:0 8px 24px rgba(220,38,38,0.15); }
+    .cp-toast.info    { background: var(--surface);color:${G.meadow};border:1.5px solid ${G.meadowBorder};box-shadow:0 8px 24px rgba(0,0,0,0.15); }
 
-    .cp-search:focus  { border-color:${G.meadow}!important;box-shadow:0 0 0 3px rgba(21,128,61,0.12)!important;background:#fff!important; }
+    .cp-search:focus  { border-color:${G.meadow}!important;box-shadow:0 0 0 3px rgba(0,0,0,0.12)!important;background: var(--surface)!important; }
     .cp-tr-hover:hover td { background:${G.hover}; }
 
-    .cp-inp, .cp-sel { padding: 9px 12px; border-radius: 10px; border: 1px solid ${G.border}; font-family: 'Inter',sans-serif; font-size: 12.5px; color: ${G.ink}; background: #fff; outline: none; transition: all 0.15s ease; width: 100%; box-sizing: border-box; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
-    .cp-inp:focus,.cp-sel:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(21,128,61,0.1); }
+    .cp-inp, .cp-sel { padding: 9px 12px; border-radius: 10px; border: 1px solid ${G.border}; font-family: 'Inter',sans-serif; font-size: 12.5px; color: ${G.ink}; background: var(--surface); outline: none; transition: all 0.15s ease; width: 100%; box-sizing: border-box; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+    .cp-inp:focus,.cp-sel:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
     .cp-sel { appearance:none; cursor:pointer; padding-right:32px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B8C7A' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; }
 
     .cp-th-sort { cursor:pointer; user-select:none; transition: color .15s; }
@@ -85,8 +85,8 @@ const LS_VIEW_PREFS = 'cp-view-prefs'
     .cp-th-sort:hover .cp-sort-arrow { opacity:0.6; }
 
     /* Compact Stats Cards */
-    .cp-stat-card { background:#fff; border:1px solid ${G.border}; border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:14px; transition: all .15s ease; box-shadow: 0 2px 4px rgba(10,46,28,0.03); }
-    .cp-stat-card:hover { border-color: ${G.meadowBorder}; box-shadow: 0 4px 12px rgba(21,128,61,0.06); transform: translateY(-1px); }
+    .cp-stat-card { background: var(--surface); border:1px solid ${G.border}; border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:14px; transition: all .15s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.03); }
+    .cp-stat-card:hover { border-color: ${G.meadowBorder}; box-shadow: 0 4px 12px rgba(0,0,0,0.06); transform: translateY(-1px); }
     .cp-stat-card.warn { border-color:${G.amberBorder}; background:${G.amberSoft}; }
     .cp-stat-card.warn:hover { border-color:${G.amber}; box-shadow: 0 4px 12px rgba(217,119,6,0.1); }
     .cp-stat-icon-wrap { width: 46px; height: 46px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -130,7 +130,7 @@ function Checkbox({ checked, indeterminate, onChange }) {
       background: active ? G.meadow : 'transparent',
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       transition: 'all 0.15s', cursor: 'pointer',
-      boxShadow: active ? '0 2px 6px rgba(21,128,61,0.3)' : 'none',
+      boxShadow: active ? '0 2px 6px rgba(0,0,0,0.3)' : 'none',
     }}>
       {indeterminate && !checked && <svg width="8" height="2" viewBox="0 0 8 2" fill="none"><rect width="8" height="2" rx="1" fill="#fff"/></svg>}
       {checked && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><polyline points="1,3.5 3.5,6 8,1" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
@@ -143,12 +143,12 @@ function FilterPill({ label, count, active, onClick, icon }) {
     <button onClick={onClick} style={{
       padding: '6px 14px', borderRadius: 10, fontSize: 11.5,
       fontFamily: "'Inter',sans-serif", fontWeight: active ? 600 : 500,
-      background: active ? '#E5F9EC' : '#fff',
+      background: active ? 'var(--meadow-soft)' : '#fff',
       color: active ? G.meadowDeep : G.muted,
       border: `1px solid ${active ? G.meadowBorder : G.border}`,
       cursor: 'pointer', transition: 'all .15s',
       display: 'flex', alignItems: 'center', gap: 6,
-      boxShadow: active ? '0 2px 8px rgba(21,128,61,0.08)' : '0 1px 2px rgba(0,0,0,0.02)'
+      boxShadow: active ? '0 2px 8px rgba(0,0,0,0.08)' : '0 1px 2px rgba(0,0,0,0.02)'
     }}
     onMouseEnter={e => { if(!active) { e.currentTarget.style.borderColor = G.meadowBorder; e.currentTarget.style.color = G.meadow } }}
     onMouseLeave={e => { if(!active) { e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted } }}
@@ -185,7 +185,7 @@ function SectionLabel({ label, count, onClear, icon }) {
 function progColor(p = '') {
   const v = p.toUpperCase()
   if (v === 'BSCS') return { bg: '#E0F2FE', color: '#0369A1', border: '#BAE6FD' }
-  if (v === 'BSIT') return { bg: '#DCFCE7', color: '#15803D', border: '#BBF7D0' }
+  if (v === 'BSIT') return { bg: 'var(--meadow-soft)', color: 'var(--meadow)', border: 'var(--meadow-border)' }
   if (v.includes('GD'))  return { bg: '#FEF3C7', color: '#B45309', border: '#FDE68A' }
   if (v.includes('DAT')) return { bg: '#FEE2E2', color: '#B91C1C', border: '#FECACA' }
   return { bg: G.borderLight, color: G.muted, border: G.border }
@@ -208,7 +208,7 @@ function DeleteConfirmModal({ name, count, onConfirm, onCancel, deleting }) {
   const title    = isBulk ? `Permanently Delete ${count} Courses?` : 'Permanently Delete?'
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(10,30,18,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ background: '#fff', borderRadius: 18, padding: '28px 28px 24px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(10,30,18,0.22)', textAlign: 'center' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 18, padding: '28px 28px 24px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(10,30,18,0.22)', textAlign: 'center' }}>
         <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#FFE8E8', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
         </div>
@@ -217,7 +217,7 @@ function DeleteConfirmModal({ name, count, onConfirm, onCancel, deleting }) {
           {isBulk ? `This cannot be undone. All ${count} courses will be removed forever.` : `This cannot be undone. ${name} will be removed forever.`}
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onCancel} disabled={deleting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: '#fff', fontSize: 13, fontWeight: 600, color: G.muted, cursor: deleting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>Cancel</button>
+          <button onClick={onCancel} disabled={deleting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: 'var(--surface)', fontSize: 13, fontWeight: 600, color: G.muted, cursor: deleting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>Cancel</button>
           <button onClick={onConfirm} disabled={deleting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: '#C0392B', fontSize: 13, fontWeight: 700, color: '#fff', cursor: deleting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: deleting ? 0.7 : 1 }}>
             {deleting ? 'Deleting...' : isBulk ? `Delete ${count}` : 'Yes, Delete'}
           </button>
@@ -240,8 +240,8 @@ function CourseModal({ mode, initial, onSave, onClose, saving, error }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(14,42,32,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 560, boxShadow: '0 24px 64px rgba(14,42,32,0.24)', overflow: 'hidden' }}>
-        <div style={{ padding: '20px 24px', borderBottom: `1px solid ${G.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 20, width: '100%', maxWidth: 560, boxShadow: '0 24px 64px rgba(14,42,32,0.24)', overflow: 'hidden' }}>
+        <div style={{ padding: '20px 24px', borderBottom: `1px solid ${G.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface)' }}>
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: G.ink, fontFamily: "'Inter',sans-serif" }}>
               {isEdit ? 'Edit Course' : isDuplicate ? 'Duplicate Course' : 'Add New Course'}
@@ -250,9 +250,9 @@ function CourseModal({ mode, initial, onSave, onClose, saving, error }) {
               {isEdit ? `Modifying ${initial?.courseCode}` : isDuplicate ? `Copying from ${initial?.courseCode} — adjust the code and save` : 'Fill in the course details below'}
             </div>
           </div>
-          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${G.border}`, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, transition: 'all .15s' }}
+          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${G.border}`, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, transition: 'all .15s' }}
             onMouseEnter={e => { e.currentTarget.style.background = '#FFE8E8'; e.currentTarget.style.borderColor = '#FECACA'; e.currentTarget.style.color = '#DC2626' }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
@@ -300,7 +300,7 @@ function CourseModal({ mode, initial, onSave, onClose, saving, error }) {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, background: '#FAFAFE', border: `1px solid ${G.borderLight}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, background: 'var(--bg)', border: `1px solid ${G.borderLight}` }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: G.meadow, flexShrink: 0 }} />
             <span style={{ fontSize: 11.5, color: G.muted }}>
               Total units: <strong style={{ color: G.ink }}>{Number(form.unitsLecture)+Number(form.unitsLab)}</strong>
@@ -316,15 +316,15 @@ function CourseModal({ mode, initial, onSave, onClose, saving, error }) {
           )}
         </div>
 
-        <div style={{ padding: '16px 24px', borderTop: `1px solid ${G.border}`, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, background: '#FAFAFE' }}>
-          <button onClick={onClose} style={{ padding: '8px 18px', borderRadius: 10, border: `1.5px solid ${G.border}`, background: '#fff', color: G.muted, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", transition: 'all .15s' }}
+        <div style={{ padding: '16px 24px', borderTop: `1px solid ${G.border}`, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, background: 'var(--bg)' }}>
+          <button onClick={onClose} style={{ padding: '8px 18px', borderRadius: 10, border: `1.5px solid ${G.border}`, background: 'var(--surface)', color: G.muted, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", transition: 'all .15s' }}
             onMouseEnter={e => { e.currentTarget.style.background = '#FFF5F5'; e.currentTarget.style.borderColor = '#FECACA'; e.currentTarget.style.color = '#DC2626' }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
             Cancel
           </button>
-          <button onClick={submit} disabled={saving || !canSave} style={{ padding: '8px 22px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 8, opacity: (saving || !canSave) ? 0.6 : 1, boxShadow: '0 4px 14px rgba(21,128,61,0.3)' }}
-            onMouseEnter={e => { if(!saving && canSave) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(21,128,61,0.4)' } }}
-            onMouseLeave={e => { if(!saving && canSave) { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(21,128,61,0.3)' } }}>
+          <button onClick={submit} disabled={saving || !canSave} style={{ padding: '8px 22px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 8, opacity: (saving || !canSave) ? 0.6 : 1, boxShadow: '0 4px 14px rgba(0,0,0,0.3)' }}
+            onMouseEnter={e => { if(!saving && canSave) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)' } }}
+            onMouseLeave={e => { if(!saving && canSave) { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.3)' } }}>
             {saving ? <span style={{ animation: 'cpSpin .8s linear infinite' }}>↻</span> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
             {isEdit ? 'Save Changes' : isDuplicate ? 'Create Copy' : 'Add Course'}
           </button>
@@ -748,7 +748,7 @@ export default function CourseListPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
 
         {/* Semester Tabs - Unified with Faculty active/archived toggle */}
-        <div id="tour-semester-tabs" style={{ display: 'flex', gap: 3, background: '#fff', borderRadius: 10, padding: 3, border: `1px solid ${G.border}`, flexShrink: 0 }}>
+        <div id="tour-semester-tabs" style={{ display: 'flex', gap: 3, background: 'var(--surface)', borderRadius: 10, padding: 3, border: `1px solid ${G.border}`, flexShrink: 0 }}>
           {SEMESTERS.map(sem => {
             const isActive = semesterTab === sem
             return (
@@ -761,7 +761,7 @@ export default function CourseListPage() {
                   color: isActive ? '#fff' : G.muted,
                   border: isActive ? 'none' : '1px solid transparent',
                   cursor: 'pointer', transition: 'all 0.15s', fontFamily: "'Inter',sans-serif",
-                  boxShadow: isActive ? '0 2px 8px rgba(21,128,61,0.28)' : 'none',
+                  boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.28)' : 'none',
                   display: 'flex', alignItems: 'center', gap: 6
                 }}
               >
@@ -779,17 +779,17 @@ export default function CourseListPage() {
 
         <div id="tour-header-actions" style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
           <button id="tour-block-config-btn" onClick={() => setShowBlockCfg(true)} title="Configure blocks per program-year"
-            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 8, border: `1px solid ${G.border}`, background: '#fff', color: G.muted, cursor: 'pointer', transition: 'all .15s', padding: 0 }}
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 8, border: `1px solid ${G.border}`, background: 'var(--surface)', color: G.muted, cursor: 'pointer', transition: 'all .15s', padding: 0 }}
             onMouseEnter={e => { e.currentTarget.style.background = G.hover; e.currentTarget.style.color = G.meadow }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = G.muted }}>
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.color = G.muted }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
           </button>
 
           {/* Export */}
           <button onClick={handleExport} disabled={!filtered.length} title="Export all semesters to Excel"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: `1px solid ${G.border}`, background: '#fff', color: G.muted2, fontSize: 11.5, fontWeight: 500, cursor: filtered.length ? 'pointer' : 'not-allowed', opacity: filtered.length ? 1 : 0.45, transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: `1px solid ${G.border}`, background: 'var(--surface)', color: G.muted2, fontSize: 11.5, fontWeight: 500, cursor: filtered.length ? 'pointer' : 'not-allowed', opacity: filtered.length ? 1 : 0.45, transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
             onMouseEnter={e => { if (filtered.length) { e.currentTarget.style.background = G.hover; e.currentTarget.style.color = G.meadow }}}
-            onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = G.muted2 }}>
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.color = G.muted2 }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="7 10 12 15 17 10"/>
@@ -800,9 +800,9 @@ export default function CourseListPage() {
 
           {/* Import */}
           <button onClick={() => setShowImport(true)}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 16px', borderRadius: 10, border: `1px solid ${G.border}`, fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: '#fff', color: G.muted }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 16px', borderRadius: 10, border: `1px solid ${G.border}`, fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: 'var(--surface)', color: G.muted }}
             onMouseEnter={e => { e.currentTarget.style.background = G.hover; e.currentTarget.style.borderColor = G.meadowBorder; e.currentTarget.style.color = G.meadow }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="17 8 12 3 7 8"/>
@@ -812,9 +812,9 @@ export default function CourseListPage() {
           </button>
 
           <button id="tour-add-course-btn" onClick={() => { setShowAdd(true); setError('') }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 18px', borderRadius: 10, border: 'none', fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: '#fff', boxShadow: '0 3px 12px rgba(21,128,61,0.32)' }}
-            onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 5px 18px rgba(21,128,61,0.42)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
-            onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 3px 12px rgba(21,128,61,0.32)'; e.currentTarget.style.transform = 'none' }}>
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 18px', borderRadius: 10, border: 'none', fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: '#fff', boxShadow: '0 3px 12px rgba(0,0,0,0.32)' }}
+            onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 5px 18px rgba(0,0,0,0.42)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 3px 12px rgba(0,0,0,0.32)'; e.currentTarget.style.transform = 'none' }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Add Course
           </button>
@@ -827,7 +827,7 @@ export default function CourseListPage() {
       </div>
 
       {/* ── Search + Toolbar ── */}
-      <div id="tour-search-toolbar" style={{ background: '#fff', borderRadius: 14, border: `1px solid ${G.border}`, padding: '10px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', boxShadow: '0 2px 8px rgba(10,46,28,0.05)' }}>
+      <div id="tour-search-toolbar" style={{ background: 'var(--surface)', borderRadius: 14, border: `1px solid ${G.border}`, padding: '10px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
 
         {/* Search */}
         <div style={{ position: 'relative', flex: '1 1 220px', minWidth: 180 }}>
@@ -838,7 +838,7 @@ export default function CourseListPage() {
           <input ref={searchRef} placeholder="Search course code or title…" value={search} onChange={e => setSearch(e.target.value)} className="cp-search"
             style={{ width: '100%', paddingLeft: 34, paddingRight: 10, height: 34, borderRadius: 8, border: `1.5px solid ${G.border}`, fontSize: 12.5, fontFamily: "'Inter',sans-serif", background: G.hover, outline: 'none', boxSizing: 'border-box', transition: 'all .15s', color: G.ink }}/>
           {!search && (
-            <kbd style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 10.5, fontWeight: 700, color: G.muted2, background: '#fff', border: `1px solid ${G.border}`, borderRadius: 4, padding: '2px 5px', pointerEvents: 'none', fontFamily: "'Inter',sans-serif" }}>/</kbd>
+            <kbd style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 10.5, fontWeight: 700, color: G.muted2, background: 'var(--surface)', border: `1px solid ${G.border}`, borderRadius: 4, padding: '2px 5px', pointerEvents: 'none', fontFamily: "'Inter',sans-serif" }}>/</kbd>
           )}
         </div>
 
@@ -852,7 +852,7 @@ export default function CourseListPage() {
           color: activeModalFilterCount ? '#fff' : G.muted,
           border: `1.5px solid ${activeModalFilterCount ? 'transparent' : G.border}`,
           cursor: 'pointer', transition: 'all .15s', whiteSpace: 'nowrap', fontFamily: "'Inter',sans-serif",
-          boxShadow: activeModalFilterCount ? '0 2px 8px rgba(21,128,61,0.28)' : 'none',
+          boxShadow: activeModalFilterCount ? '0 2px 8px rgba(0,0,0,0.28)' : 'none',
         }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
@@ -915,7 +915,7 @@ export default function CourseListPage() {
 
       {/* Bulk Action Bar */}
       {selCount > 0 && (
-        <div style={{ background: `linear-gradient(135deg,${G.meadowDeep},${G.inkMid})`, borderRadius: 12, padding: '10px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 6px 20px rgba(10,46,28,0.28)', animation: 'slideIn 0.18s ease' }}>
+        <div style={{ background: `linear-gradient(135deg,${G.meadowDeep},${G.inkMid})`, borderRadius: 12, padding: '10px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 6px 20px rgba(0,0,0,0.28)', animation: 'slideIn 0.18s ease' }}>
           <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
@@ -930,7 +930,7 @@ export default function CourseListPage() {
 
       {/* ── Content (List view only) ── */}
       {loading ? (
-        <div style={{ background: '#fff', borderRadius: 12, border: `1.5px solid ${G.border}`, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--surface)', borderRadius: 12, border: `1.5px solid ${G.border}`, overflow: 'hidden' }}>
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', borderBottom: i < 7 ? `1px solid ${G.borderLight}` : 'none' }}>
               <Skel w={20} h={20} r={4} />
@@ -962,7 +962,7 @@ export default function CourseListPage() {
           )}
         </div>
       ) : (
-        <div id="tour-courses-table-anchor" style={{ background: '#fff', borderRadius: 12, border: `1.5px solid ${G.border}`, overflow: 'hidden', boxShadow: '0 2px 8px rgba(10,46,28,0.06)' }}>
+        <div id="tour-courses-table-anchor" style={{ background: 'var(--surface)', borderRadius: 12, border: `1.5px solid ${G.border}`, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <table id="tour-courses-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
             <thead>
               <tr style={{ background: G.hover, borderBottom: `1.5px solid ${G.border}` }}>
@@ -1044,12 +1044,12 @@ export default function CourseListPage() {
       {/* ── Modals ── */}
       {showFilters && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(14,42,32,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => setShowFilters(false)}>
-          <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 500, display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(14,42,32,0.24)', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
-            <div style={{ padding: '20px 24px', borderBottom: `1px solid ${G.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 20, width: '100%', maxWidth: 500, display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(14,42,32,0.24)', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '20px 24px', borderBottom: `1px solid ${G.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface)' }}>
               <div><div style={{ fontSize: 16, fontWeight: 700, color: G.ink, fontFamily: "'Inter',sans-serif" }}>Filter Courses</div></div>
-              <button onClick={() => setShowFilters(false)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${G.border}`, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, transition: 'all .15s' }}
+              <button onClick={() => setShowFilters(false)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${G.border}`, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, transition: 'all .15s' }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#FFE8E8'; e.currentTarget.style.borderColor = '#FECACA'; e.currentTarget.style.color = '#DC2626' }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
@@ -1086,17 +1086,17 @@ export default function CourseListPage() {
                 </div>
               </div>
             </div>
-            <div style={{ padding: '16px 24px', borderTop: `1px solid ${G.border}`, display: 'flex', justifyContent: 'space-between', background: '#FAFAFE' }}>
+            <div style={{ padding: '16px 24px', borderTop: `1px solid ${G.border}`, display: 'flex', justifyContent: 'space-between', background: 'var(--bg)' }}>
               <span style={{ fontSize: 12.5, color: G.muted2, fontWeight: 500, alignSelf: 'center' }}>{filtered.length} matches</span>
               <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={resetFilters} style={{ padding: '8px 18px', borderRadius: 10, border: `1.5px solid ${G.border}`, background: '#fff', color: G.muted, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", transition: 'all .15s' }}
+                <button onClick={resetFilters} style={{ padding: '8px 18px', borderRadius: 10, border: `1.5px solid ${G.border}`, background: 'var(--surface)', color: G.muted, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", transition: 'all .15s' }}
                   onMouseEnter={e => { e.currentTarget.style.background = '#FFF5F5'; e.currentTarget.style.borderColor = '#FECACA'; e.currentTarget.style.color = '#DC2626' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
+                  onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
                   Reset
                 </button>
-                <button onClick={() => setShowFilters(false)} style={{ padding: '8px 22px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", boxShadow: '0 4px 14px rgba(21,128,61,0.3)', transition: 'all .15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(21,128,61,0.4)' }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(21,128,61,0.3)' }}>
+                <button onClick={() => setShowFilters(false)} style={{ padding: '8px 22px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", boxShadow: '0 4px 14px rgba(0,0,0,0.3)', transition: 'all .15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)' }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.3)' }}>
                   Apply
                 </button>
               </div>

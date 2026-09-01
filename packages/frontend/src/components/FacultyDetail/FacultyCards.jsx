@@ -11,27 +11,27 @@ if (!document.getElementById('role-spin-animation')) {
 
 // ─── Theme Tokens (Green — matches admin theme) ───────────────────────────────
 const T = {
-  green:        '#15803D',
-  greenDeep:    '#0F5C2C',
-  greenMid:     '#166534',
-  greenSoft:    '#DCFCE7',
-  greenBorder:  '#BBF7D0',
-  textMain:     '#0E2A20',
+  green: 'var(--meadow, var(--meadow))',
+  greenDeep:    'var(--meadow-deep)',
+  greenMid:     'var(--meadow-mid)',
+  greenSoft:    'var(--meadow-soft)',
+  greenBorder:  'var(--meadow-border)',
+  textMain:     'var(--ink)',
   textMid:      '#1C3D2A',
-  textMuted:    '#4B7060',
-  textLight:    '#6B8C7A',
-  border:       '#D8E8DF',
-  borderLight:  '#EBF4EF',
-  bg:           '#FFFFFF',
-  bgAlt:        '#F2F7F4',
+  textMuted: 'var(--muted, #4B7060)',
+  textLight: 'var(--muted2, #6B8C7A)',
+  border:       'var(--border)',
+  borderLight:  'var(--hover)',
+  bg: 'var(--surface, #FFFFFF)',
+  bgAlt: 'var(--bg, #F2F7F4)',
   danger:       '#EF4444',
   dangerSoft:   '#FEF2F2',
   // card header — soft green tint, not dark
-  headerBg:     '#F0FDF4',
-  headerBorder: '#BBF7D0',
-  headerText:   '#0E2A20',
-  headerMuted:  '#4B7060',
-  headerIcon:   '#15803D',
+  headerBg:     'var(--meadow-soft)',
+  headerBorder: 'var(--meadow-border)',
+  headerText:   'var(--ink)',
+  headerMuted: 'var(--muted, #4B7060)',
+  headerIcon: 'var(--meadow, var(--meadow))',
 }
 
 // Reusable card header — soft green tint, no icon
@@ -55,10 +55,10 @@ function CardHeader({ title, right, sub }) {
 // ─── ProfileCard ──────────────────────────────────────────────────────────────
 export function ProfileCard({ form, isNew, isOverloaded, avInitials, avFg, avBg, statusBg, statusCl, specCount, onOpenSpecModal }) {
   return (
-    <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(10,46,28,0.08)', fontFamily:"'Inter',sans-serif" }}>
+    <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', fontFamily:"'Inter',sans-serif" }}>
 
       {/* Avatar header — gradient green, not full dark */}
-      <div style={{ background:`linear-gradient(160deg,#166534 0%,#0F5C2C 100%)`, padding:'28px 24px 20px', display:'flex', flexDirection:'column', alignItems:'center', gap:12, position:'relative', overflow:'hidden' }}>
+      <div style={{ background:`linear-gradient(160deg,var(--meadow-mid) 0%,var(--meadow-deep) 100%)`, padding:'28px 24px 20px', display:'flex', flexDirection:'column', alignItems:'center', gap:12, position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', top:-30, right:-30, width:100, height:100, borderRadius:'50%', background:'rgba(255,255,255,0.05)', pointerEvents:'none' }}/>
         <div style={{ position:'absolute', bottom:-20, left:-14, width:72, height:72, borderRadius:'50%', background:'rgba(255,255,255,0.04)', pointerEvents:'none' }}/>
 
@@ -116,13 +116,13 @@ const CLEAN_CAP_RULES = [
 
 export function UnitLoadCard({ displayUnits, effectiveCap, isOverloaded, loadPct, tierLabel, scheduleUnits, barBg }) {
   return (
-    <div style={{ flex:1, background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(10,46,28,0.08)', fontFamily:"'Inter',sans-serif" }}>
+    <div style={{ flex:1, background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', fontFamily:"'Inter',sans-serif" }}>
       <CardHeader
         title={isOverloaded ? 'Unit Load — Over Cap' : 'Unit Load'}
         sub={isOverloaded ? `${displayUnits} units assigned — exceeds cap of ${effectiveCap}` : `${displayUnits} / ${effectiveCap} units`}
         right={scheduleUnits !== null ? (
           <span style={{ fontSize:11, color:'rgba(255,255,255,0.85)', fontWeight:600, display:'flex', alignItems:'center', gap:5, background:'rgba(255,255,255,0.18)', padding:'3px 10px', borderRadius:'99px', border:'1px solid rgba(255,255,255,0.25)' }}>
-            <span style={{ width:6, height:6, borderRadius:'50%', background:'#86EFAC' }}/>
+            <span style={{ width:6, height:6, borderRadius:'50%', background:'var(--meadow-border)' }}/>
             Live
           </span>
         ) : undefined}
@@ -309,7 +309,7 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
 
   return (
     <>
-      <div style={{ flex:1, background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(10,46,28,0.08)', fontFamily: "'Inter', sans-serif" }}>
+      <div style={{ flex:1, background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', fontFamily: "'Inter', sans-serif" }}>
         <CardHeader
           title="Basic Information"
           right={!isNew && (infoChanged||infoSaving||infoSaved) ? <SectionSaveBtn saving={infoSaving} saved={infoSaved} onClick={onSaveInfo}/> : undefined}
@@ -382,7 +382,7 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
                     ].map(opt => (
                         <button key={opt.key} type="button"
                           onClick={opt.onClick}
-                          style={{ flex:1, padding:'9px 12px', borderRadius:'9px', fontSize:12.5, fontFamily:"'Inter',sans-serif", background: opt.active ? `linear-gradient(135deg,${T.green},${T.greenDeep})` : T.bgAlt, color: opt.active ? '#fff' : T.textMuted, border: opt.active ? 'none' : `1.5px solid ${T.border}`, cursor:'pointer', fontWeight:600, transition:'all 0.18s', display:'flex', alignItems:'center', justifyContent:'center', gap:7, boxShadow: opt.active ? `0 3px 10px rgba(15,92,44,0.28)` : 'none' }}
+                          style={{ flex:1, padding:'9px 12px', borderRadius:'9px', fontSize:12.5, fontFamily:"'Inter',sans-serif", background: opt.active ? `linear-gradient(135deg,${T.green},${T.greenDeep})` : T.bgAlt, color: opt.active ? '#fff' : T.textMuted, border: opt.active ? 'none' : `1.5px solid ${T.border}`, cursor:'pointer', fontWeight:600, transition:'all 0.18s', display:'flex', alignItems:'center', justifyContent:'center', gap:7, boxShadow: opt.active ? `0 3px 10px rgba(0,0,0,0.28)` : 'none' }}
                         >
                           {opt.icon}{opt.label}
                         </button>
@@ -397,7 +397,7 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2" style={{ flexShrink:0 }}><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>
                     <div style={{ flex:1, fontSize:11.5, color:'#92400E', lineHeight:1.4 }}><strong>{form.AcademicRank}</strong> usually comes with Admin access.</div>
                     <button type="button" onClick={() => setSelectedIsAdmin(true)}
-                      style={{ flexShrink:0, padding:'6px 12px', borderRadius:'7px', border:'1px solid #D97706', background:'#fff', color:'#B45309', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}
+                      style={{ flexShrink:0, padding:'6px 12px', borderRadius:'7px', border:'1px solid #D97706', background: 'var(--surface)', color:'#B45309', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}
                     >Apply</button>
                   </div>
                 )}
@@ -437,7 +437,7 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
                         const active = selectedProgram === prog
                         return (
                           <button key={prog} type="button" onClick={() => setSelectedProgram(prog)}
-                            style={{ padding:'7px 16px', borderRadius:'99px', fontSize:12, fontFamily:"'Inter',sans-serif", background: active ? T.greenDeep : T.bgAlt, color: active ? '#fff' : T.textMuted, border: active ? 'none' : `1.5px solid ${T.border}`, cursor:'pointer', fontWeight:600, transition:'all 0.18s', boxShadow: active ? `0 2px 8px rgba(15,92,44,0.28)` : 'none' }}
+                            style={{ padding:'7px 16px', borderRadius:'99px', fontSize:12, fontFamily:"'Inter',sans-serif", background: active ? T.greenDeep : T.bgAlt, color: active ? '#fff' : T.textMuted, border: active ? 'none' : `1.5px solid ${T.border}`, cursor:'pointer', fontWeight:600, transition:'all 0.18s', boxShadow: active ? `0 2px 8px rgba(0,0,0,0.28)` : 'none' }}
                           >
                             {prog}
                           </button>
@@ -449,9 +449,9 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
 
                 {/* Feedback */}
                 {roleSuccess && (
-                  <div style={{ padding:'9px 12px', borderRadius:'8px', background:'#F0FDF4', border:'1px solid #BBF7D0', display:'flex', gap:8, alignItems:'flex-start' }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" style={{ flexShrink:0, marginTop:1 }}><polyline points="20 6 9 17 4 12"/></svg>
-                    <span style={{ fontSize:11.5, color:'#166534', fontWeight:500, lineHeight:1.4 }}>{roleSuccess}</span>
+                  <div style={{ padding:'9px 12px', borderRadius:'8px', background:'var(--meadow-soft)', border:'1px solid var(--meadow-border)', display:'flex', gap:8, alignItems:'flex-start' }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2.5" style={{ flexShrink:0, marginTop:1 }}><polyline points="20 6 9 17 4 12"/></svg>
+                    <span style={{ fontSize:11.5, color:'var(--meadow-mid)', fontWeight:500, lineHeight:1.4 }}>{roleSuccess}</span>
                   </div>
                 )}
                 {roleError && (
@@ -464,7 +464,7 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
                 {/* Save */}
                 {roleHasChanges && (
                   <button type="button" onClick={handleSaveRole} disabled={roleSaving}
-                    style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:'9px', border:'none', background: roleSaving ? T.borderLight : `linear-gradient(135deg,${T.green},${T.greenDeep})`, color:'#fff', fontSize:12.5, fontWeight:600, cursor: roleSaving ? 'default' : 'pointer', fontFamily:"'Inter',sans-serif", boxShadow: roleSaving ? 'none' : `0 3px 12px rgba(15,92,44,0.28)`, opacity: roleSaving ? 0.7 : 1, transition:'all 0.2s', width:'fit-content' }}
+                    style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:'9px', border:'none', background: roleSaving ? T.borderLight : `linear-gradient(135deg,${T.green},${T.greenDeep})`, color:'#fff', fontSize:12.5, fontWeight:600, cursor: roleSaving ? 'default' : 'pointer', fontFamily:"'Inter',sans-serif", boxShadow: roleSaving ? 'none' : `0 3px 12px rgba(0,0,0,0.28)`, opacity: roleSaving ? 0.7 : 1, transition:'all 0.2s', width:'fit-content' }}
                   >
                     {roleSaving
                       ? <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation:'spin .8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Saving...</>
@@ -485,7 +485,7 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
       </div>
 
       {isNew && (
-        <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(10,46,28,0.08)', fontFamily:"'Inter',sans-serif" }}>
+        <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', fontFamily:"'Inter',sans-serif" }}>
           <CardHeader
             title="Login Credentials"
             sub="Password defaults to [LastName]GC2026 if left blank"
@@ -525,7 +525,7 @@ const TIME_OPTIONS = (() => {
 export function SchedulePrefsCard({ form, setForm, isNew, prefsChanged, prefSaving, prefSaved, prefError, onSavePrefs }) {
   const toggleDay = day => setForm(f => ({ ...f, preferredDays: f.preferredDays.includes(day) ? f.preferredDays.filter(d => d!==day) : [...f.preferredDays, day] }))
   return (
-    <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(10,46,28,0.08)', fontFamily:"'Inter',sans-serif" }}>
+    <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', fontFamily:"'Inter',sans-serif" }}>
       <CardHeader
         title="Schedule Preferences"
         sub="Set preferred teaching days and hours"
@@ -550,7 +550,7 @@ export function SchedulePrefsCard({ form, setForm, isNew, prefsChanged, prefSavi
                   border:active ? `1.5px solid transparent` : `1.5px solid ${T.border}`,
                   cursor:'pointer', fontWeight:active ? 700 : 500,
                   transition:'all 0.15s',
-                  boxShadow: active ? '0 2px 8px rgba(21,128,61,0.28)' : 'none',
+                  boxShadow: active ? '0 2px 8px rgba(0,0,0,0.28)' : 'none',
                 }}>
                   {day.slice(0,3)}
                 </button>
@@ -623,13 +623,13 @@ export function SchedulePrefsCard({ form, setForm, isNew, prefsChanged, prefSavi
 export function CredentialsCard({ form, credEmail, setCredEmail, credPassword, setCredPassword, credConfirm, setCredConfirm, showCredPwd, setShowCredPwd, credSaving, credError, credSuccess, onSave }) {
   const generate = () => { const ln=(form.name||'').trim().split(/\s+/).pop()||'faculty'; setCredPassword(ln+'GC2026'); setCredConfirm(ln+'GC2026'); setShowCredPwd(true) }
   return (
-    <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(10,46,28,0.08)', fontFamily:"'Inter',sans-serif" }}>
+    <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', fontFamily:"'Inter',sans-serif" }}>
       <CardHeader
         title="Login Credentials"
         sub={form.email ? undefined : 'No account activated yet'}
         right={
           form.email
-            ? <span style={{ fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background:'rgba(134,239,172,0.25)', color:'#86EFAC', border:'1px solid rgba(134,239,172,0.4)' }}>Active</span>
+            ? <span style={{ fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background:'rgba(134,239,172,0.25)', color:'var(--meadow-border)', border:'1px solid rgba(134,239,172,0.4)' }}>Active</span>
             : <span style={{ fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background:'rgba(239,68,68,0.2)', color:'#FCA5A5', border:'1px solid rgba(239,68,68,0.3)' }}>Not Activated</span>
         }
       />
@@ -665,11 +665,11 @@ export function CredentialsCard({ form, credEmail, setCredEmail, credPassword, s
             </FormField>
           )}
           <div style={{ paddingTop:credPassword?0:24 }}>
-            <button type="button" onClick={onSave} disabled={credSaving} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8, padding:'12px 24px', borderRadius:'8px', border:'none', fontFamily:"'Inter',sans-serif", fontSize:13, fontWeight:600, cursor:credSaving?'default':'pointer', background:`linear-gradient(135deg,${T.green},${T.greenDeep})`, color:'#fff', boxShadow:`0 4px 14px rgba(15,92,44,0.25)`, opacity:credSaving?0.7:1, whiteSpace:'nowrap', width:'100%', transition:'all 0.2s' }}>
+            <button type="button" onClick={onSave} disabled={credSaving} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8, padding:'12px 24px', borderRadius:'8px', border:'none', fontFamily:"'Inter',sans-serif", fontSize:13, fontWeight:600, cursor:credSaving?'default':'pointer', background:`linear-gradient(135deg,${T.green},${T.greenDeep})`, color:'#fff', boxShadow:`0 4px 14px rgba(0,0,0,0.25)`, opacity:credSaving?0.7:1, whiteSpace:'nowrap', width:'100%', transition:'all 0.2s' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               {credSaving?'Saving...':(form.email?'Update Credentials':'Activate Account')}
             </button>
-            {credSuccess && <span style={{ fontSize:12, color:'#166534', fontWeight:600, display:'flex', alignItems:'center', gap:6, marginTop:12 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#166534" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>{credSuccess}</span>}
+            {credSuccess && <span style={{ fontSize:12, color:'var(--meadow-mid)', fontWeight:600, display:'flex', alignItems:'center', gap:6, marginTop:12 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--meadow-mid)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>{credSuccess}</span>}
             {credError && <div style={{ padding:'10px 14px', borderRadius:'8px', background:T.dangerSoft, border:'1px solid #FECACA', display:'flex', gap:8, alignItems:'center', marginTop:12 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.danger} strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg><span style={{ fontSize:12, color:T.danger, fontWeight:500 }}>{credError}</span></div>}
           </div>
         </div>
@@ -818,7 +818,7 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
 
   if (loading) {
     return (
-      <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(10,46,28,0.08)', fontFamily:"'Inter',sans-serif" }}>
+      <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', fontFamily:"'Inter',sans-serif" }}>
         <CardHeader title="Role & Permissions" />
         <div style={{ padding:'24px 20px', textAlign:'center', color:T.textMuted }}>Loading role information...</div>
       </div>
@@ -826,13 +826,13 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
   }
 
   const roleBadge = (currentIsAdmin || currentIsFaculty)
-    ? <span style={{ fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background: currentIsAdmin?'rgba(251,191,36,0.25)':'rgba(134,239,172,0.25)', color: currentIsAdmin?'#FCD34D':'#86EFAC', border:`1px solid ${currentIsAdmin?'rgba(251,191,36,0.4)':'rgba(134,239,172,0.4)'}` }}>
+    ? <span style={{ fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background: currentIsAdmin?'rgba(251,191,36,0.25)':'rgba(134,239,172,0.25)', color: currentIsAdmin?'#FCD34D':'var(--meadow-border)', border:`1px solid ${currentIsAdmin?'rgba(251,191,36,0.4)':'rgba(134,239,172,0.4)'}` }}>
         {formatRoleBadge()}
       </span>
     : undefined
 
   return (
-    <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(10,46,28,0.08)', fontFamily:"'Inter',sans-serif" }}>
+    <div style={{ background:T.bg, borderRadius:'16px', border:`1px solid ${T.border}`, overflow:'hidden', boxShadow:'0 4px 20px rgba(0,0,0,0.08)', fontFamily:"'Inter',sans-serif" }}>
       <CardHeader
         title="Role & Permissions"
         sub="Controls which portal the user can access"
@@ -945,8 +945,8 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
 
         {success && (
           <div style={{ padding:'10px 14px', borderRadius:'8px', background:'#E6FAF3', border:'1px solid #A7F3D0', display:'flex', gap:8, alignItems:'flex-start' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" style={{ flexShrink:0, marginTop:2 }}><polyline points="20 6 9 17 4 12"/></svg>
-            <span style={{ fontSize:12, color:'#059669', fontWeight:500, lineHeight:1.5 }}>{success}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2" style={{ flexShrink:0, marginTop:2 }}><polyline points="20 6 9 17 4 12"/></svg>
+            <span style={{ fontSize:12, color:'var(--meadow)', fontWeight:500, lineHeight:1.5 }}>{success}</span>
           </div>
         )}
 
@@ -969,7 +969,7 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
               color:'#fff', fontSize:13, fontWeight:600,
               cursor: saving ? 'default' : 'pointer',
               fontFamily:"'Inter',sans-serif",
-              boxShadow: saving ? 'none' : `0 3px 12px rgba(15,92,44,0.28)`,
+              boxShadow: saving ? 'none' : `0 3px 12px rgba(0,0,0,0.28)`,
               opacity: saving ? 0.7 : 1,
               transition: 'all 0.2s'
             }}
