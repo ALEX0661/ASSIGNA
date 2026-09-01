@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { programColor, sectionColor, PROGRAM_SHADE_PALETTE } from './svHelpers'
 
 // ── Green theme tokens (unified with other pages) ──────────────────────
@@ -235,6 +235,15 @@ export function Legend() {
 // so users can immediately match card stripes to blocks.
 export function ProgramLegend({ events = [] }) {
   const [open, setOpen] = useState(false)
+  const [isDark, setIsDark] = useState(document.documentElement.getAttribute('data-mode') === 'dark')
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.getAttribute('data-mode') === 'dark')
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-mode'] })
+    return () => observer.disconnect()
+  }, [])
 
   // Collect programs & the block letters that are actually in the schedule
   const programBlocks = useMemo(() => {
@@ -348,7 +357,8 @@ export function ProgramLegend({ events = [] }) {
               const baseClr = programColor(prog)
               return (
                 <div key={prog} style={{
-                  background: baseClr.bg, border: `1.5px solid ${baseClr.border}`,
+                  background: isDark ? `color-mix(in srgb, ${baseClr.accent} 10%, var(--surface))` : baseClr.bg,
+                  border: isDark ? `1.5px solid color-mix(in srgb, ${baseClr.accent} 25%, var(--surface))` : `1.5px solid ${baseClr.border}`,
                   borderRadius: 8, padding: '8px 10px',
                   display: 'flex', flexDirection: 'column', gap: 6,
                 }}>
@@ -475,7 +485,7 @@ export function RoomChip({ room, selected, hasRoomConflict, hasMergePreview = fa
   } else if (hasMergePreview) {
     bg = 'rgba(37, 99, 235, 0.1)'; border = '#93c5fd'; color = '#60A5FA'; shadow = '0 0 0 1.5px rgba(59,130,246,.18)'
   } else {
-    bg = '#fff'; border = TV.border; color = TV.text; shadow = 'none'
+    bg = 'var(--bg)'; border = TV.border; color = TV.text; shadow = 'none'
   }
   return (
     <button
