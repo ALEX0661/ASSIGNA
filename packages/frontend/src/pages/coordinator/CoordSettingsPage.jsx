@@ -132,6 +132,7 @@ export default function CoordSettingsPage() {
           </div>
         </div>
       </div>
+      </div>
     </div>
   )
 }
