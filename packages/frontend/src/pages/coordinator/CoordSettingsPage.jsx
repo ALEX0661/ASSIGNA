@@ -53,7 +53,7 @@ export default function CoordSettingsPage() {
 
   return (
     <div className="page">
-      <TourElement />
+      {TourElement}
       <div style={{ padding: '22px 28px 40px', fontFamily: "'Inter',sans-serif", display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 8 }}>
         <div>
