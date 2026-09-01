@@ -69,7 +69,7 @@ if (!document.getElementById('rooms-page-style')) {
       display: inline-flex; align-items: center; gap: 6px; 
       padding: 5px 8px 5px 10px; border-radius: 8px; 
       border: 1px solid ${G.meadowBorder}; background: ${G.meadowSoft}; 
-      font-size: 12.5px; font-weight: 700; color: ${G.meadowDeep};
+      font-size: 12.5px; font-weight: 700; color: ${isDark ? 'var(--mint)' : G.meadowDeep};
       cursor: grab; transition: all 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
     .room-chip:hover { border-color: ${G.meadow}; box-shadow: 0 3px 8px rgba(0,0,0,0.15); transform: translateY(-1px); }
@@ -78,7 +78,7 @@ if (!document.getElementById('rooms-page-style')) {
     
     .room-chip-idx { font-size: 10px; font-weight: 800; color: #fff; background: ${G.meadow}; padding: 2px 6px; border-radius: 4px; }
     
-    .chip-del { display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 5px; color: ${G.meadow}; cursor: pointer; transition: all 0.1s; }
+    .chip-del { display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 5px; color: ${isDark ? 'var(--mint)' : G.meadow}; cursor: pointer; transition: all 0.1s; }
     .chip-del:hover { background: var(--surface); color: #DC2626; }
 
     /* Inline Add Input */
@@ -136,10 +136,10 @@ if (!document.getElementById('rooms-page-style')) {
     .modal-room-card-inner { display: flex; align-items: center; gap: 12px; }
 
     /* Green Room Pills for Table */
-    .assign-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 7px; font-size: 11.5px; font-weight: 600; background: var(--surface); color: ${G.meadowDeep}; border: 1px dashed ${G.meadow}; cursor: pointer; transition: all 0.15s; }
+    .assign-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 7px; font-size: 11.5px; font-weight: 600; background: var(--surface); color: ${isDark ? 'var(--mint)' : G.meadowDeep}; border: 1px dashed ${isDark ? 'var(--mint)' : G.meadow}; cursor: pointer; transition: all 0.15s; }
     .assign-trigger:hover { background: ${G.meadowSoft}; border-style: solid; }
     
-    .assigned-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background: ${G.meadowSoft}; color: ${G.meadowDeep}; border: 1px solid ${G.meadowBorder}; }
+    .assigned-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background: ${G.meadowSoft}; color: ${isDark ? 'var(--mint)' : G.meadowDeep}; border: 1px solid ${G.meadowBorder}; }
   `
   document.head.appendChild(s)
 }
@@ -685,7 +685,7 @@ export default function RoomsPage() {
               <div style={{ display: 'flex', gap: 4, background: G.hover, padding: 4, borderRadius: 9, border: `1px solid ${G.border}` }}>
                 {['All', 'Assigned', 'Unassigned'].map(status => (
                   <button key={status} onClick={() => { setStatusFilter(status); setSelected(new Set()) }} 
-                    style={{ padding: '6px 14px', borderRadius: 7, fontSize: 12, fontWeight: statusFilter === status ? 700 : 600, background: statusFilter === status ? 'var(--surface)' : 'transparent', color: statusFilter === status ? G.meadowDeep : G.muted, border: 'none', cursor: 'pointer', boxShadow: statusFilter === status ? '0 1px 3px rgba(0,0,0,0.04)' : 'none', transition: 'all .15s', fontFamily: "'Inter', sans-serif" }}>
+                    style={{ padding: '6px 14px', borderRadius: 7, fontSize: 12, fontWeight: statusFilter === status ? 700 : 600, background: statusFilter === status ? 'var(--surface)' : 'transparent', color: statusFilter === status ? (isDark ? 'var(--mint)' : G.meadowDeep) : G.muted, border: 'none', cursor: 'pointer', boxShadow: statusFilter === status ? '0 1px 3px rgba(0,0,0,0.04)' : 'none', transition: 'all .15s', fontFamily: "'Inter', sans-serif" }}>
                     {status}
                   </button>
                 ))}
@@ -699,7 +699,7 @@ export default function RoomsPage() {
               {programs.map(p => (
                 <button key={p} 
                   onClick={() => { setProgFilter(p); setSelected(new Set()) }}
-                  style={{ padding: '5px 12px', borderRadius: 99, fontSize: 11.5, fontWeight: progFilter === p ? 700 : 600, background: progFilter === p ? G.meadowSoft : 'var(--surface)', color: progFilter === p ? G.meadowDeep : G.muted, border: `1px solid ${progFilter === p ? G.meadowBorder : G.border}`, cursor: 'pointer', transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
+                  style={{ padding: '5px 12px', borderRadius: 99, fontSize: 11.5, fontWeight: progFilter === p ? 700 : 600, background: progFilter === p ? G.meadowSoft : 'var(--surface)', color: progFilter === p ? (isDark ? 'var(--mint)' : G.meadowDeep) : G.muted, border: `1px solid ${progFilter === p ? G.meadowBorder : G.border}`, cursor: 'pointer', transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
                 >
                   {p}
                 </button>
@@ -714,7 +714,7 @@ export default function RoomsPage() {
             <span style={{ fontSize: 13, fontWeight: 600, color: '#fff', flex: 1 }}>{selected.size} course{selected.size !== 1 ? 's' : ''} selected</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <button onClick={() => setSelected(new Set())} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>Deselect</button>
-              <button onClick={openBulkModal} style={{ background: 'var(--surface)', color: G.meadowDeep, border: 'none', fontSize: 12, fontWeight: 700, padding: '6px 14px', borderRadius: 6, cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>Bulk Assign Rooms</button>
+              <button onClick={openBulkModal} style={{ background: 'var(--surface)', color: isDark ? 'var(--mint)' : G.meadowDeep, border: 'none', fontSize: 12, fontWeight: 700, padding: '6px 14px', borderRadius: 6, cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>Bulk Assign Rooms</button>
             </div>
           </div>
         )}
@@ -749,7 +749,7 @@ export default function RoomsPage() {
                 <tr>
                   <td colSpan={4} style={{ padding: '80px 20px', textAlign: 'center' }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: G.muted }}>No courses match your filters</div>
-                    <button onClick={() => { setSearch(''); setProgFilter('All'); setStatusFilter('All') }} style={{ fontSize: 12.5, color: G.meadow, background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Inter', sans-serif", padding: 0, marginTop: 8, fontWeight: 600 }}>Clear all filters</button>
+                    <button onClick={() => { setSearch(''); setProgFilter('All'); setStatusFilter('All') }} style={{ fontSize: 12.5, color: isDark ? 'var(--mint)' : G.meadow, background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Inter', sans-serif", padding: 0, marginTop: 8, fontWeight: 600 }}>Clear all filters</button>
                   </td>
                 </tr>
               ) : (
@@ -780,7 +780,7 @@ export default function RoomsPage() {
                       </td>
                       <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
                         <div style={{ display: 'flex', gap: 8 }}>
-                          {course.unitsLecture > 0 && <span style={{ color: G.meadowDeep, fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}><div style={{width:8,height:8,borderRadius:2,background:G.meadowSoft,border:`1px solid ${G.meadowBorder}`}}/> {course.unitsLecture}L</span>}
+                          {course.unitsLecture > 0 && <span style={{ color: isDark ? 'var(--mint)' : G.meadowDeep, fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}><div style={{width:8,height:8,borderRadius:2,background:G.meadowSoft,border:`1px solid ${G.meadowBorder}`}}/> {course.unitsLecture}L</span>}
                           {course.unitsLab > 0 && <span style={{ color: '#38BDF8', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}><div style={{width:8,height:8,borderRadius:2,background:'rgba(59, 130, 246, 0.1)',border:`1px solid #BAE6FD`}}/> {course.unitsLab}L</span>}
                         </div>
                       </td>
@@ -794,7 +794,7 @@ export default function RoomsPage() {
                           <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                             {roomsArr.slice(0, 4).map(r => <span key={r} className="assigned-pill">{r}</span>)}
                             {roomsArr.length > 4 && <span style={{ fontSize: 11.5, fontWeight: 800, color: G.muted }}>+{roomsArr.length - 4}</span>}
-                            <button onClick={() => openSingleModal(key, `${course.courseCode} - ${course.title}`, roomsArr)} style={{ border: '1px solid transparent', background: 'transparent', cursor: 'pointer', color: G.meadow, display: 'flex', alignItems: 'center', padding: '5px', marginLeft: '4px', borderRadius: '6px', transition: 'all 0.15s' }} onMouseOver={e => {e.currentTarget.style.background = G.meadowSoft; e.currentTarget.style.borderColor = G.meadowBorder}} onMouseOut={e => {e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'}} title="Edit Assigned Rooms">
+                            <button onClick={() => openSingleModal(key, `${course.courseCode} - ${course.title}`, roomsArr)} style={{ border: '1px solid transparent', background: 'transparent', cursor: 'pointer', color: isDark ? 'var(--mint)' : G.meadow, display: 'flex', alignItems: 'center', padding: '5px', marginLeft: '4px', borderRadius: '6px', transition: 'all 0.15s' }} onMouseOver={e => {e.currentTarget.style.background = G.meadowSoft; e.currentTarget.style.borderColor = G.meadowBorder}} onMouseOut={e => {e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'}} title="Edit Assigned Rooms">
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             </button>
                           </div>
