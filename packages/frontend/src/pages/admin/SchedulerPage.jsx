@@ -1685,7 +1685,7 @@ function Step1Configure({ scheduleNamePreset, setScheduleNamePreset, scheduleNam
                 <div style={{ fontSize:15, fontWeight:800, color:G.ink, letterSpacing:'-0.2px' }}>{effectiveScheduleName.trim()}</div>
                 <div style={{ fontSize:12.5, color:G.muted, fontWeight:500, marginTop:2 }}>Will load <strong style={{ color:sc.from }}>{targetSemester}</strong> course list</div>
               </div>
-              <div style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 14px', borderRadius:99, background:'rgba(255,255,255,0.8)', border:`1px solid ${sc.from}30` }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 14px', borderRadius:99, background:'var(--surface)', border:`1px solid ${sc.from}30` }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={sc.from} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                 <span style={{ fontSize:12, fontWeight:700, color:sc.from }}>Ready</span>
               </div>
