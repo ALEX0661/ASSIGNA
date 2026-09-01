@@ -46,7 +46,7 @@ export const EMPTY_FACULTY = {
 
 const AVATAR_COLORS = [
   ['var(--meadow)','var(--meadow-soft)'],['#2563EB','#DBEAFE'],['#7C3AED','color-mix(in srgb, #6D28D9 15%, transparent)'],
-  ['#D97706','#FEF3CD'],['#DC2626','#FFE8E8'],['#0891B2','#E0F2FE'],
+  ['#D97706','rgba(217, 119, 6, 0.1)'],['#DC2626','rgba(220, 38, 38, 0.1)'],['#0891B2','#E0F2FE'],
 ]
 
 // ─── Pure utilities ───────────────────────────────────────────────────────────
@@ -221,13 +221,13 @@ export function DeleteConfirmModal({ name, onConfirm, onCancel, deleting }) {
   return (
     <div style={{ position:'fixed', inset:0, zIndex:1100, background:'rgba(10,30,18,0.55)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
       <div style={{ background: 'var(--surface)', borderRadius:18, padding:'28px 28px 24px', maxWidth:400, width:'100%', boxShadow:'0 20px 60px rgba(10,30,18,0.22)', border:'1px solid var(--border)', textAlign:'center' }}>
-        <div style={{ width:52, height:52, borderRadius:'50%', background:'#FFE8E8', margin:'0 auto 16px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <div style={{ width:52, height:52, borderRadius:'50%', background:'rgba(220, 38, 38, 0.1)', margin:'0 auto 16px', display:'flex', alignItems:'center', justifyContent:'center' }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
         </div>
         <div style={{ fontSize:16, fontWeight:700, color: 'var(--ink)', marginBottom:8 }}>Permanently Delete Faculty Member?</div>
         <div style={{ fontSize:13, color: 'var(--muted)', marginBottom:24, lineHeight:1.5 }}>
           This cannot be undone. <strong style={{ color: 'var(--ink)' }}>{name}</strong> and their login account will be removed forever.
-          <div style={{ marginTop:8, fontSize:12, color:'#D97706', background:'#FEF3CD', borderRadius:8, padding:'6px 10px', border:'1px solid #FDE68A', textAlign:'left' }}>Tip: use Archive instead to hide them without losing their data.</div>
+          <div style={{ marginTop:8, fontSize:12, color:'#D97706', background:'rgba(217, 119, 6, 0.1)', borderRadius:8, padding:'6px 10px', border:'1px solid #FDE68A', textAlign:'left' }}>Tip: use Archive instead to hide them without losing their data.</div>
         </div>
         <div style={{ display:'flex', gap:10 }}>
           <button onClick={onCancel} style={{ flex:1, padding:'10px', borderRadius:9, border:'1.5px solid var(--border)', background: 'var(--surface)', fontSize:13, fontWeight:600, color: 'var(--muted)', cursor:'pointer', fontFamily:'Inter,sans-serif' }}>Cancel</button>

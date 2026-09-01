@@ -79,8 +79,8 @@ export function ProfileCard({ form, isNew, isOverloaded, avInitials, avFg, avBg,
         {/* Status badges */}
         <div style={{ display:'flex', gap:6, flexWrap:'wrap', justifyContent:'center', position:'relative', zIndex:1 }}>
           <span style={{ padding:'3px 10px', borderRadius:'99px', fontSize:10.5, fontWeight:600, background:'rgba(255,255,255,0.16)', color:'#fff', textTransform:'capitalize', border:'1px solid rgba(255,255,255,0.22)' }}>{form.status}</span>
-          {!isNew && form.archived  && <span style={{ padding:'3px 10px', borderRadius:'99px', fontSize:10.5, fontWeight:600, background:'#FEF3CD', color:'#B45309' }}>Archived</span>}
-          {!isNew && isOverloaded   && <span style={{ padding:'3px 10px', borderRadius:'99px', fontSize:10.5, fontWeight:600, background:'#FFE8E8', color:'#C0392B' }}>Overloaded</span>}
+          {!isNew && form.archived  && <span style={{ padding:'3px 10px', borderRadius:'99px', fontSize:10.5, fontWeight:600, background:'rgba(217, 119, 6, 0.1)', color:'#B45309' }}>Archived</span>}
+          {!isNew && isOverloaded   && <span style={{ padding:'3px 10px', borderRadius:'99px', fontSize:10.5, fontWeight:600, background:'rgba(220, 38, 38, 0.1)', color:'#C0392B' }}>Overloaded</span>}
         </div>
       </div>
 
@@ -362,7 +362,7 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
               </div>
               <span style={{ fontSize:13, fontWeight:700, color:T.textMain, flex:1 }}>Role & Permissions</span>
               {!roleLoading && (currentIsAdmin || currentIsFaculty) && (
-                <span style={{ fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background: currentIsAdmin ? '#FEF3CD' : T.greenSoft, color: currentIsAdmin ? '#B45309' : T.greenDeep, border:`1px solid ${currentIsAdmin?'#FDE68A':T.greenBorder}` }}>
+                <span style={{ fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background: currentIsAdmin ? 'rgba(217, 119, 6, 0.1)' : T.greenSoft, color: currentIsAdmin ? '#B45309' : T.greenDeep, border:`1px solid ${currentIsAdmin?'#FDE68A':T.greenBorder}` }}>
                   {formatRoleBadge()}
                 </span>
               )}
@@ -660,7 +660,7 @@ export function CredentialsCard({ form, credEmail, setCredEmail, credPassword, s
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
           {credPassword && (
             <FormField label="Confirm Password">
-              <input type={showCredPwd?'text':'password'} value={credConfirm} onChange={e => setCredConfirm(e.target.value)} autoComplete="new-password" placeholder="Re-enter password" style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${credConfirm&&credConfirm!==credPassword?'#FECACA':T.border}`, fontSize:13, fontFamily:"'Inter',sans-serif", width:'100%', boxSizing:'border-box', outline:'none', background:T.bg, color:T.textMain }}/>
+              <input type={showCredPwd?'text':'password'} value={credConfirm} onChange={e => setCredConfirm(e.target.value)} autoComplete="new-password" placeholder="Re-enter password" style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${credConfirm&&credConfirm!==credPassword?'rgba(220, 38, 38, 0.25)':T.border}`, fontSize:13, fontFamily:"'Inter',sans-serif", width:'100%', boxSizing:'border-box', outline:'none', background:T.bg, color:T.textMain }}/>
               {credConfirm && credConfirm!==credPassword && <span style={{ fontSize:11, color:T.danger, marginTop:4, display:'block', fontWeight: 500 }}>Passwords do not match</span>}
             </FormField>
           )}

@@ -200,7 +200,7 @@ function MiniBar({ label, value, max, onClick, tier }) {
   const over = value > max
   const warn = pct >= 85 && !over
   const c = over ? '#C0392B' : warn ? '#D97706' : 'var(--meadow)'
-  const b = over ? '#FFE8E8' : warn ? '#FEF3CD' : '#E6FAF3'
+  const b = over ? 'rgba(220, 38, 38, 0.1)' : warn ? 'rgba(217, 119, 6, 0.1)' : '#E6FAF3'
   return (
     <div className="d-row" onClick={onClick}
       style={{ display:'flex', alignItems:'center', gap:12, padding:'9px 16px', borderBottom:'1px solid var(--border)' }}>
@@ -266,7 +266,7 @@ function ScoreRing({ score, label, color = 'var(--meadow)' }) {
 
 /* ─── Suggestion card ────────────────────────────────────────────────────── */
 const SUGGESTION_STYLES = {
-  error:   { bg:'#FFF5F5', border:'#FECACA', icon:'#DC2626', dot:'#EF4444', label:'Critical' },
+  error:   { bg:'#FFF5F5', border:'rgba(220, 38, 38, 0.25)', icon:'#DC2626', dot:'#EF4444', label:'Critical' },
   warning: { bg:'#FFFBEB', border:'#FDE68A', icon:'#D97706', dot:'#F59E0B', label:'Warning'  },
   info:    { bg:'#EFF6FF', border:'#BFDBFE', icon:'#2563EB', dot:'#3B82F6', label:'Info'     },
   success: { bg:'var(--meadow-soft)', border:'var(--meadow-border)', icon:'var(--meadow)', dot:'var(--meadow)', label:'Good'     },
@@ -285,7 +285,7 @@ function SuggestionCard({ suggestion, onAction, delay = 0 }) {
   return (
     <div className="suggestion-card"
       style={{ background:s.bg, borderColor:s.border, animationDelay:`${delay}s` }}>
-      <div style={{ width:28, height:28, borderRadius:8, background: suggestion.type === 'error' ? '#FECACA' : suggestion.type === 'warning' ? '#FDE68A' : suggestion.type === 'success' ? 'var(--meadow-border)' : '#BFDBFE',
+      <div style={{ width:28, height:28, borderRadius:8, background: suggestion.type === 'error' ? 'rgba(220, 38, 38, 0.25)' : suggestion.type === 'warning' ? '#FDE68A' : suggestion.type === 'success' ? 'var(--meadow-border)' : '#BFDBFE',
         color:s.icon, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:1 }}>
         {SUGGESTION_ICONS[suggestion.type]}
       </div>
@@ -789,7 +789,7 @@ export default function DashboardPage() {
                 icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>,
               },
             ].map(item => (
-              <div key={item.label} style={{ padding:'12px 13px', borderRadius:10, background:item.bg, border:`1px solid ${item.bg === 'var(--meadow-soft)' ? 'var(--meadow-border)' : item.bg === '#FFFBEB' ? '#FDE68A' : '#FECACA'}`, display:'flex', flexDirection:'column', gap:6 }}>
+              <div key={item.label} style={{ padding:'12px 13px', borderRadius:10, background:item.bg, border:`1px solid ${item.bg === 'var(--meadow-soft)' ? 'var(--meadow-border)' : item.bg === '#FFFBEB' ? '#FDE68A' : 'rgba(220, 38, 38, 0.25)'}`, display:'flex', flexDirection:'column', gap:6 }}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                   <span style={{ fontSize:11, fontWeight:600, color:'var(--muted2)' }}>{item.label}</span>
                   <div style={{ color:item.color, opacity:.7 }}>{item.icon}</div>
@@ -848,8 +848,8 @@ export default function DashboardPage() {
             right={
               suggestions.length > 0 && (
                 <div style={{ display:'flex', gap:5 }}>
-                  {suggestions.some(s=>s.type==='error') && <Badge label={`${suggestions.filter(s=>s.type==='error').length} critical`} color="#C0392B" bg="#FFE8E8"/>}
-                  {suggestions.some(s=>s.type==='warning') && <Badge label={`${suggestions.filter(s=>s.type==='warning').length} warnings`} color="#D97706" bg="#FEF3CD"/>}
+                  {suggestions.some(s=>s.type==='error') && <Badge label={`${suggestions.filter(s=>s.type==='error').length} critical`} color="#C0392B" bg='rgba(220, 38, 38, 0.1)'/>}
+                  {suggestions.some(s=>s.type==='warning') && <Badge label={`${suggestions.filter(s=>s.type==='warning').length} warnings`} color="#D97706" bg='rgba(217, 119, 6, 0.1)'/>}
                   {suggestions.some(s=>s.type==='success') && <Badge label="✓ healthy" color="var(--meadow)" bg="var(--meadow-soft)"/>}
                 </div>
               )

@@ -5,7 +5,7 @@ import { useTour } from '../../hooks/useTour.jsx'
 
 // ─── Proficiency levels ───────────────────────────────────────────────────────
 const LEVELS = [
-  { rating: 1, label: 'Beginner',   short: 'BEG',  color: '#B91C1C', bg: '#FEF2F2', border: '#FECACA', dot: '#EF4444', hoverBg: '#FEE2E2' },
+  { rating: 1, label: 'Beginner',   short: 'BEG',  color: '#B91C1C', bg: '#FEF2F2', border: 'rgba(220, 38, 38, 0.25)', dot: '#EF4444', hoverBg: '#FEE2E2' },
   { rating: 2, label: 'Developing', short: 'DEV',  color: '#B45309', bg: '#FFFBEB', border: '#FDE68A', dot: '#F59E0B', hoverBg: '#FEF3C7' },
   { rating: 3, label: 'Competent',  short: 'COMP', color: '#6D28D9', bg: '#F5F3FF', border: 'color-mix(in srgb, #6D28D9 30%, transparent)', dot: '#7C3AED', hoverBg: 'color-mix(in srgb, #6D28D9 15%, transparent)' },
   { rating: 4, label: 'Proficient', short: 'PROF', color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE', dot: '#3B82F6', hoverBg: '#DBEAFE' },

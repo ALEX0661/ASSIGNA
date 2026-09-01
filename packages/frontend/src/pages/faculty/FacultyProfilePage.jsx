@@ -653,7 +653,7 @@ export default function FacultyProfilePage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {credPassword && (
                 <FormField label="Confirm Password">
-                  <input type={showCredPwd ? 'text' : 'password'} value={credConfirm} onChange={e => setCredConfirm(e.target.value)} autoComplete="new-password" placeholder="Re-enter password" style={{ ...inputStyle, borderColor: credConfirm && credConfirm !== credPassword ? '#FECACA' : T.border }} />
+                  <input type={showCredPwd ? 'text' : 'password'} value={credConfirm} onChange={e => setCredConfirm(e.target.value)} autoComplete="new-password" placeholder="Re-enter password" style={{ ...inputStyle, borderColor: credConfirm && credConfirm !== credPassword ? 'rgba(220, 38, 38, 0.25)' : T.border }} />
                   {credConfirm && credConfirm !== credPassword && <span style={{ fontSize: 11, color: T.danger, marginTop: 4, display: 'block', fontWeight: 500 }}>Passwords do not match</span>}
                 </FormField>
               )}

@@ -113,7 +113,7 @@ function PillModal({ status, label, onClose, onGoScheduler, onStopConfirm }) {
           <div style={{
             width:44, height:44, borderRadius:12, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center',
             background: isComplete ? G.meadowSoft : isFailed ? '#FEE2E2' : '#FEF3C7',
-            border: `1px solid ${isComplete ? G.meadowBorder : isFailed ? '#FECACA' : '#FDE68A'}`,
+            border: `1px solid ${isComplete ? G.meadowBorder : isFailed ? 'rgba(220, 38, 38, 0.25)' : '#FDE68A'}`,
           }}>
             {isComplete && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={G.meadow} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
             {isFailed   && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>}
@@ -149,9 +149,9 @@ function PillModal({ status, label, onClose, onGoScheduler, onStopConfirm }) {
           {isRunning && (
             <button
               onClick={onStopConfirm}
-              style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderRadius:10, border:'1.5px solid #FECACA', background:'#FFF8F8', cursor:'pointer', fontFamily:'Inter,sans-serif', textAlign:'left', transition:'all .15s' }}
+              style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderRadius:10, border:'1.5px solid #FECACA', background:'rgba(220, 38, 38, 0.05)', cursor:'pointer', fontFamily:'Inter,sans-serif', textAlign:'left', transition:'all .15s' }}
               onMouseEnter={e => { e.currentTarget.style.background='#FEE2E2' }}
-              onMouseLeave={e => { e.currentTarget.style.background='#FFF8F8' }}
+              onMouseLeave={e => { e.currentTarget.style.background='rgba(220, 38, 38, 0.05)' }}
             >
               <div style={{ width:32, height:32, borderRadius:8, background:'#FEE2E2', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>

@@ -22,7 +22,7 @@ const G = {
   surface: 'var(--surface, #FFFFFF)', hover: 'var(--hover)',
   amber: '#D97706', amberSoft: '#FEF3C7', amberBorder: '#FDE68A',
   blue: '#1D4ED8', blueSoft: '#DBEAFE', blueBorder: '#BFDBFE',
-  red: '#DC2626', redSoft: '#FEE2E2', redBorder: '#FECACA',
+  red: '#DC2626', redSoft: '#FEE2E2', redBorder: 'rgba(220, 38, 38, 0.25)',
 }
 
 if (!document.getElementById('approval-dashboard-style')) {
@@ -152,7 +152,7 @@ const STATUS = {
   generating: { bg: G.blueSoft, color: G.blue, dot: '#3B82F6', label: 'Generating' },
   submitted:  { bg: G.amberSoft, color: '#92400E', dot: G.amber, label: 'Submitted'  },
   approved:   { bg: G.meadowSoft, color: G.meadowMid, dot: G.meadow, label: 'Approved'   },
-  skipped:    { bg: '#FFF7ED', color: '#9A3412', dot: '#FB923C', label: 'Skipped'    },
+  skipped:    { bg: 'rgba(217, 119, 6, 0.05)', color: '#9A3412', dot: '#FB923C', label: 'Skipped'    },
 }
 const SCHED_STATUS = {
   draft:     { bg: G.hover, color: G.muted, border: G.border, label: 'Draft'     },
@@ -937,7 +937,7 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, 
       {showDeleteConfirm && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(10,30,18,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => !deletingQueue && setShowDeleteConfirm(false)}>
           <div style={{ background: 'var(--surface)', borderRadius: 18, padding: '28px 28px 24px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(10,30,18,0.22)', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-            <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#FFE8E8', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(220, 38, 38, 0.1)', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
             </div>
             <div style={{ fontSize: 16, fontWeight: 700, color: G.ink, marginBottom: 8, fontFamily: 'Inter,sans-serif' }}>Delete Queue?</div>

@@ -6,11 +6,11 @@ const DAY_SHORT = { Monday:'Mon', Tuesday:'Tue', Wednesday:'Wed', Thursday:'Thu'
 const DAY_COLORS = {
   Monday:    { bg:'var(--meadow-soft)', color: 'var(--meadow)', border:'var(--meadow-border)' },
   Tuesday:   { bg:'#DBEAFE', color:'#1D4ED8', border:'#BFDBFE' },
-  Wednesday: { bg:'#FEF3CD', color:'#B45309', border:'#FDE68A' },
+  Wednesday: { bg:'rgba(217, 119, 6, 0.1)', color:'#B45309', border:'#FDE68A' },
   Thursday:  { bg:'#FCE7F3', color:'#9D174D', border:'#FBCFE8' },
   Friday:    { bg:'color-mix(in srgb, #6D28D9 15%, transparent)', color:'#6D28D9', border:'color-mix(in srgb, #6D28D9 30%, transparent)' },
   Saturday:  { bg:'#E0F2FE', color:'#0369A1', border:'#BAE6FD' },
-  Sunday:    { bg:'#FFF7ED', color:'#C2410C', border:'#FED7AA' },
+  Sunday:    { bg:'rgba(217, 119, 6, 0.05)', color:'#C2410C', border:'rgba(217, 119, 6, 0.25)' },
 }
 
 const PROG_PALETTE = ['var(--meadow)','#2563EB','#7C3AED','#C2410C','#0369A1','#9D174D','#B45309','var(--meadow-mid)']
@@ -48,7 +48,7 @@ function RoomBadge({ room }) {
   if (!room || room === '—') return <span style={{ color:'var(--border)', fontSize:12 }}>—</span>
   const isTBA = room.trim().toUpperCase() === 'TBA'
   if (isTBA) return (
-    <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:6, background:'#FEF3CD', color:'#B45309', fontSize:11, fontWeight:600, border:'1px solid #FDE68A' }}>
+    <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:6, background:'rgba(217, 119, 6, 0.1)', color:'#B45309', fontSize:11, fontWeight:600, border:'1px solid #FDE68A' }}>
       <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
       TBA
     </span>

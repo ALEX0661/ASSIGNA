@@ -29,7 +29,7 @@ const ORDINAL = n => {
 const PROG_META = {
   'BSCS':      { color: G.meadowDeep, bg: G.meadowSoft },
   'BSIT':      { color: '#0369A1', bg: '#E0F2FE' }, // Kept distinct blue for IT
-  'BSEMC-GD':  { color: '#D97706', bg: '#FEF3CD' },
+  'BSEMC-GD':  { color: '#D97706', bg: 'rgba(217, 119, 6, 0.1)' },
   'BSEMC-DAT': { color: '#DC2626', bg: '#FFF5F5' },
 }
 const DEFAULT_META = { color: G.meadowDeep, bg: G.meadowSoft }

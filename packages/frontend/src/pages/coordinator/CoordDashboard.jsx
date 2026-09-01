@@ -31,7 +31,7 @@ const G = {
   border: 'var(--border)', borderLight: 'var(--hover)', bg: 'var(--bg, #F2F7F4)',
   surface: 'var(--surface, #FFFFFF)', hover: 'var(--hover)',
   amber: '#B45309', amberSoft: '#FEF3C7', amberBorder: '#FDE68A',
-  red: '#DC2626', redDeep: '#B91C1C', redSoft: '#FEF2F2', redBorder: '#FECACA',
+  red: '#DC2626', redDeep: '#B91C1C', redSoft: '#FEF2F2', redBorder: 'rgba(220, 38, 38, 0.25)',
   blue: '#1D4ED8', blueSoft: '#DBEAFE', blueBorder: '#BFDBFE',
   violet: '#7C3AED', violetSoft: 'color-mix(in srgb, #6D28D9 15%, transparent)',
   cyan: '#0891B2', cyanSoft: '#CFFAFE',
@@ -427,7 +427,7 @@ function QueueLedger({ queue }) {
 }
 
 const SUGGESTION_STYLES = {
-  error:   { bg: G.redSoft,    border: G.redBorder,    icon: G.redDeep,    chip: '#FECACA', dot: '#EF4444', label: 'Critical' },
+  error:   { bg: G.redSoft,    border: G.redBorder,    icon: G.redDeep,    chip: 'rgba(220, 38, 38, 0.25)', dot: '#EF4444', label: 'Critical' },
   warning: { bg: G.amberSoft,  border: G.amberBorder,  icon: G.amber,      chip: '#FDE68A', dot: '#F59E0B', label: 'Warning'  },
   info:    { bg: G.blueSoft,   border: G.blueBorder,   icon: G.blue,       chip: '#BFDBFE', dot: '#3B82F6', label: 'Info'     },
   success: { bg: G.meadowSoft, border: G.meadowBorder, icon: G.meadowDeep, chip: 'var(--meadow-border)', dot: 'var(--meadow)', label: 'Good'     },
@@ -1388,7 +1388,7 @@ export default function CoordDashboard() {
                 sub="Other things to keep in mind"
                 right={
                   <div style={{ display: 'flex', gap: 6 }}>
-                    {suggestions.some(s => s.type === 'error') && <Badge label={`${suggestions.filter(s => s.type === 'error').length} critical`} color={G.redDeep} bg="#FFE8E8" />}
+                    {suggestions.some(s => s.type === 'error') && <Badge label={`${suggestions.filter(s => s.type === 'error').length} critical`} color={G.redDeep} bg='rgba(220, 38, 38, 0.1)' />}
                     {suggestions.some(s => s.type === 'warning') && <Badge label={`${suggestions.filter(s => s.type === 'warning').length} warnings`} color={G.amber} bg={G.amberSoft} />}
                   </div>
                 }

@@ -56,7 +56,7 @@ function isOtherDept(courseCode = '') {
 }
 
 const STATUS_META = {
-  no_faculty:  { label: 'No faculty',   color: '#DC2626', bg: '#FEE2E2', border: '#FECACA' },
+  no_faculty:  { label: 'No faculty',   color: '#DC2626', bg: '#FEE2E2', border: 'rgba(220, 38, 38, 0.25)' },
   low_quality: { label: 'Low quality',  color: '#D97706', bg: '#FEF3C7', border: '#FDE68A' },
   thin:        { label: 'Thin pool',    color: '#0369A1', bg: '#E0F2FE', border: '#BAE6FD' },
   ready:       { label: 'Ready',        color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder },
@@ -87,16 +87,16 @@ const VERDICT_META = {
   feasible:        { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder, label: 'Feasible',           icon: '✓' },
   likely_feasible: { color: '#0369A1',    bg: '#E0F2FE',    border: '#BAE6FD',      label: 'Likely Feasible',    icon: '~' },
   tight:           { color: '#D97706',    bg: '#FEF3C7',    border: '#FDE68A',      label: 'Feasible but Tight', icon: '⚠' },
-  at_risk:         { color: '#DC2626',    bg: '#FEE2E2',    border: '#FECACA',      label: 'At Risk',            icon: '!' },
-  infeasible:      { color: '#991B1B',    bg: '#FEF2F2',    border: '#FECACA',      label: 'Likely Infeasible',  icon: '✕' },
+  at_risk:         { color: '#DC2626',    bg: '#FEE2E2',    border: 'rgba(220, 38, 38, 0.25)',      label: 'At Risk',            icon: '!' },
+  infeasible:      { color: '#991B1B',    bg: '#FEF2F2',    border: 'rgba(220, 38, 38, 0.25)',      label: 'Likely Infeasible',  icon: '✕' },
 }
 const CHECK_META = {
   pass: { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder, dot: G.meadow,  label: 'Pass' },
   warn: { color: '#D97706',    bg: '#FFFBEB',    border: '#FDE68A',      dot: '#F59E0B', label: 'Warn' },
-  fail: { color: '#DC2626',    bg: '#FEE2E2',    border: '#FECACA',      dot: '#EF4444', label: 'Fail' },
+  fail: { color: '#DC2626',    bg: '#FEE2E2',    border: 'rgba(220, 38, 38, 0.25)',      dot: '#EF4444', label: 'Fail' },
 }
 const REC_META = {
-  blocker:    { color: '#DC2626',    bg: '#FEE2E2',    border: '#FECACA' },
+  blocker:    { color: '#DC2626',    bg: '#FEE2E2',    border: 'rgba(220, 38, 38, 0.25)' },
   warning:    { color: '#D97706',    bg: '#FFFBEB',    border: '#FDE68A' },
   suggestion: { color: '#0369A1',    bg: '#E0F2FE',    border: '#BAE6FD' },
   success:    { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder },
@@ -612,9 +612,9 @@ function OverwriteModal({ name, onOverwrite, onRename, onCancel }) {
             <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:24 }}>
               <button
                 onClick={onOverwrite}
-                style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 16px', borderRadius:10, border:`1.5px solid #FECACA`, background:'#FFF8F8', cursor:'pointer', fontFamily:"'Inter',sans-serif", textAlign:'left', transition:'all .15s' }}
+                style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 16px', borderRadius:10, border:`1.5px solid #FECACA`, background:'rgba(220, 38, 38, 0.05)', cursor:'pointer', fontFamily:"'Inter',sans-serif", textAlign:'left', transition:'all .15s' }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor='#FCA5A5'; e.currentTarget.style.background='#FEE2E2' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor='#FECACA'; e.currentTarget.style.background='#FFF8F8' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(220, 38, 38, 0.25)'; e.currentTarget.style.background='rgba(220, 38, 38, 0.05)' }}
               >
                 <div style={{ width:36, height:36, borderRadius:9, background:'#FEE2E2', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
@@ -732,7 +732,7 @@ function FacultyPoolModal({ item, onClose }) {
               </div>
             </div>
             <button onClick={onClose} style={{ width:36, height:36, borderRadius:10, border:`1px solid ${G.border}`, background: 'var(--surface)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0, lineHeight:0, transition:'all .15s' }}
-              onMouseOver={e => {e.currentTarget.style.background = '#FEE2E2'; e.currentTarget.style.borderColor = '#FECACA'}}
+              onMouseOver={e => {e.currentTarget.style.background = '#FEE2E2'; e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.25)'}}
               onMouseOut={e => {e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = G.border}}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
@@ -862,7 +862,7 @@ function WorkloadRow({ f }) {
   return (
     <div style={{ display:'flex', alignItems:'center', gap:14, padding:'12px 0', borderBottom:`1px solid ${G.borderLight}` }}>
       <div style={{ width:32, height:32, borderRadius:'50%', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700,
-        background: f.status === 'full' ? '#FEE2E2' : f.status === 'near' ? '#FEF3C7' : G.meadowSoft, color: barColor, border: `1px solid ${f.status === 'full' ? '#FECACA' : f.status === 'near' ? '#FDE68A' : G.meadowBorder}` }}>
+        background: f.status === 'full' ? '#FEE2E2' : f.status === 'near' ? '#FEF3C7' : G.meadowSoft, color: barColor, border: `1px solid ${f.status === 'full' ? 'rgba(220, 38, 38, 0.25)' : f.status === 'near' ? '#FDE68A' : G.meadowBorder}` }}>
         {f.name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase()}
       </div>
       <span style={{ fontSize:13.5, fontWeight:600, color:G.ink, flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', minWidth:0 }}>{f.name}</span>
@@ -1076,9 +1076,9 @@ function SavedItem({ name, academicYear, semester, finalized, onLoad, onDelete, 
           onClick={(e) => { e.stopPropagation(); onDelete(name); }}
           disabled={loading}
           title="Delete schedule"
-          style={{ width:30, height:30, borderRadius:8, border:'1.5px solid #FFD0D0', background:'#FFE8E8', color:'#C0392B', display:'inline-flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0, flexShrink:0, transition:'background .15s, color .15s', opacity: loading ? 0.4 : 1 }}
+          style={{ width:30, height:30, borderRadius:8, border:'1.5px solid #FFD0D0', background:'rgba(220, 38, 38, 0.1)', color:'#C0392B', display:'inline-flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0, flexShrink:0, transition:'background .15s, color .15s', opacity: loading ? 0.4 : 1 }}
           onMouseEnter={e => { e.currentTarget.style.background='#C0392B'; e.currentTarget.style.color='#fff' }}
-          onMouseLeave={e => { e.currentTarget.style.background='#FFE8E8'; e.currentTarget.style.color='#C0392B' }}
+          onMouseLeave={e => { e.currentTarget.style.background='rgba(220, 38, 38, 0.1)'; e.currentTarget.style.color='#C0392B' }}
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="3 6 5 6 21 6"/>
@@ -1191,7 +1191,7 @@ function CheckPanel({ semester }) {
 
   const rollup = (() => {
     if (diagLoading) return { label: 'Checking…', color: G.muted2, bg: G.hover, border: G.border, spin: true }
-    if (diagError)   return { label: 'Check failed', color: '#DC2626', bg: '#FEE2E2', border: '#FECACA' }
+    if (diagError)   return { label: 'Check failed', color: '#DC2626', bg: '#FEE2E2', border: 'rgba(220, 38, 38, 0.25)' }
     if (!diag)       return null
     return { label: verdict.label, color: verdict.color, bg: verdict.bg, border: verdict.border, icon: verdict.icon }
   })()
@@ -2548,9 +2548,9 @@ export default function SchedulerPage() {
               <button
                 onClick={handleStop}
                 disabled={stopRequested}
-                style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'10px 18px', borderRadius:10, border:'1.5px solid #FECACA', background:'#FFF8F8', color:'#DC2626', fontSize:13, fontWeight:700, cursor: stopRequested ? 'default' : 'pointer', opacity: stopRequested ? 0.6 : 1, fontFamily:"'Inter',sans-serif", transition:'all .15s' }}
+                style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'10px 18px', borderRadius:10, border:'1.5px solid #FECACA', background:'rgba(220, 38, 38, 0.05)', color:'#DC2626', fontSize:13, fontWeight:700, cursor: stopRequested ? 'default' : 'pointer', opacity: stopRequested ? 0.6 : 1, fontFamily:"'Inter',sans-serif", transition:'all .15s' }}
                 onMouseEnter={e => { if (!stopRequested) e.currentTarget.style.background='#FEE2E2' }}
-                onMouseLeave={e => { if (!stopRequested) e.currentTarget.style.background='#FFF8F8' }}
+                onMouseLeave={e => { if (!stopRequested) e.currentTarget.style.background='rgba(220, 38, 38, 0.05)' }}
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
                 {stopRequested ? 'Stopping…' : 'Stop'}

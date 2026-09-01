@@ -23,7 +23,7 @@ const G = {
   border: 'var(--border)', borderLight: 'var(--hover)', bg: 'var(--bg, #F2F7F4)',
   surface: 'var(--surface, #FFFFFF)', hover: 'var(--hover)', amber: '#D97706',
   amberSoft: '#FEF3C7', amberBorder: '#FDE68A',
-  red: '#C0392B', redSoft: '#FFF0F0', redBorder: '#FECACA',
+  red: '#C0392B', redSoft: '#FFF0F0', redBorder: 'rgba(220, 38, 38, 0.25)',
   blue: '#1D4ED8', blueSoft: '#DBEAFE', blueBorder: '#BFDBFE',
 }
 
@@ -186,7 +186,7 @@ function Toast({ msg, onClose }) {
       position: 'fixed', bottom: 28, right: 28, zIndex: 9999,
       padding: '12px 20px', borderRadius: 11, fontSize: 13, fontWeight: 600,
       background: isErr ? '#FFF0F0' : 'var(--meadow-soft)', color: isErr ? '#C0392B' : 'var(--meadow)',
-      boxShadow: '0 8px 28px rgba(0,0,0,0.14)', border: `1px solid ${isErr ? '#FECACA' : 'var(--meadow-border)'}`,
+      boxShadow: '0 8px 28px rgba(0,0,0,0.14)', border: `1px solid ${isErr ? 'rgba(220, 38, 38, 0.25)' : 'var(--meadow-border)'}`,
       display: 'flex', alignItems: 'center', gap: 9, animation: 'fadeUp .2s ease',
     }}>
       {isErr

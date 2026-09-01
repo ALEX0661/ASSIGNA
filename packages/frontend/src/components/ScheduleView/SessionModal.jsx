@@ -215,7 +215,7 @@ export function OverrideConfirmDialog({ event, newDay, newPeriod, newRoom, newFa
         <ModalHeader title="Confirm Override" subtitle="This will force the change despite detected conflicts." onClose={onCancel} fontSize={15} />
 
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:16 }}>
-          <div style={{ padding:14, background:'#fff8f8', border:'1px solid #fecaca', borderRadius:10 }}>
+          <div style={{ padding:14, background:'rgba(220, 38, 38, 0.05)', border:'1px solid #fecaca', borderRadius:10 }}>
             <p style={{ fontSize:9.5, fontWeight:700, color:'#c2410c', textTransform:'uppercase', letterSpacing:'.8px', margin:'0 0 8px' }}>Current</p>
             <p style={{ margin:'0 0 3px', fontWeight:700, fontSize:13, color:TV.text }}>{event.courseCode}</p>
             <p style={{ margin:0, fontSize:11.5, color:TV.muted }}>{event.day} · {event.period}</p>
@@ -787,7 +787,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                       <div className="sm-merge-tip" style={{
                         display:'none', position:'absolute', top:'calc(100% + 6px)', left:0, zIndex:20,
                         width:260, padding:'11px 13px', borderRadius:10,
-                        background:'var(--ink)', color:'#d0e8db', fontSize:11, lineHeight:1.65,
+                        background:'var(--ink)', color:'var(--surface)', fontSize:11, lineHeight:1.65,
                         boxShadow:'0 8px 28px rgba(0,0,0,.22)', whiteSpace:'normal',
                       }}>
                         <div style={{ fontWeight:700, color:'#fff', marginBottom:4, display:'flex', alignItems:'center', gap:5 }}>
@@ -1119,7 +1119,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                             <Ic.Warning size={10} color="#b91c1c" />
                             Active Conflicts &nbsp;·&nbsp; {currentReal.length} class{currentReal.length > 1 ? 'es' : ''}
                           </p>
-                          <div style={{ background:'#fff8f8', border:'1px solid #fecaca', borderRadius:10, padding:'10px 14px' }}>
+                          <div style={{ background:'rgba(220, 38, 38, 0.05)', border:'1px solid #fecaca', borderRadius:10, padding:'10px 14px' }}>
                             <p style={{ margin:'0 0 8px', fontSize:11.5, color:'#991b1b' }}>
                               These conflicts exist in the current saved schedule and need to be resolved.
                             </p>
@@ -1143,7 +1143,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                             <Ic.Warning size={10} color="#c2410c" />
                             Proposed Slot Conflicts &nbsp;·&nbsp; {previewReal.length} class{previewReal.length > 1 ? 'es' : ''}
                           </p>
-                          <div style={{ background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:10, padding:'10px 14px' }}>
+                          <div style={{ background:'rgba(217, 119, 6, 0.05)', border:'1px solid #fed7aa', borderRadius:10, padding:'10px 14px' }}>
                             <p style={{ margin:'0 0 8px', fontSize:11.5, color:'#92400e' }}>
                               Your proposed changes conflict with the sessions below. Saving will force-override.
                             </p>
@@ -1374,7 +1374,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                     </p>
 
                     {batchFaculty && batchConflictCount > 0 && !batchResults && (
-                      <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 11px', background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:8, fontSize:11.5 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 11px', background:'rgba(217, 119, 6, 0.05)', border:'1px solid #fed7aa', borderRadius:8, fontSize:11.5 }}>
                         <Ic.Warning size={12} color="#c2410c" />
                         <span style={{ fontWeight:700, color:'#c2410c' }}>{batchConflictCount} overlap{batchConflictCount > 1 ? 's' : ''}.</span>
                         <span style={{ color:'#92400e' }}>Will force-override on save.</span>
@@ -1410,7 +1410,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                           style={{
                             padding:'11px 14px', borderRadius:10,
                             border:`1px solid ${result?.ok ? 'var(--mint)' : hasConflict ? '#fca5a5' : TV.border}`,
-                            background: result?.ok ? 'var(--hover)' : hasConflict ? '#fff8f8' : '#fff',
+                            background: result?.ok ? 'var(--hover)' : hasConflict ? 'rgba(220, 38, 38, 0.05)' : '#fff',
                             display:'flex', alignItems:'flex-start', gap:12,
                           }}
                         >
@@ -1458,7 +1458,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                                 </span>
                               )}
                               {sib.faculty && sib.faculty !== 'TBA' && sib.faculty !== batchFaculty && (
-                                <span style={{ fontSize:9.5, color:'#92400e', background:'#fff7ed', border:'1px solid #fed7aa', padding:'1px 7px', borderRadius:4 }}>
+                                <span style={{ fontSize:9.5, color:'#92400e', background:'rgba(217, 119, 6, 0.05)', border:'1px solid #fed7aa', padding:'1px 7px', borderRadius:4 }}>
                                   Currently: {sib.faculty}
                                 </span>
                               )}
@@ -1502,7 +1502,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
             {tab === 'batch' && (
               <div style={{ flexShrink:0, padding:'14px 20px', display:'flex', alignItems:'center', gap:10, background:'var(--bg)' }}>
                 {batchError && (
-                  <div style={{ display:'flex', alignItems:'center', gap:6, background:'#fff8f8', border:'1px solid #fecaca', borderRadius:8, padding:'6px 10px', fontSize:11.5, color:'#b91c1c', fontWeight:600, flex:1 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(220, 38, 38, 0.05)', border:'1px solid #fecaca', borderRadius:8, padding:'6px 10px', fontSize:11.5, color:'#b91c1c', fontWeight:600, flex:1 }}>
                     <Ic.AlertCircle size={12} color="#b91c1c" />
                     <span style={{ flex:1 }}>{batchError}</span>
                     <button onClick={() => setBatchError('')} style={{ background:'none', border:'none', color:'#b91c1c', cursor:'pointer', fontSize:16, lineHeight:1, padding:0 }}>×</button>
@@ -1510,7 +1510,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                 )}
 
                 {batchConflictCount > 0 && !batchResults && !batchError && (
-                  <div style={{ display:'flex', alignItems:'center', gap:6, background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:8, padding:'6px 10px', fontSize:11.5, flex:1 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(217, 119, 6, 0.05)', border:'1px solid #fed7aa', borderRadius:8, padding:'6px 10px', fontSize:11.5, flex:1 }}>
                     <Ic.Warning size={12} color="#c2410c" />
                     <span style={{ color:'#c2410c', fontWeight:600 }}>
                       {batchConflictCount} overlap{batchConflictCount > 1 ? 's' : ''} — will force-override on save
@@ -1563,7 +1563,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
             {tab !== 'batch' && tab !== 'merge' && (
               <>
                 {error && (
-                  <div style={{ display:'flex', alignItems:'center', gap:8, background:'#fff8f8', border:'1px solid #fecaca', borderRadius:9, padding:'8px 12px', marginBottom:10, fontSize:12, color:'#b91c1c', fontWeight:600 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, background:'rgba(220, 38, 38, 0.05)', border:'1px solid #fecaca', borderRadius:9, padding:'8px 12px', marginBottom:10, fontSize:12, color:'#b91c1c', fontWeight:600 }}>
                     <Ic.AlertCircle size={13} color="#b91c1c" />
                     <span style={{ flex:1 }}>{error}</span>
                     <button onClick={() => setError('')} style={{ background:'none', border:'none', color:'#b91c1c', cursor:'pointer', fontSize:17, lineHeight:1, padding:0, fontFamily:'inherit' }}>×</button>
@@ -1587,7 +1587,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                         </div>
                       )}
                       {realPreviewConflicts.length > 0 && (
-                        <div style={{ display:'flex', alignItems:'center', gap:8, background:'#fff8f8', border:'1px solid #fecaca', borderRadius:9, padding:'7px 12px', marginBottom:10, fontSize:11.5 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:8, background:'rgba(220, 38, 38, 0.05)', border:'1px solid #fecaca', borderRadius:9, padding:'7px 12px', marginBottom:10, fontSize:11.5 }}>
                           <Ic.Warning size={12} color="#b91c1c" />
                           <span style={{ color:'#b91c1c', fontWeight:600 }}>
                             {realPreviewConflicts.length} conflict{realPreviewConflicts.length > 1 ? 's' : ''} in proposed slot

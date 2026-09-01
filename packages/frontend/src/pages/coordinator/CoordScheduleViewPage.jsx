@@ -1277,7 +1277,7 @@ export default function CoordScheduleViewPage() {
                   Submitted
                 </span>
                 <button onClick={handleUnsubmit} disabled={actionState === 'working'}
-                  style={{ padding:'3px 10px', borderRadius:7, border:'1px solid #fecaca', background:'#fff8f8', color:'#dc2626', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap' }}>
+                  style={{ padding:'3px 10px', borderRadius:7, border:'1px solid #fecaca', background:'rgba(220, 38, 38, 0.05)', color:'#dc2626', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap' }}>
                   {actionState === 'working' ? 'Withdrawing…' : 'Unsubmit'}
                 </button>
               </div>
@@ -1520,7 +1520,7 @@ export default function CoordScheduleViewPage() {
             </button>
             {localHasFilters && (
               <button onClick={handleClearAll} style={{
-                fontSize:11.5, color:'#dc2626', background:'#fff8f8',
+                fontSize:11.5, color:'#dc2626', background:'rgba(220, 38, 38, 0.05)',
                 border:'1px solid #fecaca', borderRadius:8, padding:'4px 10px',
                 cursor:'pointer', fontFamily:'Inter,sans-serif', fontWeight:600,
                 flexShrink:0, marginLeft:'auto',
@@ -1536,7 +1536,7 @@ export default function CoordScheduleViewPage() {
               { bg:'#fff', border:TV.border, label:'Normal', color:TV.muted },
               { bg:TV.pale, border:TV.light, label:'Merge', color:TV.deep,
                 icon: <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> },
-              { bg:'#fef2f2', border:'#fecaca', label:'Conflict', color:'#b91c1c',
+              { bg:'#fef2f2', border:'rgba(220, 38, 38, 0.25)', label:'Conflict', color:'#b91c1c',
                 icon: <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> },
               { bg:'#fffbeb', border:'#fcd34d', label:'Unassigned', color:'#92400e',
                 icon: <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/></svg> },
@@ -1937,7 +1937,7 @@ export default function CoordScheduleViewPage() {
                     {localHasFilters && (
                       <button onClick={() => { handleClearAll(); }} style={{
                         padding: '6px 14px', borderRadius: 8, fontSize: 11.5, fontWeight: 600,
-                        border: '1px solid #fecaca', background: '#fff8f8', color: '#dc2626',
+                        border: '1px solid #fecaca', background: 'rgba(220, 38, 38, 0.05)', color: '#dc2626',
                         cursor: 'pointer', fontFamily: 'Inter,sans-serif',
                       }}>
                         ✕ Clear all

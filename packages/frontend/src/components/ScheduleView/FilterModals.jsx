@@ -704,7 +704,7 @@ export function OverrideConfirmModal({ pendingDrop, onConfirm, onCancel }) {
 
   const conflictTypes = new Set(conflicts.flatMap(c => c.conflictLabel.replace(' Conflict', '').split(' + ')))
   const typeColors = {
-    Room:    { bg: '#fef2f2', text: '#b91c1c', border: '#fecaca' },
+    Room:    { bg: '#fef2f2', text: '#b91c1c', border: 'rgba(220, 38, 38, 0.25)' },
     Section: { bg: '#fdf4ff', text: '#7e22ce', border: '#e9d5ff' },
     Faculty: { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' },
   }
