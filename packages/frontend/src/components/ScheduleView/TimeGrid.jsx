@@ -459,14 +459,14 @@ export default function TimeGrid({
         {/* ── HEADER ── */}
         <div style={{
           display: 'flex',
-          background: 'linear-gradient(to bottom,#F2F7F4,var(--bg))',
+          background: 'linear-gradient(to bottom,var(--surface),var(--bg))',
           position: 'sticky', top: 0, zIndex: 30, flexShrink: 0,
         }}>
           <div style={{
             width: TIME_COL_W, flexShrink: 0,
             borderRight: `2px solid ${TV.border}`,
             position: 'sticky', left: 0, zIndex: 31,
-            background: 'linear-gradient(to bottom,#F2F7F4,var(--bg))',
+            background: 'linear-gradient(to bottom,var(--surface),var(--bg))',
           }} />
           {rooms.map((room, idx) => (
             <div key={room} style={{

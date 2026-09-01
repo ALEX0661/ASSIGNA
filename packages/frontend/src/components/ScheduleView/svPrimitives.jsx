@@ -171,19 +171,19 @@ export function ConflictSummaryBar({ conflictMap, compact = false }) {
   if (compact) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-        <span style={{ fontSize: 10, fontWeight: 700, color: '#EF4444', whiteSpace: 'nowrap' }}>⚠</span>
+        <span style={{ fontSize: 10, fontWeight: 700, color: '#FCA5A5', whiteSpace: 'nowrap' }}>⚠</span>
         {roomCount > 0 && (
-          <span style={{ fontSize: 10, background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', border: '1px solid #fca5a5', borderRadius: 10, padding: '1px 7px', fontWeight: 700, whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 10, background: 'rgba(239, 68, 68, 0.1)', color: '#FCA5A5', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: 10, padding: '1px 7px', fontWeight: 700, whiteSpace: 'nowrap' }}>
             {roomCount}R
           </span>
         )}
         {sectionCount > 0 && (
-          <span style={{ fontSize: 10, background: '#fdf4ff', color: '#7e22ce', border: '1px solid #e9d5ff', borderRadius: 10, padding: '1px 7px', fontWeight: 700, whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 10, background: 'rgba(168, 85, 247, 0.1)', color: '#C084FC', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: 10, padding: '1px 7px', fontWeight: 700, whiteSpace: 'nowrap' }}>
             {sectionCount}S
           </span>
         )}
         {facultyCount > 0 && (
-          <span style={{ fontSize: 10, background: 'rgba(37, 99, 235, 0.1)', color: '#60A5FA', border: '1px solid #bfdbfe', borderRadius: 10, padding: '1px 7px', fontWeight: 700, whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 10, background: 'rgba(37, 99, 235, 0.1)', color: '#60A5FA', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: 10, padding: '1px 7px', fontWeight: 700, whiteSpace: 'nowrap' }}>
             {facultyCount}F
           </span>
         )}
@@ -195,13 +195,13 @@ export function ConflictSummaryBar({ conflictMap, compact = false }) {
   return (
     <div style={{
       display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
-      background: 'rgba(220, 38, 38, 0.05)', border: '1px solid #fecaca',
+      background: 'rgba(220, 38, 38, 0.05)', border: '1px solid rgba(239, 68, 68, 0.3)',
       borderRadius: 10, padding: '8px 14px', marginBottom: 12,
     }}>
-      <span style={{ fontSize: 12, fontWeight: 700, color: '#EF4444' }}>⚠ Conflicts today:</span>
-      {roomCount    > 0 && <span style={{ fontSize: 11, background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', border: '1px solid #fca5a5', borderRadius: 20, padding: '2px 10px', fontWeight: 600 }}>{roomCount} Room</span>}
-      {sectionCount > 0 && <span style={{ fontSize: 11, background: '#fdf4ff', color: '#7e22ce', border: '1px solid #e9d5ff', borderRadius: 20, padding: '2px 10px', fontWeight: 600 }}>{sectionCount} Section</span>}
-      {facultyCount > 0 && <span style={{ fontSize: 11, background: 'rgba(37, 99, 235, 0.1)', color: '#60A5FA', border: '1px solid #bfdbfe', borderRadius: 20, padding: '2px 10px', fontWeight: 600 }}>{facultyCount} Faculty</span>}
+      <span style={{ fontSize: 12, fontWeight: 700, color: '#FCA5A5' }}>⚠ Conflicts today:</span>
+      {roomCount    > 0 && <span style={{ fontSize: 11, background: 'rgba(239, 68, 68, 0.1)', color: '#FCA5A5', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: 20, padding: '2px 10px', fontWeight: 600 }}>{roomCount} Room</span>}
+      {sectionCount > 0 && <span style={{ fontSize: 11, background: 'rgba(168, 85, 247, 0.1)', color: '#C084FC', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: 20, padding: '2px 10px', fontWeight: 600 }}>{sectionCount} Section</span>}
+      {facultyCount > 0 && <span style={{ fontSize: 11, background: 'rgba(37, 99, 235, 0.1)', color: '#60A5FA', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: 20, padding: '2px 10px', fontWeight: 600 }}>{facultyCount} Faculty</span>}
       <span style={{ fontSize: 11, color: TV.muted, marginLeft: 4 }}>{conflictMap.size} affected session{conflictMap.size > 1 ? 's' : ''}</span>
     </div>
   )
@@ -212,7 +212,7 @@ export function Legend() {
   const items = [
     { color: TV.muted,  border: TV.border, bg: 'var(--surface)',    label: 'Normal' },
     { color: TV.deep,   border: TV.light,  bg: TV.pale,   label: 'Merged Block' },
-    { color: '#EF4444', border: '#fca5a5', bg: 'rgba(220, 38, 38, 0.05)', label: 'Conflict' },
+    { color: '#FCA5A5', border: '#fca5a5', bg: 'rgba(220, 38, 38, 0.05)', label: 'Conflict' },
   ]
   return (
     <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', fontSize: 11, color: TV.muted }}>
@@ -431,7 +431,7 @@ export function Toast({ message, type, onDismiss }) {
 export function ConflictTable({ conflicts }) {
   if (!conflicts || conflicts.length === 0) return null
   return (
-    <div style={{ overflowX: 'auto', border: '1px solid #fecaca', borderRadius: 8, marginTop: 8 }}>
+    <div style={{ overflowX: 'auto', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 8, marginTop: 8 }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
         <thead>
           <tr style={{ background: 'rgba(239, 68, 68, 0.05)' }}>
