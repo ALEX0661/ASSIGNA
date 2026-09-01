@@ -78,10 +78,12 @@ if (!document.getElementById('rooms-page-style')) {
     .room-chip:active { cursor: grabbing; transform: scale(0.98); }
     .room-chip.drag-over { border-color: ${G.meadowDeep}; background: ${G.meadowBorder}; transform: scale(1.02); }
     
+    [data-mode="dark"] .room-chip { color: var(--mint) !important; }
     .room-chip-idx { font-size: 10px; font-weight: 800; color: #fff; background: ${G.meadow}; padding: 2px 6px; border-radius: 4px; }
     
     .chip-del { display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 5px; color: ${isDark ? 'var(--mint)' : G.meadow}; cursor: pointer; transition: all 0.1s; }
-    .chip-del:hover { background: var(--surface); color: #DC2626; }
+    [data-mode="dark"] .chip-del { color: var(--mint) !important; }
+      .chip-del:hover { background: var(--surface); color: #DC2626; }
 
     /* Inline Add Input */
     .inline-add-wrap { display: inline-flex; align-items: center; gap: 8px; }
@@ -139,7 +141,8 @@ if (!document.getElementById('rooms-page-style')) {
 
     /* Green Room Pills for Table */
     .assign-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 7px; font-size: 11.5px; font-weight: 600; background: var(--surface); color: ${isDark ? 'var(--mint)' : G.meadowDeep}; border: 1px dashed ${isDark ? 'var(--mint)' : G.meadow}; cursor: pointer; transition: all 0.15s; }
-    .assign-trigger:hover { background: ${G.meadowSoft}; border-style: solid; }
+    [data-mode="dark"] .assign-trigger { color: var(--mint) !important; border-color: var(--mint) !important; }
+      .assign-trigger:hover { background: ${G.meadowSoft}; border-style: solid; }
     
     .assigned-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background: ${G.meadowSoft}; color: ${isDark ? 'var(--mint)' : G.meadowDeep}; border: 1px solid ${G.meadowBorder}; }
   `
