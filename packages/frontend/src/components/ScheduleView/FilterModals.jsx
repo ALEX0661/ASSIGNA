@@ -89,7 +89,7 @@ function QuickActions({ filtered, selectedSet, onToggle }) {
           cursor: noneSelected ? 'default' : 'pointer',
           border: `1px solid ${TV.border}`,
           background: noneSelected ? TV.pale : 'var(--surface)',
-          color: noneSelected ? TV.muted : '#b91c1c',
+          color: noneSelected ? TV.muted : '#EF4444',
           transition: 'all .15s',
         }}
       >
@@ -255,9 +255,9 @@ export function FacultyFilterModal({
         {/* ── Summary strip ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 14, flexWrap: 'wrap' }}>
           <StatPill label="faculty" value={options.length} color={TV.deep}   bg={TV.pale}   border={TV.light}   />
-          <StatPill label="units assigned" value={totalUnits} color="#1d4ed8" bg="#eff6ff" border="#bfdbfe" />
+          <StatPill label="units assigned" value={totalUnits} color='#60A5FA' bg='rgba(37, 99, 235, 0.1)' border="#bfdbfe" />
           {overloadedCnt > 0 && (
-            <StatPill label="over cap" value={overloadedCnt} color="#b91c1c" bg='rgba(239, 68, 68, 0.1)' border="#fca5a5" icon="⚠" />
+            <StatPill label="over cap" value={overloadedCnt} color='#EF4444' bg='rgba(239, 68, 68, 0.1)' border="#fca5a5" icon="⚠" />
           )}
 
           {/* Sort controls */}
@@ -291,7 +291,7 @@ export function FacultyFilterModal({
 
                 // Border / background per state
                 let rowBorder = isActive ? TV.deep : info.isOver ? '#fca5a5' : TV.border
-                let rowBg     = isActive ? TV.pale  : info.isOver ? '#fff5f5' : 'var(--surface)'
+                let rowBg     = isActive ? TV.pale  : info.isOver ? 'rgba(220, 38, 38, 0.05)' : 'var(--surface)'
 
                 return (
                   <button
@@ -342,7 +342,7 @@ export function FacultyFilterModal({
                           padding: '1px 6px', borderRadius: 4,
                           textTransform: 'uppercase', letterSpacing: '.5px',
                           background: info.status === 'part-time' ? '#fef9c3' : '#f0f9ff',
-                          color:      info.status === 'part-time' ? '#854d0e' : '#0369a1',
+                          color:      info.status === 'part-time' ? '#854d0e' : '#38BDF8',
                           border:     `1px solid ${info.status === 'part-time' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(59, 130, 246, 0.25)'}`,
                         }}>
                           {info.status === 'part-time' ? 'PT' : 'FT'}
@@ -352,7 +352,7 @@ export function FacultyFilterModal({
                         {info.isOver && (
                           <span style={{
                             fontSize: 8.5, fontWeight: 700, flexShrink: 0,
-                            color: '#b91c1c', background: 'rgba(239, 68, 68, 0.1)',
+                            color: '#EF4444', background: 'rgba(239, 68, 68, 0.1)',
                             border: '1px solid #fca5a5', borderRadius: 4, padding: '1px 6px',
                           }}>
                             OVER CAP
@@ -372,7 +372,7 @@ export function FacultyFilterModal({
                         </div>
                         <span style={{
                           fontSize: 9.5, fontWeight: 700, flexShrink: 0, minWidth: 80, textAlign: 'right',
-                          color: isActive ? TV.deep : info.isOver ? '#b91c1c' : info.pct >= 80 ? '#92400e' : TV.muted,
+                          color: isActive ? TV.deep : info.isOver ? '#EF4444' : info.pct >= 80 ? '#92400e' : TV.muted,
                         }}>
                           {info.usedUnits} / {info.maxUnits} units
                         </span>
@@ -704,9 +704,9 @@ export function OverrideConfirmModal({ pendingDrop, onConfirm, onCancel }) {
 
   const conflictTypes = new Set(conflicts.flatMap(c => c.conflictLabel.replace(' Conflict', '').split(' + ')))
   const typeColors = {
-    Room:    { bg: 'rgba(239, 68, 68, 0.05)', text: '#b91c1c', border: 'rgba(220, 38, 38, 0.25)' },
+    Room:    { bg: 'rgba(239, 68, 68, 0.05)', text: '#EF4444', border: 'rgba(220, 38, 38, 0.25)' },
     Section: { bg: '#fdf4ff', text: '#7e22ce', border: '#e9d5ff' },
-    Faculty: { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' },
+    Faculty: { bg: 'rgba(37, 99, 235, 0.1)', text: '#60A5FA', border: '#bfdbfe' },
   }
 
   return (
@@ -747,7 +747,7 @@ export function OverrideConfirmModal({ pendingDrop, onConfirm, onCancel }) {
         </div>
 
         <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#b91c1c', alignSelf: 'center' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#EF4444', alignSelf: 'center' }}>
             ⚠ {conflicts.length} conflict{conflicts.length !== 1 ? 's' : ''}:
           </span>
           {[...conflictTypes].map(t => {
@@ -779,7 +779,7 @@ export function OverrideConfirmModal({ pendingDrop, onConfirm, onCancel }) {
             style={{
               padding: '8px 20px', fontSize: 12.5, fontWeight: 700,
               background: 'linear-gradient(135deg,#dc2626,#b91c1c)',
-              color: 'var(--surface)', border: 'none', borderRadius: 8,
+              color: '#fff', border: 'none', borderRadius: 8,
               cursor: 'pointer', fontFamily: 'Inter, sans-serif',
               boxShadow: '0 4px 12px rgba(220,38,38,.30)',
               display: 'flex', alignItems: 'center', gap: 6, transition: 'all .15s',
@@ -889,7 +889,7 @@ export function StackConfirmModal({ pendingStack, onConfirm, onCancel }) {
           borderRadius: 8, padding: '10px 14px',
           display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 16,
         }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
             <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
           </svg>
@@ -907,7 +907,7 @@ export function StackConfirmModal({ pendingStack, onConfirm, onCancel }) {
             style={{
               padding: '8px 20px', fontSize: 12.5, fontWeight: 700,
               background: 'linear-gradient(135deg,var(--meadow),var(--meadow-mid))',
-              color: 'var(--surface)', border: 'none', borderRadius: 8,
+              color: '#fff', border: 'none', borderRadius: 8,
               cursor: 'pointer', fontFamily: 'Inter, sans-serif',
               boxShadow: '0 4px 12px rgba(5,150,105,.30)',
               display: 'flex', alignItems: 'center', gap: 6, transition: 'all .15s',

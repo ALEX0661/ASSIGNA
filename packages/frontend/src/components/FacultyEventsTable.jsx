@@ -5,15 +5,15 @@ const DAY_SHORT = { Monday:'Mon', Tuesday:'Tue', Wednesday:'Wed', Thursday:'Thu'
 
 const DAY_COLORS = {
   Monday:    { bg:'var(--meadow-soft)', color: 'var(--meadow)', border:'var(--meadow-border)' },
-  Tuesday:   { bg:'rgba(59, 130, 246, 0.1)', color:'#1D4ED8', border:'#BFDBFE' },
-  Wednesday: { bg:'rgba(217, 119, 6, 0.1)', color:'#B45309', border:'rgba(245, 158, 11, 0.25)' },
+  Tuesday:   { bg:'rgba(59, 130, 246, 0.1)', color:'#60A5FA', border:'#BFDBFE' },
+  Wednesday: { bg:'rgba(217, 119, 6, 0.1)', color:'#F59E0B', border:'rgba(245, 158, 11, 0.25)' },
   Thursday:  { bg:'#FCE7F3', color:'#9D174D', border:'#FBCFE8' },
-  Friday:    { bg:'color-mix(in srgb, #6D28D9 15%, transparent)', color:'#6D28D9', border:'color-mix(in srgb, #6D28D9 30%, transparent)' },
-  Saturday:  { bg:'rgba(59, 130, 246, 0.1)', color:'#0369A1', border:'rgba(59, 130, 246, 0.25)' },
+  Friday:    { bg:'color-mix(in srgb, #6D28D9 15%, transparent)', color:'#A78BFA', border:'color-mix(in srgb, #6D28D9 30%, transparent)' },
+  Saturday:  { bg:'rgba(59, 130, 246, 0.1)', color:'#38BDF8', border:'rgba(59, 130, 246, 0.25)' },
   Sunday:    { bg:'rgba(217, 119, 6, 0.05)', color:'#C2410C', border:'rgba(217, 119, 6, 0.25)' },
 }
 
-const PROG_PALETTE = ['var(--meadow)','#2563EB','#7C3AED','#C2410C','#0369A1','#9D174D','#B45309','var(--meadow-mid)']
+const PROG_PALETTE = ['var(--meadow)','#60A5FA','#7C3AED','#C2410C','#38BDF8','#9D174D','#F59E0B','var(--meadow-mid)']
 const _progMap = {}
 function progColor(prog) {
   if (!prog) return 'var(--muted)'
@@ -48,14 +48,14 @@ function RoomBadge({ room }) {
   if (!room || room === '—') return <span style={{ color:'var(--border)', fontSize:12 }}>—</span>
   const isTBA = room.trim().toUpperCase() === 'TBA'
   if (isTBA) return (
-    <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:6, background:'rgba(217, 119, 6, 0.1)', color:'#B45309', fontSize:11, fontWeight:600, border:'1px solid #FDE68A' }}>
+    <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:6, background:'rgba(217, 119, 6, 0.1)', color:'#F59E0B', fontSize:11, fontWeight:600, border:'1px solid #FDE68A' }}>
       <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
       TBA
     </span>
   )
   const isLab = /lab/i.test(room)
   return (
-    <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:6, background: isLab ? 'color-mix(in srgb, #6D28D9 15%, transparent)' : '#F2F7F4', color: isLab ? '#6D28D9' : '#1C3D2A', fontSize:11.5, fontWeight:500, border: isLab ? '1px solid color-mix(in srgb, #6D28D9 30%, transparent)' : '1px solid var(--border)' }}>
+    <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:6, background: isLab ? 'color-mix(in srgb, #6D28D9 15%, transparent)' : '#F2F7F4', color: isLab ? '#A78BFA' : '#1C3D2A', fontSize:11.5, fontWeight:500, border: isLab ? '1px solid color-mix(in srgb, #6D28D9 30%, transparent)' : '1px solid var(--border)' }}>
       {room}
     </span>
   )
@@ -218,7 +218,7 @@ export default function FacultyEventsTable({ events, computeUnits, fetchError })
             )}
           </div>
           {hasFilters && (
-            <button type="button" onClick={clearAll} style={{ padding:'5px 12px', borderRadius:99, fontSize:11.5, fontWeight:600, background:'#FFF5F5', color:'#C0392B', border:'1.5px solid #FECACA', cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>
+            <button type="button" onClick={clearAll} style={{ padding:'5px 12px', borderRadius:99, fontSize:11.5, fontWeight:600, background:'rgba(220, 38, 38, 0.05)', color:'#EF4444', border:'1.5px solid #FECACA', cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>
               Clear all
             </button>
           )}
@@ -279,7 +279,7 @@ export default function FacultyEventsTable({ events, computeUnits, fetchError })
                 <span style={{ fontSize:10, fontWeight:700, color: 'var(--muted2)', textTransform:'uppercase', letterSpacing:'.6px', flexShrink:0 }}>Room</span>
                 {opts.roomTypes.map(r => (
                   <Pill key={r} value={r} label={r} selectedSet={roomTypes} onToggle={v => setRoomTypes(s => toggleSet(s,v))}
-                    color={r==='Lab'?'#6D28D9':r==='TBA'?'#B45309':'var(--meadow)'} />
+                    color={r==='Lab'?'#A78BFA':r==='TBA'?'#F59E0B':'var(--meadow)'} />
                 ))}
               </div>
             )}

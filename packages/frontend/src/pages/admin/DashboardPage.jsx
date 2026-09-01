@@ -199,7 +199,7 @@ function MiniBar({ label, value, max, onClick, tier }) {
   const pct  = Math.min(100, Math.round((value / Math.max(max, 1)) * 100))
   const over = value > max
   const warn = pct >= 85 && !over
-  const c = over ? '#C0392B' : warn ? '#D97706' : 'var(--meadow)'
+  const c = over ? '#EF4444' : warn ? '#F59E0B' : 'var(--meadow)'
   const b = over ? 'rgba(220, 38, 38, 0.1)' : warn ? 'rgba(217, 119, 6, 0.1)' : '#E6FAF3'
   return (
     <div className="d-row" onClick={onClick}
@@ -266,9 +266,9 @@ function ScoreRing({ score, label, color = 'var(--meadow)' }) {
 
 /* ─── Suggestion card ────────────────────────────────────────────────────── */
 const SUGGESTION_STYLES = {
-  error:   { bg:'#FFF5F5', border:'rgba(220, 38, 38, 0.25)', icon:'#DC2626', dot:'#EF4444', label:'Critical' },
-  warning: { bg:'rgba(245, 158, 11, 0.05)', border:'rgba(245, 158, 11, 0.25)', icon:'#D97706', dot:'#F59E0B', label:'Warning'  },
-  info:    { bg:'#EFF6FF', border:'#BFDBFE', icon:'#2563EB', dot:'#3B82F6', label:'Info'     },
+  error:   { bg:'rgba(220, 38, 38, 0.05)', border:'rgba(220, 38, 38, 0.25)', icon:'#EF4444', dot:'#EF4444', label:'Critical' },
+  warning: { bg:'rgba(245, 158, 11, 0.05)', border:'rgba(245, 158, 11, 0.25)', icon:'#F59E0B', dot:'#F59E0B', label:'Warning'  },
+  info:    { bg:'rgba(37, 99, 235, 0.1)', border:'#BFDBFE', icon:'#60A5FA', dot:'#3B82F6', label:'Info'     },
   success: { bg:'var(--meadow-soft)', border:'var(--meadow-border)', icon:'var(--meadow)', dot:'var(--meadow)', label:'Good'     },
 }
 
@@ -292,13 +292,13 @@ function SuggestionCard({ suggestion, onAction, delay = 0 }) {
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
           <span style={{ fontSize:12, fontWeight:700, color:'var(--ink)' }}>{suggestion.title}</span>
-          <span style={{ fontSize:9.5, fontWeight:700, padding:'1px 7px', borderRadius:99, background:s.dot, color: 'var(--surface)' }}>{s.label}</span>
+          <span style={{ fontSize:9.5, fontWeight:700, padding:'1px 7px', borderRadius:99, background:s.dot, color: '#fff' }}>{s.label}</span>
         </div>
         <p style={{ fontSize:11, color:'var(--muted)', margin:0, lineHeight:1.5 }}>{suggestion.body}</p>
         {suggestion.action && (
           <button onClick={() => navigate(suggestion.action.href)}
             style={{ marginTop:6, padding:'4px 11px', borderRadius:7, border:'none', fontSize:10.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif',
-              background: s.icon, color: 'var(--surface)', transition:'opacity .15s' }}
+              background: s.icon, color: '#fff', transition:'opacity .15s' }}
             onMouseEnter={e => e.currentTarget.style.opacity='.85'}
             onMouseLeave={e => e.currentTarget.style.opacity='1'}>
             {suggestion.action.label} →
@@ -334,7 +334,7 @@ function SetupChecklist({ steps, onNavigate, loading }) {
   if (allDone) {
     return (
       <div style={{ background:'var(--meadow-soft)', borderRadius:12, border:'1px solid var(--meadow-border)', display:'flex', alignItems:'center', gap:12, padding:'12px 18px', boxShadow:'0 1px 6px rgba(0,0,0,0.05)' }}>
-        <div style={{ width:26, height:26, borderRadius:'50%', flexShrink:0, background: 'var(--meadow)', color: 'var(--surface)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <div style={{ width:26, height:26, borderRadius:'50%', flexShrink:0, background: 'var(--meadow)', color: '#fff', display:'flex', alignItems:'center', justifyContent:'center' }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
         <div style={{ fontSize:12.5, fontWeight:700, color: 'var(--ink)' }}>Setup complete — everything is loaded and ready to schedule.</div>
@@ -350,7 +350,7 @@ function SetupChecklist({ steps, onNavigate, loading }) {
         style={{ display:'flex', alignItems:'center', gap:12, padding:'13px 16px', background:'var(--meadow-soft)', cursor:'pointer', borderBottom: open ? '1px solid var(--meadow-soft)' : 'none', userSelect:'none', borderRadius: open ? '12px 12px 0 0' : 12 }}
       >
         {/* Done counter badge */}
-        <div style={{ width:30, height:30, borderRadius:'50%', flexShrink:0, background: 'var(--meadow)', color: 'var(--surface)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, fontFamily:"'Sora',sans-serif" }}>
+        <div style={{ width:30, height:30, borderRadius:'50%', flexShrink:0, background: 'var(--meadow)', color: '#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, fontFamily:"'Sora',sans-serif" }}>
           {doneCount}/{total}
         </div>
 
@@ -409,7 +409,7 @@ function SetupChecklist({ steps, onNavigate, loading }) {
               {!step.done && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onNavigate(step.href) }}
-                  style={{ flexShrink:0, padding:'6px 13px', borderRadius:8, border:'none', background: 'var(--meadow)', color: 'var(--surface)', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif", whiteSpace:'nowrap' }}
+                  style={{ flexShrink:0, padding:'6px 13px', borderRadius:8, border:'none', background: 'var(--meadow)', color: '#fff', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif", whiteSpace:'nowrap' }}
                   onMouseEnter={e => e.currentTarget.style.background='var(--meadow-deep)'}
                   onMouseLeave={e => e.currentTarget.style.background='var(--meadow)'}
                 >
@@ -425,7 +425,7 @@ function SetupChecklist({ steps, onNavigate, loading }) {
 }
 
 /* ─── PROGRAM COLORS ─────────────────────────────────────────────────────── */
-const PROG_COLORS = ['var(--meadow)','#2563EB','#7C3AED','#D97706','#0891B2','#DC2626','#0F766E','#9333EA']
+const PROG_COLORS = ['var(--meadow)','#60A5FA','#7C3AED','#F59E0B','#0891B2','#EF4444','#0F766E','#9333EA']
 
 /* ─── Main Page ──────────────────────────────────────────────────────────── */
 export default function DashboardPage() {
@@ -618,8 +618,8 @@ export default function DashboardPage() {
     },
     {
       label: 'Total Courses',
-      color: '#2563EB',
-      bg: '#EFF6FF',
+      color: '#60A5FA',
+      bg: 'rgba(37, 99, 235, 0.1)',
       icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>,
       value: statsLoading ? null : (crs.total ?? '—'),
       sub: (bySem['1st Semester']||bySem['2nd Semester']||bySem['Midyear'])
@@ -630,7 +630,7 @@ export default function DashboardPage() {
     {
       label: 'Rooms',
       color: '#7C3AED',
-      bg: '#F5F3FF',
+      bg: 'rgba(124, 58, 237, 0.1)',
       icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
       value: statsLoading ? null : (rms.total ?? '—'),
       sub: rms.total > 0 ? `${rms.lecture||0} lecture · ${rms.lab||0} lab` : null,
@@ -639,22 +639,22 @@ export default function DashboardPage() {
     {
       label: 'Specializations',
       color: '#0891B2',
-      bg: '#ECFEFF',
+      bg: 'rgba(8, 145, 178, 0.1)',
       icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
       value: statsLoading ? null : (fac.withSpecializations ?? '—'),
       sub: fac.total > 0
         ? (fac.withoutSpecializations > 0 ? `${fac.withoutSpecializations} missing` : 'All covered')
         : null,
-      subColor: fac.withoutSpecializations > 0 ? '#D97706' : 'var(--meadow)',
+      subColor: fac.withoutSpecializations > 0 ? '#F59E0B' : 'var(--meadow)',
     },
     {
       label: 'Schedules',
-      color: '#D97706',
+      color: '#F59E0B',
       bg: 'rgba(245, 158, 11, 0.05)',
       icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
       value: statsLoading ? null : savedList.length,
       sub: scheduleName ? `Active: ${scheduleName}` : 'None loaded',
-      subColor: scheduleName ? '#D97706' : 'var(--muted2)',
+      subColor: scheduleName ? '#F59E0B' : 'var(--muted2)',
     },
   ]
 
@@ -680,7 +680,7 @@ export default function DashboardPage() {
           </h1>
         </div>
         <button id="tour-admin-scheduler" onClick={() => navigate('/dashboard/scheduler')}
-          style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:10, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: 'var(--surface)', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 4px 14px rgba(0,0,0,0.28)', transition:'opacity .15s' }}
+          style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:10, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 4px 14px rgba(0,0,0,0.28)', transition:'opacity .15s' }}
           onMouseEnter={e=>e.currentTarget.style.opacity='.9'}
           onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -695,9 +695,9 @@ export default function DashboardPage() {
 
       {/* Error banner */}
       {error && (
-        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:10, background:'#FFF5F5', border:'1px solid #FECACA' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <span style={{ fontSize:12.5, color:'#B91C1C', flex:1 }}><b>{error.title}</b> — {error.message}</span>
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:10, background:'rgba(220, 38, 38, 0.05)', border:'1px solid #FECACA' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke='#EF4444' strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span style={{ fontSize:12.5, color:'#EF4444', flex:1 }}><b>{error.title}</b> — {error.message}</span>
           <button onClick={() => setError(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'#EF9999', padding:2 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
@@ -760,31 +760,31 @@ export default function DashboardPage() {
                 label: 'Coverage',
                 value: statsLoading ? '…' : `${sch.coveragePct ?? 0}%`,
                 sub: statsLoading ? '' : `${sch.tbaSessions ?? 0} TBA sessions`,
-                color: (sch.coveragePct ?? 0) >= 95 ? 'var(--meadow)' : (sch.coveragePct ?? 0) >= 80 ? '#D97706' : '#C0392B',
-                bg: (sch.coveragePct ?? 0) >= 95 ? 'var(--meadow-soft)' : (sch.coveragePct ?? 0) >= 80 ? 'rgba(245, 158, 11, 0.05)' : '#FFF5F5',
+                color: (sch.coveragePct ?? 0) >= 95 ? 'var(--meadow)' : (sch.coveragePct ?? 0) >= 80 ? '#F59E0B' : '#EF4444',
+                bg: (sch.coveragePct ?? 0) >= 95 ? 'var(--meadow-soft)' : (sch.coveragePct ?? 0) >= 80 ? 'rgba(245, 158, 11, 0.05)' : 'rgba(220, 38, 38, 0.05)',
                 icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>,
               },
               {
                 label: 'Conflicts',
                 value: statsLoading ? '…' : (sch.conflictCount ?? 0),
                 sub: (sch.conflictCount ?? 0) === 0 ? 'None detected' : 'Need resolution',
-                color: (sch.conflictCount ?? 0) === 0 ? 'var(--meadow)' : '#C0392B',
-                bg: (sch.conflictCount ?? 0) === 0 ? 'var(--meadow-soft)' : '#FFF5F5',
+                color: (sch.conflictCount ?? 0) === 0 ? 'var(--meadow)' : '#EF4444',
+                bg: (sch.conflictCount ?? 0) === 0 ? 'var(--meadow-soft)' : 'rgba(220, 38, 38, 0.05)',
                 icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
               },
               {
                 label: 'Overloaded Faculty',
                 value: wlLoading ? '…' : overList.length,
                 sub: overList.length === 0 ? 'All within cap' : `${overList.length} over unit cap`,
-                color: overList.length === 0 ? 'var(--meadow)' : '#C0392B',
-                bg: overList.length === 0 ? 'var(--meadow-soft)' : '#FFF5F5',
+                color: overList.length === 0 ? 'var(--meadow)' : '#EF4444',
+                bg: overList.length === 0 ? 'var(--meadow-soft)' : 'rgba(220, 38, 38, 0.05)',
                 icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>,
               },
               {
                 label: 'Near Cap',
                 value: wlLoading ? '…' : atRisk.length,
                 sub: atRisk.length === 0 ? 'No one near limit' : 'At ≥85% capacity',
-                color: atRisk.length === 0 ? 'var(--meadow)' : '#D97706',
+                color: atRisk.length === 0 ? 'var(--meadow)' : '#F59E0B',
                 bg: atRisk.length === 0 ? 'var(--meadow-soft)' : 'rgba(245, 158, 11, 0.05)',
                 icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>,
               },
@@ -824,7 +824,7 @@ export default function DashboardPage() {
             })}
             {scheduleName && (
               <button onClick={() => clearSchedule()}
-                style={{ padding:'4px 11px', borderRadius:7, border:'1.5px solid #FECACA', background:'#FFF5F5', color:'#C0392B', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
+                style={{ padding:'4px 11px', borderRadius:7, border:'1.5px solid #FECACA', background:'rgba(220, 38, 38, 0.05)', color:'#EF4444', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
                 Clear
               </button>
             )}
@@ -848,8 +848,8 @@ export default function DashboardPage() {
             right={
               suggestions.length > 0 && (
                 <div style={{ display:'flex', gap:5 }}>
-                  {suggestions.some(s=>s.type==='error') && <Badge label={`${suggestions.filter(s=>s.type==='error').length} critical`} color="#C0392B" bg='rgba(220, 38, 38, 0.1)'/>}
-                  {suggestions.some(s=>s.type==='warning') && <Badge label={`${suggestions.filter(s=>s.type==='warning').length} warnings`} color="#D97706" bg='rgba(217, 119, 6, 0.1)'/>}
+                  {suggestions.some(s=>s.type==='error') && <Badge label={`${suggestions.filter(s=>s.type==='error').length} critical`} color='#EF4444' bg='rgba(220, 38, 38, 0.1)'/>}
+                  {suggestions.some(s=>s.type==='warning') && <Badge label={`${suggestions.filter(s=>s.type==='warning').length} warnings`} color='#F59E0B' bg='rgba(217, 119, 6, 0.1)'/>}
                   {suggestions.some(s=>s.type==='success') && <Badge label="✓ healthy" color="var(--meadow)" bg="var(--meadow-soft)"/>}
                 </div>
               )
@@ -891,8 +891,8 @@ export default function DashboardPage() {
             <>
               {[
                 { key:'1st Semester', color: 'var(--meadow)' },
-                { key:'2nd Semester', color:'#2563EB' },
-                { key:'Midyear',      color:'#D97706' },
+                { key:'2nd Semester', color:'#60A5FA' },
+                { key:'Midyear',      color:'#F59E0B' },
               ].filter(x => bySem[x.key] > 0).map(x => (
                 <HorizBar key={x.key} label={x.key} value={bySem[x.key]||0} max={semTotal} color={x.color} pct={Math.round((bySem[x.key]||0)/semTotal*100)}/>
               ))}
@@ -972,7 +972,7 @@ export default function DashboardPage() {
               {Object.entries(crs.byYearLevel||{}).map(([yr, count], i) => {
                 const total = Object.values(crs.byYearLevel||{}).reduce((s,v)=>s+v,0)||1
                 const pct   = Math.round(count/total*100)
-                const yearColors = ['var(--meadow)','#2563EB','#7C3AED','#D97706']
+                const yearColors = ['var(--meadow)','#60A5FA','#7C3AED','#F59E0B']
                 const color = yearColors[i % yearColors.length]
                 return (
                   <div key={yr}>
@@ -1005,7 +1005,7 @@ export default function DashboardPage() {
               <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
                 <DonutChart
                   segments={[
-                    { label:'Full-time', value: fac.fullTime || 0, color:'#2563EB' },
+                    { label:'Full-time', value: fac.fullTime || 0, color:'#60A5FA' },
                     { label:'Part-time', value: fac.partTime || 0, color: 'var(--meadow)' },
                   ]}
                   size={120} stroke={20} label={fac.total || 0} sublabel="faculty"
@@ -1015,7 +1015,7 @@ export default function DashboardPage() {
                     label: 'Full-time',
                     val: fac.fullTime || 0,
                     total: fac.total || 1,
-                    color: '#2563EB', bg: 'rgba(59, 130, 246, 0.1)',
+                    color: '#60A5FA', bg: 'rgba(59, 130, 246, 0.1)',
                   },
                   {
                     label: 'Part-time',

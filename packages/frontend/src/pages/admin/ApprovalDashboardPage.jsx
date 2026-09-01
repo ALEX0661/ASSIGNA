@@ -20,9 +20,9 @@ const G = {
   ink: 'var(--ink, #0E2A20)', inkMid: '#1C3D2A', muted: 'var(--muted, #4B7060)', muted2: 'var(--muted2, #6B8C7A)',
   border: 'var(--border)', borderLight: 'var(--hover)', bg: 'var(--bg, #F2F7F4)',
   surface: 'var(--surface, #FFFFFF)', hover: 'var(--hover)',
-  amber: '#D97706', amberSoft: 'rgba(245, 158, 11, 0.1)', amberBorder: 'rgba(245, 158, 11, 0.25)',
-  blue: '#1D4ED8', blueSoft: 'rgba(59, 130, 246, 0.1)', blueBorder: '#BFDBFE',
-  red: '#DC2626', redSoft: 'rgba(239, 68, 68, 0.1)', redBorder: 'rgba(220, 38, 38, 0.25)',
+  amber: '#F59E0B', amberSoft: 'rgba(245, 158, 11, 0.1)', amberBorder: 'rgba(245, 158, 11, 0.25)',
+  blue: '#60A5FA', blueSoft: 'rgba(59, 130, 246, 0.1)', blueBorder: '#BFDBFE',
+  red: '#EF4444', redSoft: 'rgba(239, 68, 68, 0.1)', redBorder: 'rgba(220, 38, 38, 0.25)',
 }
 
 if (!document.getElementById('approval-dashboard-style')) {
@@ -160,8 +160,8 @@ const SCHED_STATUS = {
   approved:  { bg: G.meadowSoft, color: G.meadowMid, border: G.meadowBorder, label: 'Approved'  },
 }
 
-const PROG_COLORS = { 'BSIT': G.meadow, 'BSCS': '#2563EB', 'BSEMC-GD': '#7C3AED', 'BSEMC-DAT': '#D97706' }
-const PROG_COLOR_PALETTE = [G.meadow, '#2563EB', '#7C3AED', '#D97706', '#DB2777', '#0EA5E9', '#CA8A04', 'var(--meadow)']
+const PROG_COLORS = { 'BSIT': G.meadow, 'BSCS': '#60A5FA', 'BSEMC-GD': '#7C3AED', 'BSEMC-DAT': '#F59E0B' }
+const PROG_COLOR_PALETTE = [G.meadow, '#60A5FA', '#7C3AED', '#F59E0B', '#DB2777', '#0EA5E9', '#CA8A04', 'var(--meadow)']
 function getProgColor(prog) {
   if (!prog) return G.meadow
   if (PROG_COLORS[prog]) return PROG_COLORS[prog]
@@ -421,14 +421,14 @@ function CreateQueueModal({ onClose, onCreate, programs }) {
     <div className="ap-modal-overlay" onClick={onClose}>
       <div className="ap-modal" style={{ width: 460 }} onClick={e => e.stopPropagation()}>
         <div className="ap-modal-header" style={{ background: `linear-gradient(135deg, ${G.meadowDeep}, ${G.meadow})`, borderBottom: 'none' }}>
-          <div style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(255,255,255,0.18)', color: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(255,255,255,0.18)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="18" height="4" rx="1"/></svg>
           </div>
           <div style={{ flex: 1 }}>
-            <h3 className="ap-modal-title" style={{ color: 'var(--surface)' }}>Create Coordinator Queue</h3>
+            <h3 className="ap-modal-title" style={{ color: '#fff' }}>Create Coordinator Queue</h3>
             <p style={{ margin: '3px 0 0', fontSize: 11.5, color: 'rgba(255,255,255,0.82)' }}>Set the scheduling order for this semester</p>
           </div>
-          <button onClick={onClose} className="ap-modal-close" style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.32)', color: 'var(--surface)' }}>×</button>
+          <button onClick={onClose} className="ap-modal-close" style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.32)', color: '#fff' }}>×</button>
         </div>
 
         <div style={{ padding: '20px 22px 22px' }}>
@@ -515,7 +515,7 @@ function RejectModal({ schedule, onClose, onReject }) {
           <p style={{ margin: '6px 0 18px', fontSize: 11, color: G.muted2 }}>{feedback.length} characters</p>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button onClick={onClose} className="btn-outline">Cancel</button>
-            <button onClick={handle} disabled={!feedback.trim() || saving} className="btn-danger" style={{ minWidth: 120, justifyContent: 'center', background: saving ? undefined : G.red, color: 'var(--surface)', border: 'none' }}>
+            <button onClick={handle} disabled={!feedback.trim() || saving} className="btn-danger" style={{ minWidth: 120, justifyContent: 'center', background: saving ? undefined : G.red, color: '#fff', border: 'none' }}>
               {saving ? 'Rejecting…' : 'Reject & Notify'}
             </button>
           </div>
@@ -642,7 +642,7 @@ function ReviewPanel({ scheduleId, pendingList, masterEvents, onClose, onApprove
         {!loading && conflicts.length > 0 && (
           <div style={{ padding: '11px 20px', background: G.redSoft, borderBottom: `1px solid ${G.redBorder}`, display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={G.red} strokeWidth="2.5" style={{ flexShrink: 0 }}><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#991B1B' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#FCA5A5' }}>
               {conflicts.length} room/time conflict{conflicts.length > 1 ? 's' : ''} with the master schedule — check the highlighted rows below before approving.
             </span>
           </div>
@@ -750,7 +750,7 @@ function ReviewPanel({ scheduleId, pendingList, masterEvents, onClose, onApprove
                           <td style={{ padding: '8px 12px', color: G.inkMid, whiteSpace: 'nowrap' }}>
                             {editing ? <input className="cp-inp sm" value={ev.period || ''} onChange={e => patchEvent(i, 'period', e.target.value)} style={{ width: 100 }} /> : ev.period}
                           </td>
-                          <td style={{ padding: '8px 12px', color: conflicted && !editing ? '#991B1B' : G.inkMid, fontWeight: conflicted && !editing ? 700 : 400 }}>
+                          <td style={{ padding: '8px 12px', color: conflicted && !editing ? '#FCA5A5' : G.inkMid, fontWeight: conflicted && !editing ? 700 : 400 }}>
                             {editing ? <input className="cp-inp sm" value={ev.room || ''} onChange={e => patchEvent(i, 'room', e.target.value)} style={{ width: 90 }} /> : ev.room}
                           </td>
                           <td style={{ padding: '8px 12px', color: G.muted }}>{ev.assigned_faculty || ev.faculty || 'TBA'}</td>
@@ -894,7 +894,7 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, 
               
               {turnIndex >= programs.length && (
                 <div style={{ padding: '14px 20px', background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, borderRadius: 10, display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: G.meadow, color: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: G.meadow, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                   </div>
                   <div>
@@ -938,7 +938,7 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, 
         <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(10,30,18,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => !deletingQueue && setShowDeleteConfirm(false)}>
           <div style={{ background: 'var(--surface)', borderRadius: 18, padding: '28px 28px 24px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(10,30,18,0.22)', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
             <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(220, 38, 38, 0.1)', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke='#EF4444' strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
             </div>
             <div style={{ fontSize: 16, fontWeight: 700, color: G.ink, marginBottom: 8, fontFamily: 'Inter,sans-serif' }}>Delete Queue?</div>
             <div style={{ fontSize: 13, color: G.muted2, marginBottom: 24, lineHeight: 1.5, fontFamily: 'Inter,sans-serif' }}>
@@ -951,7 +951,7 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, 
               <button
                 onClick={async () => { setDeletingQueue(true); try { await onDelete(queue.id || queue.queueId) } finally { setDeletingQueue(false); setShowDeleteConfirm(false) } }}
                 disabled={deletingQueue}
-                style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: '#C0392B', fontSize: 13, fontWeight: 700, color: 'var(--surface)', cursor: deletingQueue ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: deletingQueue ? 0.7 : 1 }}
+                style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: '#EF4444', fontSize: 13, fontWeight: 700, color: '#fff', cursor: deletingQueue ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: deletingQueue ? 0.7 : 1 }}
               >
                 {deletingQueue ? 'Deleting...' : 'Yes, Delete'}
               </button>
@@ -1137,7 +1137,7 @@ function MasterTab({ queueId, onFinalize, programs }) {
               </button>
             )}
           {events.length > 0 && (
-            <button onClick={() => setExpanded(v => !v)} className="btn-outline" style={{ background: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.4)', color: 'var(--surface)' }}>
+            <button onClick={() => setExpanded(v => !v)} className="btn-outline" style={{ background: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.4)', color: '#fff' }}>
               {expanded
                 ? <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15"/></svg> Collapse</>
                 : <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg> View Events</>}
@@ -1266,7 +1266,7 @@ function MasterTab({ queueId, onFinalize, programs }) {
               <button onClick={() => setShowFinalizeConfirm(false)} disabled={acting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: 'var(--surface)', fontSize: 13, fontWeight: 600, color: G.muted, cursor: acting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
                 Cancel
               </button>
-              <button onClick={handleFinalize} disabled={acting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: G.blue, fontSize: 13, fontWeight: 700, color: 'var(--surface)', cursor: acting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: acting ? 0.7 : 1 }}>
+              <button onClick={handleFinalize} disabled={acting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: G.blue, fontSize: 13, fontWeight: 700, color: '#fff', cursor: acting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: acting ? 0.7 : 1 }}>
                 {acting ? 'Publishing...' : 'Publish'}
               </button>
             </div>

@@ -69,7 +69,7 @@ export function ProfileCard({ form, isNew, isOverloaded, avInitials, avFg, avBg,
 
         {/* Name */}
         <div style={{ textAlign:'center', position:'relative', zIndex:1, maxWidth:'100%' }}>
-          <div style={{ fontSize:15, fontWeight:700, color: 'var(--surface)', lineHeight:1.25, marginBottom:3, textTransform:'uppercase', fontFamily:"'Sora',sans-serif", letterSpacing:'0.5px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:220 }}>
+          <div style={{ fontSize:15, fontWeight:700, color: '#fff', lineHeight:1.25, marginBottom:3, textTransform:'uppercase', fontFamily:"'Sora',sans-serif", letterSpacing:'0.5px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:220 }}>
             {form.name||(isNew?'New Faculty':'—')}
           </div>
           {form.AcademicRank && <div style={{ fontSize:12, color:'rgba(255,255,255,0.78)', fontWeight:500 }}>{form.AcademicRank}</div>}
@@ -78,9 +78,9 @@ export function ProfileCard({ form, isNew, isOverloaded, avInitials, avFg, avBg,
 
         {/* Status badges */}
         <div style={{ display:'flex', gap:6, flexWrap:'wrap', justifyContent:'center', position:'relative', zIndex:1 }}>
-          <span style={{ padding:'3px 10px', borderRadius:'99px', fontSize:10.5, fontWeight:600, background:'rgba(255,255,255,0.16)', color: 'var(--surface)', textTransform:'capitalize', border:'1px solid rgba(255,255,255,0.22)' }}>{form.status}</span>
-          {!isNew && form.archived  && <span style={{ padding:'3px 10px', borderRadius:'99px', fontSize:10.5, fontWeight:600, background:'rgba(217, 119, 6, 0.1)', color:'#B45309' }}>Archived</span>}
-          {!isNew && isOverloaded   && <span style={{ padding:'3px 10px', borderRadius:'99px', fontSize:10.5, fontWeight:600, background:'rgba(220, 38, 38, 0.1)', color:'#C0392B' }}>Overloaded</span>}
+          <span style={{ padding:'3px 10px', borderRadius:'99px', fontSize:10.5, fontWeight:600, background:'rgba(255,255,255,0.16)', color: '#fff', textTransform:'capitalize', border:'1px solid rgba(255,255,255,0.22)' }}>{form.status}</span>
+          {!isNew && form.archived  && <span style={{ padding:'3px 10px', borderRadius:'99px', fontSize:10.5, fontWeight:600, background:'rgba(217, 119, 6, 0.1)', color:'#F59E0B' }}>Archived</span>}
+          {!isNew && isOverloaded   && <span style={{ padding:'3px 10px', borderRadius:'99px', fontSize:10.5, fontWeight:600, background:'rgba(220, 38, 38, 0.1)', color:'#EF4444' }}>Overloaded</span>}
         </div>
       </div>
 
@@ -362,7 +362,7 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
               </div>
               <span style={{ fontSize:13, fontWeight:700, color:T.textMain, flex:1 }}>Role & Permissions</span>
               {!roleLoading && (currentIsAdmin || currentIsFaculty) && (
-                <span style={{ fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background: currentIsAdmin ? 'rgba(217, 119, 6, 0.1)' : T.greenSoft, color: currentIsAdmin ? '#B45309' : T.greenDeep, border:`1px solid ${currentIsAdmin?'rgba(245, 158, 11, 0.25)':T.greenBorder}` }}>
+                <span style={{ fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background: currentIsAdmin ? 'rgba(217, 119, 6, 0.1)' : T.greenSoft, color: currentIsAdmin ? '#F59E0B' : T.greenDeep, border:`1px solid ${currentIsAdmin?'rgba(245, 158, 11, 0.25)':T.greenBorder}` }}>
                   {formatRoleBadge()}
                 </span>
               )}
@@ -394,10 +394,10 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
                 {/* Rank-based suggestion — never auto-applied, just a one-click nudge */}
                 {rankSuggestsAdmin && !selectedIsAdmin && (
                   <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:'9px', background:'#FEFBEB', border:'1px solid #FDE68A' }}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2" style={{ flexShrink:0 }}><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2" style={{ flexShrink:0 }}><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>
                     <div style={{ flex:1, fontSize:11.5, color:'#92400E', lineHeight:1.4 }}><strong>{form.AcademicRank}</strong> usually comes with Admin access.</div>
                     <button type="button" onClick={() => setSelectedIsAdmin(true)}
-                      style={{ flexShrink:0, padding:'6px 12px', borderRadius:'7px', border:'1px solid #D97706', background: 'var(--surface)', color:'#B45309', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}
+                      style={{ flexShrink:0, padding:'6px 12px', borderRadius:'7px', border:'1px solid #D97706', background: 'var(--surface)', color:'#F59E0B', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}
                     >Apply</button>
                   </div>
                 )}
@@ -464,7 +464,7 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
                 {/* Save */}
                 {roleHasChanges && (
                   <button type="button" onClick={handleSaveRole} disabled={roleSaving}
-                    style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:'9px', border:'none', background: roleSaving ? T.borderLight : `linear-gradient(135deg,${T.green},${T.greenDeep})`, color: 'var(--surface)', fontSize:12.5, fontWeight:600, cursor: roleSaving ? 'default' : 'pointer', fontFamily:"'Inter',sans-serif", boxShadow: roleSaving ? 'none' : `0 3px 12px rgba(0,0,0,0.28)`, opacity: roleSaving ? 0.7 : 1, transition:'all 0.2s', width:'fit-content' }}
+                    style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:'9px', border:'none', background: roleSaving ? T.borderLight : `linear-gradient(135deg,${T.green},${T.greenDeep})`, color: '#fff', fontSize:12.5, fontWeight:600, cursor: roleSaving ? 'default' : 'pointer', fontFamily:"'Inter',sans-serif", boxShadow: roleSaving ? 'none' : `0 3px 12px rgba(0,0,0,0.28)`, opacity: roleSaving ? 0.7 : 1, transition:'all 0.2s', width:'fit-content' }}
                   >
                     {roleSaving
                       ? <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation:'spin .8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Saving...</>
@@ -635,8 +635,8 @@ export function CredentialsCard({ form, credEmail, setCredEmail, credPassword, s
       />
       {!form.email && (
         <div style={{ margin:'20px 20px 0', padding:'12px 16px', borderRadius:'8px', background:'rgba(245, 158, 11, 0.05)', border:'1px solid #FEF3C7', display:'flex', gap:10, alignItems:'flex-start' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" style={{ flexShrink:0, marginTop:2 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          <span style={{ fontSize:12, color:'#B45309', lineHeight:1.5 }}>No login account yet. Set an email and password below to activate.</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2" style={{ flexShrink:0, marginTop:2 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span style={{ fontSize:12, color:'#F59E0B', lineHeight:1.5 }}>No login account yet. Set an email and password below to activate.</span>
         </div>
       )}
       <div style={{ padding:'24px 20px', display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'20px 24px', alignItems:'start' }}>
@@ -665,7 +665,7 @@ export function CredentialsCard({ form, credEmail, setCredEmail, credPassword, s
             </FormField>
           )}
           <div style={{ paddingTop:credPassword?0:24 }}>
-            <button type="button" onClick={onSave} disabled={credSaving} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8, padding:'12px 24px', borderRadius:'8px', border:'none', fontFamily:"'Inter',sans-serif", fontSize:13, fontWeight:600, cursor:credSaving?'default':'pointer', background:`linear-gradient(135deg,${T.green},${T.greenDeep})`, color: 'var(--surface)', boxShadow:`0 4px 14px rgba(0,0,0,0.25)`, opacity:credSaving?0.7:1, whiteSpace:'nowrap', width:'100%', transition:'all 0.2s' }}>
+            <button type="button" onClick={onSave} disabled={credSaving} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8, padding:'12px 24px', borderRadius:'8px', border:'none', fontFamily:"'Inter',sans-serif", fontSize:13, fontWeight:600, cursor:credSaving?'default':'pointer', background:`linear-gradient(135deg,${T.green},${T.greenDeep})`, color: '#fff', boxShadow:`0 4px 14px rgba(0,0,0,0.25)`, opacity:credSaving?0.7:1, whiteSpace:'nowrap', width:'100%', transition:'all 0.2s' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               {credSaving?'Saving...':(form.email?'Update Credentials':'Activate Account')}
             </button>
@@ -841,8 +841,8 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
 
       {!facultyEmail && (
         <div style={{ margin:'20px 20px 0', padding:'12px 16px', borderRadius:'8px', background:'rgba(245, 158, 11, 0.05)', border:'1px solid #FEF3C7', display:'flex', gap:10, alignItems:'flex-start' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" style={{ flexShrink:0, marginTop:2 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          <span style={{ fontSize:12, color:'#B45309', lineHeight:1.5 }}>No login account yet. Activate credentials first before setting a role.</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2" style={{ flexShrink:0, marginTop:2 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span style={{ fontSize:12, color:'#F59E0B', lineHeight:1.5 }}>No login account yet. Activate credentials first before setting a role.</span>
         </div>
       )}
 
@@ -966,7 +966,7 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
               display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8,
               padding:'10px 18px', borderRadius:'10px', border:'none',
               background: saving ? T.borderLight : `linear-gradient(135deg,${T.green},${T.greenDeep})`,
-              color: 'var(--surface)', fontSize:13, fontWeight:600,
+              color: '#fff', fontSize:13, fontWeight:600,
               cursor: saving ? 'default' : 'pointer',
               fontFamily:"'Inter',sans-serif",
               boxShadow: saving ? 'none' : `0 3px 12px rgba(0,0,0,0.28)`,

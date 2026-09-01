@@ -123,7 +123,7 @@ function ActiveFilterChips({
     ...educationFilter.map(v => ({ label: v, onRemove: () => onRemoveEducation(v), color: G.meadow })),
     coordinatorFilter ? { label: coordinatorFilter === 'any' ? 'Coordinators only' : 'Non-coordinators', onRemove: onClearCoordinator, color: G.meadow } : null,
     ...specializationFilter.map(v => ({ label: v, onRemove: () => onRemoveSpec(v), color: G.meadow })),
-    specMinRating > 0 ? { label: `★${specMinRating}+ rating`, onRemove: onClearRating, color: '#D97706' } : null,
+    specMinRating > 0 ? { label: `★${specMinRating}+ rating`, onRemove: onClearRating, color: '#F59E0B' } : null,
   ].filter(Boolean)
 
   if (!chips.length) return null
@@ -161,7 +161,7 @@ function ActionModal({ mode, name, count, onConfirm, onCancel, busy }) {
   const isBulk = count > 1
   const cfg = {
     archive: {
-      iconBg: 'rgba(217, 119, 6, 0.1)', iconStroke: '#D97706',
+      iconBg: 'rgba(217, 119, 6, 0.1)', iconStroke: '#F59E0B',
       iconPath: <><path d="M21 8v13H3V8"/><path d="M23 3H1v5h22z"/><line x1="10" y1="12" x2="14" y2="12"/></>,
       title: isBulk ? `Archive ${count} Faculty Members?` : 'Archive Faculty Member?',
       body: isBulk ? `These ${count} members will be hidden from active scheduling but can be restored at any time.`
@@ -177,12 +177,12 @@ function ActionModal({ mode, name, count, onConfirm, onCancel, busy }) {
       btnBg: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, btnLabel: busy ? 'Restoring…' : isBulk ? `Restore ${count}` : 'Restore',
     },
     delete: {
-      iconBg: 'rgba(220, 38, 38, 0.1)', iconStroke: '#C0392B',
+      iconBg: 'rgba(220, 38, 38, 0.1)', iconStroke: '#EF4444',
       iconPath: <><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></>,
       title: isBulk ? `Permanently Delete ${count} Faculty Members?` : 'Permanently Delete?',
       body: isBulk ? `This cannot be undone. All ${count} members and their login accounts will be removed forever.`
                    : `This cannot be undone. ${name} and their login account will be removed forever.`,
-      btnBg: '#C0392B', btnLabel: busy ? 'Deleting…' : isBulk ? `Delete ${count}` : 'Yes, Delete',
+      btnBg: '#EF4444', btnLabel: busy ? 'Deleting…' : isBulk ? `Delete ${count}` : 'Yes, Delete',
     },
   }
   const c = cfg[mode] || cfg.delete
@@ -196,7 +196,7 @@ function ActionModal({ mode, name, count, onConfirm, onCancel, busy }) {
         <div style={{ fontSize: 13, color: G.muted2, marginBottom: 24, lineHeight: 1.5 }}>{c.body}</div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={onCancel} disabled={busy} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: 'var(--surface)', fontSize: 13, fontWeight: 600, color: G.muted, cursor: busy ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>Cancel</button>
-          <button onClick={onConfirm} disabled={busy} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: c.btnBg, fontSize: 13, fontWeight: 700, color: 'var(--surface)', cursor: busy ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: busy ? 0.7 : 1 }}>{c.btnLabel}</button>
+          <button onClick={onConfirm} disabled={busy} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: c.btnBg, fontSize: 13, fontWeight: 700, color: '#fff', cursor: busy ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: busy ? 0.7 : 1 }}>{c.btnLabel}</button>
         </div>
       </div>
     </div>
@@ -258,7 +258,7 @@ function FacultyCard({ faculty, courseTitleMap, selected, onSelect, onClick, onA
         )}
 
         {/* Name */}
-        <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--surface)', lineHeight: 1.3, paddingRight: 28, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', position: 'relative', zIndex: 1 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', lineHeight: 1.3, paddingRight: 28, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', position: 'relative', zIndex: 1 }}>
           {faculty.name}
         </div>
 
@@ -281,7 +281,7 @@ function FacultyCard({ faculty, courseTitleMap, selected, onSelect, onClick, onA
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 4,
             padding: '3px 9px', borderRadius: 99, fontSize: 9.5, fontWeight: 700,
-            background: 'rgba(255,255,255,0.18)', color: 'var(--surface)',
+            background: 'rgba(255,255,255,0.18)', color: '#fff',
             textTransform: 'uppercase', letterSpacing: '0.7px',
           }}>
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', flexShrink: 0 }}/>
@@ -325,9 +325,9 @@ function FacultyCard({ faculty, courseTitleMap, selected, onSelect, onClick, onA
           <div style={{ display: 'flex', gap: 4 }}>
             {viewTab === 'active' && (
               <button onClick={e => { e.stopPropagation(); onArchive() }} title="Archive"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 7, background: 'rgba(217, 119, 6, 0.1)', border: '1px solid #FDE68A', color: '#B45309', cursor: 'pointer', padding: 0, transition: 'all .14s' }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#D97706'; e.currentTarget.style.color = '#fff' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(217, 119, 6, 0.1)'; e.currentTarget.style.color = '#B45309' }}>
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 7, background: 'rgba(217, 119, 6, 0.1)', border: '1px solid #FDE68A', color: '#F59E0B', cursor: 'pointer', padding: 0, transition: 'all .14s' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#F59E0B'; e.currentTarget.style.color = '#fff' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(217, 119, 6, 0.1)'; e.currentTarget.style.color = '#F59E0B' }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M21 8v13H3V8"/><path d="M23 3H1v5h22z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
               </button>
             )}
@@ -340,9 +340,9 @@ function FacultyCard({ faculty, courseTitleMap, selected, onSelect, onClick, onA
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
                 </button>
                 <button onClick={e => { e.stopPropagation(); onDelete() }} title="Delete permanently"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 7, background: 'rgba(220, 38, 38, 0.1)', border: '1px solid #FFCCCC', color: '#C0392B', cursor: 'pointer', padding: 0, transition: 'all .14s' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#C0392B'; e.currentTarget.style.color = '#fff' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(220, 38, 38, 0.1)'; e.currentTarget.style.color = '#C0392B' }}>
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 7, background: 'rgba(220, 38, 38, 0.1)', border: '1px solid #FFCCCC', color: '#EF4444', cursor: 'pointer', padding: 0, transition: 'all .14s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#EF4444'; e.currentTarget.style.color = '#fff' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(220, 38, 38, 0.1)'; e.currentTarget.style.color = '#EF4444' }}>
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
                 </button>
               </>
@@ -407,8 +407,8 @@ function FacultyTable({ faculty, selected, selectionMode, viewTab, onSelect, onS
                 <td style={{ padding: '10px 14px' }}>
                   <div style={{ fontWeight: 600, color: G.ink, fontSize: 13 }}>{f.name}</div>
                   {f.coordinatorProgram && (
-                    <div style={{ fontSize: 10, color: '#D97706', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
-                      <svg width="8" height="8" viewBox="0 0 24 24" fill="#D97706"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <div style={{ fontSize: 10, color: '#F59E0B', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill='#F59E0B'><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                       Coord · {f.coordinatorProgram}
                     </div>
                   )}
@@ -434,7 +434,7 @@ function FacultyTable({ faculty, selected, selectionMode, viewTab, onSelect, onS
                     {f.status === 'full-time' ? 'Full-time' : 'Part-time'}
                   </span>
                   {f.archived && (
-                    <span style={{ marginLeft: 5, padding: '3px 9px', borderRadius: 99, fontSize: 10.5, fontWeight: 600, background: 'rgba(217, 119, 6, 0.1)', color: '#B45309' }}>Archived</span>
+                    <span style={{ marginLeft: 5, padding: '3px 9px', borderRadius: 99, fontSize: 10.5, fontWeight: 600, background: 'rgba(217, 119, 6, 0.1)', color: '#F59E0B' }}>Archived</span>
                   )}
                 </td>
 
@@ -450,9 +450,9 @@ function FacultyTable({ faculty, selected, selectionMode, viewTab, onSelect, onS
                   <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                     {viewTab === 'active' && (
                       <button onClick={() => onArchive(f.id, f.name)} title="Archive"
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 7, background: 'rgba(217, 119, 6, 0.1)', border: '1px solid #FDE68A', color: '#B45309', cursor: 'pointer', padding: 0, transition: 'all .14s' }}
-                        onMouseEnter={e => { e.currentTarget.style.background = '#D97706'; e.currentTarget.style.color = '#fff' }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(217, 119, 6, 0.1)'; e.currentTarget.style.color = '#B45309' }}>
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 7, background: 'rgba(217, 119, 6, 0.1)', border: '1px solid #FDE68A', color: '#F59E0B', cursor: 'pointer', padding: 0, transition: 'all .14s' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#F59E0B'; e.currentTarget.style.color = '#fff' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(217, 119, 6, 0.1)'; e.currentTarget.style.color = '#F59E0B' }}>
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M21 8v13H3V8"/><path d="M23 3H1v5h22z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
                       </button>
                     )}
@@ -465,9 +465,9 @@ function FacultyTable({ faculty, selected, selectionMode, viewTab, onSelect, onS
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
                         </button>
                         <button onClick={() => onDelete(f.id, f.name)} title="Delete permanently"
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 7, background: 'rgba(220, 38, 38, 0.1)', border: '1px solid #FFCCCC', color: '#C0392B', cursor: 'pointer', padding: 0, transition: 'all .14s' }}
-                          onMouseEnter={e => { e.currentTarget.style.background = '#C0392B'; e.currentTarget.style.color = '#fff' }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(220, 38, 38, 0.1)'; e.currentTarget.style.color = '#C0392B' }}>
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 7, background: 'rgba(220, 38, 38, 0.1)', border: '1px solid #FFCCCC', color: '#EF4444', cursor: 'pointer', padding: 0, transition: 'all .14s' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#EF4444'; e.currentTarget.style.color = '#fff' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(220, 38, 38, 0.1)'; e.currentTarget.style.color = '#EF4444' }}>
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
                         </button>
                       </>
@@ -917,7 +917,7 @@ export default function FacultyListPage() {
           </div>
 
           <button id="tour-add-faculty-btn" onClick={() => navigate('/dashboard/faculty/new')}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 18px', borderRadius: 10, border: 'none', fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: 'var(--surface)', boxShadow: '0 3px 12px rgba(0,0,0,0.32)' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 18px', borderRadius: 10, border: 'none', fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: '#fff', boxShadow: '0 3px 12px rgba(0,0,0,0.32)' }}
             onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 5px 18px rgba(0,0,0,0.42)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
             onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 3px 12px rgba(0,0,0,0.32)'; e.currentTarget.style.transform = 'none' }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -1029,7 +1029,7 @@ export default function FacultyListPage() {
                 <div style={{ fontSize: 12, color: G.muted2, marginTop: 4 }}>Narrow down faculty by position, department, load, and course expertise</div>
               </div>
               <button onClick={() => setFilterModalOpen(false)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${G.border}`, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, transition: 'all .15s' }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220, 38, 38, 0.1)'; e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.25)'; e.currentTarget.style.color = '#DC2626' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220, 38, 38, 0.1)'; e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.25)'; e.currentTarget.style.color = '#EF4444' }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
@@ -1118,7 +1118,7 @@ export default function FacultyListPage() {
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {[
                       { v: '',     label: 'All faculty',        count: tabFaculty.length },
-                      { v: 'any',  label: 'Coordinators only',  count: tabFaculty.filter(f => f.coordinatorProgram).length, icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="#D97706" stroke="#D97706"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> },
+                      { v: 'any',  label: 'Coordinators only',  count: tabFaculty.filter(f => f.coordinatorProgram).length, icon: <svg width="10" height="10" viewBox="0 0 24 24" fill='#F59E0B' stroke='#F59E0B'><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> },
                       { v: 'none', label: 'Non-coordinators',   count: tabFaculty.filter(f => !f.coordinatorProgram).length },
                     ].map(({ v, label, count, icon }) => (
                       <FilterPill key={v} label={label} count={count} active={coordinatorFilter === v} icon={icon}
@@ -1213,12 +1213,12 @@ export default function FacultyListPage() {
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={() => { setRankFilter([]); setDepartmentFilter([]); setEducationFilter([]); setCoordinatorFilter(''); setSpecializationFilter([]); setSpecQuery(''); setSpecMinRating(0) }}
                   style={{ padding: '8px 18px', borderRadius: 10, border: `1.5px solid ${G.border}`, background: 'var(--surface)', color: G.muted, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", transition: 'all .15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#FFF5F5'; e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.25)'; e.currentTarget.style.color = '#DC2626' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220, 38, 38, 0.05)'; e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.25)'; e.currentTarget.style.color = '#EF4444' }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
                   Reset All
                 </button>
                 <button onClick={() => setFilterModalOpen(false)}
-                  style={{ padding: '8px 22px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: 'var(--surface)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", boxShadow: '0 4px 14px rgba(0,0,0,0.3)', transition: 'all .15s' }}
+                  style={{ padding: '8px 22px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", boxShadow: '0 4px 14px rgba(0,0,0,0.3)', transition: 'all .15s' }}
                   onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)' }}
                   onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.3)' }}>
                   Show {filtered.length} Results
@@ -1235,21 +1235,21 @@ export default function FacultyListPage() {
           <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--surface)', flex: 1 }}>{selectedCount} faculty member{selectedCount !== 1 ? 's' : ''} selected</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#fff', flex: 1 }}>{selectedCount} faculty member{selectedCount !== 1 ? 's' : ''} selected</span>
           <button onClick={() => setSelected(new Set())} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.85)', fontSize: 12, padding: '5px 14px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>Deselect all</button>
           {viewTab === 'active' && (
-            <button onClick={handleBulkArchive} disabled={busy} style={{ background: 'linear-gradient(135deg,#D97706,#B45309)', border: 'none', color: 'var(--surface)', fontSize: 12, fontWeight: 600, padding: '5px 15px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontFamily: "'Inter',sans-serif", opacity: busy ? 0.7 : 1 }}>
+            <button onClick={handleBulkArchive} disabled={busy} style={{ background: 'linear-gradient(135deg,#D97706,#B45309)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, padding: '5px 15px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontFamily: "'Inter',sans-serif", opacity: busy ? 0.7 : 1 }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 8v13H3V8"/><path d="M23 3H1v5h22z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
               Archive {selectedCount}
             </button>
           )}
           {viewTab === 'archived' && (
             <>
-              <button onClick={handleBulkUnarchive} disabled={busy} style={{ background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, border: 'none', color: 'var(--surface)', fontSize: 12, fontWeight: 600, padding: '5px 15px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontFamily: "'Inter',sans-serif", opacity: busy ? 0.7 : 1 }}>
+              <button onClick={handleBulkUnarchive} disabled={busy} style={{ background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, padding: '5px 15px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontFamily: "'Inter',sans-serif", opacity: busy ? 0.7 : 1 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
                 Restore {selectedCount}
               </button>
-              <button onClick={handleBulkDelete} disabled={busy} style={{ background: '#C0392B', border: 'none', color: 'var(--surface)', fontSize: 12, fontWeight: 600, padding: '5px 15px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontFamily: "'Inter',sans-serif", opacity: busy ? 0.7 : 1 }}>
+              <button onClick={handleBulkDelete} disabled={busy} style={{ background: '#EF4444', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, padding: '5px 15px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontFamily: "'Inter',sans-serif", opacity: busy ? 0.7 : 1 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
                 Delete {selectedCount}
               </button>
@@ -1306,7 +1306,7 @@ export default function FacultyListPage() {
                   : (activeFaculty.length === 0 ? 'Add your first faculty member to get started.' : 'Try adjusting your search or filters.')}
               </div>
               {hasAnyFilter && (
-                <button onClick={resetAllFilters} style={{ padding: '8px 18px', borderRadius: 9, border: 'none', background: G.meadow, color: 'var(--surface)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>
+                <button onClick={resetAllFilters} style={{ padding: '8px 18px', borderRadius: 9, border: 'none', background: G.meadow, color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>
                   Clear all filters
                 </button>
               )}

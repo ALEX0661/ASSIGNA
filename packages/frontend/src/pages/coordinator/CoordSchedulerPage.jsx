@@ -22,10 +22,10 @@ const G = {
   meadowSoft: 'var(--meadow-soft)', meadowBorder: 'var(--meadow-border)',
   ink: 'var(--ink, #0E2A20)', inkMid: '#1C3D2A', muted: 'var(--muted, #4B7060)', muted2: 'var(--muted2, #6B8C7A)',
   border: 'var(--border)', borderLight: 'var(--hover)', bg: 'var(--bg, #F2F7F4)',
-  surface: 'var(--surface, #FFFFFF)', hover: 'var(--hover)', amber: '#D97706',
+  surface: 'var(--surface, #FFFFFF)', hover: 'var(--hover)', amber: '#F59E0B',
   amberSoft: 'rgba(245, 158, 11, 0.1)', amberBorder: 'rgba(245, 158, 11, 0.25)',
-  blue: '#0369A1', blueSoft: 'rgba(59, 130, 246, 0.1)', blueBorder: 'rgba(59, 130, 246, 0.25)',
-  red: '#DC2626', redSoft: 'rgba(239, 68, 68, 0.1)', redBorder: 'rgba(220, 38, 38, 0.25)',
+  blue: '#38BDF8', blueSoft: 'rgba(59, 130, 246, 0.1)', blueBorder: 'rgba(59, 130, 246, 0.25)',
+  red: '#EF4444', redSoft: 'rgba(239, 68, 68, 0.1)', redBorder: 'rgba(220, 38, 38, 0.25)',
 }
 
 const PHASES = [
@@ -42,16 +42,16 @@ const DEFAULT_PHASE_KEYS = PHASES.map(p => p.key)
 
 const VERDICT_META = {
   feasible:        { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder, label: 'Feasible',           icon: '✓' },
-  likely_feasible: { color: '#0369A1',    bg: 'rgba(59, 130, 246, 0.1)',    border: 'rgba(59, 130, 246, 0.25)',      label: 'Likely Feasible',    icon: '~' },
-  tight:           { color: '#D97706',    bg: 'rgba(245, 158, 11, 0.1)',    border: 'rgba(245, 158, 11, 0.25)',      label: 'Feasible but Tight', icon: '⚠' },
-  at_risk:         { color: '#DC2626',    bg: 'rgba(239, 68, 68, 0.1)',    border: 'rgba(220, 38, 38, 0.25)',      label: 'At Risk',            icon: '!' },
-  infeasible:      { color: '#991B1B',    bg: 'rgba(239, 68, 68, 0.05)',    border: 'rgba(220, 38, 38, 0.25)',      label: 'Likely Infeasible',  icon: '✕' },
+  likely_feasible: { color: '#38BDF8',    bg: 'rgba(59, 130, 246, 0.1)',    border: 'rgba(59, 130, 246, 0.25)',      label: 'Likely Feasible',    icon: '~' },
+  tight:           { color: '#F59E0B',    bg: 'rgba(245, 158, 11, 0.1)',    border: 'rgba(245, 158, 11, 0.25)',      label: 'Feasible but Tight', icon: '⚠' },
+  at_risk:         { color: '#EF4444',    bg: 'rgba(239, 68, 68, 0.1)',    border: 'rgba(220, 38, 38, 0.25)',      label: 'At Risk',            icon: '!' },
+  infeasible:      { color: '#FCA5A5',    bg: 'rgba(239, 68, 68, 0.05)',    border: 'rgba(220, 38, 38, 0.25)',      label: 'Likely Infeasible',  icon: '✕' },
 }
 
 const CHECK_META = {
   pass: { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder, dot: G.meadow,  label: 'Pass' },
-  warn: { color: '#D97706',    bg: 'rgba(245, 158, 11, 0.05)',    border: 'rgba(245, 158, 11, 0.25)',      dot: '#F59E0B', label: 'Warn' },
-  fail: { color: '#DC2626',    bg: 'rgba(239, 68, 68, 0.1)',    border: 'rgba(220, 38, 38, 0.25)',      dot: '#EF4444', label: 'Fail' },
+  warn: { color: '#F59E0B',    bg: 'rgba(245, 158, 11, 0.05)',    border: 'rgba(245, 158, 11, 0.25)',      dot: '#F59E0B', label: 'Warn' },
+  fail: { color: '#EF4444',    bg: 'rgba(239, 68, 68, 0.1)',    border: 'rgba(220, 38, 38, 0.25)',      dot: '#EF4444', label: 'Fail' },
   info: { color: G.blue,       bg: G.blueSoft,   border: G.blueBorder,   dot: G.blue,    label: 'Info' },
 }
 
@@ -93,16 +93,16 @@ function summarizeRoomHours(events) {
 }
 
 const REC_META = {
-  blocker:    { color: '#DC2626',    bg: 'rgba(239, 68, 68, 0.1)',    border: 'rgba(220, 38, 38, 0.25)' },
-  warning:    { color: '#D97706',    bg: 'rgba(245, 158, 11, 0.05)',    border: 'rgba(245, 158, 11, 0.25)' },
-  suggestion: { color: '#0369A1',    bg: 'rgba(59, 130, 246, 0.1)',    border: 'rgba(59, 130, 246, 0.25)' },
+  blocker:    { color: '#EF4444',    bg: 'rgba(239, 68, 68, 0.1)',    border: 'rgba(220, 38, 38, 0.25)' },
+  warning:    { color: '#F59E0B',    bg: 'rgba(245, 158, 11, 0.05)',    border: 'rgba(245, 158, 11, 0.25)' },
+  suggestion: { color: '#38BDF8',    bg: 'rgba(59, 130, 246, 0.1)',    border: 'rgba(59, 130, 246, 0.25)' },
   success:    { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder },
 }
 
 const Q_META = {
   waiting:    { bg: '#F1F5F9', color: 'var(--muted2)', dot: '#94A3B8', label: 'Waiting' },
   active:     { bg: G.meadowSoft, color: G.meadowDeep, dot: G.meadow, label: 'Their turn' },
-  generating: { bg: '#EFF6FF', color: '#1D4ED8', dot: '#3B82F6', label: 'Generating' },
+  generating: { bg: 'rgba(37, 99, 235, 0.1)', color: '#60A5FA', dot: '#3B82F6', label: 'Generating' },
   submitted:  { bg: G.amberSoft, color: '#92400E', dot: G.amber, label: 'Submitted' },
   approved:   { bg: G.meadowSoft, color: G.meadowDeep, dot: G.meadow, label: 'Approved' },
   skipped:    { bg: 'rgba(217, 119, 6, 0.05)', color: '#C2410C', dot: '#F97316', label: 'Skipped' },
@@ -112,7 +112,7 @@ const STATUS_COLORS = {
   draft:     { bg: G.hover, color: G.muted, border: G.border, label: 'Draft' },
   submitted: { bg: G.amberSoft, color: '#92400E', border: G.amberBorder, label: 'Submitted' },
   approved:  { bg: G.meadowSoft, color: G.meadowDeep, border: G.meadowBorder, label: 'Approved' },
-  rejected:  { bg: 'rgba(239, 68, 68, 0.1)', color: '#991B1B', border: 'rgba(220, 38, 38, 0.25)', label: 'Rejected' },
+  rejected:  { bg: 'rgba(239, 68, 68, 0.1)', color: '#FCA5A5', border: 'rgba(220, 38, 38, 0.25)', label: 'Rejected' },
 }
 
 const WIZ_STEPS = [
@@ -378,10 +378,10 @@ function RoundBadge({ semester, academicYear, light }) {
       display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 13px',
       borderRadius: 99, fontSize: 12, fontWeight: 700,
       background: light ? 'rgba(255,255,255,0.2)' : G.hover,
-      color: light ? 'var(--surface)' : G.inkMid,
+      color: light ? '#fff' : G.inkMid,
       border: light ? '1px solid rgba(255,255,255,0.3)' : `1px solid ${G.border}`,
     }}>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={light ? 'var(--surface)' : G.muted} strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={light ? '#fff' : G.muted} strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
       {semester}{academicYear ? ` · ${academicYear}` : ''}
     </span>
   )
@@ -431,7 +431,7 @@ function QueueRail({ queue, myProgram, currentProgram }) {
                 {status === 'approved'
                   ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={G.meadowDeep} strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                   : status === 'generating'
-                    ? <svg className="qr-gen-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" strokeWidth="3"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                    ? <svg className="qr-gen-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke='#60A5FA' strokeWidth="3"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
                     : status === 'active'
                       ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                       : <span style={{ width: 6, height: 6, borderRadius: '50%', background: meta.dot }} />
@@ -485,7 +485,7 @@ function RoomGroup({ title, all, selected, onToggle, onSelectAll, onClear, compa
           const picked = selected.includes(room)
           const u = usage?.[room]
           const badge = u && u.hours > 0.05
-            ? (u.pct >= 85 ? { bg: 'rgba(239, 68, 68, 0.1)', color: '#DC2626' } : u.pct >= 50 ? { bg: 'rgba(245, 158, 11, 0.1)', color: '#92400E' } : { bg: G.meadowSoft, color: G.meadowDeep })
+            ? (u.pct >= 85 ? { bg: 'rgba(239, 68, 68, 0.1)', color: '#EF4444' } : u.pct >= 50 ? { bg: 'rgba(245, 158, 11, 0.1)', color: '#92400E' } : { bg: G.meadowSoft, color: G.meadowDeep })
             : null
           return (
             <span key={room} className={`csh-room-chip${picked ? ' picked' : ''}`} onClick={() => onToggle(room)}
@@ -545,11 +545,11 @@ function StepHeader({ number, title, subtitle, badge }) {
       marginBottom:16, position:'relative', overflow:'hidden', flexShrink: 0 }}>
       <div style={{ position:'absolute', top:-30, right:-20, width:100, height:100, borderRadius:'50%', background:'rgba(255,255,255,0.05)', pointerEvents:'none' }} />
       <div style={{ width:32, height:32, borderRadius:'50%', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)',
-        display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color: 'var(--surface)', flexShrink:0, zIndex: 1 }}>
+        display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color: '#fff', flexShrink:0, zIndex: 1 }}>
         {number}
       </div>
       <div style={{ flex:1, minWidth:0, zIndex: 1 }}>
-        <div style={{ fontSize:16, fontWeight:800, color: 'var(--surface)', letterSpacing:'-0.3px', fontFamily:"'Poppins',sans-serif" }}>{title}</div>
+        <div style={{ fontSize:16, fontWeight:800, color: '#fff', letterSpacing:'-0.3px', fontFamily:"'Poppins',sans-serif" }}>{title}</div>
         <div style={{ fontSize:12.5, color: 'rgba(255,255,255,0.85)', fontWeight:500, marginTop:2 }}>{subtitle}</div>
       </div>
       <div style={{ zIndex: 1 }}>{badge}</div>
@@ -953,11 +953,11 @@ function CoordinatorCheckPanel({ semester, masterEvents }) {
           <div>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', borderRadius: 10, background: 'rgba(239, 68, 68, 0.05)', border: '1px solid #FECACA' }}>
               <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke='#EF4444' strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: '#991B1B', marginBottom: 4 }}>{diagError.title}</div>
-                <div style={{ fontSize: 12.5, color: '#B91C1C', lineHeight: 1.5 }}>{diagError.message}</div>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: '#FCA5A5', marginBottom: 4 }}>{diagError.title}</div>
+                <div style={{ fontSize: 12.5, color: '#EF4444', lineHeight: 1.5 }}>{diagError.message}</div>
               </div>
             </div>
             <button onClick={runDiagnostic} style={{ marginTop: 10, background: 'none', border: 'none', cursor: 'pointer', color: G.meadowDeep, fontSize: 13, fontWeight: 700, fontFamily: "'Inter',sans-serif", padding: 0 }}>Retry check →</button>
@@ -968,7 +968,7 @@ function CoordinatorCheckPanel({ semester, masterEvents }) {
           <div>
             <div style={{ padding:'14px 16px', borderRadius:10, background: verdict.bg, border: `1px solid ${verdict.border}`, display:'flex', alignItems:'center', justifyContent:'space-between', gap:14, flexWrap:'wrap', marginBottom: 12 }}>
               <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-                <div style={{ width:44, height:44, borderRadius:11, background:verdict.color, color: 'var(--surface)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:800, flexShrink:0, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>{verdict.icon}</div>
+                <div style={{ width:44, height:44, borderRadius:11, background:verdict.color, color: '#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:800, flexShrink:0, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>{verdict.icon}</div>
                 <div>
                   <div style={{ fontSize:15, fontWeight:800, color:verdict.color }}>{verdict.label}</div>
                   <div style={{ fontSize:12.5, color:G.ink, marginTop:2, maxWidth:480, fontWeight: 500 }}>{diag.verdictDetail}</div>
@@ -1744,7 +1744,7 @@ export default function CoordSchedulerPage() {
                         <>
                           {totalRoomsPicked === 0 && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 7, background: G.amberSoft, border: `1px solid ${G.amberBorder}`, fontSize: 11.5, color: '#92400E', fontWeight: 600, marginTop: 8, marginBottom: 12 }}>
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2.5" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                               No rooms selected — the solver will fall back to every room in the system.
                             </div>
                           )}
@@ -1875,7 +1875,7 @@ export default function CoordSchedulerPage() {
               />
               {hasQueue && !isMyTurn && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 10, background: G.amberSoft, border: `1px solid ${G.amberBorder}`, fontSize: 12.5, color: '#92400E', fontWeight: 600 }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2.5" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   It's not your turn yet — you can review readiness now, but generating will stay locked until <strong>{currentProg || 'the current program'}</strong> finishes.
                 </div>
               )}
@@ -1946,7 +1946,7 @@ export default function CoordSchedulerPage() {
 
                     {!isMyTurn && statusState === 'idle' && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 9, background: G.amberSoft, border: `1px solid ${G.amberBorder}`, fontSize: 12.5, color: '#92400E', fontWeight: 600, marginTop: 14 }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                         Generation is locked — it's not your turn yet.
                       </div>
                     )}
@@ -1955,7 +1955,7 @@ export default function CoordSchedulerPage() {
                       <div className="fadein solve-result" style={{ marginTop:14 }}>
                         <div className="solve-result-body" style={{ background: G.amberSoft }}>
                           <div style={{ width:44, height:44, borderRadius:'50%', background:'rgba(245, 158, 11, 0.1)', border:'1.5px solid #FDE68A', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                           </div>
                           <div>
                             <div style={{ fontSize:16, fontWeight:800, color:'#92400E', marginBottom:3 }}>Solver Is Busy</div>
@@ -1975,17 +1975,17 @@ export default function CoordSchedulerPage() {
                       <div className="fadein solve-result failed" style={{ marginTop: 14 }}>
                         <div className="solve-result-body" style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '20px' }}>
                           <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', border: '1.5px solid #FCA5A5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke='#EF4444' strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 16, fontWeight: 800, color: '#991B1B', marginBottom: 4 }}>
+                            <div style={{ fontSize: 16, fontWeight: 800, color: '#FCA5A5', marginBottom: 4 }}>
                               Generation Failed in Phase: {genErrorDetails?.failedPhase || 'Constraint Solving'}
                             </div>
 
                             <div style={{ maxHeight: 260, overflowY: 'auto', paddingRight: 6 }}>
                               {/* Cause */}
                               {genErrorDetails?.reasons?.map((reason, idx) => (
-                                <p key={idx} style={{ fontSize: 13, color: '#B91C1C', margin: '4px 0', fontWeight: 500 }}>
+                                <p key={idx} style={{ fontSize: 13, color: '#EF4444', margin: '4px 0', fontWeight: 500 }}>
                                   • {reason}
                                 </p>
                               ))}
@@ -1993,12 +1993,12 @@ export default function CoordSchedulerPage() {
                               {/* Actionable Suggestions */}
                               {genErrorDetails?.suggestions?.length > 0 && (
                                 <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'var(--surface)', border: '1px solid #FECACA' }}>
-                                  <div style={{ fontSize: 12, fontWeight: 800, color: '#991B1B', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
+                                  <div style={{ fontSize: 12, fontWeight: 800, color: '#FCA5A5', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
                                     Suggested Actions:
                                   </div>
                                   {genErrorDetails.suggestions.map((sug, idx) => (
                                     <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12.5, color: '#7F1D1D', marginTop: 4 }}>
-                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#B91C1C" strokeWidth="2.5" style={{ flexShrink: 0, marginTop: 2 }}><polyline points="9 18 15 12 9 6"/></svg>
+                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke='#EF4444' strokeWidth="2.5" style={{ flexShrink: 0, marginTop: 2 }}><polyline points="9 18 15 12 9 6"/></svg>
                                       <span>{sug}</span>
                                     </div>
                                   ))}
@@ -2245,7 +2245,7 @@ export default function CoordSchedulerPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {roomsDirty && (
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#92400E' }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2.5" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   Save your room selection to continue
                 </span>
               )}
@@ -2284,7 +2284,7 @@ export default function CoordSchedulerPage() {
               <button
                 onClick={handleCancel}
                 disabled={stopRequested}
-                style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'10px 18px', borderRadius:10, border:'1.5px solid #FECACA', background:'rgba(220, 38, 38, 0.05)', color:'#DC2626', fontSize:13, fontWeight:700, cursor: stopRequested ? 'default' : 'pointer', opacity: stopRequested ? 0.6 : 1, fontFamily:"'Inter',sans-serif", transition:'all .15s' }}
+                style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'10px 18px', borderRadius:10, border:'1.5px solid #FECACA', background:'rgba(220, 38, 38, 0.05)', color:'#EF4444', fontSize:13, fontWeight:700, cursor: stopRequested ? 'default' : 'pointer', opacity: stopRequested ? 0.6 : 1, fontFamily:"'Inter',sans-serif", transition:'all .15s' }}
                 onMouseEnter={e => { if (!stopRequested) e.currentTarget.style.background='rgba(239, 68, 68, 0.1)' }}
                 onMouseLeave={e => { if (!stopRequested) e.currentTarget.style.background='rgba(220, 38, 38, 0.05)' }}
               >

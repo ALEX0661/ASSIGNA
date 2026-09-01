@@ -254,7 +254,7 @@ export default function FacultyDetailPage() {
               <div style={{ marginBottom:14, fontSize:12.5, color: 'var(--ink2)' }}>Credentials saved. The faculty member can now log in with the password you set.</div>
             )}
             <div style={{ fontSize:11.5, color: 'var(--muted)', background: 'var(--bg)', borderRadius:8, padding:'10px 14px', border:'1px solid var(--border)', marginBottom:22 }}>The faculty member must log out and back in for their role to take effect.</div>
-            <button type="button" onClick={() => { const dest = credActivated.newId || id; setCredActivated(null); navigate(`/dashboard/faculty/${dest}`) }} style={{ padding:'9px 18px', borderRadius:9, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: 'var(--surface)', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>
+            <button type="button" onClick={() => { const dest = credActivated.newId || id; setCredActivated(null); navigate(`/dashboard/faculty/${dest}`) }} style={{ padding:'9px 18px', borderRadius:9, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>
               Continue to Profile
             </button>
           </div>
@@ -293,7 +293,7 @@ export default function FacultyDetailPage() {
             </div>
             <div style={{ fontSize:11.5, color: 'var(--muted)', background: 'var(--bg)', borderRadius:8, padding:'10px 14px', border:'1px solid var(--border)', marginBottom:22 }}>The faculty member must log out and back in to pick up their new role.</div>
             <div style={{ display:'flex', gap:10 }}>
-              <button onClick={() => navigate('/dashboard/faculty')} style={{ padding:'9px 18px', borderRadius:9, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: 'var(--surface)', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>Back to Faculty List</button>
+              <button onClick={() => navigate('/dashboard/faculty')} style={{ padding:'9px 18px', borderRadius:9, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>Back to Faculty List</button>
               <button onClick={() => { setCreatedPassword(''); setPassword('') }} style={{ padding:'9px 16px', borderRadius:9, border:'1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--muted)', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>Add Another</button>
             </div>
           </div>
@@ -317,8 +317,8 @@ export default function FacultyDetailPage() {
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--border)" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           <span style={{ fontSize:12.5, color: 'var(--ink)', fontWeight:600 }}>{isNew ? 'New Faculty' : (form.name || 'Edit Faculty')}</span>
           {!isNew && form.status   && <span style={{ padding:'1px 8px', borderRadius:99, fontSize:10.5, fontWeight:700, background:statusBg, color:statusCl }}>{form.status}</span>}
-          {!isNew && form.archived && <span style={{ padding:'1px 8px', borderRadius:99, fontSize:10.5, fontWeight:700, background:'rgba(217, 119, 6, 0.1)', color:'#B45309' }}>Archived</span>}
-          {!isNew && isOverloaded  && <span style={{ padding:'1px 8px', borderRadius:99, fontSize:10.5, fontWeight:700, background:'rgba(220, 38, 38, 0.1)', color:'#C0392B' }}>Overloaded</span>}
+          {!isNew && form.archived && <span style={{ padding:'1px 8px', borderRadius:99, fontSize:10.5, fontWeight:700, background:'rgba(217, 119, 6, 0.1)', color:'#F59E0B' }}>Archived</span>}
+          {!isNew && isOverloaded  && <span style={{ padding:'1px 8px', borderRadius:99, fontSize:10.5, fontWeight:700, background:'rgba(220, 38, 38, 0.1)', color:'#EF4444' }}>Overloaded</span>}
         </div>
 
         {!isNew && (
@@ -333,7 +333,7 @@ export default function FacultyDetailPage() {
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 8v13H3V8"/><path d="M23 3H1v5h22z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>Archive
               </button>
             )}
-            <button type="button" onClick={() => setShowDeleteModal(true)} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, border:'1.5px solid #FFD0D0', background:'#FFF5F5', color:'#C0392B', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>
+            <button type="button" onClick={() => setShowDeleteModal(true)} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, border:'1.5px solid #FFD0D0', background:'rgba(220, 38, 38, 0.05)', color:'#EF4444', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>Delete
             </button>
           </div>
@@ -349,9 +349,9 @@ export default function FacultyDetailPage() {
       )}
       {!isNew && form.archived && (
         <div style={{ background:'rgba(217, 119, 6, 0.1)', border:'1px solid #FDE68A', borderRadius:12, padding:'12px 16px', marginBottom:20, display:'flex', gap:10, alignItems:'center' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" style={{ flexShrink:0 }}><path d="M21 8v13H3V8"/><path d="M23 3H1v5h22z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2" style={{ flexShrink:0 }}><path d="M21 8v13H3V8"/><path d="M23 3H1v5h22z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
           <span style={{ fontSize:12.5, color:'#92400E', lineHeight:1.5, flex:1 }}>This faculty member is <strong>archived</strong> and excluded from scheduling. Edits are still saved normally.</span>
-          <button onClick={handleUnarchive} disabled={archiving} style={{ padding:'5px 14px', borderRadius:8, border:'1.5px solid #D97706', background: 'var(--surface)', color:'#B45309', fontSize:12, fontWeight:600, cursor: archiving ? 'default' : 'pointer', fontFamily:"'Inter',sans-serif", flexShrink:0, opacity: archiving ? 0.7 : 1 }}>
+          <button onClick={handleUnarchive} disabled={archiving} style={{ padding:'5px 14px', borderRadius:8, border:'1.5px solid #D97706', background: 'var(--surface)', color:'#F59E0B', fontSize:12, fontWeight:600, cursor: archiving ? 'default' : 'pointer', fontFamily:"'Inter',sans-serif", flexShrink:0, opacity: archiving ? 0.7 : 1 }}>
             {archiving ? 'Restoring…' : 'Restore Now'}
           </button>
         </div>
@@ -398,13 +398,13 @@ export default function FacultyDetailPage() {
               {isNew && (
                 <div>
                   {createError && (
-                    <div style={{ background:'#FFF5F5', border:'1px solid #FECACA', borderRadius:10, padding:'10px 14px', display:'flex', gap:8, alignItems:'center', marginBottom:12 }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
-                      <span style={{ fontSize:12.5, color:'#C0392B', fontWeight:500 }}>{createError}</span>
+                    <div style={{ background:'rgba(220, 38, 38, 0.05)', border:'1px solid #FECACA', borderRadius:10, padding:'10px 14px', display:'flex', gap:8, alignItems:'center', marginBottom:12 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke='#EF4444' strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
+                      <span style={{ fontSize:12.5, color:'#EF4444', fontWeight:500 }}>{createError}</span>
                     </div>
                   )}
                   <div style={{ display:'flex', gap:10 }}>
-                    <button type="submit" disabled={createSaving} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 18px', borderRadius:10, border:'none', fontFamily:"'Inter',sans-serif", fontSize:12.5, fontWeight:600, cursor: createSaving ? 'default' : 'pointer', background:`linear-gradient(135deg,var(--meadow),var(--meadow-deep))`, color: 'var(--surface)', boxShadow:'0 3px 12px rgba(0,0,0,0.32)', opacity: createSaving ? 0.65 : 1 }}>
+                    <button type="submit" disabled={createSaving} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 18px', borderRadius:10, border:'none', fontFamily:"'Inter',sans-serif", fontSize:12.5, fontWeight:600, cursor: createSaving ? 'default' : 'pointer', background:`linear-gradient(135deg,var(--meadow),var(--meadow-deep))`, color: '#fff', boxShadow:'0 3px 12px rgba(0,0,0,0.32)', opacity: createSaving ? 0.65 : 1 }}>
                       {createSaving ? 'Creating...' : 'Create Faculty'}
                     </button>
                     <button type="button" onClick={() => navigate('/dashboard/faculty')} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 16px', borderRadius:10, border:'1.5px solid var(--border)', fontFamily:"'Inter',sans-serif", fontSize:12.5, fontWeight:600, cursor:'pointer', background: 'var(--surface)', color: 'var(--muted)' }}>Cancel</button>
@@ -470,7 +470,7 @@ export default function FacultyDetailPage() {
         <div style={{ position:'fixed', inset:0, zIndex:1100, background:'rgba(10,30,18,0.55)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
           <div style={{ background: 'var(--surface)', borderRadius:18, padding:'28px 28px 24px', maxWidth:400, width:'100%', boxShadow:'0 20px 60px rgba(10,30,18,0.22)', border:'1px solid var(--border)', textAlign:'center' }}>
             <div style={{ width:52, height:52, borderRadius:'50%', background:'rgba(217, 119, 6, 0.1)', margin:'0 auto 16px', display:'flex', alignItems:'center', justifyContent:'center' }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2"><path d="M21 8v13H3V8"/><path d="M23 3H1v5h22z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2"><path d="M21 8v13H3V8"/><path d="M23 3H1v5h22z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
             </div>
             <div style={{ fontSize:16, fontWeight:700, color: 'var(--ink)', marginBottom:8 }}>Archive Faculty Member?</div>
             <div style={{ fontSize:13, color: 'var(--muted)', marginBottom:24, lineHeight:1.5 }}>
@@ -478,7 +478,7 @@ export default function FacultyDetailPage() {
             </div>
             <div style={{ display:'flex', gap:10 }}>
               <button onClick={() => setShowArchiveModal(false)} disabled={archiving} style={{ flex:1, padding:'10px', borderRadius:9, border:'1.5px solid var(--border)', background: 'var(--surface)', fontSize:13, fontWeight:600, color: 'var(--muted)', cursor:'pointer', fontFamily:'Inter,sans-serif' }}>Cancel</button>
-              <button onClick={handleArchive} disabled={archiving} style={{ flex:1, padding:'10px', borderRadius:9, border:'none', background:'linear-gradient(135deg,#D97706,#B45309)', fontSize:13, fontWeight:700, color: 'var(--surface)', cursor: archiving ? 'default' : 'pointer', fontFamily:'Inter,sans-serif', opacity: archiving ? 0.7 : 1 }}>
+              <button onClick={handleArchive} disabled={archiving} style={{ flex:1, padding:'10px', borderRadius:9, border:'none', background:'linear-gradient(135deg,#D97706,#B45309)', fontSize:13, fontWeight:700, color: '#fff', cursor: archiving ? 'default' : 'pointer', fontFamily:'Inter,sans-serif', opacity: archiving ? 0.7 : 1 }}>
                 {archiving ? 'Archiving…' : 'Archive'}
               </button>
             </div>

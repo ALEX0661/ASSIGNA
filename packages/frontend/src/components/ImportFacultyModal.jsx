@@ -218,7 +218,7 @@ const Spin = () => (
 )
 
 const ErrBox = ({ msg }) => !msg ? null : (
-  <div style={{ background:'#FFF5F5', border:'1px solid #FECACA', borderRadius:9, padding:'9px 13px', fontSize:12, color:'#DC2626', display:'flex', alignItems:'flex-start', gap:7 }}>
+  <div style={{ background:'rgba(220, 38, 38, 0.05)', border:'1px solid #FECACA', borderRadius:9, padding:'9px 13px', fontSize:12, color:'#EF4444', display:'flex', alignItems:'flex-start', gap:7 }}>
     <svg style={{ flexShrink:0, marginTop:1 }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
     {msg}
   </div>
@@ -234,14 +234,14 @@ const StatusBadge = ({ status }) => (
   <span style={{
     fontSize:10, fontWeight:700, padding:'2px 9px', borderRadius:99, flexShrink:0,
     background: status === 'full-time' ? '#EEF9F0' : 'rgba(217, 119, 6, 0.05)',
-    color:      status === 'full-time' ? 'var(--meadow)' : '#D97706',
+    color:      status === 'full-time' ? 'var(--meadow)' : '#F59E0B',
     border:     `1px solid ${status === 'full-time' ? '#A7F3D0' : 'rgba(245, 158, 11, 0.25)'}`,
   }}>
     {status === 'full-time' ? 'Full-time' : 'Part-time'}
   </span>
 )
 
-const ratingColor = r => r >= 4 ? 'var(--meadow)' : r === 3 ? 'var(--meadow)' : r === 2 ? '#D97706' : 'var(--muted)'
+const ratingColor = r => r >= 4 ? 'var(--meadow)' : r === 3 ? 'var(--meadow)' : r === 2 ? '#F59E0B' : 'var(--muted)'
 
 function Steps({ current }) {
   const labels = ['Upload', 'Select Sheets', 'Review & Import']
@@ -371,7 +371,7 @@ function UploadStep({ onUploaded, courses }) {
 
       {error && error.toLowerCase().includes('course list') && (
         <div className="ifm-warn-box">
-          <svg style={{ flexShrink:0, marginTop:1 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <svg style={{ flexShrink:0, marginTop:1 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           <span>
             <strong>Wrong template!</strong> The Course List file is used elsewhere in the system.
             For faculty import, please use the <strong>Faculty Specialization Matrix</strong> template
@@ -506,14 +506,14 @@ function SheetStep({ sheets, fileData, rawFile, onParsed, onBack }) {
                 {isSelected && <svg width="8" height="6" viewBox="0 0 8 6" fill="none"><polyline points="1,3 3,5 7,1" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>}
               </div>
               <div style={{ width:28, height:28, borderRadius:7, background: isPartTime ? 'rgba(217, 119, 6, 0.05)' : 'var(--meadow-soft)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={isPartTime?'#D97706':'var(--meadow)'} strokeWidth="2">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={isPartTime?'#F59E0B':'var(--meadow)'} strokeWidth="2">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                   <polyline points="14 2 14 8 20 8"/>
                   <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
                 </svg>
               </div>
               <span style={{ flex:1 }}>{name}</span>
-              <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:99, background: isPartTime?'rgba(217, 119, 6, 0.05)':'#EEF9F0', color: isPartTime?'#D97706':'var(--meadow)', border:`1px solid ${isPartTime?'rgba(245, 158, 11, 0.25)':'#A7F3D0'}` }}>
+              <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:99, background: isPartTime?'rgba(217, 119, 6, 0.05)':'#EEF9F0', color: isPartTime?'#F59E0B':'var(--meadow)', border:`1px solid ${isPartTime?'rgba(245, 158, 11, 0.25)':'#A7F3D0'}` }}>
                 {isPartTime ? 'Part-time' : 'Full-time'}
               </span>
               {loading && isSelected && <Spin />}
@@ -774,7 +774,7 @@ function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
             <div style={{ maxHeight:200, overflowY:'auto', border:'1px solid var(--meadow-border)', borderRadius:10 }}>
               {results.failed.map((f, i) => (
                 <div key={i} style={{ padding:'10px 14px', borderBottom: i < results.failed.length - 1 ? '1px solid var(--meadow-soft)' : 'none', fontSize:12 }}>
-                  <strong>{f.faculty?.name}</strong> — <span style={{ color:'#DC2626' }}>{f.reason}</span>
+                  <strong>{f.faculty?.name}</strong> — <span style={{ color:'#EF4444' }}>{f.reason}</span>
                 </div>
               ))}
             </div>
@@ -801,7 +801,7 @@ function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
           <strong style={{ color:'var(--ink)' }}>{faculty.length}</strong> faculty ready to import
         </span>
         <span style={{ fontSize:10.5, padding:'2px 9px', borderRadius:99, background:'#EEF9F0', color:'var(--meadow)', border:'1px solid #A7F3D0', fontWeight:600 }}>{fullTime} full-time</span>
-        <span style={{ fontSize:10.5, padding:'2px 9px', borderRadius:99, background:'rgba(217, 119, 6, 0.05)', color:'#D97706', border:'1px solid #FDE68A', fontWeight:600 }}>{partTime} part-time</span>
+        <span style={{ fontSize:10.5, padding:'2px 9px', borderRadius:99, background:'rgba(217, 119, 6, 0.05)', color:'#F59E0B', border:'1px solid #FDE68A', fontWeight:600 }}>{partTime} part-time</span>
         <span style={{ fontSize:11, color:'var(--muted)', marginLeft:'auto' }}>Click a card to edit</span>
       </div>
 

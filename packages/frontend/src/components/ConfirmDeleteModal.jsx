@@ -6,7 +6,7 @@ export default function ConfirmDeleteModal({ scheduleName, onConfirm, onCancel }
       <div style={{ background:'var(--surface, #fff)', width: 400, borderRadius: 16, padding: '24px 28px', boxShadow: '0 20px 40px rgba(0,0,0,0.15), 0 0 0 1px var(--border)', animation:'slideIn .2s ease' }} onClick={e => e.stopPropagation()}>
         <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:20 }}>
           <div style={{ width:42, height:42, borderRadius:12, background:'#FFF0F0', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="2.5">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke='#EF4444' strokeWidth="2.5">
               <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/>
             </svg>
           </div>
@@ -21,7 +21,7 @@ export default function ConfirmDeleteModal({ scheduleName, onConfirm, onCancel }
           <button onClick={onCancel} style={{ padding:'8px 18px', borderRadius:10, border:'1.5px solid var(--border)', background:'var(--bg)', color:'var(--ink-mid)', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
             Cancel
           </button>
-          <button onClick={onConfirm} style={{ padding:'8px 18px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#EF4444,#C0392B)', color: 'var(--surface)', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 4px 14px rgba(192,57,43,0.3)' }}>
+          <button onClick={onConfirm} style={{ padding:'8px 18px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#EF4444,#C0392B)', color: '#fff', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 4px 14px rgba(192,57,43,0.3)' }}>
             Delete
           </button>
         </div>
