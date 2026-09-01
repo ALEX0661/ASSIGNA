@@ -36,49 +36,56 @@ export default function SessionCard({
 
   if (isStackTarget) {
     accentColor = 'var(--meadow)'
-    bgGradient  = 'linear-gradient(160deg,var(--meadow-soft) 0%,var(--hover) 100%)'
-    borderColor = 'var(--mint)'
+    bgGradient  = isDark ? 'linear-gradient(160deg,rgba(16,185,129,0.15) 0%,rgba(16,185,129,0.05) 100%)' : 'linear-gradient(160deg,var(--meadow-soft) 0%,var(--hover) 100%)'
+    borderColor = isDark ? 'rgba(16,185,129,0.3)' : 'var(--mint)'
     badgeBg     = 'rgba(5,150,105,.12)'
-    textColor   = 'var(--meadow-deep)'
+    textColor   = isDark ? 'var(--meadow)' : 'var(--meadow-deep)'
     glowColor   = 'rgba(16,185,129,.40)'
   } else if (isConflictTarget && !isDragging) {
     accentColor = '#EF4444'
-    bgGradient  = 'linear-gradient(160deg,#fee2e2 0%,#fff5f5 100%)'
-    borderColor = '#fca5a5'
+    bgGradient  = isDark ? 'linear-gradient(160deg,rgba(239,68,68,0.15) 0%,rgba(239,68,68,0.05) 100%)' : 'linear-gradient(160deg,#fee2e2 0%,#fff5f5 100%)'
+    borderColor = isDark ? 'rgba(239,68,68,0.4)' : '#fca5a5'
     badgeBg     = 'rgba(239,68,68,.10)'
-    textColor   = '#FCA5A5'
+    textColor   = isDark ? '#FCA5A5' : '#EF4444'
     glowColor   = 'rgba(239,68,68,.45)'
   } else if (isPotentialMerge && !isDragging) {
-    accentColor = '#60A5FA'
-    bgGradient  = 'linear-gradient(160deg,#dbeafe 0%,#eff6ff 100%)'
-    borderColor = '#93c5fd'
+    accentColor = '#3B82F6'
+    bgGradient  = isDark ? 'linear-gradient(160deg,rgba(59,130,246,0.15) 0%,rgba(59,130,246,0.05) 100%)' : 'linear-gradient(160deg,#dbeafe 0%,#eff6ff 100%)'
+    borderColor = isDark ? 'rgba(59,130,246,0.4)' : '#93c5fd'
     badgeBg     = 'rgba(37,99,235,.10)'
-    textColor   = '#1e40af'
+    textColor   = isDark ? '#93C5FD' : '#1e40af'
     glowColor   = 'rgba(59,130,246,.40)'
   } else if (isPotentialConflict && !isDragging) {
     accentColor = '#EF4444'
-    bgGradient  = 'linear-gradient(160deg,#fee2e2 0%,#fff5f5 100%)'
-    borderColor = '#fca5a5'
+    bgGradient  = isDark ? 'linear-gradient(160deg,rgba(239,68,68,0.15) 0%,rgba(239,68,68,0.05) 100%)' : 'linear-gradient(160deg,#fee2e2 0%,#fff5f5 100%)'
+    borderColor = isDark ? 'rgba(239,68,68,0.4)' : '#fca5a5'
     badgeBg     = 'rgba(239,68,68,.08)'
-    textColor   = '#FCA5A5'
+    textColor   = isDark ? '#FCA5A5' : '#EF4444'
     glowColor   = 'rgba(239,68,68,.32)'
   } else if (conflictInfo) {
-    accentColor = '#ef4444'; bgGradient = 'linear-gradient(160deg,#fee2e2 0%,#fff5f5 100%)'
-    borderColor = '#fca5a5'; badgeBg = 'rgba(239,68,68,.10)'; textColor = '#FCA5A5'
+    accentColor = '#ef4444'
+    bgGradient  = isDark ? 'linear-gradient(160deg,rgba(239,68,68,0.15) 0%,rgba(239,68,68,0.05) 100%)' : 'linear-gradient(160deg,#fee2e2 0%,#fff5f5 100%)'
+    borderColor = isDark ? 'rgba(239,68,68,0.4)' : '#fca5a5'
+    badgeBg = 'rgba(239,68,68,.10)'
+    textColor = isDark ? '#FCA5A5' : '#EF4444'
     glowColor   = 'rgba(239,68,68,.30)'
   } else if (merged) {
-    accentColor = TV.deep; bgGradient = `linear-gradient(160deg,var(--meadow-border) 0%,var(--meadow-soft) 100%)`
-    borderColor = TV.mid;  badgeBg    = `rgba(0,0,0,.12)`; textColor = 'var(--meadow-deep)'
+    accentColor = TV.deep
+    bgGradient = isDark ? `linear-gradient(160deg,rgba(16,185,129,0.12) 0%,rgba(16,185,129,0.04) 100%)` : `linear-gradient(160deg,var(--meadow-border) 0%,var(--meadow-soft) 100%)`
+    borderColor = isDark ? 'rgba(16,185,129,0.3)' : TV.mid
+    badgeBg    = `rgba(0,0,0,.12)`
+    textColor = isDark ? 'var(--meadow)' : 'var(--meadow-deep)'
     glowColor   = 'rgba(0,0,0,.35)'
   } else {
-    // Normal state — solid saturated program tint, no white washout
+    // Normal state - solid saturated program tint, adapt to dark mode
     accentColor = stripeColor
-    bgGradient  = `linear-gradient(160deg,${clr.bg} 0%,${clr.bg}ee 100%)`
-    borderColor = clr.border
-    badgeBg     = `${clr.accent}18`
-    textColor   = clr.text
+    bgGradient  = isDark ? `linear-gradient(160deg, ${stripeColor}22 0%, ${stripeColor}0A 100%)` : `linear-gradient(160deg,${clr.bg} 0%,${clr.bg}ee 100%)`
+    borderColor = isDark ? `${stripeColor}44` : clr.border
+    badgeBg     = isDark ? `${stripeColor}25` : `${clr.accent}18`
+    textColor   = isDark ? stripeColor : clr.text
     glowColor   = `${stripeColor}55`
   }
+
 
   const noSelect = {
     userSelect: 'none', WebkitUserSelect: 'none',
