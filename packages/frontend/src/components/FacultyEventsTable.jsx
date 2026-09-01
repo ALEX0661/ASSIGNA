@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
 
+const isDark = document.documentElement.getAttribute('data-mode') === 'dark';
+
 const DAY_ORDER = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
 const DAY_SHORT = { Monday:'Mon', Tuesday:'Tue', Wednesday:'Wed', Thursday:'Thu', Friday:'Fri', Saturday:'Sat', Sunday:'Sun' }
 

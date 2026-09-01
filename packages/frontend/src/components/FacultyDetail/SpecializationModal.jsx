@@ -538,14 +538,14 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                   </div>
                 </div>
 
-                <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', background: '#F9F9FB' }}>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', background: 'var(--bg)' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {unmatchedSpecs.map((s, i) => {
                       const code  = s.courseCode || ''
                       const title = s.title || ''
                       const rating = s.rating || 3
                       return (
-                        <div key={`${code}-${i}`} style={{ background: 'var(--surface)', borderRadius: 10, padding: 14, border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div key={`${code}-${i}`} style={{ background: 'var(--surface)', borderRadius: 10, padding: 14, border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                               <input 
@@ -554,11 +554,11 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                                   const newCode = e.target.value
                                   setSpecs(p => p.map(x => x === s ? { ...x, courseCode: newCode } : x))
                                 }}
-                                style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.2px', border: '1.5px solid #D1D5DB', borderRadius: 6, padding: '4px 8px', width: 120, outline: 'none' }}
+                                style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.2px', border: '1.5px solid var(--border)', background: 'transparent', borderRadius: 6, padding: '4px 8px', width: 120, outline: 'none' }}
                               />
-                              <span style={{ fontSize: 10, fontWeight: 600, color: '#9CA3AF', background: '#F3F4F6', padding: '2px 6px', borderRadius: 4 }}>Unmatched</span>
+                              <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--muted)', background: 'var(--hover)', padding: '2px 6px', borderRadius: 4 }}>Unmatched</span>
                             </div>
-                            {title && <span style={{ fontSize: 11.5, color: '#9CA3AF' }}>{title}</span>}
+                            {title && <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>{title}</span>}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                             <LevelBadge rating={rating} />
@@ -614,7 +614,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                     {existingCodes.size > 0 && (
                       <>
                         <span style={{ color: '#E5E7EB' }}>·</span>
-                        <span style={{ fontSize: 11.5, color: '#9CA3AF' }}>{existingCodes.size} already assigned</span>
+                        <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>{existingCodes.size} already assigned</span>
                       </>
                     )}
                   </div>
@@ -713,7 +713,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
             {tab === 'manual' && (
               <div style={{ flex: 1, overflowY: 'auto', padding: '22px 24px' }} className="spec-scroll">
                 <div style={{ maxWidth: 480 }}>
-                  <div style={{ padding: '12px 16px', borderRadius: 11, background: '#FAFAFF', border: '1px solid color-mix(in srgb, #6D28D9 15%, transparent)', marginBottom: 22, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <div style={{ padding: '12px 16px', borderRadius: 11, background: isDark ? 'rgba(124, 58, 237, 0.05)' : '#FAFAFF', border: '1px solid color-mix(in srgb, #6D28D9 15%, transparent)', marginBottom: 22, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                     <div style={{ fontSize: 12.5, color: '#4C1D95', lineHeight: 1.6 }}>
                       Use this for courses not in the catalog. Enter the code directly — e.g. <strong>CS101</strong>, <strong>MATH201</strong>. Saved as uppercase.
@@ -729,7 +729,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                         onChange={e => { setNewCode(e.target.value.toUpperCase()); setCodeError('') }}
                         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addManual() } }}
                         placeholder="e.g. CS101"
-                        style={{ width: '100%', padding: '10px 13px', borderRadius: 9, border: `1.5px solid ${codeError ? '#FCA5A5' : '#E5E7EB'}`, fontSize: 13, fontFamily: "'DM Sans', sans-serif", boxSizing: 'border-box', outline: 'none', letterSpacing: '0.5px', background: codeError ? 'rgba(220, 38, 38, 0.05)' : 'var(--surface)' }} />
+                        style={{ width: '100%', padding: '10px 13px', borderRadius: 9, border: `1.5px solid ${codeError ? '#FCA5A5' : 'var(--border)'}`, fontSize: 13, fontFamily: "'DM Sans', sans-serif", boxSizing: 'border-box', outline: 'none', letterSpacing: '0.5px', background: codeError ? 'rgba(220, 38, 38, 0.05)' : 'var(--surface)' }} />
                       {codeError && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6, color: '#EF4444', fontSize: 12, fontWeight: 500 }}>
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /></svg>
@@ -745,7 +745,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                           const active = newRating === l.rating
                           return (
                             <button key={l.rating} type="button" onClick={() => setNewRating(l.rating)}
-                              style={{ flex: 1, padding: '10px 0', borderRadius: 9, border: `1.5px solid ${active ? l.border : '#EDE9FA'}`, background: active ? l.bg : '#FAFAFE', color: active ? l.color : '#C4BFDF', fontSize: 11, fontWeight: active ? 700 : 500, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, transition: 'all 0.12s' }}>
+                              style={{ flex: 1, padding: '10px 0', borderRadius: 9, border: `1.5px solid ${active ? l.border : 'var(--border)'}`, background: active ? l.bg : 'var(--surface)', color: active ? l.color : 'var(--muted)', fontSize: 11, fontWeight: active ? 700 : 500, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, transition: 'all 0.12s' }}>
                               <span style={{ fontSize: 16, fontWeight: 700 }}>{l.rating}</span>
                               <span style={{ fontSize: 9.5, letterSpacing: '0.3px' }}>{l.short}</span>
                             </button>
@@ -779,7 +779,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
 
         {/* ── Footer ─────────────────────────────────────────────────────── */}
         <div style={{ padding: '12px 22px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)', flexShrink: 0 }} id="tour-spec-footer">
-          <div style={{ fontSize: 12, color: '#9CA3AF' }}>
+          <div style={{ fontSize: 12, color: 'var(--muted)' }}>
             {specCount === 0
               ? 'No specializations assigned'
               : `${specCount} specialization${specCount === 1 ? '' : 's'} assigned`}
@@ -829,8 +829,8 @@ function BrowseCourseRow({ course, already, staged, onRate }) {
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '10px 14px', borderRadius: 10,
-        border: `1.5px solid ${staged ? lvl.border : already ? 'color-mix(in srgb, #6D28D9 15%, transparent)' : hovered ? '#E8E3F8' : '#F3F0FE'}`,
-        background: staged ? lvl.bg : already ? '#FAFAFF' : hovered ? '#FDFBFF' : '#FDFDFF',
+        border: `1.5px solid ${staged ? lvl.border : already ? 'color-mix(in srgb, #6D28D9 15%, transparent)' : hovered ? 'var(--meadow-border)' : 'var(--border)'}`,
+        background: staged ? lvl.bg : already ? (isDark ? 'rgba(124, 58, 237, 0.05)' : 'var(--hover)') : hovered ? 'var(--hover)' : 'var(--surface)',
         transition: 'all 0.12s',
         animation: 'fadeUp 0.12s ease',
         opacity: already ? 0.7 : 1,
@@ -839,9 +839,9 @@ function BrowseCourseRow({ course, already, staged, onRate }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: course.title ? 3 : 0 }}>
           {course.title ? (
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: '#1a1a2e', letterSpacing: '0.2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{course.title}</span>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)', letterSpacing: '0.2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{course.title}</span>
           ) : (
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: '#1a1a2e', letterSpacing: '0.2px' }}>{code}</span>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)', letterSpacing: '0.2px' }}>{code}</span>
           )}
           {already && (
             <span style={{ fontSize: 9.5, fontWeight: 700, color: isDark ? 'var(--mint)' : 'var(--meadow)', background: 'var(--meadow-soft)', padding: '1px 7px', borderRadius: 99, border: '1px solid var(--meadow-border)', flexShrink: 0 }}>Assigned</span>
@@ -868,7 +868,7 @@ function BrowseCourseRow({ course, already, staged, onRate }) {
                 style={{
                   width: 26, height: 26, borderRadius: 7,
                   border: `1.5px solid ${active ? l.border : '#E9E6F5'}`,
-                  background: active ? l.bg : '#F8F7FC',
+                  background: active ? l.bg : 'var(--surface)',
                   color: active ? l.color : '#BDB8D4',
                   fontSize: 11, fontWeight: 700, cursor: 'pointer',
                   fontFamily: "'DM Sans', sans-serif",
