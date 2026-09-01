@@ -201,7 +201,7 @@ export default function ScheduleSection({ facultyName, onUnitsLoaded, onAssignme
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '8px 14px', borderRadius: '8px',
                 border: '1.5px solid var(--border)',
-                background: exporting ? 'var(--hover)' : '#FFFFFF',
+                background: exporting ? 'var(--hover)' : 'var(--surface)',
                 color: exporting ? 'var(--muted)' : 'var(--meadow)',
                 fontSize: 12.5, fontWeight: 600,
                 cursor: exporting ? 'default' : 'pointer',
@@ -210,7 +210,7 @@ export default function ScheduleSection({ facultyName, onUnitsLoaded, onAssignme
                 opacity: exporting ? 0.7 : 1,
               }}
               onMouseEnter={e => { if (!exporting) { e.currentTarget.style.background = 'var(--meadow-soft)'; e.currentTarget.style.borderColor='var(--meadow)' } }}
-              onMouseLeave={e => { if (!exporting) { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.borderColor = 'var(--border)' } }}
+              onMouseLeave={e => { if (!exporting) { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = 'var(--border)' } }}
             >
               <ExportIcon spinning={exporting} />
               {exporting ? 'Exporting…' : 'Export'}
@@ -228,7 +228,7 @@ export default function ScheduleSection({ facultyName, onUnitsLoaded, onAssignme
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '8px 14px', borderRadius: '8px',
                 border: '1.5px solid var(--border)',
-                background: exportingIcs ? 'var(--hover)' : '#FFFFFF',
+                background: exportingIcs ? 'var(--hover)' : 'var(--surface)',
                 color: exportingIcs ? 'var(--muted)' : 'var(--meadow)',
                 fontSize: 12.5, fontWeight: 600,
                 cursor: exportingIcs ? 'default' : 'pointer',
@@ -237,7 +237,7 @@ export default function ScheduleSection({ facultyName, onUnitsLoaded, onAssignme
                 opacity: exportingIcs ? 0.7 : 1,
               }}
               onMouseEnter={e => { if (!exportingIcs) { e.currentTarget.style.background = 'var(--meadow-soft)'; e.currentTarget.style.borderColor='var(--meadow)' } }}
-              onMouseLeave={e => { if (!exportingIcs) { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.borderColor = 'var(--border)' } }}
+              onMouseLeave={e => { if (!exportingIcs) { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = 'var(--border)' } }}
             >
               <CalendarIcon spinning={exportingIcs} />
               {exportingIcs ? 'Preparing…' : 'Add to Calendar'}

@@ -5,9 +5,9 @@ const DAY_SHORT = { Monday:'Mon', Tuesday:'Tue', Wednesday:'Wed', Thursday:'Thu'
 
 const DAY_COLORS = {
   Monday:    { bg:'var(--meadow-soft)', color: 'var(--meadow)', border:'var(--meadow-border)' },
-  Tuesday:   { bg:'rgba(59, 130, 246, 0.1)', color:'#60A5FA', border:'#BFDBFE' },
+  Tuesday:   { bg:'rgba(59, 130, 246, 0.1)', color:'#60A5FA', border:'rgba(59, 130, 246, 0.25)' },
   Wednesday: { bg:'rgba(217, 119, 6, 0.1)', color:'#F59E0B', border:'rgba(245, 158, 11, 0.25)' },
-  Thursday:  { bg:'#FCE7F3', color:'#9D174D', border:'#FBCFE8' },
+  Thursday:  { bg:'rgba(219, 39, 119, 0.1)', color:'#F472B6', border:'rgba(219, 39, 119, 0.25)' },
   Friday:    { bg:'color-mix(in srgb, #6D28D9 15%, transparent)', color:'#A78BFA', border:'color-mix(in srgb, #6D28D9 30%, transparent)' },
   Saturday:  { bg:'rgba(59, 130, 246, 0.1)', color:'#38BDF8', border:'rgba(59, 130, 246, 0.25)' },
   Sunday:    { bg:'rgba(217, 119, 6, 0.05)', color:'#C2410C', border:'rgba(217, 119, 6, 0.25)' },
@@ -55,7 +55,7 @@ function RoomBadge({ room }) {
   )
   const isLab = /lab/i.test(room)
   return (
-    <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:6, background: isLab ? 'color-mix(in srgb, #6D28D9 15%, transparent)' : '#F2F7F4', color: isLab ? '#A78BFA' : '#1C3D2A', fontSize:11.5, fontWeight:500, border: isLab ? '1px solid color-mix(in srgb, #6D28D9 30%, transparent)' : '1px solid var(--border)' }}>
+    <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:6, background: isLab ? 'color-mix(in srgb, #6D28D9 15%, transparent)' : 'var(--bg)', color: isLab ? '#A78BFA' : 'var(--ink2)', fontSize:11.5, fontWeight:500, border: isLab ? '1px solid color-mix(in srgb, #6D28D9 30%, transparent)' : '1px solid var(--border)' }}>
       {room}
     </span>
   )
@@ -279,7 +279,7 @@ export default function FacultyEventsTable({ events, computeUnits, fetchError })
                 <span style={{ fontSize:10, fontWeight:700, color: 'var(--muted2)', textTransform:'uppercase', letterSpacing:'.6px', flexShrink:0 }}>Room</span>
                 {opts.roomTypes.map(r => (
                   <Pill key={r} value={r} label={r} selectedSet={roomTypes} onToggle={v => setRoomTypes(s => toggleSet(s,v))}
-                    color={r==='Lab'?'#A78BFA':r==='TBA'?'#F59E0B':'var(--meadow)'} />
+                    color={r==='Lab'?'#A78BFA':r==='TBA'?'#F59E0B':(isDark ? 'var(--mint)' : 'var(--meadow)')} />
                 ))}
               </div>
             )}
@@ -311,7 +311,7 @@ export default function FacultyEventsTable({ events, computeUnits, fetchError })
                   { key:'units',   label:'Units'          },
                 ].map(col => (
                   <th key={col.key} onClick={() => toggleSort(col.key)}
-                    style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:700, color: sortKey===col.key?'var(--meadow)':'var(--muted)', textTransform:'uppercase', letterSpacing:'0.6px', whiteSpace:'nowrap', cursor:'pointer', userSelect:'none', transition:'color .15s' }}>
+                    style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:700, color: sortKey===col.key? (isDark ? 'var(--mint)' : 'var(--meadow)') : 'var(--muted)', textTransform:'uppercase', letterSpacing:'0.6px', whiteSpace:'nowrap', cursor:'pointer', userSelect:'none', transition:'color .15s' }}>
                     <span style={{ display:'inline-flex', alignItems:'center', gap:4 }}>
                       {col.label}
                       <SortIcon active={sortKey===col.key} dir={sortDir} />
@@ -343,7 +343,7 @@ export default function FacultyEventsTable({ events, computeUnits, fetchError })
                     </td>
                     <td style={{ padding:'11px 14px' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:7, flexWrap:'wrap' }}>
-                        <span style={{ fontFamily:'monospace', fontSize:11, fontWeight:700, color: 'var(--meadow)', background:'var(--meadow-soft)', padding:'2px 7px', borderRadius:5, border:'1px solid var(--meadow-border)', whiteSpace:'nowrap' }}>
+                        <span style={{ fontFamily:'monospace', fontSize:11, fontWeight:700, color: isDark ? 'var(--mint)' : 'var(--meadow)', background:'var(--meadow-soft)', padding:'2px 7px', borderRadius:5, border:'1px solid var(--meadow-border)', whiteSpace:'nowrap' }}>
                           {code}
                         </span>
                         {title && <span style={{ fontSize:12.5, fontWeight:600, color: 'var(--ink)' }}>{title}</span>}
@@ -357,7 +357,7 @@ export default function FacultyEventsTable({ events, computeUnits, fetchError })
                     </td>
                     <td style={{ padding:'11px 14px', textAlign:'center' }}>
                       {units != null && units !== '—' && units !== 0 ? (
-                        <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:28, height:22, padding:'0 8px', borderRadius:99, background:'var(--meadow-soft)', color: 'var(--meadow)', fontSize:11.5, fontWeight:700, border:'1px solid var(--meadow-border)' }}>
+                        <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:28, height:22, padding:'0 8px', borderRadius:99, background:'var(--meadow-soft)', color: isDark ? 'var(--mint)' : 'var(--meadow)', fontSize:11.5, fontWeight:700, border:'1px solid var(--meadow-border)' }}>
                           {units}
                         </span>
                       ) : <span style={{ color:'var(--border)', fontSize:12 }}>—</span>}
