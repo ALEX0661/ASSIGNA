@@ -317,8 +317,8 @@ export default function FacultyDetailPage() {
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--border)" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           <span style={{ fontSize:12.5, color: 'var(--ink)', fontWeight:600 }}>{isNew ? 'New Faculty' : (form.name || 'Edit Faculty')}</span>
           {!isNew && form.status   && <span style={{ padding:'1px 8px', borderRadius:99, fontSize:10.5, fontWeight:700, background:statusBg, color:statusCl }}>{form.status}</span>}
-          {!isNew && form.archived && <span style={{ padding:'1px 8px', borderRadius:99, fontSize:10.5, fontWeight:700, background:'#FEF3CD', color:'#B45309' }}>Archived</span>}
-          {!isNew && isOverloaded  && <span style={{ padding:'1px 8px', borderRadius:99, fontSize:10.5, fontWeight:700, background:'#FFE8E8', color:'#C0392B' }}>Overloaded</span>}
+          {!isNew && form.archived && <span style={{ padding:'1px 8px', borderRadius:99, fontSize:10.5, fontWeight:700, background:'rgba(217, 119, 6, 0.1)', color:'#B45309' }}>Archived</span>}
+          {!isNew && isOverloaded  && <span style={{ padding:'1px 8px', borderRadius:99, fontSize:10.5, fontWeight:700, background:'rgba(220, 38, 38, 0.1)', color:'#C0392B' }}>Overloaded</span>}
         </div>
 
         {!isNew && (
@@ -348,7 +348,7 @@ export default function FacultyDetailPage() {
         </div>
       )}
       {!isNew && form.archived && (
-        <div style={{ background:'#FEF3CD', border:'1px solid #FDE68A', borderRadius:12, padding:'12px 16px', marginBottom:20, display:'flex', gap:10, alignItems:'center' }}>
+        <div style={{ background:'rgba(217, 119, 6, 0.1)', border:'1px solid #FDE68A', borderRadius:12, padding:'12px 16px', marginBottom:20, display:'flex', gap:10, alignItems:'center' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" style={{ flexShrink:0 }}><path d="M21 8v13H3V8"/><path d="M23 3H1v5h22z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
           <span style={{ fontSize:12.5, color:'#92400E', lineHeight:1.5, flex:1 }}>This faculty member is <strong>archived</strong> and excluded from scheduling. Edits are still saved normally.</span>
           <button onClick={handleUnarchive} disabled={archiving} style={{ padding:'5px 14px', borderRadius:8, border:'1.5px solid #D97706', background: 'var(--surface)', color:'#B45309', fontSize:12, fontWeight:600, cursor: archiving ? 'default' : 'pointer', fontFamily:"'Inter',sans-serif", flexShrink:0, opacity: archiving ? 0.7 : 1 }}>
@@ -469,7 +469,7 @@ export default function FacultyDetailPage() {
       {showArchiveModal && (
         <div style={{ position:'fixed', inset:0, zIndex:1100, background:'rgba(10,30,18,0.55)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
           <div style={{ background: 'var(--surface)', borderRadius:18, padding:'28px 28px 24px', maxWidth:400, width:'100%', boxShadow:'0 20px 60px rgba(10,30,18,0.22)', border:'1px solid var(--border)', textAlign:'center' }}>
-            <div style={{ width:52, height:52, borderRadius:'50%', background:'#FEF3CD', margin:'0 auto 16px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <div style={{ width:52, height:52, borderRadius:'50%', background:'rgba(217, 119, 6, 0.1)', margin:'0 auto 16px', display:'flex', alignItems:'center', justifyContent:'center' }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2"><path d="M21 8v13H3V8"/><path d="M23 3H1v5h22z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
             </div>
             <div style={{ fontSize:16, fontWeight:700, color: 'var(--ink)', marginBottom:8 }}>Archive Faculty Member?</div>

@@ -238,10 +238,10 @@ function getInitials(name = '') {
 function Badge({ children, type = 'default', size = 'sm' }) {
   const styles = {
     lec:     { bg:'#EFF6FF', color:'#2563EB', border:'#BFDBFE' },
-    lab:     { bg:'#FFF7ED', color:'#D97706', border:'#FDE68A' },
+    lab:     { bg:'rgba(217, 119, 6, 0.05)', color:'#D97706', border:'#FDE68A' },
     room:    { bg: T.greenSoft, color: T.greenDeep, border: T.greenBorder },
     merged:  { bg:'var(--meadow-soft)', color:'var(--meadow)', border:'#A7F3D0' },
-    conflict:{ bg:'#FEF2F2', color:'#B91C1C', border:'#FECACA' },
+    conflict:{ bg:'#FEF2F2', color:'#B91C1C', border:'rgba(220, 38, 38, 0.25)' },
     default: { bg: T.bgAlt, color: T.textMid, border: T.border },
   }
   const s = styles[type] || styles.default
@@ -653,7 +653,7 @@ function TimetableView({ events, conflictMap, onSelect }) {
                         <div style={{ fontFamily:"'Sora',sans-serif", fontSize:11, fontWeight:800, color, lineHeight:1.2, marginBottom:3 }}>{ev.courseCode}</div>
                         <div style={{ fontFamily:"'Inter',sans-serif", fontSize:9.5, color:T.textMuted, fontWeight:500, lineHeight:1.3, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{ev.title}</div>
                         <div style={{ display:'flex', gap:3, marginTop:5, flexWrap:'wrap', alignItems:'center' }}>
-                          <span style={{ fontSize:8.5, fontWeight:700, padding:'1px 5px', borderRadius:4, background: isLab ? '#FFF7ED' : '#EFF6FF', color: isLab ? '#D97706' : '#2563EB', border: `1px solid ${isLab ? '#FDE68A' : '#BFDBFE'}` }}>{isLab ? 'LAB' : 'LEC'}</span>
+                          <span style={{ fontSize:8.5, fontWeight:700, padding:'1px 5px', borderRadius:4, background: isLab ? 'rgba(217, 119, 6, 0.05)' : '#EFF6FF', color: isLab ? '#D97706' : '#2563EB', border: `1px solid ${isLab ? '#FDE68A' : '#BFDBFE'}` }}>{isLab ? 'LAB' : 'LEC'}</span>
                           {ev.room && <span style={{ fontSize:8.5, fontWeight:600, color:T.textMuted }}>{ev.room}</span>}
                           {hasConflict && <span style={{ fontSize:8.5, fontWeight:700, color:'#B91C1C', background:'#FEF2F2', padding:'1px 5px', borderRadius:4, border:'1px solid #FECACA' }}>!</span>}
                         </div>

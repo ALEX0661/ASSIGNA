@@ -321,7 +321,7 @@ const SEM_DETECT_MAP = [
 const SEM_BADGE = {
   '1st Semester': { bg:'var(--meadow-soft)', color:'var(--meadow)', border:'var(--meadow-border)', short:'1st Sem' },
   '2nd Semester': { bg:'#E6FAF3', color:'var(--meadow)', border:'#A7F3D0', short:'2nd Sem' },
-  'Midyear':      { bg:'#FEF3CD', color:'#D97706', border:'#FCD34D', short:'Midyear' },
+  'Midyear':      { bg:'rgba(217, 119, 6, 0.1)', color:'#D97706', border:'#FCD34D', short:'Midyear' },
 }
 function detectSemester(sheetName) {
   const lower = sheetName.toLowerCase().trim()
@@ -456,7 +456,7 @@ function SheetSelectionStep({ sheets, fileData, lockedProgram, onParsed, onBack 
 const ICM_PROG_META = {
   'BSCS':      { color: 'var(--meadow)', bg: 'var(--meadow-soft)' },
   'BSIT':      { color: 'var(--meadow)', bg: '#E6FAF3' },
-  'BSEMC-GD':  { color: '#D97706', bg: '#FEF3CD' },
+  'BSEMC-GD':  { color: '#D97706', bg: 'rgba(217, 119, 6, 0.1)' },
   'BSEMC-DAT': { color: '#DC2626', bg: '#FFF5F5' },
 }
 const ICM_PROG_META_DEFAULT = { color: 'var(--meadow)', bg: 'var(--meadow-soft)' }
@@ -518,7 +518,7 @@ function BlockConfigStep({ courses, onBack, onSubmit }) {
   const semBadge = {
     '1st Semester': { bg:'var(--meadow-soft)', color:'var(--meadow)', short:'1st Sem' },
     '2nd Semester': { bg:'#E6FAF3', color:'var(--meadow)', short:'2nd Sem' },
-    'Midyear':      { bg:'#FEF3CD', color:'#D97706', short:'Midyear' },
+    'Midyear':      { bg:'rgba(217, 119, 6, 0.1)', color:'#D97706', short:'Midyear' },
   }
 
   return (
@@ -653,13 +653,13 @@ function EditableRow({ course, invalid, lockedProgram, onEdit, onRemove }) {
   )
 
   return (
-    <tr onClick={()=>setEditing(true)} style={{ background:invalid?'#FFF8F8':'transparent', cursor:'pointer' }}>
+    <tr onClick={()=>setEditing(true)} style={{ background:invalid?'rgba(220, 38, 38, 0.05)':'transparent', cursor:'pointer' }}>
       <td style={{ padding:'8px 8px' }}>
-        <span style={{ display:'inline-block', padding:'2px 8px', background:invalid?'#FFE8E8':'var(--meadow-soft)', color:invalid?'#DC2626':'var(--meadow)', borderRadius:99, fontSize:11, fontWeight:700 }}>
+        <span style={{ display:'inline-block', padding:'2px 8px', background:invalid?'rgba(220, 38, 38, 0.1)':'var(--meadow-soft)', color:invalid?'#DC2626':'var(--meadow)', borderRadius:99, fontSize:11, fontWeight:700 }}>
           {course.courseCode||'—'}
         </span>
       </td>
-      <td style={{ padding:'8px 8px', fontWeight:500, color:'var(--ink)', fontSize:12.5 }}>{course.title||<span style={{color:'#FECACA'}}>—</span>}</td>
+      <td style={{ padding:'8px 8px', fontWeight:500, color:'var(--ink)', fontSize:12.5 }}>{course.title||<span style={{color:'rgba(220, 38, 38, 0.25)'}}>—</span>}</td>
       <td style={{ padding:'8px 8px' }}>
         <span style={{ display:'inline-block', padding:'2px 8px', background:'var(--meadow-border)', color:'var(--meadow-deep)', borderRadius:99, fontSize:11, fontWeight:600 }}>{course.program||'—'}</span>
       </td>
@@ -720,7 +720,7 @@ function ReviewStep({ courses, lockedProgram, onBack, onCommit, onRemove, onEdit
           </div>
         ) : (
           <>
-            <div style={{ background:'#FEF3CD', border:'1px solid #F0C040', borderRadius:10, padding:'12px 16px' }}>
+            <div style={{ background:'rgba(217, 119, 6, 0.1)', border:'1px solid #F0C040', borderRadius:10, padding:'12px 16px' }}>
               <p style={{ fontWeight:700, fontSize:13, color:'var(--ink)', marginBottom:3 }}>{results.saved} saved · {results.failed.length} failed</p>
               <p style={{ fontSize:12, color:'var(--muted)', margin:0 }}>These courses couldn't be saved — they may already exist or have invalid data.</p>
             </div>
@@ -898,7 +898,7 @@ export default function ImportCoursesModal({ onClose, onImported, lockedProgram 
     >
       <div
         style={{
-          background:'#fff', borderRadius:18, padding:'26px 28px',
+          background: 'var(--surface)', borderRadius:18, padding:'26px 28px',
           width: step === 4 ? 760 : step === 3 ? 700 : 540, maxWidth:'95vw', maxHeight:'90vh',
           overflowY:'auto', fontFamily:"'Poppins',sans-serif",
           boxShadow:'0 24px 64px rgba(14,42,32,0.24),0 4px 16px rgba(0,0,0,0.12)',

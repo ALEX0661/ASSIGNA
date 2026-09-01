@@ -119,10 +119,10 @@ img:not(.no-theme-filter) { filter: var(--logo-filter, none); }
 [data-mode="dark"] {
   --bg: #121212;
   --surface: #1E1E1E;
-  --ink: #E0E0E0;
-  --ink2: #A0A0A0;
-  --muted: #888888;
-  --muted2: #666666;
+  --ink: #F9FAFB;
+  --ink2: #E5E7EB;
+  --muted: #9CA3AF;
+  --muted2: #9CA3AF;
   --border: #333333;
   --hover: #2A2A2A;
   --shadow: 0 4px 20px rgba(0,0,0,0.5);

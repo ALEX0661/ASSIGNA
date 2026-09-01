@@ -25,7 +25,7 @@ const G = {
   surface: 'var(--surface, #FFFFFF)', hover: 'var(--hover)', amber: '#D97706',
   amberSoft: '#FEF3C7', amberBorder: '#FDE68A',
   blue: '#0369A1', blueSoft: '#E0F2FE', blueBorder: '#BAE6FD',
-  red: '#DC2626', redSoft: '#FEE2E2', redBorder: '#FECACA',
+  red: '#DC2626', redSoft: '#FEE2E2', redBorder: 'rgba(220, 38, 38, 0.25)',
 }
 
 const PHASES = [
@@ -44,14 +44,14 @@ const VERDICT_META = {
   feasible:        { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder, label: 'Feasible',           icon: '✓' },
   likely_feasible: { color: '#0369A1',    bg: '#E0F2FE',    border: '#BAE6FD',      label: 'Likely Feasible',    icon: '~' },
   tight:           { color: '#D97706',    bg: '#FEF3C7',    border: '#FDE68A',      label: 'Feasible but Tight', icon: '⚠' },
-  at_risk:         { color: '#DC2626',    bg: '#FEE2E2',    border: '#FECACA',      label: 'At Risk',            icon: '!' },
-  infeasible:      { color: '#991B1B',    bg: '#FEF2F2',    border: '#FECACA',      label: 'Likely Infeasible',  icon: '✕' },
+  at_risk:         { color: '#DC2626',    bg: '#FEE2E2',    border: 'rgba(220, 38, 38, 0.25)',      label: 'At Risk',            icon: '!' },
+  infeasible:      { color: '#991B1B',    bg: '#FEF2F2',    border: 'rgba(220, 38, 38, 0.25)',      label: 'Likely Infeasible',  icon: '✕' },
 }
 
 const CHECK_META = {
   pass: { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder, dot: G.meadow,  label: 'Pass' },
   warn: { color: '#D97706',    bg: '#FFFBEB',    border: '#FDE68A',      dot: '#F59E0B', label: 'Warn' },
-  fail: { color: '#DC2626',    bg: '#FEE2E2',    border: '#FECACA',      dot: '#EF4444', label: 'Fail' },
+  fail: { color: '#DC2626',    bg: '#FEE2E2',    border: 'rgba(220, 38, 38, 0.25)',      dot: '#EF4444', label: 'Fail' },
   info: { color: G.blue,       bg: G.blueSoft,   border: G.blueBorder,   dot: G.blue,    label: 'Info' },
 }
 
@@ -93,7 +93,7 @@ function summarizeRoomHours(events) {
 }
 
 const REC_META = {
-  blocker:    { color: '#DC2626',    bg: '#FEE2E2',    border: '#FECACA' },
+  blocker:    { color: '#DC2626',    bg: '#FEE2E2',    border: 'rgba(220, 38, 38, 0.25)' },
   warning:    { color: '#D97706',    bg: '#FFFBEB',    border: '#FDE68A' },
   suggestion: { color: '#0369A1',    bg: '#E0F2FE',    border: '#BAE6FD' },
   success:    { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder },
@@ -105,14 +105,14 @@ const Q_META = {
   generating: { bg: '#EFF6FF', color: '#1D4ED8', dot: '#3B82F6', label: 'Generating' },
   submitted:  { bg: G.amberSoft, color: '#92400E', dot: G.amber, label: 'Submitted' },
   approved:   { bg: G.meadowSoft, color: G.meadowDeep, dot: G.meadow, label: 'Approved' },
-  skipped:    { bg: '#FFF7ED', color: '#C2410C', dot: '#F97316', label: 'Skipped' },
+  skipped:    { bg: 'rgba(217, 119, 6, 0.05)', color: '#C2410C', dot: '#F97316', label: 'Skipped' },
 }
 
 const STATUS_COLORS = {
   draft:     { bg: G.hover, color: G.muted, border: G.border, label: 'Draft' },
   submitted: { bg: G.amberSoft, color: '#92400E', border: G.amberBorder, label: 'Submitted' },
   approved:  { bg: G.meadowSoft, color: G.meadowDeep, border: G.meadowBorder, label: 'Approved' },
-  rejected:  { bg: '#FEE2E2', color: '#991B1B', border: '#FECACA', label: 'Rejected' },
+  rejected:  { bg: '#FEE2E2', color: '#991B1B', border: 'rgba(220, 38, 38, 0.25)', label: 'Rejected' },
 }
 
 const WIZ_STEPS = [
@@ -2284,9 +2284,9 @@ export default function CoordSchedulerPage() {
               <button
                 onClick={handleCancel}
                 disabled={stopRequested}
-                style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'10px 18px', borderRadius:10, border:'1.5px solid #FECACA', background:'#FFF8F8', color:'#DC2626', fontSize:13, fontWeight:700, cursor: stopRequested ? 'default' : 'pointer', opacity: stopRequested ? 0.6 : 1, fontFamily:"'Inter',sans-serif", transition:'all .15s' }}
+                style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'10px 18px', borderRadius:10, border:'1.5px solid #FECACA', background:'rgba(220, 38, 38, 0.05)', color:'#DC2626', fontSize:13, fontWeight:700, cursor: stopRequested ? 'default' : 'pointer', opacity: stopRequested ? 0.6 : 1, fontFamily:"'Inter',sans-serif", transition:'all .15s' }}
                 onMouseEnter={e => { if (!stopRequested) e.currentTarget.style.background='#FEE2E2' }}
-                onMouseLeave={e => { if (!stopRequested) e.currentTarget.style.background='#FFF8F8' }}
+                onMouseLeave={e => { if (!stopRequested) e.currentTarget.style.background='rgba(220, 38, 38, 0.05)' }}
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
                 {stopRequested ? 'Stopping…' : 'Stop'}

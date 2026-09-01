@@ -233,7 +233,7 @@ const HintBox = ({ children }) => (
 const StatusBadge = ({ status }) => (
   <span style={{
     fontSize:10, fontWeight:700, padding:'2px 9px', borderRadius:99, flexShrink:0,
-    background: status === 'full-time' ? '#EEF9F0' : '#FFF7ED',
+    background: status === 'full-time' ? '#EEF9F0' : 'rgba(217, 119, 6, 0.05)',
     color:      status === 'full-time' ? 'var(--meadow)' : '#D97706',
     border:     `1px solid ${status === 'full-time' ? '#A7F3D0' : '#FDE68A'}`,
   }}>
@@ -505,7 +505,7 @@ function SheetStep({ sheets, fileData, rawFile, onParsed, onBack }) {
               <div style={{ width:16, height:16, borderRadius:5, border:`1.5px solid ${isSelected?'var(--meadow)':'var(--meadow-border)'}`, background:isSelected?'var(--meadow)':'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition:'all .12s' }}>
                 {isSelected && <svg width="8" height="6" viewBox="0 0 8 6" fill="none"><polyline points="1,3 3,5 7,1" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>}
               </div>
-              <div style={{ width:28, height:28, borderRadius:7, background: isPartTime ? '#FFF7ED' : 'var(--meadow-soft)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <div style={{ width:28, height:28, borderRadius:7, background: isPartTime ? 'rgba(217, 119, 6, 0.05)' : 'var(--meadow-soft)', display:'flex', alignItems:'center', justifyContent:'center' }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={isPartTime?'#D97706':'var(--meadow)'} strokeWidth="2">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                   <polyline points="14 2 14 8 20 8"/>
@@ -513,7 +513,7 @@ function SheetStep({ sheets, fileData, rawFile, onParsed, onBack }) {
                 </svg>
               </div>
               <span style={{ flex:1 }}>{name}</span>
-              <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:99, background: isPartTime?'#FFF7ED':'#EEF9F0', color: isPartTime?'#D97706':'var(--meadow)', border:`1px solid ${isPartTime?'#FDE68A':'#A7F3D0'}` }}>
+              <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:99, background: isPartTime?'rgba(217, 119, 6, 0.05)':'#EEF9F0', color: isPartTime?'#D97706':'var(--meadow)', border:`1px solid ${isPartTime?'#FDE68A':'#A7F3D0'}` }}>
                 {isPartTime ? 'Part-time' : 'Full-time'}
               </span>
               {loading && isSelected && <Spin />}
@@ -616,7 +616,7 @@ function EditPreviewStep({ initialFaculty, onSave, onBack }) {
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
             <label style={{ fontSize:11.5, fontWeight:600, color:'var(--muted)' }}>Status *</label>
-            <select style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', outline:'none', fontSize:12.5, background:'#fff' }} value={form.status || 'full-time'} onChange={e => setForm({...form, status:e.target.value})}>
+            <select style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', outline:'none', fontSize:12.5, background: 'var(--surface)' }} value={form.status || 'full-time'} onChange={e => setForm({...form, status:e.target.value})}>
               <option value="full-time">Full-time</option>
               <option value="part-time">Part-time</option>
             </select>
@@ -630,7 +630,7 @@ function EditPreviewStep({ initialFaculty, onSave, onBack }) {
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
             <label style={{ fontSize:11.5, fontWeight:600, color:'var(--muted)' }}>Sex at Birth</label>
-            <select style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', outline:'none', fontSize:12.5, background:'#fff' }} value={form.SexAtBirth || ''} onChange={e => setForm({...form, SexAtBirth:e.target.value})}>
+            <select style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', outline:'none', fontSize:12.5, background: 'var(--surface)' }} value={form.SexAtBirth || ''} onChange={e => setForm({...form, SexAtBirth:e.target.value})}>
               <option value="">Select...</option>
               <option value="Male">Male</option>
               <option value="Female">Female</option>
@@ -642,14 +642,14 @@ function EditPreviewStep({ initialFaculty, onSave, onBack }) {
         <div style={{ display:'flex', gap:14 }}>
           <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
             <label style={{ fontSize:11.5, fontWeight:600, color:'var(--muted)' }}>Academic Rank</label>
-            <select style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', outline:'none', fontSize:12.5, background:'#fff' }} value={form.AcademicRank || ''} onChange={e => setForm({...form, AcademicRank:e.target.value})}>
+            <select style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', outline:'none', fontSize:12.5, background: 'var(--surface)' }} value={form.AcademicRank || ''} onChange={e => setForm({...form, AcademicRank:e.target.value})}>
               <option value="">Select rank...</option>
               {ACADEMIC_RANKS.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
             <label style={{ fontSize:11.5, fontWeight:600, color:'var(--muted)' }}>Department</label>
-            <select style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', outline:'none', fontSize:12.5, background:'#fff' }} value={form.Department || ''} onChange={e => setForm({...form, Department:e.target.value})}>
+            <select style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', outline:'none', fontSize:12.5, background: 'var(--surface)' }} value={form.Department || ''} onChange={e => setForm({...form, Department:e.target.value})}>
               <option value="">Select department...</option>
               {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
@@ -682,7 +682,7 @@ function EditPreviewStep({ initialFaculty, onSave, onBack }) {
 
         <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
           <label style={{ fontSize:11.5, fontWeight:600, color:'var(--muted)' }}>Specializations</label>
-          <button className="ifm-ghost" onClick={() => setShowSpec(true)} style={{ justifyContent:'center', background:'#fff', color:'var(--meadow)' }}>
+          <button className="ifm-ghost" onClick={() => setShowSpec(true)} style={{ justifyContent:'center', background: 'var(--surface)', color:'var(--meadow)' }}>
             Manage {form.specializations?.length || 0} specializations...
           </button>
         </div>
@@ -767,7 +767,7 @@ function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
           </div>
         ) : (
           <>
-            <div style={{ background:'#FEF3CD', border:'1px solid #F0C040', borderRadius:10, padding:'12px 16px' }}>
+            <div style={{ background:'rgba(217, 119, 6, 0.1)', border:'1px solid #F0C040', borderRadius:10, padding:'12px 16px' }}>
               <p style={{ fontWeight:700, fontSize:13, color:'var(--ink)', marginBottom:3 }}>{results.committed} saved · {results.failed.length} failed</p>
               <p style={{ fontSize:12, color:'var(--muted)', margin:0 }}>Some records could not be saved.</p>
             </div>
@@ -801,7 +801,7 @@ function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
           <strong style={{ color:'var(--ink)' }}>{faculty.length}</strong> faculty ready to import
         </span>
         <span style={{ fontSize:10.5, padding:'2px 9px', borderRadius:99, background:'#EEF9F0', color:'var(--meadow)', border:'1px solid #A7F3D0', fontWeight:600 }}>{fullTime} full-time</span>
-        <span style={{ fontSize:10.5, padding:'2px 9px', borderRadius:99, background:'#FFF7ED', color:'#D97706', border:'1px solid #FDE68A', fontWeight:600 }}>{partTime} part-time</span>
+        <span style={{ fontSize:10.5, padding:'2px 9px', borderRadius:99, background:'rgba(217, 119, 6, 0.05)', color:'#D97706', border:'1px solid #FDE68A', fontWeight:600 }}>{partTime} part-time</span>
         <span style={{ fontSize:11, color:'var(--muted)', marginLeft:'auto' }}>Click a card to edit</span>
       </div>
 
@@ -890,7 +890,7 @@ export default function ImportFacultyModal({ onClose, onImported, courses = [] }
     >
       <div
         style={{
-          background:'#fff', borderRadius:18, padding:'26px 28px',
+          background: 'var(--surface)', borderRadius:18, padding:'26px 28px',
           width: step === 3 ? 620 : 500, maxWidth:'95vw', maxHeight:'90vh',
           overflowY:'auto', fontFamily:"'Poppins',sans-serif",
           boxShadow:'0 24px 64px rgba(14,42,32,0.24),0 4px 16px rgba(0,0,0,0.12)',

@@ -131,8 +131,8 @@ export function ConflictBadge({ label }) {
   const isSec  = label?.includes('Section')
   const multi  = [isRoom, isFac, isSec].filter(Boolean).length > 1
 
-  let bg = '#fef2f2', color = '#b91c1c', border = '#fecaca'
-  if (multi)      { bg = '#fff7ed'; color = '#c2410c'; border = '#fed7aa' }
+  let bg = '#fef2f2', color = '#b91c1c', border = 'rgba(220, 38, 38, 0.25)'
+  if (multi)      { bg = 'rgba(217, 119, 6, 0.05)'; color = '#c2410c'; border = 'rgba(217, 119, 6, 0.25)' }
   else if (isFac) { bg = '#eff6ff'; color = '#1d4ed8'; border = '#bfdbfe' }
   else if (isSec) { bg = '#fdf4ff'; color = '#7e22ce'; border = '#e9d5ff' }
 
@@ -195,7 +195,7 @@ export function ConflictSummaryBar({ conflictMap, compact = false }) {
   return (
     <div style={{
       display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
-      background: '#fff8f8', border: '1px solid #fecaca',
+      background: 'rgba(220, 38, 38, 0.05)', border: '1px solid #fecaca',
       borderRadius: 10, padding: '8px 14px', marginBottom: 12,
     }}>
       <span style={{ fontSize: 12, fontWeight: 700, color: '#b91c1c' }}>⚠ Conflicts today:</span>
@@ -411,7 +411,7 @@ export function Toast({ message, type, onDismiss }) {
         position: 'fixed', bottom: 28, right: 28, zIndex: 9999,
         padding: '12px 18px', borderRadius: 12,
         background: isErr ? '#fef2f2' : 'var(--hover)',
-        border: `1px solid ${isErr ? '#fecaca' : 'var(--meadow-border)'}`,
+        border: `1px solid ${isErr ? 'rgba(220, 38, 38, 0.25)' : 'var(--meadow-border)'}`,
         color: isErr ? '#b91c1c' : 'var(--meadow-mid)',
         fontSize: 13, fontWeight: 600, cursor: 'pointer',
         boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
@@ -444,7 +444,7 @@ export function ConflictTable({ conflicts }) {
           {conflicts.map((c, i) => {
             const id = c.schedule_id ?? `${c.courseCode}-${c.block}-${c.session}-${c.day}`
             return (
-              <tr key={id} style={{ background: i % 2 === 0 ? '#fff' : '#fff8f8' }}>
+              <tr key={id} style={{ background: i % 2 === 0 ? '#fff' : 'rgba(220, 38, 38, 0.05)' }}>
                 <td style={{ padding: '5px 8px', fontWeight: 600, whiteSpace: 'nowrap' }}>{c.courseCode}</td>
                 <td style={{ padding: '5px 8px', whiteSpace: 'nowrap' }}>{c.program} {c.year}-{c.block}</td>
                 <td style={{ padding: '5px 8px', whiteSpace: 'nowrap' }}>{c.day}</td>

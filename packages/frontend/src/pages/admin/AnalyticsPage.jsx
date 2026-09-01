@@ -163,7 +163,7 @@ function InsightNote({ text, type = "info" }) {
   const isWarn = type === "warn" || type === "danger";
   const color  = isWarn ? C.red : C.green;
   const bg     = isWarn ? "#FFF5F5" : "var(--meadow-soft)";
-  const border = isWarn ? "#FECACA" : "var(--meadow-border)";
+  const border = isWarn ? 'rgba(220, 38, 38, 0.25)' : "var(--meadow-border)";
   return (
     <div style={{
       marginTop: 14, padding: "10px 14px", borderRadius: 8,
@@ -213,8 +213,8 @@ function ScoreCard({ loading, autoAssignPct, pctInWindow }) {
   const status = !hasData  ? null
     : autoAssignPct >= 90  ? { label: "Excellent", color: C.green,  bg: "var(--meadow-soft)", bar: C.green  }
     : autoAssignPct >= 70  ? { label: "Good",      color: C.blue,   bg: "#DBEAFE", bar: C.blue   }
-    : autoAssignPct >= 50  ? { label: "Fair",       color: C.amber,  bg: "#FEF3CD", bar: C.amber  }
-    :                        { label: "Needs work", color: C.red,    bg: "#FFE8E8", bar: C.red    };
+    : autoAssignPct >= 50  ? { label: "Fair",       color: C.amber,  bg: 'rgba(217, 119, 6, 0.1)', bar: C.amber  }
+    :                        { label: "Needs work", color: C.red,    bg: 'rgba(220, 38, 38, 0.1)', bar: C.red    };
 
   return (
     <div className="a-stat-card">
@@ -627,7 +627,7 @@ export default function AnalyticsPage() {
         <StatCard
           label="TBA / Unassigned" sub="Sessions missing faculty"
           value={loading ? null : (quality?.tbaSessions ?? 0)}
-          color={C.amber} bg="#FEF3CD" loading={loading}
+          color={C.amber} bg='rgba(217, 119, 6, 0.1)' loading={loading}
           icon={<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
         />
 
@@ -635,7 +635,7 @@ export default function AnalyticsPage() {
         <StatCard
           label="Hard Conflicts" sub="Room / faculty time clashes"
           value={loading ? null : (quality?.totalConflicts ?? 0)}
-          color={C.red} bg="#FFE8E8" loading={loading}
+          color={C.red} bg='rgba(220, 38, 38, 0.1)' loading={loading}
           icon={<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
         />
       </div>
@@ -804,7 +804,7 @@ export default function AnalyticsPage() {
             right={
               workloadData.some(w => w.overloaded) && (
                 <span style={{
-                  background: "#FFE8E8", color: C.red,
+                  background: 'rgba(220, 38, 38, 0.1)', color: C.red,
                   fontSize: 10.5, fontWeight: 700, padding: "3px 9px", borderRadius: 99,
                 }}>
                   {workloadData.filter(w => w.overloaded).length} over cap
