@@ -26,6 +26,7 @@ import CoordRoomsPage         from './pages/coordinator/CoordRoomsPage'
 import CoordCoursesPage       from './pages/coordinator/CoordCoursesPage'
 import CoordMySchedulePage  from './pages/coordinator/CoordMySchedulePage'
 import CoordScheduleViewPage from './pages/coordinator/CoordScheduleViewPage'
+import CoordSettingsPage from './pages/coordinator/CoordSettingsPage'
 
 function LoadingScreen() {
   return (
@@ -111,6 +112,7 @@ export default function App() {
           <Route path="scheduler"         element={<CoordSchedulerPage />} />
           <Route path="schedules"         element={<CoordMySchedulePage />} />
           <Route path="schedules/:id"     element={<CoordScheduleViewPage />} />
+            <Route path="settings"          element={<CoordSettingsPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />
