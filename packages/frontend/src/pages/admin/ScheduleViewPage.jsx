@@ -49,7 +49,7 @@ if (!document.getElementById('sv-page-style')) {
 
     .sv-search {
       padding:7px 12px 7px 32px; border-radius:20px; border:1px solid var(--border);
-      font-size:12.5px; font-family:'Inter',sans-serif; color:#0E2A20;
+      font-size:12.5px; font-family:'Inter',sans-serif; color:var(--ink);
       background: var(--surface); outline:none; width:190px; transition:all .15s;
     }
     .sv-search:focus { border-color:var(--mint); box-shadow:0 0 0 3px rgba(0,0,0,.12); width:220px; }
@@ -61,14 +61,14 @@ if (!document.getElementById('sv-page-style')) {
       font-family:'Inter',sans-serif; transition:all .15s; white-space:nowrap;
     }
     .sv-chip:hover  { background:var(--hover); color:var(--ink); border-color:var(--meadow-border); }
-    .sv-chip.active { border-color:var(--mint); background:var(--meadow-soft); color:#0E2A20; font-weight:600; }
+    .sv-chip.active { border-color:var(--mint); background:var(--meadow-soft); color:var(--ink); font-weight:600; }
 
     .sv-sched-wrap { position:relative; display:inline-flex; align-items:center; }
     .sv-sched-select {
       appearance:none; -webkit-appearance:none;
       padding:6px 28px 6px 30px; border-radius:9px;
       border:1.5px solid var(--border); font-size:12px;
-      font-family:'Inter',sans-serif; color:#0E2A20;
+      font-family:'Inter',sans-serif; color:var(--ink);
       background: var(--surface); cursor:pointer; outline:none;
       font-weight:500; transition:border-color .15s, box-shadow .15s;
       min-width:140px; max-width:210px;
@@ -80,7 +80,7 @@ if (!document.getElementById('sv-page-style')) {
     .sv-save-btn {
       display:inline-flex; align-items:center; gap:5px;
       padding:6px 10px; border-radius:9px; border:1.5px solid var(--border);
-      background: var(--surface); color:#0E2A20; font-size:12px; font-weight:600;
+      background: var(--surface); color:var(--ink); font-size:12px; font-weight:600;
       font-family:'Inter',sans-serif; cursor:pointer; transition:all .2s;
       white-space:nowrap; flex-shrink:0;
     }
@@ -96,7 +96,7 @@ if (!document.getElementById('sv-page-style')) {
       font-size:11.5px; font-family:'Inter',sans-serif;
       border:none; cursor:pointer; transition:all .15s; white-space:nowrap;
     }
-    .sv-view-btn.active { background:var(--meadow-soft); color:#0E2A20; font-weight:700; }
+    .sv-view-btn.active { background:var(--meadow-soft); color:var(--ink); font-weight:700; }
     .sv-view-btn:not(.active) { background:transparent; color:var(--muted); font-weight:400; }
     .sv-view-btn:not(.active):hover { background:var(--hover); color:var(--ink); }
 
@@ -309,7 +309,7 @@ function Spinner({ full = false }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', minHeight:300, gap:12 }}>
       {svg}
-      <span style={{ fontSize:13, color:TV.muted, fontFamily:'Inter,sans-serif' }}>Loading schedule…</span>
+      <span style={{ fontSize:13, color:'var(--muted2)', fontFamily:'Inter,sans-serif' }}>Loading schedule…</span>
     </div>
   )
 }
@@ -323,7 +323,7 @@ function EmptyState({ hasFilters, onClear }) {
       </div>
       <div style={{ textAlign:'center' }}>
         <p style={{ fontSize:13.5, fontWeight:600, color:TV.text, marginBottom:4 }}>No sessions found</p>
-        <p style={{ fontSize:12, color:TV.muted }}>
+        <p style={{ fontSize:12, color:'var(--muted2)' }}>
           {hasFilters ? 'Try adjusting your filters.' : 'No events scheduled for this day.'}
         </p>
       </div>
@@ -342,7 +342,7 @@ function StatsRow({ items }) {
     <div className="sv-stats-row">
       {items.map(s => (
         <div key={s.label} className="sv-stat-cell">
-          <span style={{ fontSize:9, fontWeight:700, color:TV.muted, textTransform:'uppercase', letterSpacing:'.8px', whiteSpace:'nowrap' }}>
+          <span style={{ fontSize:9, fontWeight:700, color:'var(--muted2)', textTransform:'uppercase', letterSpacing:'.8px', whiteSpace:'nowrap' }}>
             {s.label}
           </span>
           <div style={{ display:'flex', alignItems:'baseline', gap:4 }}>
@@ -350,7 +350,7 @@ function StatsRow({ items }) {
               {s.value}
             </span>
             {s.sub && (
-              <span style={{ fontSize:9.5, color:TV.muted, whiteSpace:'nowrap' }}>{s.sub}</span>
+              <span style={{ fontSize:9.5, color:'var(--muted2)', whiteSpace:'nowrap' }}>{s.sub}</span>
             )}
           </div>
         </div>
@@ -1272,7 +1272,7 @@ export default function ScheduleViewPage({ isSubmittedView = false }) {
                   {activeName && (
                     <button
                       onClick={() => { setTempName(activeName); setIsEditingName(true) }}
-                      style={{ background:'transparent', border:'none', cursor:'pointer', color:TV.muted, display:'flex', alignItems:'center', padding:4, borderRadius:6 }}
+                      style={{ background:'transparent', border:'none', cursor:'pointer', color:'var(--muted2)', display:'flex', alignItems:'center', padding:4, borderRadius:6 }}
                       title="Rename"
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1285,7 +1285,7 @@ export default function ScheduleViewPage({ isSubmittedView = false }) {
                 
                 {/* Academic Year & Semester - under the name */}
                 {activeName && schedAY && schedSem && (
-                  <div style={{ fontSize:11.5, marginTop:2, display:'flex', alignItems:'center', gap:12, color:TV.muted2, fontWeight:500 }}>
+                  <div style={{ fontSize:11.5, marginTop:2, display:'flex', alignItems:'center', gap:12, color:'var(--muted2)', fontWeight:500 }}>
                     {schedAY} • {schedSem}
                   </div>
                 )}
@@ -1516,7 +1516,7 @@ export default function ScheduleViewPage({ isSubmittedView = false }) {
           {/* Legend */}
           <div style={{ display:'flex', alignItems:'center', gap:14, paddingTop:10, borderTop:`1px solid ${TV.border}` }}>
             {[
-              { bg: 'var(--surface)', border:TV.border, label:'Normal', color:TV.muted },
+              { bg: 'var(--surface)', border:TV.border, label:'Normal', color:'var(--muted2)' },
               { bg:TV.pale, border:TV.light, label:'Merge', color:TV.deep,
                 icon: <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> },
               { bg:'rgba(239, 68, 68, 0.05)', border:'rgba(220, 38, 38, 0.25)', label:'Conflict', color:'#EF4444',
@@ -1632,7 +1632,7 @@ export default function ScheduleViewPage({ isSubmittedView = false }) {
             <img src={scheduleImage} alt="No Schedule Loaded" style={{ width: 120, height: 'auto' }} />
           </div>
           <p style={{ fontSize:15, fontWeight:700, color:TV.text, marginBottom:6 }}>No Schedule Loaded</p>
-          <p style={{ fontSize:13, color:TV.muted }}>
+          <p style={{ fontSize:13, color:'var(--muted2)' }}>
             {savedNames.length > 0 || initLoading
               ? 'Select a saved schedule from the dropdown above to view it.'
               : 'Generate a schedule in the Scheduler page first.'}
@@ -2132,7 +2132,7 @@ function ListView({ dayEvents, conflictMap, hasFilters, clearFilters, onCardClic
         <thead>
           <tr style={{ background:'var(--bg)' }}>
             {['Time','Course','Section','Type','Faculty','Room','Status'].map(h => (
-              <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:10.5, fontWeight:700, color:TV.muted, textTransform:'uppercase', letterSpacing:'.6px', borderBottom:`1px solid ${TV.border}`, whiteSpace:'nowrap' }}>
+              <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:10.5, fontWeight:700, color:'var(--muted2)', textTransform:'uppercase', letterSpacing:'.6px', borderBottom:`1px solid ${TV.border}`, whiteSpace:'nowrap' }}>
                 {h}
               </th>
             ))}
@@ -2154,10 +2154,10 @@ function ListView({ dayEvents, conflictMap, hasFilters, clearFilters, onCardClic
                 onMouseEnter={e => e.currentTarget.style.background = TV.pale}
                 onMouseLeave={e => e.currentTarget.style.background = i%2===0? 'var(--surface)':'var(--bg)'}
               >
-                <td style={{ padding:'10px 14px', whiteSpace:'nowrap', fontSize:11.5, color:TV.muted }}>{ev.period}</td>
+                <td style={{ padding:'10px 14px', whiteSpace:'nowrap', fontSize:11.5, color:'var(--muted2)' }}>{ev.period}</td>
                 <td style={{ padding:'10px 14px' }}>
                   <span style={{ fontWeight:700, color:TV.text }}>{ev.courseCode}</span>
-                  {ev.title && <span style={{ display:'block', fontSize:10.5, color:TV.muted, marginTop:1, maxWidth:180, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ev.title}</span>}
+                  {ev.title && <span style={{ display:'block', fontSize:10.5, color:'var(--muted2)', marginTop:1, maxWidth:180, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ev.title}</span>}
                 </td>
                 <td style={{ padding:'10px 14px', whiteSpace:'nowrap' }}>
                   <span style={{ fontSize:11.5, fontWeight:600, color:TV.deep, background:TV.pale, padding:'2px 7px', borderRadius:5, border:`1px solid ${TV.light}` }}>
@@ -2173,7 +2173,7 @@ function ListView({ dayEvents, conflictMap, hasFilters, clearFilters, onCardClic
                   {isExtManaged ? <span style={{ color:'var(--mint)', fontWeight:500 }}>Ext. managed</span> : noFaculty ? <span style={{ color:'#f59e0b', fontWeight:600 }}>Unassigned</span> : <span style={{ color:TV.text }}>{ev.faculty}</span>}
                 </td>
                 <td style={{ padding:'10px 14px', fontSize:12, color:TV.text, whiteSpace:'nowrap' }}>
-                  {ev.room && ev.room !== 'TBA' ? ev.room : <span style={{ color:TV.muted }}>TBA</span>}
+                  {ev.room && ev.room !== 'TBA' ? ev.room : <span style={{ color:'var(--muted2)' }}>TBA</span>}
                 </td>
                 <td style={{ padding:'10px 14px' }}>
                   <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
@@ -2195,7 +2195,7 @@ function ListView({ dayEvents, conflictMap, hasFilters, clearFilters, onCardClic
                     )}
                     {isExtManaged && <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:9.5, fontWeight:600, background:'var(--meadow-soft)', color: 'var(--meadow)', border:'1px solid var(--meadow-border)', borderRadius:4, padding:'2px 6px' }}>Ext. managed</span>}
                     {noFaculty && !isExtManaged && <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:9.5, fontWeight:700, background:'rgba(245, 158, 11, 0.05)', color:'#92400e', border:'1px solid #fcd34d', borderRadius:4, padding:'2px 6px' }}>Unassigned</span>}
-                    {!conf && !merged && !noFaculty && <span style={{ fontSize:9.5, color:TV.muted }}>—</span>}
+                    {!conf && !merged && !noFaculty && <span style={{ fontSize:9.5, color:'var(--muted2)' }}>—</span>}
                     {/* Edge case: merged but also has a real non-room conflict */}
                     {conf && merged && conf.label === 'Room Conflict' && (
                       // Already suppressed above — merge badge above covers this

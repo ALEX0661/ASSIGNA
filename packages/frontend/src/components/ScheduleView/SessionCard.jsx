@@ -29,6 +29,7 @@ export default function SessionCard({
 
   // ── Unassigned faculty detection ─────────────────────────────────────────
   const isUnassigned = !event.faculty || event.faculty === 'TBA'
+  const isDark = document.documentElement.getAttribute('data-mode') === 'dark'
 
   // ── THEME — solid, saturated card fills ────────────────────────────────────
   let accentColor, bgGradient, borderColor, badgeBg, textColor, glowColor

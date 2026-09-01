@@ -26,6 +26,7 @@ import icon1Img from '../assets/ASSIGNAV1.png'
     .login-root button:hover { background: none; }
 
     .login-root {
+      color-scheme: light !important;
       --forest:      #0A2E1C;
       --meadow:      #15803D;
       --meadow-deep: #0F5C2C;
