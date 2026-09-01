@@ -41,29 +41,29 @@ export default function SessionCard({
     textColor   = 'var(--meadow-deep)'
     glowColor   = 'rgba(16,185,129,.40)'
   } else if (isConflictTarget && !isDragging) {
-    accentColor = '#dc2626'
+    accentColor = '#EF4444'
     bgGradient  = 'linear-gradient(160deg,#fee2e2 0%,#fff5f5 100%)'
     borderColor = '#fca5a5'
     badgeBg     = 'rgba(239,68,68,.10)'
-    textColor   = '#991b1b'
+    textColor   = '#FCA5A5'
     glowColor   = 'rgba(239,68,68,.45)'
   } else if (isPotentialMerge && !isDragging) {
-    accentColor = '#2563eb'
+    accentColor = '#60A5FA'
     bgGradient  = 'linear-gradient(160deg,#dbeafe 0%,#eff6ff 100%)'
     borderColor = '#93c5fd'
     badgeBg     = 'rgba(37,99,235,.10)'
     textColor   = '#1e40af'
     glowColor   = 'rgba(59,130,246,.40)'
   } else if (isPotentialConflict && !isDragging) {
-    accentColor = '#dc2626'
+    accentColor = '#EF4444'
     bgGradient  = 'linear-gradient(160deg,#fee2e2 0%,#fff5f5 100%)'
     borderColor = '#fca5a5'
     badgeBg     = 'rgba(239,68,68,.08)'
-    textColor   = '#991b1b'
+    textColor   = '#FCA5A5'
     glowColor   = 'rgba(239,68,68,.32)'
   } else if (conflictInfo) {
     accentColor = '#ef4444'; bgGradient = 'linear-gradient(160deg,#fee2e2 0%,#fff5f5 100%)'
-    borderColor = '#fca5a5'; badgeBg = 'rgba(239,68,68,.10)'; textColor = '#991b1b'
+    borderColor = '#fca5a5'; badgeBg = 'rgba(239,68,68,.10)'; textColor = '#FCA5A5'
     glowColor   = 'rgba(239,68,68,.30)'
   } else if (merged) {
     accentColor = TV.deep; bgGradient = `linear-gradient(160deg,var(--meadow-border) 0%,var(--meadow-soft) 100%)`
@@ -160,7 +160,7 @@ export default function SessionCard({
       <svg
         width={compact ? 5 : 7} height={compact ? 5 : 7}
         viewBox="0 0 24 24" fill="none"
-        stroke="#d97706" strokeWidth="2.5"
+        stroke='#F59E0B' strokeWidth="2.5"
         strokeLinecap="round" strokeLinejoin="round"
       >
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -386,7 +386,7 @@ export default function SessionCard({
               </span>
             )}
             {isPotentialMerge && !isDragging && (
-              <span title="Could merge with dragged card" style={{ color: '#2563eb', display: 'flex' }}>
+              <span title="Could merge with dragged card" style={{ color: '#60A5FA', display: 'flex' }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
                   <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
@@ -394,7 +394,7 @@ export default function SessionCard({
               </span>
             )}
             {(isConflictTarget || isPotentialConflict) && !isDragging && (
-              <span title={isConflictTarget ? "Would conflict with dragged card" : "Potential conflict with dragged card"} style={{ color: '#dc2626', display: 'flex' }}>
+              <span title={isConflictTarget ? "Would conflict with dragged card" : "Potential conflict with dragged card"} style={{ color: '#EF4444', display: 'flex' }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                   <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
@@ -437,7 +437,7 @@ export default function SessionCard({
             {isUnassigned ? (
               <span style={{
                 fontSize: height > 58 ? 8 : 7.5, fontWeight: 700,
-                color: '#d97706', opacity: 0.9,
+                color: '#F59E0B', opacity: 0.9,
                 whiteSpace: 'nowrap',
               }}>
                 Unassigned

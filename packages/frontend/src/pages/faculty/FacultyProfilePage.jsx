@@ -29,7 +29,7 @@ const T = {
   specGreenSoft:'var(--meadow-soft)',
   specGreenBorder:'var(--meadow-border)',
   // Orange (part-time notice)
-  orange:       '#D97706',
+  orange:       '#F59E0B',
   orangeDeep:   '#92400E',
   orangeSoft:   'rgba(245, 158, 11, 0.05)',
   orangeBorder: 'rgba(245, 158, 11, 0.25)',
@@ -55,9 +55,9 @@ function getInitials(name = '') {
 
 function getAvatarColor(name = '') {
   const palette = [
-    { bg: 'var(--meadow-soft)', fg: 'var(--meadow)' }, { bg: 'rgba(59, 130, 246, 0.1)', fg: '#2563EB' },
+    { bg: 'var(--meadow-soft)', fg: 'var(--meadow)' }, { bg: 'rgba(59, 130, 246, 0.1)', fg: '#60A5FA' },
     { bg: '#FCE7F3', fg: '#DB2777' }, { bg: 'color-mix(in srgb, #6D28D9 15%, transparent)', fg: '#7C3AED' },
-    { bg: 'rgba(245, 158, 11, 0.1)', fg: '#D97706' }, { bg: '#FFE4E6', fg: '#E11D48' },
+    { bg: 'rgba(245, 158, 11, 0.1)', fg: '#F59E0B' }, { bg: '#FFE4E6', fg: '#E11D48' },
   ]
   const code = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
   return palette[code % palette.length]
@@ -358,7 +358,7 @@ export default function FacultyProfilePage() {
               </div>
               <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.80)', textTransform: 'uppercase', letterSpacing: '1px' }}>Faculty Profile</span>
             </div>
-            <h1 className="fp-hero" style={{ fontFamily: "'Sora',sans-serif", fontSize: 24, fontWeight: 800, color: 'var(--surface)', margin: 0, lineHeight: 1.15, letterSpacing: '-.4px' }}>
+            <h1 className="fp-hero" style={{ fontFamily: "'Sora',sans-serif", fontSize: 24, fontWeight: 800, color: '#fff', margin: 0, lineHeight: 1.15, letterSpacing: '-.4px' }}>
               {loading ? 'My Profile' : (form.name || `${form.firstName} ${form.lastName}`.trim() || 'My Profile')}
             </h1>
             {!loading && form.AcademicRank && (
@@ -376,7 +376,7 @@ export default function FacultyProfilePage() {
       </div>
 
       {error && (
-        <div style={{ background: T.dangerSoft, border: '1px solid #FECACA', borderRadius: 12, padding: '12px 16px', fontSize: 13, color: '#B91C1C', marginBottom: 20, display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div style={{ background: T.dangerSoft, border: '1px solid #FECACA', borderRadius: 12, padding: '12px 16px', fontSize: 13, color: '#EF4444', marginBottom: 20, display: 'flex', gap: 10, alignItems: 'center' }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
           {error}
         </div>
@@ -405,7 +405,7 @@ export default function FacultyProfilePage() {
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}><Skel w={130} h={16} r={8} /><Skel w={90} h={12} r={6} /></div>
                 ) : (
                   <>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--surface)', lineHeight: 1.25, marginBottom: 3, textTransform: 'uppercase', fontFamily: "'Sora',sans-serif", letterSpacing: '.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#fff', lineHeight: 1.25, marginBottom: 3, textTransform: 'uppercase', fontFamily: "'Sora',sans-serif", letterSpacing: '.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>
                       {form.name || `${form.firstName} ${form.lastName}`.trim() || '—'}
                     </div>
                     {form.AcademicRank && <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.78)', fontWeight: 500 }}>{form.AcademicRank}</div>}
@@ -414,7 +414,7 @@ export default function FacultyProfilePage() {
                 )}
               </div>
               {!loading && (
-                <span style={{ padding: '3px 10px', borderRadius: 99, fontSize: 10.5, fontWeight: 600, background: 'rgba(255,255,255,0.16)', color: 'var(--surface)', border: '1px solid rgba(255,255,255,0.22)', textTransform: 'capitalize', position: 'relative', zIndex: 1 }}>
+                <span style={{ padding: '3px 10px', borderRadius: 99, fontSize: 10.5, fontWeight: 600, background: 'rgba(255,255,255,0.16)', color: '#fff', border: '1px solid rgba(255,255,255,0.22)', textTransform: 'capitalize', position: 'relative', zIndex: 1 }}>
                   {form.status}
                 </span>
               )}
@@ -466,7 +466,7 @@ export default function FacultyProfilePage() {
             />
             <div className="fp-grid-2 fp-card-body" style={{ padding: '24px 20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 24px' }}>
               {infoError && (
-                <div style={{ gridColumn: '1/-1', background: T.dangerSoft, border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', fontSize: 12.5, color: '#B91C1C', display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ gridColumn: '1/-1', background: T.dangerSoft, border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', fontSize: 12.5, color: '#EF4444', display: 'flex', gap: 8, alignItems: 'center' }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/></svg>{infoError}
                 </div>
               )}
@@ -626,8 +626,8 @@ export default function FacultyProfilePage() {
           />
           {!form.email && (
              <div style={{ margin: '20px 20px 0', padding: '12px 16px', borderRadius: 8, background: 'rgba(245, 158, 11, 0.05)', border: '1px solid #FEF3C7', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" style={{ flexShrink: 0, marginTop: 2 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              <span style={{ fontSize: 12, color: '#B45309', lineHeight: 1.5 }}>No login account yet. Set an email and password below to activate.</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2" style={{ flexShrink: 0, marginTop: 2 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span style={{ fontSize: 12, color: '#F59E0B', lineHeight: 1.5 }}>No login account yet. Set an email and password below to activate.</span>
             </div>
           )}
           <div className="fp-cred-grid fp-card-body" style={{ padding: '24px 20px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px 24px', alignItems: 'start' }}>
@@ -658,7 +658,7 @@ export default function FacultyProfilePage() {
                 </FormField>
               )}
               <div style={{ paddingTop: credPassword ? 0 : 24 }}>
-                <button type="button" onClick={handleSaveCredentials} disabled={credSaving} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 20px', borderRadius: 8, border: 'none', fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 600, cursor: credSaving ? 'default' : 'pointer', background: `linear-gradient(135deg,${T.green},${T.greenDeep})`, color: 'var(--surface)', boxShadow: '0 4px 14px rgba(0,0,0,0.25)', opacity: credSaving ? 0.7 : 1, width: '100%', transition: 'all 0.2s' }}>
+                <button type="button" onClick={handleSaveCredentials} disabled={credSaving} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 20px', borderRadius: 8, border: 'none', fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 600, cursor: credSaving ? 'default' : 'pointer', background: `linear-gradient(135deg,${T.green},${T.greenDeep})`, color: '#fff', boxShadow: '0 4px 14px rgba(0,0,0,0.25)', opacity: credSaving ? 0.7 : 1, width: '100%', transition: 'all 0.2s' }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                   {credSaving ? 'Saving…' : (form.email ? 'Update Credentials' : 'Activate Account')}
                 </button>

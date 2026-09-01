@@ -34,7 +34,7 @@ export const ACADEMIC_RANKS = [
 export const DEPARTMENTS   = ['CCS','CEAS','CHTM','CBA','CAHS']
 export const ALL_DAYS      = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
 export const RATING_LABELS = { 5:'Expert', 4:'Highly Proficient', 3:'Competent', 2:'Developing', 1:'Beginner' }
-export const RATING_COLORS = { 5:'var(--meadow)', 4:'#2563EB', 3:'var(--meadow)', 2:'#D97706', 1:'#C0392B' }
+export const RATING_COLORS = { 5:'var(--meadow)', 4:'#60A5FA', 3:'var(--meadow)', 2:'#F59E0B', 1:'#EF4444' }
 export const SPECS_PREVIEW = 4
 
 export const EMPTY_FACULTY = {
@@ -45,8 +45,8 @@ export const EMPTY_FACULTY = {
 }
 
 const AVATAR_COLORS = [
-  ['var(--meadow)','var(--meadow-soft)'],['#2563EB','rgba(59, 130, 246, 0.1)'],['#7C3AED','color-mix(in srgb, #6D28D9 15%, transparent)'],
-  ['#D97706','rgba(217, 119, 6, 0.1)'],['#DC2626','rgba(220, 38, 38, 0.1)'],['#0891B2','rgba(59, 130, 246, 0.1)'],
+  ['var(--meadow)','var(--meadow-soft)'],['#60A5FA','rgba(59, 130, 246, 0.1)'],['#7C3AED','color-mix(in srgb, #6D28D9 15%, transparent)'],
+  ['#F59E0B','rgba(217, 119, 6, 0.1)'],['#EF4444','rgba(220, 38, 38, 0.1)'],['#0891B2','rgba(59, 130, 246, 0.1)'],
 ]
 
 // ─── Pure utilities ───────────────────────────────────────────────────────────
@@ -222,16 +222,16 @@ export function DeleteConfirmModal({ name, onConfirm, onCancel, deleting }) {
     <div style={{ position:'fixed', inset:0, zIndex:1100, background:'rgba(10,30,18,0.55)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
       <div style={{ background: 'var(--surface)', borderRadius:18, padding:'28px 28px 24px', maxWidth:400, width:'100%', boxShadow:'0 20px 60px rgba(10,30,18,0.22)', border:'1px solid var(--border)', textAlign:'center' }}>
         <div style={{ width:52, height:52, borderRadius:'50%', background:'rgba(220, 38, 38, 0.1)', margin:'0 auto 16px', display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke='#EF4444' strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
         </div>
         <div style={{ fontSize:16, fontWeight:700, color: 'var(--ink)', marginBottom:8 }}>Permanently Delete Faculty Member?</div>
         <div style={{ fontSize:13, color: 'var(--muted)', marginBottom:24, lineHeight:1.5 }}>
           This cannot be undone. <strong style={{ color: 'var(--ink)' }}>{name}</strong> and their login account will be removed forever.
-          <div style={{ marginTop:8, fontSize:12, color:'#D97706', background:'rgba(217, 119, 6, 0.1)', borderRadius:8, padding:'6px 10px', border:'1px solid #FDE68A', textAlign:'left' }}>Tip: use Archive instead to hide them without losing their data.</div>
+          <div style={{ marginTop:8, fontSize:12, color:'#F59E0B', background:'rgba(217, 119, 6, 0.1)', borderRadius:8, padding:'6px 10px', border:'1px solid #FDE68A', textAlign:'left' }}>Tip: use Archive instead to hide them without losing their data.</div>
         </div>
         <div style={{ display:'flex', gap:10 }}>
           <button onClick={onCancel} style={{ flex:1, padding:'10px', borderRadius:9, border:'1.5px solid var(--border)', background: 'var(--surface)', fontSize:13, fontWeight:600, color: 'var(--muted)', cursor:'pointer', fontFamily:'Inter,sans-serif' }}>Cancel</button>
-          <button onClick={onConfirm} disabled={deleting} style={{ flex:1, padding:'10px', borderRadius:9, border:'none', background:'#C0392B', fontSize:13, fontWeight:700, color: 'var(--surface)', cursor:'pointer', fontFamily:'Inter,sans-serif', opacity:deleting ? 0.7 : 1 }}>
+          <button onClick={onConfirm} disabled={deleting} style={{ flex:1, padding:'10px', borderRadius:9, border:'none', background:'#EF4444', fontSize:13, fontWeight:700, color: '#fff', cursor:'pointer', fontFamily:'Inter,sans-serif', opacity:deleting ? 0.7 : 1 }}>
             {deleting ? 'Deleting...' : 'Yes, Permanently Delete'}
           </button>
         </div>

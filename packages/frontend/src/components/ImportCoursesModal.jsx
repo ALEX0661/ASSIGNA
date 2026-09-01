@@ -158,7 +158,7 @@ const Spin = () => (
 )
 
 const ErrBox = ({ msg }) => !msg ? null : (
-  <div style={{ background:'#FFF5F5', border:'1px solid #FECACA', borderRadius:9, padding:'9px 13px', fontSize:12, color:'#DC2626', display:'flex', alignItems:'flex-start', gap:7 }}>
+  <div style={{ background:'rgba(220, 38, 38, 0.05)', border:'1px solid #FECACA', borderRadius:9, padding:'9px 13px', fontSize:12, color:'#EF4444', display:'flex', alignItems:'flex-start', gap:7 }}>
     <svg style={{ flexShrink:0, marginTop:1 }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
     {msg}
   </div>
@@ -284,7 +284,7 @@ function UploadStep({ onUploaded }) {
       
       {error && error.includes('template') && (
         <div className="im-warn-box">
-          <svg style={{ flexShrink:0, marginTop:1 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <svg style={{ flexShrink:0, marginTop:1 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           <span>
             <strong>Wrong template!</strong> For course import, please use the official <strong>CCS Course List</strong> template.
           </span>
@@ -321,7 +321,7 @@ const SEM_DETECT_MAP = [
 const SEM_BADGE = {
   '1st Semester': { bg:'var(--meadow-soft)', color:'var(--meadow)', border:'var(--meadow-border)', short:'1st Sem' },
   '2nd Semester': { bg:'#E6FAF3', color:'var(--meadow)', border:'#A7F3D0', short:'2nd Sem' },
-  'Midyear':      { bg:'rgba(217, 119, 6, 0.1)', color:'#D97706', border:'rgba(245, 158, 11, 0.35)', short:'Midyear' },
+  'Midyear':      { bg:'rgba(217, 119, 6, 0.1)', color:'#F59E0B', border:'rgba(245, 158, 11, 0.35)', short:'Midyear' },
 }
 function detectSemester(sheetName) {
   const lower = sheetName.toLowerCase().trim()
@@ -430,7 +430,7 @@ function SheetSelectionStep({ sheets, fileData, lockedProgram, onParsed, onBack 
                   {badge.short}
                 </span>
               ) : (
-                <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:99, background:'#FFF5F5', color:'#DC2626', border:'1px solid #FECACA' }}>
+                <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:99, background:'rgba(220, 38, 38, 0.05)', color:'#EF4444', border:'1px solid #FECACA' }}>
                   Unknown
                 </span>
               )}
@@ -456,8 +456,8 @@ function SheetSelectionStep({ sheets, fileData, lockedProgram, onParsed, onBack 
 const ICM_PROG_META = {
   'BSCS':      { color: 'var(--meadow)', bg: 'var(--meadow-soft)' },
   'BSIT':      { color: 'var(--meadow)', bg: '#E6FAF3' },
-  'BSEMC-GD':  { color: '#D97706', bg: 'rgba(217, 119, 6, 0.1)' },
-  'BSEMC-DAT': { color: '#DC2626', bg: '#FFF5F5' },
+  'BSEMC-GD':  { color: '#F59E0B', bg: 'rgba(217, 119, 6, 0.1)' },
+  'BSEMC-DAT': { color: '#EF4444', bg: 'rgba(220, 38, 38, 0.05)' },
 }
 const ICM_PROG_META_DEFAULT = { color: 'var(--meadow)', bg: 'var(--meadow-soft)' }
 
@@ -518,7 +518,7 @@ function BlockConfigStep({ courses, onBack, onSubmit }) {
   const semBadge = {
     '1st Semester': { bg:'var(--meadow-soft)', color:'var(--meadow)', short:'1st Sem' },
     '2nd Semester': { bg:'#E6FAF3', color:'var(--meadow)', short:'2nd Sem' },
-    'Midyear':      { bg:'rgba(217, 119, 6, 0.1)', color:'#D97706', short:'Midyear' },
+    'Midyear':      { bg:'rgba(217, 119, 6, 0.1)', color:'#F59E0B', short:'Midyear' },
   }
 
   return (
@@ -655,7 +655,7 @@ function EditableRow({ course, invalid, lockedProgram, onEdit, onRemove }) {
   return (
     <tr onClick={()=>setEditing(true)} style={{ background:invalid?'rgba(220, 38, 38, 0.05)':'transparent', cursor:'pointer' }}>
       <td style={{ padding:'8px 8px' }}>
-        <span style={{ display:'inline-block', padding:'2px 8px', background:invalid?'rgba(220, 38, 38, 0.1)':'var(--meadow-soft)', color:invalid?'#DC2626':'var(--meadow)', borderRadius:99, fontSize:11, fontWeight:700 }}>
+        <span style={{ display:'inline-block', padding:'2px 8px', background:invalid?'rgba(220, 38, 38, 0.1)':'var(--meadow-soft)', color:invalid?'#EF4444':'var(--meadow)', borderRadius:99, fontSize:11, fontWeight:700 }}>
           {course.courseCode||'—'}
         </span>
       </td>
@@ -669,7 +669,7 @@ function EditableRow({ course, invalid, lockedProgram, onEdit, onRemove }) {
       <td style={{ textAlign:'center', padding:'8px 8px' }}>
         {Number(course.blocks)>=1
           ? <span style={{ fontSize:12, fontWeight:700, color:'var(--meadow)' }}>{course.blocks}</span>
-          : <span style={{ color:'#DC2626', fontWeight:700, fontSize:12 }}>!</span>}
+          : <span style={{ color:'#EF4444', fontWeight:700, fontSize:12 }}>!</span>}
       </td>
       <td style={{ padding:'8px 10px' }}>
         <button className="im-remove" onClick={e=>{e.stopPropagation();onRemove()}} title="Remove row">
@@ -740,7 +740,7 @@ function ReviewStep({ courses, lockedProgram, onBack, onCommit, onRemove, onEdit
                       <td style={{ padding:'8px' }}><span style={{ display:'inline-block', padding:'2px 8px', background:'var(--meadow-soft)', color:'var(--meadow)', borderRadius:99, fontSize:11, fontWeight:700 }}>{f.course.courseCode}</span></td>
                       <td style={{ padding:'8px', fontWeight:500, fontSize:12 }}>{f.course.title}</td>
                       <td style={{ padding:'8px', fontSize:12 }}>{f.course.program}</td>
-                      <td style={{ padding:'8px', color:'#DC2626', fontSize:12 }}>{f.reason}</td>
+                      <td style={{ padding:'8px', color:'#EF4444', fontSize:12 }}>{f.reason}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -764,7 +764,7 @@ function ReviewStep({ courses, lockedProgram, onBack, onCommit, onRemove, onEdit
             <strong style={{ color:'var(--ink)' }}>{courses.length}</strong> course{courses.length!==1?'s':''} ready
           </span>
           {invalidCount > 0 && (
-            <span style={{ background:'#FFF0F0', color:'#DC2626', fontSize:11, fontWeight:700, padding:'2px 9px', borderRadius:99, border:'1px solid #FECACA' }}>
+            <span style={{ background:'#FFF0F0', color:'#EF4444', fontSize:11, fontWeight:700, padding:'2px 9px', borderRadius:99, border:'1px solid #FECACA' }}>
               ⚠ {invalidCount} invalid
             </span>
           )}
@@ -822,7 +822,7 @@ function ReviewStep({ courses, lockedProgram, onBack, onCommit, onRemove, onEdit
 
       {invalidCount > 0 && (
         <HintBox>
-          <span style={{ color:'#DC2626', fontWeight:600 }}>{invalidCount} row{invalidCount!==1?'s':''}</span> with missing data will be skipped on save. Fix them by clicking the row, or remove them.
+          <span style={{ color:'#EF4444', fontWeight:600 }}>{invalidCount} row{invalidCount!==1?'s':''}</span> with missing data will be skipped on save. Fix them by clicking the row, or remove them.
         </HintBox>
       )}
 

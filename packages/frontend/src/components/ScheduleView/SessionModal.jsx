@@ -231,8 +231,8 @@ export function OverrideConfirmDialog({ event, newDay, newPeriod, newRoom, newFa
 
         {conflicts.length > 0 && (
           <>
-            <div style={{ display:'flex', alignItems:'center', gap:6, margin:'0 0 6px', fontSize:12, fontWeight:700, color:'#b91c1c' }}>
-              <Ic.Warning size={13} color="#b91c1c" />
+            <div style={{ display:'flex', alignItems:'center', gap:6, margin:'0 0 6px', fontSize:12, fontWeight:700, color:'#EF4444' }}>
+              <Ic.Warning size={13} color='#EF4444' />
               {conflicts.length} class{conflicts.length > 1 ? 'es' : ''} will conflict
             </div>
             <ConflictTable conflicts={conflicts} />
@@ -240,7 +240,7 @@ export function OverrideConfirmDialog({ event, newDay, newPeriod, newRoom, newFa
         )}
 
         <div style={{ display:'flex', gap:10, marginTop:20, borderTop:`1px solid ${TV.border}`, paddingTop:16 }}>
-          <button onClick={onConfirm} style={{ flex:1, padding:'10px 16px', fontSize:13, fontWeight:700, background:'#dc2626', color: 'var(--surface)', border:'none', borderRadius:9, cursor:'pointer', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+          <button onClick={onConfirm} style={{ flex:1, padding:'10px 16px', fontSize:13, fontWeight:700, background:'#EF4444', color: '#fff', border:'none', borderRadius:9, cursor:'pointer', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
             <Ic.Warning size={13} color="#fff" /> Force Override
           </button>
           <button onClick={onCancel} style={{ flex:1, padding:'10px 16px', fontSize:13, fontWeight:600, background: 'var(--surface)', color:TV.text, border:`1px solid ${TV.border}`, borderRadius:9, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
@@ -787,10 +787,10 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                       <div className="sm-merge-tip" style={{
                         display:'none', position:'absolute', top:'calc(100% + 6px)', left:0, zIndex:20,
                         width:260, padding:'11px 13px', borderRadius:10,
-                        background:'var(--ink)', color:'var(--surface)', fontSize:11, lineHeight:1.65,
+                        background:'var(--ink)', color: '#fff', fontSize:11, lineHeight:1.65,
                         boxShadow:'0 8px 28px rgba(0,0,0,.22)', whiteSpace:'normal',
                       }}>
-                        <div style={{ fontWeight:700, color: 'var(--surface)', marginBottom:4, display:'flex', alignItems:'center', gap:5 }}>
+                        <div style={{ fontWeight:700, color: '#fff', marginBottom:4, display:'flex', alignItems:'center', gap:5 }}>
                           <Ic.Link size={10} color={TV.deep} style={{ filter:'brightness(2)' }} />
                           Merged with {mergePartner.program} {mergePartner.year}-{mergePartner.block}
                         </div>
@@ -880,12 +880,12 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                   id={`tour-sm-tab-${t.key}`}
                   className={`sm-tab${tab === t.key ? ' active' : ''}${t.warn ? ' warn' : ''}`}
                   onClick={() => setTab(t.key)}
-                  style={ t.merge && tab !== t.key ? { color:'#1d4ed8' } : undefined }
+                  style={ t.merge && tab !== t.key ? { color:'#60A5FA' } : undefined }
                 >
                   {t.icon}
                   {t.label}
                   {t.merge && tab !== t.key && (
-                    <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:16, height:16, padding:'0 4px', borderRadius:99, fontSize:9, fontWeight:700, background:'rgba(59, 130, 246, 0.1)', color:'#1d4ed8' }}>
+                    <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:16, height:16, padding:'0 4px', borderRadius:99, fontSize:9, fontWeight:700, background:'rgba(59, 130, 246, 0.1)', color:'#60A5FA' }}>
                       ⊕
                     </span>
                   )}
@@ -960,11 +960,11 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                       const combinedLabel = [...conflictParts].join(' + ') || 'Conflict'
 
                       let bg, color, bl
-                      if (isSelected && hasAny)          { bg='#dc2626'; color='#fff'; bl='3px solid #991b1b' }
+                      if (isSelected && hasAny)          { bg='#EF4444'; color='#fff'; bl='3px solid #991b1b' }
                       else if (isSelected && mergePartnerAtSlot) { bg=TV.deep; color='#fff'; bl=`3px solid ${TV.deep}` }
                       else if (isSelected)               { bg=TV.deep;   color='#fff'; bl=`3px solid ${TV.deep}` }
-                      else if (mergePartnerAtSlot)       { bg='#eff6ff'; color='#1d4ed8'; bl='3px solid #93c5fd' }
-                      else if (hasAny)                   { bg='rgba(239, 68, 68, 0.05)'; color='#b91c1c'; bl='3px solid #fca5a5' }
+                      else if (mergePartnerAtSlot)       { bg='rgba(37, 99, 235, 0.1)'; color='#60A5FA'; bl='3px solid #93c5fd' }
+                      else if (hasAny)                   { bg='rgba(239, 68, 68, 0.05)'; color='#EF4444'; bl='3px solid #fca5a5' }
                       else                               { bg=isHour?'var(--bg)': 'var(--surface)'; color=TV.text; bl='3px solid transparent' }
 
                       return (
@@ -988,13 +988,13 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                             <span style={{ fontSize:9.5, opacity:.65 }}>→ {minutesToTimeLabel(s.startMinutes + duration)}</span>
                           </div>
                           {mergePartnerAtSlot && !isSelected && (
-                            <span style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:9, background:'rgba(59, 130, 246, 0.1)', color:'#1d4ed8', borderRadius:4, padding:'1px 6px', fontWeight:700, flexShrink:0 }}>
-                              <Ic.Link size={9} color="#1d4ed8" /> Would merge · {mergePartnerAtSlot.program} {mergePartnerAtSlot.year}-{mergePartnerAtSlot.block}
+                            <span style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:9, background:'rgba(59, 130, 246, 0.1)', color:'#60A5FA', borderRadius:4, padding:'1px 6px', fontWeight:700, flexShrink:0 }}>
+                              <Ic.Link size={9} color='#60A5FA' /> Would merge · {mergePartnerAtSlot.program} {mergePartnerAtSlot.year}-{mergePartnerAtSlot.block}
                             </span>
                           )}
                           {hasAny && !isSelected && (
-                            <span style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:9, background:'rgba(239, 68, 68, 0.1)', color:'#b91c1c', borderRadius:4, padding:'1px 6px', fontWeight:700, flexShrink:0 }}>
-                              <Ic.Warning size={9} color="#b91c1c" /> {combinedLabel}
+                            <span style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:9, background:'rgba(239, 68, 68, 0.1)', color:'#EF4444', borderRadius:4, padding:'1px 6px', fontWeight:700, flexShrink:0 }}>
+                              <Ic.Warning size={9} color='#EF4444' /> {combinedLabel}
                             </span>
                           )}
                         </div>
@@ -1026,13 +1026,13 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                     {newRoom && newRoom !== 'TBA' ? newRoom : 'None (TBA)'}
                   </span>
                   {roomConflictSet.has(newRoom) && newRoom !== 'TBA' && (
-                    <span style={{ display:'inline-flex', alignItems:'center', gap:5, marginLeft:'auto', fontSize:10.5, fontWeight:700, color:'#b91c1c', background:'rgba(239, 68, 68, 0.1)', border:'1px solid #fca5a5', padding:'3px 9px', borderRadius:6 }}>
-                      <Ic.Warning size={10} color="#b91c1c" /> Occupied at this time
+                    <span style={{ display:'inline-flex', alignItems:'center', gap:5, marginLeft:'auto', fontSize:10.5, fontWeight:700, color:'#EF4444', background:'rgba(239, 68, 68, 0.1)', border:'1px solid #fca5a5', padding:'3px 9px', borderRadius:6 }}>
+                      <Ic.Warning size={10} color='#EF4444' /> Occupied at this time
                     </span>
                   )}
                   {mergePreviewRooms.has(newRoom) && newRoom !== 'TBA' && !roomConflictSet.has(newRoom) && (
-                    <span style={{ display:'inline-flex', alignItems:'center', gap:5, marginLeft:'auto', fontSize:10.5, fontWeight:700, color:'#1d4ed8', background:'rgba(59, 130, 246, 0.1)', border:'1px solid #93c5fd', padding:'3px 9px', borderRadius:6 }}>
-                      <Ic.Link size={10} color="#1d4ed8" /> Would merge at current time
+                    <span style={{ display:'inline-flex', alignItems:'center', gap:5, marginLeft:'auto', fontSize:10.5, fontWeight:700, color:'#60A5FA', background:'rgba(59, 130, 246, 0.1)', border:'1px solid #93c5fd', padding:'3px 9px', borderRadius:6 }}>
+                      <Ic.Link size={10} color='#60A5FA' /> Would merge at current time
                     </span>
                   )}
                 </div>
@@ -1115,12 +1115,12 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                       {/* ── Real active conflicts ── */}
                       {currentReal.length > 0 && (
                         <div>
-                          <p className="sm-field-label" style={{ color:'#b91c1c' }}>
-                            <Ic.Warning size={10} color="#b91c1c" />
+                          <p className="sm-field-label" style={{ color:'#EF4444' }}>
+                            <Ic.Warning size={10} color='#EF4444' />
                             Active Conflicts &nbsp;·&nbsp; {currentReal.length} class{currentReal.length > 1 ? 'es' : ''}
                           </p>
                           <div style={{ background:'rgba(220, 38, 38, 0.05)', border:'1px solid #fecaca', borderRadius:10, padding:'10px 14px' }}>
-                            <p style={{ margin:'0 0 8px', fontSize:11.5, color:'#991b1b' }}>
+                            <p style={{ margin:'0 0 8px', fontSize:11.5, color:'#FCA5A5' }}>
                               These conflicts exist in the current saved schedule and need to be resolved.
                             </p>
                             <ConflictTable conflicts={currentReal} />
@@ -1220,7 +1220,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
 
                     {(() => {
                       const SPEC_LABELS = { 5:'Expert', 4:'Highly Proficient', 3:'Competent', 2:'Developing', 1:'Beginner' }
-                      const SPEC_COLORS = { 5:'var(--meadow)', 4:'#2563EB', 3:'var(--meadow)', 2:'#D97706', 1:'#C0392B' }
+                      const SPEC_COLORS = { 5:'var(--meadow)', 4:'#60A5FA', 3:'var(--meadow)', 2:'#F59E0B', 1:'#EF4444' }
 
                       // Find the first index in the ranked list where conflicts or unit overflow begin
                       let dividerAt = -1
@@ -1246,8 +1246,8 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                         // Colour scheme — cleaner, fewer colours
                         let bg, color, bl, dotColor
                         if      (isSelected && isClean && !wouldExceed)      { bg='var(--meadow-soft)'; color=TV.deep;    bl=`3px solid ${TV.deep}`; dotColor=TV.deep }
-                        else if (isSelected && (isPartial || wouldExceed))   { bg='#FFF3E0'; color='#b45309';  bl='3px solid #f59e0b';    dotColor='#f59e0b' }
-                        else if (isSelected)                                  { bg='#FFF0F0'; color='#991b1b';  bl='3px solid #f87171';    dotColor='#ef4444' }
+                        else if (isSelected && (isPartial || wouldExceed))   { bg='#FFF3E0'; color='#F59E0B';  bl='3px solid #f59e0b';    dotColor='#f59e0b' }
+                        else if (isSelected)                                  { bg='#FFF0F0'; color='#FCA5A5';  bl='3px solid #f87171';    dotColor='#ef4444' }
                         else if (isClean && !wouldExceed)                    { bg='#fff';    color=TV.text;    bl='3px solid transparent'; dotColor='var(--meadow)' }
                         else if (isPartial || wouldExceed)                   { bg='#fff';    color=TV.text;    bl='3px solid #fbbf24';    dotColor='#f59e0b' }
                         else                                                  { bg='#fff';    color=TV.text;    bl='3px solid #fca5a5';    dotColor='#ef4444' }
@@ -1256,7 +1256,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                         const displayUnits   = isSelected ? unitInfo.projectedUnits : unitInfo.usedUnits
                         const unitBarPct     = hasUnitInfo ? Math.min(100, Math.round((displayUnits / unitInfo.maxUnits) * 100)) : 0
                         const unitBarColor   = (wouldExceed && isSelected) ? '#ef4444' : unitBarPct > 80 ? '#f59e0b' : 'var(--meadow)'
-                        const unitLabelColor = (wouldExceed && isSelected) ? '#b91c1c' : unitBarPct > 80 ? '#92400e' : TV.muted
+                        const unitLabelColor = (wouldExceed && isSelected) ? '#EF4444' : unitBarPct > 80 ? '#92400e' : TV.muted
 
                         return (
                           <div key={fac}>
@@ -1296,18 +1296,18 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                                   <span style={{ fontSize:9, fontWeight:600, color: 'var(--meadow)', flexShrink:0 }}>Free · all {totalSessions}</span>
                                 )}
                                 {!isSelected && isPartial && (
-                                  <span style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:9, fontWeight:700, color:'#b45309', flexShrink:0 }}>
-                                    <Ic.Warning size={8} color="#b45309" /> {conflictCount}/{totalSessions} conflict
+                                  <span style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:9, fontWeight:700, color:'#F59E0B', flexShrink:0 }}>
+                                    <Ic.Warning size={8} color='#F59E0B' /> {conflictCount}/{totalSessions} conflict
                                   </span>
                                 )}
                                 {!isSelected && isFullConflict && (
-                                  <span style={{ fontSize:9, fontWeight:700, color:'#b91c1c', flexShrink:0 }}>Fully busy</span>
+                                  <span style={{ fontSize:9, fontWeight:700, color:'#EF4444', flexShrink:0 }}>Fully busy</span>
                                 )}
                                 {!isSelected && !isPartial && !isFullConflict && wouldExceed && (
-                                  <span style={{ fontSize:9, fontWeight:700, color:'#b91c1c', flexShrink:0 }}>Over cap</span>
+                                  <span style={{ fontSize:9, fontWeight:700, color:'#EF4444', flexShrink:0 }}>Over cap</span>
                                 )}
                                 {isSelected && (conflictCount > 0 || wouldExceed) && (
-                                  <span style={{ fontSize:9, color: isPartial || wouldExceed ? '#b45309' : '#991b1b', fontWeight:600, flexShrink:0 }}>
+                                  <span style={{ fontSize:9, color: isPartial || wouldExceed ? '#F59E0B' : '#FCA5A5', fontWeight:600, flexShrink:0 }}>
                                     {conflictCount > 0 ? `${conflictCount} overlap${conflictCount > 1 ? 's' : ''}` : 'Over cap'}
                                   </span>
                                 )}
@@ -1419,7 +1419,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                             {result?.ok
                               ? <Ic.CheckCircle size={15} color="var(--meadow)" />
                               : result?.error
-                                ? <Ic.AlertCircle size={15} color="#b91c1c" />
+                                ? <Ic.AlertCircle size={15} color='#EF4444' />
                                 : hasConflict
                                   ? <Ic.Warning size={15} color="#c2410c" />
                                   : <Ic.Clock size={15} color={TV.muted} />
@@ -1480,7 +1480,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
 
                             {/* Save result feedback */}
                             {result?.error && (
-                              <p style={{ margin:'4px 0 0', fontSize:10.5, color:'#b91c1c' }}>{result.error}</p>
+                              <p style={{ margin:'4px 0 0', fontSize:10.5, color:'#EF4444' }}>{result.error}</p>
                             )}
                           </div>
                         </div>
@@ -1502,10 +1502,10 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
             {tab === 'batch' && (
               <div style={{ flexShrink:0, padding:'14px 20px', display:'flex', alignItems:'center', gap:10, background:'var(--bg)' }}>
                 {batchError && (
-                  <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(220, 38, 38, 0.05)', border:'1px solid #fecaca', borderRadius:8, padding:'6px 10px', fontSize:11.5, color:'#b91c1c', fontWeight:600, flex:1 }}>
-                    <Ic.AlertCircle size={12} color="#b91c1c" />
+                  <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(220, 38, 38, 0.05)', border:'1px solid #fecaca', borderRadius:8, padding:'6px 10px', fontSize:11.5, color:'#EF4444', fontWeight:600, flex:1 }}>
+                    <Ic.AlertCircle size={12} color='#EF4444' />
                     <span style={{ flex:1 }}>{batchError}</span>
-                    <button onClick={() => setBatchError('')} style={{ background:'none', border:'none', color:'#b91c1c', cursor:'pointer', fontSize:16, lineHeight:1, padding:0 }}>×</button>
+                    <button onClick={() => setBatchError('')} style={{ background:'none', border:'none', color:'#EF4444', cursor:'pointer', fontSize:16, lineHeight:1, padding:0 }}>×</button>
                   </div>
                 )}
 
@@ -1528,7 +1528,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                       : isTBA
                         ? 'linear-gradient(135deg,#6b7280,#4b5563)'
                         : batchConflictCount > 0
-                          ? '#d97706'
+                          ? '#F59E0B'
                           : 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))'
                     return (
                       <button
@@ -1563,10 +1563,10 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
             {tab !== 'batch' && tab !== 'merge' && (
               <>
                 {error && (
-                  <div style={{ display:'flex', alignItems:'center', gap:8, background:'rgba(220, 38, 38, 0.05)', border:'1px solid #fecaca', borderRadius:9, padding:'8px 12px', marginBottom:10, fontSize:12, color:'#b91c1c', fontWeight:600 }}>
-                    <Ic.AlertCircle size={13} color="#b91c1c" />
+                  <div style={{ display:'flex', alignItems:'center', gap:8, background:'rgba(220, 38, 38, 0.05)', border:'1px solid #fecaca', borderRadius:9, padding:'8px 12px', marginBottom:10, fontSize:12, color:'#EF4444', fontWeight:600 }}>
+                    <Ic.AlertCircle size={13} color='#EF4444' />
                     <span style={{ flex:1 }}>{error}</span>
-                    <button onClick={() => setError('')} style={{ background:'none', border:'none', color:'#b91c1c', cursor:'pointer', fontSize:17, lineHeight:1, padding:0, fontFamily:'inherit' }}>×</button>
+                    <button onClick={() => setError('')} style={{ background:'none', border:'none', color:'#EF4444', cursor:'pointer', fontSize:17, lineHeight:1, padding:0, fontFamily:'inherit' }}>×</button>
                   </div>
                 )}
 
@@ -1588,8 +1588,8 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                       )}
                       {realPreviewConflicts.length > 0 && (
                         <div style={{ display:'flex', alignItems:'center', gap:8, background:'rgba(220, 38, 38, 0.05)', border:'1px solid #fecaca', borderRadius:9, padding:'7px 12px', marginBottom:10, fontSize:11.5 }}>
-                          <Ic.Warning size={12} color="#b91c1c" />
-                          <span style={{ color:'#b91c1c', fontWeight:600 }}>
+                          <Ic.Warning size={12} color='#EF4444' />
+                          <span style={{ color:'#EF4444', fontWeight:600 }}>
                             {realPreviewConflicts.length} conflict{realPreviewConflicts.length > 1 ? 's' : ''} in proposed slot
                           </span>
                           <button className="sm-view-link" onClick={() => setTab('conflicts')} style={{ marginLeft:'auto' }}>
@@ -1614,7 +1614,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                           background: !hasChanges || readOnly
                             ? '#f3f4f6'
                             : hasRealConflicts
-                              ? '#dc2626'
+                              ? '#EF4444'
                               : 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))',
                           color: !hasChanges || readOnly ? TV.muted : 'var(--surface)',
                           cursor: hasChanges && !saving && !readOnly ? 'pointer' : 'default',

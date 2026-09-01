@@ -116,8 +116,8 @@ function PillModal({ status, label, onClose, onGoScheduler, onStopConfirm }) {
             border: `1px solid ${isComplete ? G.meadowBorder : isFailed ? 'rgba(220, 38, 38, 0.25)' : 'rgba(245, 158, 11, 0.25)'}`,
           }}>
             {isComplete && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={G.meadow} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
-            {isFailed   && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>}
-            {isRunning  && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5" style={{ animation:'pillSpin 1s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>}
+            {isFailed   && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke='#EF4444' strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>}
+            {isRunning  && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2.5" style={{ animation:'pillSpin 1s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>}
           </div>
           <div>
             <div style={{ fontSize:15, fontWeight:800, color:G.ink }}>
@@ -154,10 +154,10 @@ function PillModal({ status, label, onClose, onGoScheduler, onStopConfirm }) {
               onMouseLeave={e => { e.currentTarget.style.background='rgba(220, 38, 38, 0.05)' }}
             >
               <div style={{ width:32, height:32, borderRadius:8, background:'rgba(239, 68, 68, 0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke='#EF4444' strokeWidth="2.5"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
               </div>
               <div>
-                <div style={{ fontSize:13, fontWeight:700, color:'#DC2626' }}>Stop generation</div>
+                <div style={{ fontSize:13, fontWeight:700, color:'#EF4444' }}>Stop generation</div>
                 <div style={{ fontSize:11, color:G.muted }}>Cancel this run — progress will be lost.</div>
               </div>
             </button>
@@ -323,7 +323,7 @@ export default function SolverStatusWidget() {
             </div>
           ) : (
             <div style={{ width:36, height:36, borderRadius:'50%', background:'rgba(239, 68, 68, 0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke='#EF4444' strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
             </div>
           )}
 

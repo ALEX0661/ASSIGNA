@@ -174,14 +174,14 @@ export default function SettingsPage() {
 
   const availableThemes = [
     { id: 'default', name: 'Meadow Green', color: '#15803D' },
-    { id: 'blue', name: 'Ocean Blue', color: '#2563EB' },
+    { id: 'blue', name: 'Ocean Blue', color: '#60A5FA' },
     { id: 'purple', name: 'Royal Purple', color: '#9333EA' },
     { id: 'rose', name: 'Rose Red', color: '#E11D48' },
-    { id: 'amber', name: 'Sunset Amber', color: '#D97706' },
+    { id: 'amber', name: 'Sunset Amber', color: '#F59E0B' },
     { id: 'slate', name: 'Slate Gray', color: '#475569' },
     { id: 'teal', name: 'Teal', color: '#0D9488' },
     { id: 'indigo', name: 'Indigo', color: '#4F46E5' },
-    { id: 'crimson', name: 'Crimson', color: '#DC2626' }
+    { id: 'crimson', name: 'Crimson', color: '#EF4444' }
   ]
 
   useEffect(() => {
@@ -342,10 +342,10 @@ export default function SettingsPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'rgba(245, 158, 11, 0.05)', padding: '8px 16px', borderRadius: '10px', border: '1px solid #FDE68A', animation: 'fadeIn 0.2s ease-out' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #FCD34D' }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   </div>
                   <span style={{ fontSize: 13, color: G.ink, fontWeight: 600, fontFamily: "'Inter', sans-serif" }}>
-                    <strong style={{ color: '#D97706' }}>Unsaved</strong> days changes
+                    <strong style={{ color: '#F59E0B' }}>Unsaved</strong> days changes
                   </span>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -365,7 +365,7 @@ export default function SettingsPage() {
 
           <div className="stg-card-body">
             {!loading && days.length === 0 && (
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#DC2626', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#EF4444', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 At least one operational day is required
               </div>
@@ -410,10 +410,10 @@ export default function SettingsPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'rgba(245, 158, 11, 0.05)', padding: '8px 16px', borderRadius: '10px', border: '1px solid #FDE68A', animation: 'fadeIn 0.2s ease-out' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #FCD34D' }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   </div>
                   <span style={{ fontSize: 13, color: G.ink, fontWeight: 600, fontFamily: "'Inter', sans-serif" }}>
-                    <strong style={{ color: '#D97706' }}>Unsaved</strong> time boundaries
+                    <strong style={{ color: '#F59E0B' }}>Unsaved</strong> time boundaries
                   </span>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>

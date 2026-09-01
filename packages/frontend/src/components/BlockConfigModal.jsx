@@ -28,9 +28,9 @@ const ORDINAL = n => {
 // Program badge colors (Adapted for the new palette)
 const PROG_META = {
   'BSCS':      { color: G.meadowDeep, bg: G.meadowSoft },
-  'BSIT':      { color: '#0369A1', bg: 'rgba(59, 130, 246, 0.1)' }, // Kept distinct blue for IT
-  'BSEMC-GD':  { color: '#D97706', bg: 'rgba(217, 119, 6, 0.1)' },
-  'BSEMC-DAT': { color: '#DC2626', bg: '#FFF5F5' },
+  'BSIT':      { color: '#38BDF8', bg: 'rgba(59, 130, 246, 0.1)' }, // Kept distinct blue for IT
+  'BSEMC-GD':  { color: '#F59E0B', bg: 'rgba(217, 119, 6, 0.1)' },
+  'BSEMC-DAT': { color: '#EF4444', bg: 'rgba(220, 38, 38, 0.05)' },
 }
 const DEFAULT_META = { color: G.meadowDeep, bg: G.meadowSoft }
 
@@ -91,11 +91,11 @@ if (!document.getElementById('block-config-modal-style')) {
     .bc-close-btn { 
       display: inline-flex; align-items: center; justify-content: center;
       width: 32px; height: 32px; border-radius: 8px;
-      border: 1.5px solid #DCF3E4; cursor: pointer;
-      background: #EFFAF4; color: #2E9E5B; transition: all 0.2s; flex-shrink: 0;
+      border: 1.5px solid var(--meadow-border); cursor: pointer;
+      background: var(--meadow-soft); color: var(--meadow); transition: all 0.2s; flex-shrink: 0;
       padding: 0;
     }
-    .bc-close-btn:hover { background: #FFE8E8; border-color: #FECACA; color: #DC2626; }
+    .bc-close-btn:hover { background: 'rgba(239, 68, 68, 0.1)'; border-color: 'rgba(239, 68, 68, 0.25)'; color: '#EF4444'; }
 
     .bc-cancel-btn:hover { background: ${G.hover} !important; color: ${G.meadowDeep} !important; border-color: ${G.meadowBorder} !important; }
     
@@ -212,7 +212,7 @@ export default function BlockConfigModal({ semester, onClose, onApplied }) {
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', padding:'24px 28px', borderBottom:`1px solid ${G.border}`, flexShrink:0, background: 'var(--surface)' }}>
           <div>
             <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:4 }}>
-              <div style={{ width:36, height:36, borderRadius:10, background:G.meadowSoft, border:`1px solid ${G.meadowBorder}`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color:G.meadowDeep }}>
+              <div style={{ width:36, height:36, borderRadius:10, background:G.meadowSoft, border:`1px solid ${G.meadowBorder}`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color:G.meadow }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/>
                   <rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>
@@ -221,7 +221,7 @@ export default function BlockConfigModal({ semester, onClose, onApplied }) {
               <h2 style={{ fontSize:18, fontWeight:800, color:G.ink, margin:0 }}>Block Configuration</h2>
             </div>
             <p style={{ fontSize:12.5, color:G.muted, margin:0, marginLeft:48, fontWeight:500 }}>
-              Set sections for <span style={{ color:G.meadowDeep, fontWeight:700 }}>{semester}</span>
+              Set sections for <span style={{ color:G.meadow, fontWeight:700 }}>{semester}</span>
             </p>
           </div>
           <button className="bc-close-btn" onClick={onClose} aria-label="Close">
@@ -298,13 +298,13 @@ export default function BlockConfigModal({ semester, onClose, onApplied }) {
 
               {/* Status Messages */}
               {error && (
-                <div style={{ background:'rgba(239, 68, 68, 0.05)', border:'1px solid #FECACA', borderRadius:10, padding:'12px 16px', fontSize:13, color:'#DC2626', display:'flex', alignItems:'center', gap:8, fontWeight:600 }}>
+                <div style={{ background:'rgba(239, 68, 68, 0.05)', border:'1px solid #FECACA', borderRadius:10, padding:'12px 16px', fontSize:13, color:'#EF4444', display:'flex', alignItems:'center', gap:8, fontWeight:600 }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   {error}
                 </div>
               )}
               {applyResult && (
-                <div style={{ background:G.meadowSoft, border:`1px solid ${G.meadowBorder}`, borderRadius:10, padding:'12px 16px', fontSize:13, color:G.meadowDeep, display:'flex', alignItems:'center', gap:8, fontWeight:600 }}>
+                <div style={{ background:G.meadowSoft, border:`1px solid ${G.meadowBorder}`, borderRadius:10, padding:'12px 16px', fontSize:13, color:G.meadow, display:'flex', alignItems:'center', gap:8, fontWeight:600 }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                   Successfully updated {applyResult.updated} course{applyResult.updated !== 1 ? 's' : ''}.
                 </div>

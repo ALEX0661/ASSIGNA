@@ -72,11 +72,11 @@ const ANALYTICS_STYLE = `
 // These mirror the exact colours used in DashboardPage for consistency.
 const C = {
   green:   "var(--meadow)",   // primary accent — Dashboard's main colour
-  blue:    "#2563EB",
-  amber:   "#D97706",
+  blue:    '#60A5FA',
+  amber:   '#F59E0B',
   purple:  "#7C3AED",
   cyan:    "#0891B2",
-  red:     "#C0392B",
+  red:     '#EF4444',
   teal:    "#0D9488",
   rose:    "#E11D48",
 };
@@ -91,7 +91,7 @@ const PALETTE = [
   C.cyan,    // #0891B2  cyan
   C.rose,    // #E11D48  rose
   C.teal,    // #0D9488  teal
-  "#6D28D9", //          indigo (fallback 8th)
+  '#A78BFA', //          indigo (fallback 8th)
 ];
 
 // Daily session bar colours — one per weekday, all distinct
@@ -162,7 +162,7 @@ function InsightNote({ text, type = "info" }) {
   if (!text) return null;
   const isWarn = type === "warn" || type === "danger";
   const color  = isWarn ? C.red : C.green;
-  const bg     = isWarn ? "#FFF5F5" : "var(--meadow-soft)";
+  const bg     = isWarn ? 'rgba(220, 38, 38, 0.05)' : "var(--meadow-soft)";
   const border = isWarn ? 'rgba(220, 38, 38, 0.25)' : "var(--meadow-border)";
   return (
     <div style={{

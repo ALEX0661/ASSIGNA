@@ -395,7 +395,7 @@ const VersionHistoryModal = ({
         {/* Footer */}
         <div className="sv-version-footer">
           {error ? (
-            <span style={{ color: '#dc2626', fontSize: 12 }}>{error}</span>
+            <span style={{ color: '#EF4444', fontSize: 12 }}>{error}</span>
           ) : (
             <span style={{ fontSize: 11, color: '#9ca3af' }}>
               Loading a version replaces the current view — save to keep it

@@ -1199,7 +1199,7 @@ export default function CoordScheduleViewPage() {
     { label:'Faculty',       value: new Set(dayEvents.map(e => e.faculty).filter(f => f && f !== 'TBA')).size, sub: 'teaching' },
     { label:'Rooms',         value: visibleRooms.length, sub: 'in use' },
     // ── New: pending changes count in stats
-    ...(dd.pendingOverrides.size > 0 ? [{ label:'Pending', value: dd.pendingOverrides.size, accent: '#d97706', sub: 'unsaved' }] : []),
+    ...(dd.pendingOverrides.size > 0 ? [{ label:'Pending', value: dd.pendingOverrides.size, accent: '#F59E0B', sub: 'unsaved' }] : []),
   ]
 
   const Sep = () => <div style={{ width:1, height:20, background:TV.border, flexShrink:0 }} />
@@ -1230,7 +1230,7 @@ export default function CoordScheduleViewPage() {
                 style={{ fontSize:15, fontWeight:700, padding:'4px 10px', borderRadius:8, border:`2px solid ${TV.mid}`, outline:'none', width:200, fontFamily:'Inter,sans-serif' }}
               />
               <button onClick={handleSaveName} disabled={renameState === 'saving'}
-                style={{ padding:'5px 12px', background:TV.deep, color: 'var(--surface)', border:'none', borderRadius:8, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap' }}>
+                style={{ padding:'5px 12px', background:TV.deep, color: '#fff', border:'none', borderRadius:8, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap' }}>
                 {renameState === 'saving' ? 'Saving…' : 'Save'}
               </button>
               <button onClick={() => setIsEditingName(false)} disabled={renameState === 'saving'}
@@ -1238,7 +1238,7 @@ export default function CoordScheduleViewPage() {
                 Cancel
               </button>
               {renameState === 'error' && (
-                <span style={{ fontSize:11, color:'#dc2626', fontWeight:600, whiteSpace:'nowrap' }}>Rename failed — try again</span>
+                <span style={{ fontSize:11, color:'#EF4444', fontWeight:600, whiteSpace:'nowrap' }}>Rename failed — try again</span>
               )}
             </div>
           ) : (
@@ -1277,7 +1277,7 @@ export default function CoordScheduleViewPage() {
                   Submitted
                 </span>
                 <button onClick={handleUnsubmit} disabled={actionState === 'working'}
-                  style={{ padding:'3px 10px', borderRadius:7, border:'1px solid #fecaca', background:'rgba(220, 38, 38, 0.05)', color:'#dc2626', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap' }}>
+                  style={{ padding:'3px 10px', borderRadius:7, border:'1px solid #fecaca', background:'rgba(220, 38, 38, 0.05)', color:'#EF4444', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap' }}>
                   {actionState === 'working' ? 'Withdrawing…' : 'Unsubmit'}
                 </button>
               </div>
@@ -1288,7 +1288,7 @@ export default function CoordScheduleViewPage() {
               </span>
             ) : (
               <button onClick={handleSubmit} disabled={actionState === 'working'}
-                style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 13px', borderRadius:8, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: 'var(--surface)', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 2px 8px rgba(0,0,0,.25)', flexShrink:0, whiteSpace:'nowrap' }}>
+                style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 13px', borderRadius:8, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 2px 8px rgba(0,0,0,.25)', flexShrink:0, whiteSpace:'nowrap' }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                 {actionState === 'working' ? 'Submitting…' : 'Submit'}
               </button>
@@ -1343,7 +1343,7 @@ export default function CoordScheduleViewPage() {
           border:'1px solid #FECACA', animation:'svSlideIn .22s ease',
         }}>
           <div style={{
-            width:26, height:26, borderRadius:8, background:'rgba(239, 68, 68, 0.1)', color:'#DC2626',
+            width:26, height:26, borderRadius:8, background:'rgba(239, 68, 68, 0.1)', color:'#EF4444',
             display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:1,
           }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
@@ -1351,10 +1351,10 @@ export default function CoordScheduleViewPage() {
             </svg>
           </div>
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontSize:12.5, fontWeight:700, color:'#991B1B', marginBottom:2 }}>
+            <div style={{ fontSize:12.5, fontWeight:700, color:'#FCA5A5', marginBottom:2 }}>
               Couldn't submit this schedule
             </div>
-            <div style={{ fontSize:12, color:'#B91C1C', lineHeight:1.45 }}>
+            <div style={{ fontSize:12, color:'#EF4444', lineHeight:1.45 }}>
               {actionError}
             </div>
           </div>
@@ -1364,7 +1364,7 @@ export default function CoordScheduleViewPage() {
             style={{
               display:'flex', alignItems:'center', justifyContent:'center',
               width:22, height:22, borderRadius:6, border:'none', background:'transparent',
-              color:'#B91C1C', cursor:'pointer', flexShrink:0, opacity:.7, transition:'opacity .15s, background .15s',
+              color:'#EF4444', cursor:'pointer', flexShrink:0, opacity:.7, transition:'opacity .15s, background .15s',
             }}
             onMouseEnter={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)' }}
             onMouseLeave={e => { e.currentTarget.style.opacity = .7; e.currentTarget.style.background = 'transparent' }}
@@ -1464,7 +1464,7 @@ export default function CoordScheduleViewPage() {
               fontWeight: filterConflicts ? 700 : 400,
               border: `1px solid ${filterConflicts ? '#fca5a5' : TV.border}`,
               background: filterConflicts ? 'rgba(239, 68, 68, 0.05)' : 'var(--surface)',
-              color: filterConflicts ? '#b91c1c' : TV.muted,
+              color: filterConflicts ? '#EF4444' : TV.muted,
             }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
@@ -1520,7 +1520,7 @@ export default function CoordScheduleViewPage() {
             </button>
             {localHasFilters && (
               <button onClick={handleClearAll} style={{
-                fontSize:11.5, color:'#dc2626', background:'rgba(220, 38, 38, 0.05)',
+                fontSize:11.5, color:'#EF4444', background:'rgba(220, 38, 38, 0.05)',
                 border:'1px solid #fecaca', borderRadius:8, padding:'4px 10px',
                 cursor:'pointer', fontFamily:'Inter,sans-serif', fontWeight:600,
                 flexShrink:0, marginLeft:'auto',
@@ -1536,7 +1536,7 @@ export default function CoordScheduleViewPage() {
               { bg: 'var(--surface)', border:TV.border, label:'Normal', color:TV.muted },
               { bg:TV.pale, border:TV.light, label:'Merge', color:TV.deep,
                 icon: <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> },
-              { bg:'rgba(239, 68, 68, 0.05)', border:'rgba(220, 38, 38, 0.25)', label:'Conflict', color:'#b91c1c',
+              { bg:'rgba(239, 68, 68, 0.05)', border:'rgba(220, 38, 38, 0.25)', label:'Conflict', color:'#EF4444',
                 icon: <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> },
               { bg:'rgba(245, 158, 11, 0.05)', border:'rgba(245, 158, 11, 0.35)', label:'Unassigned', color:'#92400e',
                 icon: <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/></svg> },
@@ -1762,7 +1762,7 @@ export default function CoordScheduleViewPage() {
                 </svg>
                 Filters
                 {localHasFilters && (
-                  <span style={{ background: TV.deep, color: 'var(--surface)', borderRadius: 10, fontSize: 9, fontWeight: 800, padding: '1px 5px', lineHeight: 1.4 }}>
+                  <span style={{ background: TV.deep, color: '#fff', borderRadius: 10, fontSize: 9, fontWeight: 800, padding: '1px 5px', lineHeight: 1.4 }}>
                     ON
                   </span>
                 )}
@@ -1848,7 +1848,7 @@ export default function CoordScheduleViewPage() {
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         <button onClick={toggles.conflicts} style={{
                           display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'Inter,sans-serif', transition: 'all .15s',
-                          fontWeight: filterConflicts ? 700 : 400, border: `1px solid ${filterConflicts ? '#fca5a5' : TV.border}`, background: filterConflicts ? 'rgba(239, 68, 68, 0.05)' : 'var(--surface)', color: filterConflicts ? '#b91c1c' : TV.muted,
+                          fontWeight: filterConflicts ? 700 : 400, border: `1px solid ${filterConflicts ? '#fca5a5' : TV.border}`, background: filterConflicts ? 'rgba(239, 68, 68, 0.05)' : 'var(--surface)', color: filterConflicts ? '#EF4444' : TV.muted,
                         }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                           Conflicts only
@@ -1937,7 +1937,7 @@ export default function CoordScheduleViewPage() {
                     {localHasFilters && (
                       <button onClick={() => { handleClearAll(); }} style={{
                         padding: '6px 14px', borderRadius: 8, fontSize: 11.5, fontWeight: 600,
-                        border: '1px solid #fecaca', background: 'rgba(220, 38, 38, 0.05)', color: '#dc2626',
+                        border: '1px solid #fecaca', background: 'rgba(220, 38, 38, 0.05)', color: '#EF4444',
                         cursor: 'pointer', fontFamily: 'Inter,sans-serif',
                       }}>
                         ✕ Clear all
@@ -1945,7 +1945,7 @@ export default function CoordScheduleViewPage() {
                     )}
                     <button onClick={() => setMaximizeFilterOpen(false)} style={{
                       padding: '6px 18px', borderRadius: 8, fontSize: 11.5, fontWeight: 600,
-                      border: 'none', background: TV.deep, color: 'var(--surface)',
+                      border: 'none', background: TV.deep, color: '#fff',
                       cursor: 'pointer', fontFamily: 'Inter,sans-serif',
                     }}>
                       Done
@@ -2153,7 +2153,7 @@ function ListView({ dayEvents, conflictMap, hasFilters, clearFilters, onCardClic
                         overlap with the merge partner (e.g. it also has a
                         faculty / section conflict). */}
                     {conf && !(merged && conf.label === 'Room Conflict') && (
-                      <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:9.5, fontWeight:700, background:'rgba(239, 68, 68, 0.05)', color:'#b91c1c', border:'1px solid #fecaca', borderRadius:4, padding:'2px 6px' }}>
+                      <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:9.5, fontWeight:700, background:'rgba(239, 68, 68, 0.05)', color:'#EF4444', border:'1px solid #fecaca', borderRadius:4, padding:'2px 6px' }}>
                         <svg width={9} height={9} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                         {conf.label}
                       </span>

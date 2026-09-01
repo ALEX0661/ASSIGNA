@@ -30,9 +30,9 @@ const G = {
   ink: 'var(--ink, #0E2A20)', inkMid: '#1C3D2A', muted: 'var(--muted, #4B7060)', muted2: 'var(--muted2, #6B8C7A)',
   border: 'var(--border)', borderLight: 'var(--hover)', bg: 'var(--bg, #F2F7F4)',
   surface: 'var(--surface, #FFFFFF)', hover: 'var(--hover)',
-  amber: '#B45309', amberSoft: 'rgba(245, 158, 11, 0.1)', amberBorder: 'rgba(245, 158, 11, 0.25)',
-  red: '#DC2626', redDeep: '#B91C1C', redSoft: 'rgba(239, 68, 68, 0.05)', redBorder: 'rgba(220, 38, 38, 0.25)',
-  blue: '#1D4ED8', blueSoft: 'rgba(59, 130, 246, 0.1)', blueBorder: '#BFDBFE',
+  amber: '#F59E0B', amberSoft: 'rgba(245, 158, 11, 0.1)', amberBorder: 'rgba(245, 158, 11, 0.25)',
+  red: '#EF4444', redDeep: '#EF4444', redSoft: 'rgba(239, 68, 68, 0.05)', redBorder: 'rgba(220, 38, 38, 0.25)',
+  blue: '#60A5FA', blueSoft: 'rgba(59, 130, 246, 0.1)', blueBorder: '#BFDBFE',
   violet: '#7C3AED', violetSoft: 'color-mix(in srgb, #6D28D9 15%, transparent)',
   cyan: '#0891B2', cyanSoft: '#CFFAFE',
 }
@@ -262,7 +262,7 @@ function ReadinessRing({ percent, size = 64, stroke = 6 }) {
         <circle stroke="rgba(255,255,255,0.2)" strokeWidth={stroke} fill="transparent" r={r} cx={size / 2} cy={size / 2} />
         <circle className="cd-progress-ring-circle" stroke="#fff" strokeWidth={stroke} strokeLinecap="round" fill="transparent" r={r} cx={size / 2} cy={size / 2} strokeDasharray={`${circ} ${circ}`} strokeDashoffset={offset} />
       </svg>
-      <div style={{ position: 'absolute', fontFamily: "'Sora', sans-serif", fontSize: 15, fontWeight: 800, color: 'var(--surface)' }}>
+      <div style={{ position: 'absolute', fontFamily: "'Sora', sans-serif", fontSize: 15, fontWeight: 800, color: '#fff' }}>
         {percent}%
       </div>
     </div>
@@ -336,7 +336,7 @@ function SetupChecklist({ steps, onNavigate, loading }) {
               {!step.done && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onNavigate(step.href) }}
-                  style={{ flexShrink: 0, padding: '8px 16px', borderRadius: 10, border: 'none', background: G.meadow, color: 'var(--surface)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}
+                  style={{ flexShrink: 0, padding: '8px 16px', borderRadius: 10, border: 'none', background: G.meadow, color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}
                   onMouseEnter={e => e.currentTarget.style.background = G.meadowDeep}
                   onMouseLeave={e => e.currentTarget.style.background = G.meadow}
                 >
@@ -449,13 +449,13 @@ function SuggestionCard({ suggestion, navigate, delay = 0 }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
           <span style={{ fontSize: 13.5, fontWeight: 800, color: G.ink }}>{suggestion.title}</span>
-          <span style={{ fontSize: 10.5, fontWeight: 800, padding: '2px 8px', borderRadius: 99, background: s.dot, color: 'var(--surface)' }}>{s.label}</span>
+          <span style={{ fontSize: 10.5, fontWeight: 800, padding: '2px 8px', borderRadius: 99, background: s.dot, color: '#fff' }}>{s.label}</span>
         </div>
         <p style={{ fontSize: 12.5, color: G.muted, margin: 0, lineHeight: 1.5 }}>{suggestion.body}</p>
         {suggestion.action && (
           <button onClick={() => navigate(suggestion.action.href)}
             style={{ marginTop: 10, padding: '6px 14px', borderRadius: 8, border: 'none', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter,sans-serif',
-              background: s.icon, color: 'var(--surface)', transition: 'opacity .15s' }}
+              background: s.icon, color: '#fff', transition: 'opacity .15s' }}
             onMouseEnter={e => e.currentTarget.style.opacity = '.85'}
             onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
             {suggestion.action.label} →
@@ -940,7 +940,7 @@ export default function CoordDashboard() {
       {/* Next Best Action */}
       {!loading && readinessPct === 100 && topSuggestion && (
         <div style={{ marginBottom: 16, padding: '10px 16px', background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, borderRadius: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <div style={{ width: 24, height: 24, borderRadius: 6, background: G.meadow, color: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: 24, height: 24, borderRadius: 6, background: G.meadow, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
           <div style={{ flex: 1, minWidth: 200, fontSize: 12.5, lineHeight: 1.5 }}>
@@ -949,7 +949,7 @@ export default function CoordDashboard() {
             <span style={{ color: G.muted }}> — {topSuggestion.body}</span>
           </div>
           {topSuggestion.action && (
-            <button onClick={() => navigate(topSuggestion.action.href)} style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 8, background: G.meadow, color: 'var(--surface)', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+            <button onClick={() => navigate(topSuggestion.action.href)} style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 8, background: G.meadow, color: '#fff', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
               {topSuggestion.action.label}
             </button>
           )}
@@ -1220,7 +1220,7 @@ export default function CoordDashboard() {
           {!loading && pinnedSchedule && (
              <div className="d-card" style={{ border: `2px solid ${pinnedSchedule.status === 'approved' ? G.meadowBorder : G.amberBorder}`, overflow: 'visible' }}>
                <div style={{ background: pinnedSchedule.status === 'approved' ? G.meadowSoft : G.amberSoft, padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: `1px solid ${pinnedSchedule.status === 'approved' ? G.meadowBorder : G.amberBorder}` }}>
-                  <div style={{ width: 24, height: 24, borderRadius: 6, background: pinnedSchedule.status === 'approved' ? G.meadow : G.amber, color: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 24, height: 24, borderRadius: 6, background: pinnedSchedule.status === 'approved' ? G.meadow : G.amber, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
                   </div>
                   <span style={{ fontSize: 13, fontWeight: 700, color: pinnedSchedule.status === 'approved' ? G.meadowDeep : '#92400E', textTransform: 'uppercase', letterSpacing: '0.5px' }}>

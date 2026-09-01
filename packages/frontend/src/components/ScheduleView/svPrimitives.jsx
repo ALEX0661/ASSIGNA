@@ -63,7 +63,7 @@ export function ModalFooter({ selectedCount, onClose }) {
         style={{
           padding: '7px 18px', fontSize: 12.5, fontWeight: 600,
           background: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))',
-          color: 'var(--surface)', border: 'none', borderRadius: 8, cursor: 'pointer',
+          color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer',
           fontFamily: 'Inter, sans-serif',
         }}
       >Done</button>
@@ -131,9 +131,9 @@ export function ConflictBadge({ label }) {
   const isSec  = label?.includes('Section')
   const multi  = [isRoom, isFac, isSec].filter(Boolean).length > 1
 
-  let bg = 'rgba(239, 68, 68, 0.05)', color = '#b91c1c', border = 'rgba(220, 38, 38, 0.25)'
+  let bg = 'rgba(239, 68, 68, 0.05)', color = '#EF4444', border = 'rgba(220, 38, 38, 0.25)'
   if (multi)      { bg = 'rgba(217, 119, 6, 0.05)'; color = '#c2410c'; border = 'rgba(217, 119, 6, 0.25)' }
-  else if (isFac) { bg = '#eff6ff'; color = '#1d4ed8'; border = '#bfdbfe' }
+  else if (isFac) { bg = 'rgba(37, 99, 235, 0.1)'; color = '#60A5FA'; border = '#bfdbfe' }
   else if (isSec) { bg = '#fdf4ff'; color = '#7e22ce'; border = '#e9d5ff' }
 
   return (
@@ -171,9 +171,9 @@ export function ConflictSummaryBar({ conflictMap, compact = false }) {
   if (compact) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-        <span style={{ fontSize: 10, fontWeight: 700, color: '#b91c1c', whiteSpace: 'nowrap' }}>⚠</span>
+        <span style={{ fontSize: 10, fontWeight: 700, color: '#EF4444', whiteSpace: 'nowrap' }}>⚠</span>
         {roomCount > 0 && (
-          <span style={{ fontSize: 10, background: 'rgba(239, 68, 68, 0.1)', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, padding: '1px 7px', fontWeight: 700, whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 10, background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', border: '1px solid #fca5a5', borderRadius: 10, padding: '1px 7px', fontWeight: 700, whiteSpace: 'nowrap' }}>
             {roomCount}R
           </span>
         )}
@@ -183,7 +183,7 @@ export function ConflictSummaryBar({ conflictMap, compact = false }) {
           </span>
         )}
         {facultyCount > 0 && (
-          <span style={{ fontSize: 10, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 10, padding: '1px 7px', fontWeight: 700, whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 10, background: 'rgba(37, 99, 235, 0.1)', color: '#60A5FA', border: '1px solid #bfdbfe', borderRadius: 10, padding: '1px 7px', fontWeight: 700, whiteSpace: 'nowrap' }}>
             {facultyCount}F
           </span>
         )}
@@ -198,10 +198,10 @@ export function ConflictSummaryBar({ conflictMap, compact = false }) {
       background: 'rgba(220, 38, 38, 0.05)', border: '1px solid #fecaca',
       borderRadius: 10, padding: '8px 14px', marginBottom: 12,
     }}>
-      <span style={{ fontSize: 12, fontWeight: 700, color: '#b91c1c' }}>⚠ Conflicts today:</span>
-      {roomCount    > 0 && <span style={{ fontSize: 11, background: 'rgba(239, 68, 68, 0.1)', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 20, padding: '2px 10px', fontWeight: 600 }}>{roomCount} Room</span>}
+      <span style={{ fontSize: 12, fontWeight: 700, color: '#EF4444' }}>⚠ Conflicts today:</span>
+      {roomCount    > 0 && <span style={{ fontSize: 11, background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', border: '1px solid #fca5a5', borderRadius: 20, padding: '2px 10px', fontWeight: 600 }}>{roomCount} Room</span>}
       {sectionCount > 0 && <span style={{ fontSize: 11, background: '#fdf4ff', color: '#7e22ce', border: '1px solid #e9d5ff', borderRadius: 20, padding: '2px 10px', fontWeight: 600 }}>{sectionCount} Section</span>}
-      {facultyCount > 0 && <span style={{ fontSize: 11, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 20, padding: '2px 10px', fontWeight: 600 }}>{facultyCount} Faculty</span>}
+      {facultyCount > 0 && <span style={{ fontSize: 11, background: 'rgba(37, 99, 235, 0.1)', color: '#60A5FA', border: '1px solid #bfdbfe', borderRadius: 20, padding: '2px 10px', fontWeight: 600 }}>{facultyCount} Faculty</span>}
       <span style={{ fontSize: 11, color: TV.muted, marginLeft: 4 }}>{conflictMap.size} affected session{conflictMap.size > 1 ? 's' : ''}</span>
     </div>
   )
@@ -212,7 +212,7 @@ export function Legend() {
   const items = [
     { color: TV.muted,  border: TV.border, bg: 'var(--surface)',    label: 'Normal' },
     { color: TV.deep,   border: TV.light,  bg: TV.pale,   label: 'Merged Block' },
-    { color: '#b91c1c', border: '#fca5a5', bg: '#fff5f5', label: 'Conflict' },
+    { color: '#EF4444', border: '#fca5a5', bg: 'rgba(220, 38, 38, 0.05)', label: 'Conflict' },
   ]
   return (
     <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', fontSize: 11, color: TV.muted }}>
@@ -412,7 +412,7 @@ export function Toast({ message, type, onDismiss }) {
         padding: '12px 18px', borderRadius: 12,
         background: isErr ? 'rgba(239, 68, 68, 0.05)' : 'var(--hover)',
         border: `1px solid ${isErr ? 'rgba(220, 38, 38, 0.25)' : 'var(--meadow-border)'}`,
-        color: isErr ? '#b91c1c' : 'var(--meadow-mid)',
+        color: isErr ? '#EF4444' : 'var(--meadow-mid)',
         fontSize: 13, fontWeight: 600, cursor: 'pointer',
         boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
         animation: 'svSlideIn .25s ease',
@@ -436,7 +436,7 @@ export function ConflictTable({ conflicts }) {
         <thead>
           <tr style={{ background: 'rgba(239, 68, 68, 0.05)' }}>
             {['Course', 'Section', 'Day', 'Time', 'Room', 'Faculty', 'Type'].map(h => (
-              <th key={h} style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 700, color: '#991b1b', borderBottom: '1px solid #fecaca', whiteSpace: 'nowrap' }}>{h}</th>
+              <th key={h} style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 700, color: '#FCA5A5', borderBottom: '1px solid #fecaca', whiteSpace: 'nowrap' }}>{h}</th>
             ))}
           </tr>
         </thead>
@@ -465,15 +465,15 @@ export function ConflictTable({ conflicts }) {
 export function RoomChip({ room, selected, hasRoomConflict, hasMergePreview = false, onClick }) {
   let bg, border, color, shadow
   if (selected && hasRoomConflict) {
-    bg = '#dc2626'; border = '#b91c1c'; color = '#fff'; shadow = '0 0 0 2px rgba(220,38,38,.25)'
+    bg = '#EF4444'; border = '#EF4444'; color = '#fff'; shadow = '0 0 0 2px rgba(220,38,38,.25)'
   } else if (selected && hasMergePreview) {
-    bg = '#1d4ed8'; border = '#1d4ed8'; color = '#fff'; shadow = '0 0 0 2px rgba(37,99,235,.22)'
+    bg = '#60A5FA'; border = '#60A5FA'; color = '#fff'; shadow = '0 0 0 2px rgba(37,99,235,.22)'
   } else if (selected) {
     bg = TV.deep; border = TV.deep; color = '#fff'; shadow = `0 0 0 2px rgba(0,0,0,.2)`
   } else if (hasRoomConflict) {
-    bg = 'rgba(239, 68, 68, 0.05)'; border = '#fca5a5'; color = '#b91c1c'; shadow = 'none'
+    bg = 'rgba(239, 68, 68, 0.05)'; border = '#fca5a5'; color = '#EF4444'; shadow = 'none'
   } else if (hasMergePreview) {
-    bg = '#eff6ff'; border = '#93c5fd'; color = '#1d4ed8'; shadow = '0 0 0 1.5px rgba(59,130,246,.18)'
+    bg = 'rgba(37, 99, 235, 0.1)'; border = '#93c5fd'; color = '#60A5FA'; shadow = '0 0 0 1.5px rgba(59,130,246,.18)'
   } else {
     bg = '#fff'; border = TV.border; color = TV.text; shadow = 'none'
   }
@@ -530,7 +530,7 @@ export function PendingChangesBar({ pendingOverrides, onSave, onRevertAll, savin
     }}>
       {/* Icon + count */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2.5">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2.5">
           <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
           <line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
@@ -552,7 +552,7 @@ export function PendingChangesBar({ pendingOverrides, onSave, onRevertAll, savin
           {/* Countdown ring */}
           <svg width="18" height="18" viewBox="0 0 18 18" style={{ transform: 'rotate(-90deg)' }}>
             <circle cx="9" cy="9" r={r} fill="none" stroke='rgba(245, 158, 11, 0.25)' strokeWidth="2.5"/>
-            <circle cx="9" cy="9" r={r} fill="none" stroke="#d97706" strokeWidth="2.5"
+            <circle cx="9" cy="9" r={r} fill="none" stroke='#F59E0B' strokeWidth="2.5"
               strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
               style={{ transition: 'stroke-dasharray .9s linear' }}
             />
@@ -589,9 +589,9 @@ export function PendingChangesBar({ pendingOverrides, onSave, onRevertAll, savin
           style={{
             padding: '5px 14px', fontSize: 11.5, fontWeight: 700,
             background: saving
-              ? '#d97706'
+              ? '#F59E0B'
               : 'linear-gradient(135deg,#d97706,#b45309)',
-            color: 'var(--surface)', border: 'none', borderRadius: 7,
+            color: '#fff', border: 'none', borderRadius: 7,
             cursor: saving ? 'not-allowed' : 'pointer',
             fontFamily: 'Inter, sans-serif',
             boxShadow: '0 3px 8px rgba(180,83,9,.30)',

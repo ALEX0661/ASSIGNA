@@ -226,7 +226,7 @@ function RoomAssignModal({ isOpen, onClose, onSave, title, initialRooms = [], le
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <span style={{ fontSize: 11.5, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Selected Rooms ({selected.length})</span>
               {selected.length > 0 && (
-                <button onClick={() => setSelected([])} style={{ background: 'none', border: 'none', color: '#DC2626', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>Clear All</button>
+                <button onClick={() => setSelected([])} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>Clear All</button>
               )}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -583,10 +583,10 @@ export default function RoomsPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'rgba(245, 158, 11, 0.05)', padding: '8px 16px', borderRadius: '10px', border: '1px solid #FDE68A', animation: 'fadeIn 0.2s ease-out' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #FCD34D' }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 </div>
                 <span style={{ fontSize: 13, color: G.ink, fontWeight: 600, fontFamily: "'Inter', sans-serif" }}>
-                  <strong style={{ color: '#D97706' }}>Unsaved</strong> campus room changes
+                  <strong style={{ color: '#F59E0B' }}>Unsaved</strong> campus room changes
                 </span>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -652,10 +652,10 @@ export default function RoomsPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'rgba(245, 158, 11, 0.05)', padding: '8px 16px', borderRadius: '10px', border: '1px solid #FDE68A', animation: 'fadeIn 0.2s ease-out' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #FCD34D' }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 </div>
                 <span style={{ fontSize: 13, color: G.ink, fontWeight: 600, fontFamily: "'Inter', sans-serif" }}>
-                  <strong style={{ color: '#D97706' }}>{dirtyKeys.length}</strong> unsaved change{dirtyKeys.length !== 1 ? 's' : ''}
+                  <strong style={{ color: '#F59E0B' }}>{dirtyKeys.length}</strong> unsaved change{dirtyKeys.length !== 1 ? 's' : ''}
                 </span>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -711,7 +711,7 @@ export default function RoomsPage() {
         {/* Bulk Action Bar */}
         {selected.size > 0 && (
           <div style={{ background: `linear-gradient(135deg,${G.meadowDeep},${G.inkMid})`, padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 14, animation: 'fadeIn 0.15s ease' }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--surface)', flex: 1 }}>{selected.size} course{selected.size !== 1 ? 's' : ''} selected</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#fff', flex: 1 }}>{selected.size} course{selected.size !== 1 ? 's' : ''} selected</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <button onClick={() => setSelected(new Set())} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>Deselect</button>
               <button onClick={openBulkModal} style={{ background: 'var(--surface)', color: G.meadowDeep, border: 'none', fontSize: 12, fontWeight: 700, padding: '6px 14px', borderRadius: 6, cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>Bulk Assign Rooms</button>
@@ -769,7 +769,7 @@ export default function RoomsPage() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <span style={{ padding: '3px 8px', background: G.hover, color: G.ink, borderRadius: 6, fontSize: 12.5, fontWeight: 800, border: `1px solid ${G.border}` }}>{course.courseCode}</span>
                             <span style={{ fontWeight: 600, color: G.ink, fontSize: 13.5 }}>{course.title}</span>
-                            {isDirty && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#D97706', flexShrink: 0, boxShadow: '0 0 0 2px #FEF3C7' }} title="Unsaved change" />}
+                            {isDirty && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#F59E0B', flexShrink: 0, boxShadow: '0 0 0 2px #FEF3C7' }} title="Unsaved change" />}
                           </div>
                           <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 11.5, color: G.muted2, fontWeight: 600 }}>
                             <span style={{ color: G.muted }}>{course.program}</span>
@@ -781,7 +781,7 @@ export default function RoomsPage() {
                       <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
                         <div style={{ display: 'flex', gap: 8 }}>
                           {course.unitsLecture > 0 && <span style={{ color: G.meadowDeep, fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}><div style={{width:8,height:8,borderRadius:2,background:G.meadowSoft,border:`1px solid ${G.meadowBorder}`}}/> {course.unitsLecture}L</span>}
-                          {course.unitsLab > 0 && <span style={{ color: '#0369A1', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}><div style={{width:8,height:8,borderRadius:2,background:'rgba(59, 130, 246, 0.1)',border:`1px solid #BAE6FD`}}/> {course.unitsLab}L</span>}
+                          {course.unitsLab > 0 && <span style={{ color: '#38BDF8', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}><div style={{width:8,height:8,borderRadius:2,background:'rgba(59, 130, 246, 0.1)',border:`1px solid #BAE6FD`}}/> {course.unitsLab}L</span>}
                         </div>
                       </td>
                       <td style={{ padding: '12px 20px', verticalAlign: 'middle' }} onClick={e => e.stopPropagation()}>
