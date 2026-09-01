@@ -5,11 +5,11 @@ const DAY_SHORT = { Monday:'Mon', Tuesday:'Tue', Wednesday:'Wed', Thursday:'Thu'
 
 const DAY_COLORS = {
   Monday:    { bg:'var(--meadow-soft)', color: 'var(--meadow)', border:'var(--meadow-border)' },
-  Tuesday:   { bg:'#DBEAFE', color:'#1D4ED8', border:'#BFDBFE' },
-  Wednesday: { bg:'rgba(217, 119, 6, 0.1)', color:'#B45309', border:'#FDE68A' },
+  Tuesday:   { bg:'rgba(59, 130, 246, 0.1)', color:'#1D4ED8', border:'#BFDBFE' },
+  Wednesday: { bg:'rgba(217, 119, 6, 0.1)', color:'#B45309', border:'rgba(245, 158, 11, 0.25)' },
   Thursday:  { bg:'#FCE7F3', color:'#9D174D', border:'#FBCFE8' },
   Friday:    { bg:'color-mix(in srgb, #6D28D9 15%, transparent)', color:'#6D28D9', border:'color-mix(in srgb, #6D28D9 30%, transparent)' },
-  Saturday:  { bg:'#E0F2FE', color:'#0369A1', border:'#BAE6FD' },
+  Saturday:  { bg:'rgba(59, 130, 246, 0.1)', color:'#0369A1', border:'rgba(59, 130, 246, 0.25)' },
   Sunday:    { bg:'rgba(217, 119, 6, 0.05)', color:'#C2410C', border:'rgba(217, 119, 6, 0.25)' },
 }
 
@@ -55,7 +55,7 @@ function RoomBadge({ room }) {
   )
   const isLab = /lab/i.test(room)
   return (
-    <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:6, background: isLab ? 'color-mix(in srgb, #6D28D9 15%, transparent)' : '#F2F7F4', color: isLab ? '#6D28D9' : '#1C3D2A', fontSize:11.5, fontWeight:500, border: isLab ? '1px solid color-mix(in srgb, #6D28D9 30%, transparent)' : '1px solid #D8E8DF' }}>
+    <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:6, background: isLab ? 'color-mix(in srgb, #6D28D9 15%, transparent)' : '#F2F7F4', color: isLab ? '#6D28D9' : '#1C3D2A', fontSize:11.5, fontWeight:500, border: isLab ? '1px solid color-mix(in srgb, #6D28D9 30%, transparent)' : '1px solid var(--border)' }}>
       {room}
     </span>
   )
@@ -69,8 +69,8 @@ function Pill({ label, value, selectedSet, onToggle, color }) {
     <button type="button" onClick={() => onToggle(value)} style={{
       padding:'4px 11px', borderRadius:99, fontSize:11.5,
       fontWeight: active ? 700 : 500,
-      background: active ? c : '#fff',
-      color: active ? '#fff' : 'var(--muted)',
+      background: active ? c : 'var(--surface)',
+      color: active ? 'var(--surface)' : 'var(--muted)',
       border: `1.5px solid ${active ? 'transparent' : 'var(--border)'}`,
       cursor:'pointer', transition:'all .12s', whiteSpace:'nowrap',
       boxShadow: active ? `0 2px 6px ${c}44` : 'none',
@@ -207,7 +207,7 @@ export default function FacultyEventsTable({ events, computeUnits, fetchError })
             <input
               type="text" value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search code, title, room, program…"
-              style={{ width:'100%', paddingLeft:30, paddingRight:search?28:10, paddingTop:7, paddingBottom:7, borderRadius:8, border:'1.5px solid #D8E8DF', fontSize:12.5, fontFamily:"'Inter',sans-serif", outline:'none', boxSizing:'border-box', background: 'var(--surface)', color: 'var(--ink)', transition:'border-color .15s' }}
+              style={{ width:'100%', paddingLeft:30, paddingRight:search?28:10, paddingTop:7, paddingBottom:7, borderRadius:8, border:'1.5px solid var(--border)', fontSize:12.5, fontFamily:"'Inter',sans-serif", outline:'none', boxSizing:'border-box', background: 'var(--surface)', color: 'var(--ink)', transition:'border-color .15s' }}
               onFocus={e => e.target.style.borderColor='var(--meadow)'}
               onBlur={e => e.target.style.borderColor='var(--border)'}
             />
@@ -301,7 +301,7 @@ export default function FacultyEventsTable({ events, computeUnits, fetchError })
         <div style={{ overflowX:'auto' }}>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12.5 }}>
             <thead>
-              <tr style={{ background: 'var(--bg)', borderBottom:'1.5px solid #D8E8DF' }}>
+              <tr style={{ background: 'var(--bg)', borderBottom:'1.5px solid var(--border)' }}>
                 {[
                   { key:'day',     label:'Day'            },
                   { key:'time',    label:'Time'           },
@@ -331,9 +331,9 @@ export default function FacultyEventsTable({ events, computeUnits, fetchError })
 
                 return (
                   <tr key={i}
-                    style={{ borderBottom: isLast ? 'none' : '1px solid var(--hover)', background: i%2===0?'#fff':'var(--bg)', transition:'background .1s' }}
+                    style={{ borderBottom: isLast ? 'none' : '1px solid var(--hover)', background: i%2===0? 'var(--surface)':'var(--bg)', transition:'background .1s' }}
                     onMouseEnter={e => { e.currentTarget.style.background='var(--meadow-soft)' }}
-                    onMouseLeave={e => { e.currentTarget.style.background=i%2===0?'#fff':'var(--bg)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background=i%2===0? 'var(--surface)':'var(--bg)' }}
                   >
                     <td style={{ padding:'11px 14px', whiteSpace:'nowrap' }}>
                       <DayBadge day={ev.day} />
@@ -374,7 +374,7 @@ export default function FacultyEventsTable({ events, computeUnits, fetchError })
               <strong style={{ color: 'var(--ink)' }}>{filtered.length}</strong> of <strong style={{ color: 'var(--ink)' }}>{events.length}</strong> classes{hasFilters ? ' (filtered)' : ''}
             </span>
             {hasFilters && (
-              <button type="button" onClick={clearAll} style={{ padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:600, background: 'var(--bg)', color: 'var(--muted)', border:'1px solid #D8E8DF', cursor:'pointer' }}>
+              <button type="button" onClick={clearAll} style={{ padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:600, background: 'var(--bg)', color: 'var(--muted)', border:'1px solid var(--border)', cursor:'pointer' }}>
                 Clear filters
               </button>
             )}

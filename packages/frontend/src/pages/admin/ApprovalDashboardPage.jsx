@@ -20,9 +20,9 @@ const G = {
   ink: 'var(--ink, #0E2A20)', inkMid: '#1C3D2A', muted: 'var(--muted, #4B7060)', muted2: 'var(--muted2, #6B8C7A)',
   border: 'var(--border)', borderLight: 'var(--hover)', bg: 'var(--bg, #F2F7F4)',
   surface: 'var(--surface, #FFFFFF)', hover: 'var(--hover)',
-  amber: '#D97706', amberSoft: '#FEF3C7', amberBorder: '#FDE68A',
-  blue: '#1D4ED8', blueSoft: '#DBEAFE', blueBorder: '#BFDBFE',
-  red: '#DC2626', redSoft: '#FEE2E2', redBorder: 'rgba(220, 38, 38, 0.25)',
+  amber: '#D97706', amberSoft: 'rgba(245, 158, 11, 0.1)', amberBorder: 'rgba(245, 158, 11, 0.25)',
+  blue: '#1D4ED8', blueSoft: 'rgba(59, 130, 246, 0.1)', blueBorder: '#BFDBFE',
+  red: '#DC2626', redSoft: 'rgba(239, 68, 68, 0.1)', redBorder: 'rgba(220, 38, 38, 0.25)',
 }
 
 if (!document.getElementById('approval-dashboard-style')) {
@@ -421,14 +421,14 @@ function CreateQueueModal({ onClose, onCreate, programs }) {
     <div className="ap-modal-overlay" onClick={onClose}>
       <div className="ap-modal" style={{ width: 460 }} onClick={e => e.stopPropagation()}>
         <div className="ap-modal-header" style={{ background: `linear-gradient(135deg, ${G.meadowDeep}, ${G.meadow})`, borderBottom: 'none' }}>
-          <div style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(255,255,255,0.18)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(255,255,255,0.18)', color: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="18" height="4" rx="1"/></svg>
           </div>
           <div style={{ flex: 1 }}>
-            <h3 className="ap-modal-title" style={{ color: '#fff' }}>Create Coordinator Queue</h3>
+            <h3 className="ap-modal-title" style={{ color: 'var(--surface)' }}>Create Coordinator Queue</h3>
             <p style={{ margin: '3px 0 0', fontSize: 11.5, color: 'rgba(255,255,255,0.82)' }}>Set the scheduling order for this semester</p>
           </div>
-          <button onClick={onClose} className="ap-modal-close" style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.32)', color: '#fff' }}>×</button>
+          <button onClick={onClose} className="ap-modal-close" style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.32)', color: 'var(--surface)' }}>×</button>
         </div>
 
         <div style={{ padding: '20px 22px 22px' }}>
@@ -515,7 +515,7 @@ function RejectModal({ schedule, onClose, onReject }) {
           <p style={{ margin: '6px 0 18px', fontSize: 11, color: G.muted2 }}>{feedback.length} characters</p>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button onClick={onClose} className="btn-outline">Cancel</button>
-            <button onClick={handle} disabled={!feedback.trim() || saving} className="btn-danger" style={{ minWidth: 120, justifyContent: 'center', background: saving ? undefined : G.red, color: '#fff', border: 'none' }}>
+            <button onClick={handle} disabled={!feedback.trim() || saving} className="btn-danger" style={{ minWidth: 120, justifyContent: 'center', background: saving ? undefined : G.red, color: 'var(--surface)', border: 'none' }}>
               {saving ? 'Rejecting…' : 'Reject & Notify'}
             </button>
           </div>
@@ -696,11 +696,11 @@ function ReviewPanel({ scheduleId, pendingList, masterEvents, onClose, onApprove
               <div style={{ display: 'flex', padding: '12px 20px', background: 'var(--bg)', borderBottom: `1px solid ${G.border}`, alignItems: 'center', gap: 12 }}>
                 <div style={{ display: 'flex', background: G.hover, borderRadius: 8, padding: 4 }}>
                   <button onClick={() => setReviewViewMode('grid')}
-                    style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'grid' ? '#fff' : 'transparent', color: reviewViewMode === 'grid' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'grid' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
+                    style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'grid' ? 'var(--surface)' : 'transparent', color: reviewViewMode === 'grid' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'grid' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
                     Grid
                   </button>
                   <button onClick={() => setReviewViewMode('table')}
-                    style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'table' ? '#fff' : 'transparent', color: reviewViewMode === 'table' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'table' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
+                    style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'table' ? 'var(--surface)' : 'transparent', color: reviewViewMode === 'table' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'table' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
                     List
                   </button>
                 </div>
@@ -710,9 +710,9 @@ function ReviewPanel({ scheduleId, pendingList, masterEvents, onClose, onApprove
                       <button key={d} onClick={() => setActiveDay(d)} 
                         style={{
                           padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                          cursor: 'pointer', border: '1px solid #D8E8DF',
-                          background: activeDay === d ? `linear-gradient(135deg, ${G.meadow}, ${G.meadowDeep})` : '#fff',
-                          color: activeDay === d ? '#fff' : G.muted,
+                          cursor: 'pointer', border: '1px solid var(--border)',
+                          background: activeDay === d ? `linear-gradient(135deg, ${G.meadow}, ${G.meadowDeep})` : 'var(--surface)',
+                          color: activeDay === d ? 'var(--surface)' : G.muted,
                           transition: 'all .15s', whiteSpace: 'nowrap',
                           boxShadow: activeDay === d ? '0 2px 8px rgba(0,0,0,.3)' : 'none'
                         }}>
@@ -740,7 +740,7 @@ function ReviewPanel({ scheduleId, pendingList, masterEvents, onClose, onApprove
                       if (showConflictsOnly && !conflicted) return null;
                       
                       return (
-                        <tr key={i} className="ap-row" style={{ padding: 0, background: conflicted && !editing ? '#FEF2F2' : undefined }}>
+                        <tr key={i} className="ap-row" style={{ padding: 0, background: conflicted && !editing ? 'rgba(239, 68, 68, 0.05)' : undefined }}>
                           <td style={{ padding: '8px 12px', fontWeight: 600, color: G.ink }}>{ev.courseCode}</td>
                           <td style={{ padding: '8px 12px', color: G.inkMid }}>{ev.program}-{ev.year}{ev.block}</td>
                           <td style={{ padding: '8px 12px', color: G.inkMid }}>{ev.session}</td>
@@ -894,7 +894,7 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, 
               
               {turnIndex >= programs.length && (
                 <div style={{ padding: '14px 20px', background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, borderRadius: 10, display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: G.meadow, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: G.meadow, color: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                   </div>
                   <div>
@@ -951,7 +951,7 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, 
               <button
                 onClick={async () => { setDeletingQueue(true); try { await onDelete(queue.id || queue.queueId) } finally { setDeletingQueue(false); setShowDeleteConfirm(false) } }}
                 disabled={deletingQueue}
-                style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: '#C0392B', fontSize: 13, fontWeight: 700, color: '#fff', cursor: deletingQueue ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: deletingQueue ? 0.7 : 1 }}
+                style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: '#C0392B', fontSize: 13, fontWeight: 700, color: 'var(--surface)', cursor: deletingQueue ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: deletingQueue ? 0.7 : 1 }}
               >
                 {deletingQueue ? 'Deleting...' : 'Yes, Delete'}
               </button>
@@ -1137,7 +1137,7 @@ function MasterTab({ queueId, onFinalize, programs }) {
               </button>
             )}
           {events.length > 0 && (
-            <button onClick={() => setExpanded(v => !v)} className="btn-outline" style={{ background: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.4)', color: '#fff' }}>
+            <button onClick={() => setExpanded(v => !v)} className="btn-outline" style={{ background: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.4)', color: 'var(--surface)' }}>
               {expanded
                 ? <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15"/></svg> Collapse</>
                 : <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg> View Events</>}
@@ -1179,11 +1179,11 @@ function MasterTab({ queueId, onFinalize, programs }) {
                 <div style={{ flex: 1 }} />
                 <div style={{ display: 'flex', background: G.borderLight, borderRadius: 8, padding: 4 }}>
                   <button onClick={() => setReviewViewMode('grid')}
-                    style={{ padding: '4px 10px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'grid' ? '#fff' : 'transparent', color: reviewViewMode === 'grid' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'grid' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
+                    style={{ padding: '4px 10px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'grid' ? 'var(--surface)' : 'transparent', color: reviewViewMode === 'grid' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'grid' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
                     Grid
                   </button>
                   <button onClick={() => setReviewViewMode('table')}
-                    style={{ padding: '4px 10px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'table' ? '#fff' : 'transparent', color: reviewViewMode === 'table' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'table' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
+                    style={{ padding: '4px 10px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'table' ? 'var(--surface)' : 'transparent', color: reviewViewMode === 'table' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'table' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
                     List
                   </button>
                 </div>
@@ -1222,9 +1222,9 @@ function MasterTab({ queueId, onFinalize, programs }) {
                         <button key={d} onClick={() => setActiveDay(d)} 
                           style={{
                             padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                            cursor: 'pointer', border: '1px solid #D8E8DF',
-                            background: activeDay === d ? `linear-gradient(135deg, ${G.meadow}, ${G.meadowDeep})` : '#fff',
-                            color: activeDay === d ? '#fff' : G.muted,
+                            cursor: 'pointer', border: '1px solid var(--border)',
+                            background: activeDay === d ? `linear-gradient(135deg, ${G.meadow}, ${G.meadowDeep})` : 'var(--surface)',
+                            color: activeDay === d ? 'var(--surface)' : G.muted,
                             transition: 'all .15s', whiteSpace: 'nowrap',
                             boxShadow: activeDay === d ? '0 2px 8px rgba(0,0,0,.3)' : 'none'
                           }}>
@@ -1266,7 +1266,7 @@ function MasterTab({ queueId, onFinalize, programs }) {
               <button onClick={() => setShowFinalizeConfirm(false)} disabled={acting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: 'var(--surface)', fontSize: 13, fontWeight: 600, color: G.muted, cursor: acting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
                 Cancel
               </button>
-              <button onClick={handleFinalize} disabled={acting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: G.blue, fontSize: 13, fontWeight: 700, color: '#fff', cursor: acting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: acting ? 0.7 : 1 }}>
+              <button onClick={handleFinalize} disabled={acting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: G.blue, fontSize: 13, fontWeight: 700, color: 'var(--surface)', cursor: acting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: acting ? 0.7 : 1 }}>
                 {acting ? 'Publishing...' : 'Publish'}
               </button>
             </div>

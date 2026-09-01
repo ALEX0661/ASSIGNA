@@ -241,7 +241,7 @@ export default function SessionCard({
             <span style={{
               fontSize: 6, fontWeight: 900,
               background: accentColor,
-              color: clr.badgeText ?? '#fff',
+              color: clr.badgeText ?? 'var(--surface)',
               borderRadius: 2, padding: '0 3px', lineHeight: 1.4, flexShrink: 0,
             }}>
               {event.block}
@@ -249,7 +249,7 @@ export default function SessionCard({
           )}
           <span style={{
             fontSize: 6, fontWeight: 800, letterSpacing: '0.3px',
-            color: isLab ? '#fff' : textColor,
+            color: isLab ? 'var(--surface)' : textColor,
             background: isLab ? TV.deep : badgeBg,
             border: isLab ? 'none' : `1px solid ${borderColor}`,
             padding: '0 3px', borderRadius: 2, lineHeight: 1.4, flexShrink: 0,
@@ -357,7 +357,7 @@ export default function SessionCard({
             fontSize: 6.5, fontWeight: 800, letterSpacing: '0.7px',
             background: isLab ? TV.deep : badgeBg,
             border: isLab ? 'none' : `1px solid ${borderColor}`,
-            color: isLab ? '#fff' : textColor,
+            color: isLab ? 'var(--surface)' : textColor,
             padding: '1.5px 5px', borderRadius: 4,
           }}>
             {sessionType}
@@ -367,7 +367,7 @@ export default function SessionCard({
             <span style={{
               fontSize: 7.5, fontWeight: 900, letterSpacing: '0.3px',
               background: accentColor,
-              color: clr.badgeText ?? '#fff',
+              color: clr.badgeText ?? 'var(--surface)',
               padding: '1px 6px', borderRadius: 4,
               lineHeight: 1.4, flexShrink: 0,
             }}>

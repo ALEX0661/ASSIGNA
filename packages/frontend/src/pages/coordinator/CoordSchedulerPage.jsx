@@ -23,9 +23,9 @@ const G = {
   ink: 'var(--ink, #0E2A20)', inkMid: '#1C3D2A', muted: 'var(--muted, #4B7060)', muted2: 'var(--muted2, #6B8C7A)',
   border: 'var(--border)', borderLight: 'var(--hover)', bg: 'var(--bg, #F2F7F4)',
   surface: 'var(--surface, #FFFFFF)', hover: 'var(--hover)', amber: '#D97706',
-  amberSoft: '#FEF3C7', amberBorder: '#FDE68A',
-  blue: '#0369A1', blueSoft: '#E0F2FE', blueBorder: '#BAE6FD',
-  red: '#DC2626', redSoft: '#FEE2E2', redBorder: 'rgba(220, 38, 38, 0.25)',
+  amberSoft: 'rgba(245, 158, 11, 0.1)', amberBorder: 'rgba(245, 158, 11, 0.25)',
+  blue: '#0369A1', blueSoft: 'rgba(59, 130, 246, 0.1)', blueBorder: 'rgba(59, 130, 246, 0.25)',
+  red: '#DC2626', redSoft: 'rgba(239, 68, 68, 0.1)', redBorder: 'rgba(220, 38, 38, 0.25)',
 }
 
 const PHASES = [
@@ -42,16 +42,16 @@ const DEFAULT_PHASE_KEYS = PHASES.map(p => p.key)
 
 const VERDICT_META = {
   feasible:        { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder, label: 'Feasible',           icon: '✓' },
-  likely_feasible: { color: '#0369A1',    bg: '#E0F2FE',    border: '#BAE6FD',      label: 'Likely Feasible',    icon: '~' },
-  tight:           { color: '#D97706',    bg: '#FEF3C7',    border: '#FDE68A',      label: 'Feasible but Tight', icon: '⚠' },
-  at_risk:         { color: '#DC2626',    bg: '#FEE2E2',    border: 'rgba(220, 38, 38, 0.25)',      label: 'At Risk',            icon: '!' },
-  infeasible:      { color: '#991B1B',    bg: '#FEF2F2',    border: 'rgba(220, 38, 38, 0.25)',      label: 'Likely Infeasible',  icon: '✕' },
+  likely_feasible: { color: '#0369A1',    bg: 'rgba(59, 130, 246, 0.1)',    border: 'rgba(59, 130, 246, 0.25)',      label: 'Likely Feasible',    icon: '~' },
+  tight:           { color: '#D97706',    bg: 'rgba(245, 158, 11, 0.1)',    border: 'rgba(245, 158, 11, 0.25)',      label: 'Feasible but Tight', icon: '⚠' },
+  at_risk:         { color: '#DC2626',    bg: 'rgba(239, 68, 68, 0.1)',    border: 'rgba(220, 38, 38, 0.25)',      label: 'At Risk',            icon: '!' },
+  infeasible:      { color: '#991B1B',    bg: 'rgba(239, 68, 68, 0.05)',    border: 'rgba(220, 38, 38, 0.25)',      label: 'Likely Infeasible',  icon: '✕' },
 }
 
 const CHECK_META = {
   pass: { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder, dot: G.meadow,  label: 'Pass' },
-  warn: { color: '#D97706',    bg: '#FFFBEB',    border: '#FDE68A',      dot: '#F59E0B', label: 'Warn' },
-  fail: { color: '#DC2626',    bg: '#FEE2E2',    border: 'rgba(220, 38, 38, 0.25)',      dot: '#EF4444', label: 'Fail' },
+  warn: { color: '#D97706',    bg: 'rgba(245, 158, 11, 0.05)',    border: 'rgba(245, 158, 11, 0.25)',      dot: '#F59E0B', label: 'Warn' },
+  fail: { color: '#DC2626',    bg: 'rgba(239, 68, 68, 0.1)',    border: 'rgba(220, 38, 38, 0.25)',      dot: '#EF4444', label: 'Fail' },
   info: { color: G.blue,       bg: G.blueSoft,   border: G.blueBorder,   dot: G.blue,    label: 'Info' },
 }
 
@@ -93,9 +93,9 @@ function summarizeRoomHours(events) {
 }
 
 const REC_META = {
-  blocker:    { color: '#DC2626',    bg: '#FEE2E2',    border: 'rgba(220, 38, 38, 0.25)' },
-  warning:    { color: '#D97706',    bg: '#FFFBEB',    border: '#FDE68A' },
-  suggestion: { color: '#0369A1',    bg: '#E0F2FE',    border: '#BAE6FD' },
+  blocker:    { color: '#DC2626',    bg: 'rgba(239, 68, 68, 0.1)',    border: 'rgba(220, 38, 38, 0.25)' },
+  warning:    { color: '#D97706',    bg: 'rgba(245, 158, 11, 0.05)',    border: 'rgba(245, 158, 11, 0.25)' },
+  suggestion: { color: '#0369A1',    bg: 'rgba(59, 130, 246, 0.1)',    border: 'rgba(59, 130, 246, 0.25)' },
   success:    { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder },
 }
 
@@ -112,7 +112,7 @@ const STATUS_COLORS = {
   draft:     { bg: G.hover, color: G.muted, border: G.border, label: 'Draft' },
   submitted: { bg: G.amberSoft, color: '#92400E', border: G.amberBorder, label: 'Submitted' },
   approved:  { bg: G.meadowSoft, color: G.meadowDeep, border: G.meadowBorder, label: 'Approved' },
-  rejected:  { bg: '#FEE2E2', color: '#991B1B', border: 'rgba(220, 38, 38, 0.25)', label: 'Rejected' },
+  rejected:  { bg: 'rgba(239, 68, 68, 0.1)', color: '#991B1B', border: 'rgba(220, 38, 38, 0.25)', label: 'Rejected' },
 }
 
 const WIZ_STEPS = [
@@ -207,7 +207,7 @@ if (!document.getElementById('coord-scheduler-style')) {
     .qt-rail-wrap { padding:10px 16px 12px; }
     .qt-empty-note { padding:14px 16px; font-size:11.5px; color:${G.muted}; font-weight:500; }
 
-    .wiz-footer { position:sticky; bottom:0; display:flex; align-items:center; justify-content:space-between; padding:12px 28px; background:rgba(255,255,255,0.92); backdrop-filter:blur(12px); border-top:1px solid ${G.border}; z-index:40; flex-shrink:0; }
+    .wiz-footer { position:sticky; bottom:0; display:flex; align-items:center; justify-content:space-between; padding:12px 28px; background:var(--surface); backdrop-filter:blur(12px); border-top:1px solid ${G.border}; z-index:40; flex-shrink:0; }
     .wiz-nav-btn { display:inline-flex; align-items:center; gap:8px; padding:11px 24px; border-radius:10px; font-family:'Inter',sans-serif; font-size:13.5px; font-weight:700; cursor:pointer; transition:all .18s; }
     .wiz-nav-btn.back { background: var(--surface); color:${G.muted}; border:1px solid ${G.border}; }
     .wiz-nav-btn.back:hover { background:${G.hover}; color:${G.ink}; border-color:${G.meadowBorder}; }
@@ -378,10 +378,10 @@ function RoundBadge({ semester, academicYear, light }) {
       display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 13px',
       borderRadius: 99, fontSize: 12, fontWeight: 700,
       background: light ? 'rgba(255,255,255,0.2)' : G.hover,
-      color: light ? '#fff' : G.inkMid,
+      color: light ? 'var(--surface)' : G.inkMid,
       border: light ? '1px solid rgba(255,255,255,0.3)' : `1px solid ${G.border}`,
     }}>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={light ? '#fff' : G.muted} strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={light ? 'var(--surface)' : G.muted} strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
       {semester}{academicYear ? ` · ${academicYear}` : ''}
     </span>
   )
@@ -485,7 +485,7 @@ function RoomGroup({ title, all, selected, onToggle, onSelectAll, onClear, compa
           const picked = selected.includes(room)
           const u = usage?.[room]
           const badge = u && u.hours > 0.05
-            ? (u.pct >= 85 ? { bg: '#FEE2E2', color: '#DC2626' } : u.pct >= 50 ? { bg: '#FEF3C7', color: '#92400E' } : { bg: G.meadowSoft, color: G.meadowDeep })
+            ? (u.pct >= 85 ? { bg: 'rgba(239, 68, 68, 0.1)', color: '#DC2626' } : u.pct >= 50 ? { bg: 'rgba(245, 158, 11, 0.1)', color: '#92400E' } : { bg: G.meadowSoft, color: G.meadowDeep })
             : null
           return (
             <span key={room} className={`csh-room-chip${picked ? ' picked' : ''}`} onClick={() => onToggle(room)}
@@ -545,11 +545,11 @@ function StepHeader({ number, title, subtitle, badge }) {
       marginBottom:16, position:'relative', overflow:'hidden', flexShrink: 0 }}>
       <div style={{ position:'absolute', top:-30, right:-20, width:100, height:100, borderRadius:'50%', background:'rgba(255,255,255,0.05)', pointerEvents:'none' }} />
       <div style={{ width:32, height:32, borderRadius:'50%', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)',
-        display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color: '#fff', flexShrink:0, zIndex: 1 }}>
+        display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color: 'var(--surface)', flexShrink:0, zIndex: 1 }}>
         {number}
       </div>
       <div style={{ flex:1, minWidth:0, zIndex: 1 }}>
-        <div style={{ fontSize:16, fontWeight:800, color: '#fff', letterSpacing:'-0.3px', fontFamily:"'Poppins',sans-serif" }}>{title}</div>
+        <div style={{ fontSize:16, fontWeight:800, color: 'var(--surface)', letterSpacing:'-0.3px', fontFamily:"'Poppins',sans-serif" }}>{title}</div>
         <div style={{ fontSize:12.5, color: 'rgba(255,255,255,0.85)', fontWeight:500, marginTop:2 }}>{subtitle}</div>
       </div>
       <div style={{ zIndex: 1 }}>{badge}</div>
@@ -596,7 +596,7 @@ function PhaseTimeline({ currentPhaseIdx, status, progress, order, defaultOrder,
             return (
               <div key={ph.key} className="phase-step">
                 {i < phases.length - 1 && <div className="phase-connector" style={{ background: (phaseDone && !idle) ? G.meadow : G.border }} />}
-                <div className="phase-dot" style={{ background: idle ? G.hover : phaseDone ? G.meadow : phaseActive ? '#fff' : G.bg, border: idle ? `2px solid ${G.border}` : phaseActive ? `2.5px solid ${G.meadowDeep}` : phaseDone ? 'none' : `2px solid ${G.border}`, boxShadow: phaseActive ? `0 0 0 4px rgba(0,0,0,0.15)` : 'none' }}>
+                <div className="phase-dot" style={{ background: idle ? G.hover : phaseDone ? G.meadow : phaseActive ? 'var(--surface)' : G.bg, border: idle ? `2px solid ${G.border}` : phaseActive ? `2.5px solid ${G.meadowDeep}` : phaseDone ? 'none' : `2px solid ${G.border}`, boxShadow: phaseActive ? `0 0 0 4px rgba(0,0,0,0.15)` : 'none' }}>
                   {phaseDone && !idle ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                     : phaseActive ? <div style={{ width:10, height:10, borderRadius:'50%', background:G.meadowDeep }} /> : null}
                 </div>
@@ -951,8 +951,8 @@ function CoordinatorCheckPanel({ semester, masterEvents }) {
 
         {diagError && !diagLoading && (
           <div>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', borderRadius: 10, background: '#FEF2F2', border: '1px solid #FECACA' }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', borderRadius: 10, background: 'rgba(239, 68, 68, 0.05)', border: '1px solid #FECACA' }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -968,7 +968,7 @@ function CoordinatorCheckPanel({ semester, masterEvents }) {
           <div>
             <div style={{ padding:'14px 16px', borderRadius:10, background: verdict.bg, border: `1px solid ${verdict.border}`, display:'flex', alignItems:'center', justifyContent:'space-between', gap:14, flexWrap:'wrap', marginBottom: 12 }}>
               <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-                <div style={{ width:44, height:44, borderRadius:11, background:verdict.color, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:800, flexShrink:0, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>{verdict.icon}</div>
+                <div style={{ width:44, height:44, borderRadius:11, background:verdict.color, color: 'var(--surface)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:800, flexShrink:0, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>{verdict.icon}</div>
                 <div>
                   <div style={{ fontSize:15, fontWeight:800, color:verdict.color }}>{verdict.label}</div>
                   <div style={{ fontSize:12.5, color:G.ink, marginTop:2, maxWidth:480, fontWeight: 500 }}>{diag.verdictDetail}</div>
@@ -1954,7 +1954,7 @@ export default function CoordSchedulerPage() {
                     {statusState === 'failed' && genErrorKind === 'busy' && (
                       <div className="fadein solve-result" style={{ marginTop:14 }}>
                         <div className="solve-result-body" style={{ background: G.amberSoft }}>
-                          <div style={{ width:44, height:44, borderRadius:'50%', background:'#FEF3C7', border:'1.5px solid #FDE68A', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                          <div style={{ width:44, height:44, borderRadius:'50%', background:'rgba(245, 158, 11, 0.1)', border:'1.5px solid #FDE68A', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                           </div>
                           <div>
@@ -1973,8 +1973,8 @@ export default function CoordSchedulerPage() {
 
                     {statusState === 'failed' && genErrorKind !== 'busy' && (
                       <div className="fadein solve-result failed" style={{ marginTop: 14 }}>
-                        <div className="solve-result-body" style={{ background: '#FEF2F2', padding: '20px' }}>
-                          <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#FEE2E2', border: '1.5px solid #FCA5A5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <div className="solve-result-body" style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '20px' }}>
+                          <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', border: '1.5px solid #FCA5A5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
@@ -2087,11 +2087,11 @@ export default function CoordSchedulerPage() {
                       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                         <div style={{ display: 'flex', background: G.hover, borderRadius: 8, padding: 4 }}>
                           <button onClick={() => setReviewViewMode('grid')}
-                            style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'grid' ? '#fff' : 'transparent', color: reviewViewMode === 'grid' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'grid' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
+                            style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'grid' ? 'var(--surface)' : 'transparent', color: reviewViewMode === 'grid' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'grid' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
                             Grid
                           </button>
                           <button onClick={() => setReviewViewMode('table')}
-                            style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'table' ? '#fff' : 'transparent', color: reviewViewMode === 'table' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'table' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
+                            style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'table' ? 'var(--surface)' : 'transparent', color: reviewViewMode === 'table' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'table' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
                             List
                           </button>
                         </div>
@@ -2143,9 +2143,9 @@ export default function CoordSchedulerPage() {
                                 <button key={d} onClick={() => setActiveDay(d)} 
                                   style={{
                                     padding: '6px 13px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-                                    cursor: 'pointer', border: '1px solid #D8E8DF',
-                                    background: activeDay === d ? `linear-gradient(135deg, ${G.meadow}, ${G.meadowDeep})` : '#fff',
-                                    color: activeDay === d ? '#fff' : G.muted,
+                                    cursor: 'pointer', border: '1px solid var(--border)',
+                                    background: activeDay === d ? `linear-gradient(135deg, ${G.meadow}, ${G.meadowDeep})` : 'var(--surface)',
+                                    color: activeDay === d ? 'var(--surface)' : G.muted,
                                     transition: 'all .15s', whiteSpace: 'nowrap',
                                     boxShadow: activeDay === d ? '0 2px 8px rgba(0,0,0,.3)' : 'none'
                                   }}>
@@ -2285,7 +2285,7 @@ export default function CoordSchedulerPage() {
                 onClick={handleCancel}
                 disabled={stopRequested}
                 style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'10px 18px', borderRadius:10, border:'1.5px solid #FECACA', background:'rgba(220, 38, 38, 0.05)', color:'#DC2626', fontSize:13, fontWeight:700, cursor: stopRequested ? 'default' : 'pointer', opacity: stopRequested ? 0.6 : 1, fontFamily:"'Inter',sans-serif", transition:'all .15s' }}
-                onMouseEnter={e => { if (!stopRequested) e.currentTarget.style.background='#FEE2E2' }}
+                onMouseEnter={e => { if (!stopRequested) e.currentTarget.style.background='rgba(239, 68, 68, 0.1)' }}
                 onMouseLeave={e => { if (!stopRequested) e.currentTarget.style.background='rgba(220, 38, 38, 0.05)' }}
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>

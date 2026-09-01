@@ -29,7 +29,7 @@ const DASH_STYLE = `
     50%     { box-shadow: 0 0 0 6px rgba(110,231,183,0) }
   }
   .skel {
-    background: linear-gradient(90deg,var(--hover) 25%,#D8EEE3 50%,var(--hover) 75%);
+    background: linear-gradient(90deg,var(--hover) 25%,var(--border) 50%,var(--hover) 75%);
     background-size: 600px 100%;
     animation: shimmer 1.4s ease-in-out infinite;
     border-radius: 7px;
@@ -37,7 +37,7 @@ const DASH_STYLE = `
   .d-card {
     background: var(--surface);
     border-radius: 14px;
-    border: 1px solid #D8E8DF;
+    border: 1px solid var(--border);
     box-shadow: 0 1px 8px rgba(0,0,0,0.06);
     overflow: visible;
   }
@@ -46,7 +46,7 @@ const DASH_STYLE = `
   .stat-card {
     background: var(--surface);
     border-radius: 14px;
-    border: 1px solid #D8E8DF;
+    border: 1px solid var(--border);
     box-shadow: 0 1px 8px rgba(0,0,0,0.06);
     padding: 18px 20px 16px;
     transition: box-shadow .18s, transform .18s;
@@ -229,7 +229,7 @@ function MiniBar({ label, value, max, onClick, tier }) {
 function HeatCell({ count, max, label }) {
   const intensity = max > 0 ? count / max : 0
   const bg = intensity === 0 ? 'var(--hover)' : `rgba(0,0,0,${0.12 + intensity * 0.75})`
-  const textColor = intensity > 0.5 ? '#fff' : 'var(--ink)'
+  const textColor = intensity > 0.5 ? 'var(--surface)' : 'var(--ink)'
   return (
     <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
       <div style={{ width:'100%', height:52, borderRadius:10, background:bg, display:'flex', alignItems:'center', justifyContent:'center', transition:'background .3s' }}>
@@ -267,7 +267,7 @@ function ScoreRing({ score, label, color = 'var(--meadow)' }) {
 /* ─── Suggestion card ────────────────────────────────────────────────────── */
 const SUGGESTION_STYLES = {
   error:   { bg:'#FFF5F5', border:'rgba(220, 38, 38, 0.25)', icon:'#DC2626', dot:'#EF4444', label:'Critical' },
-  warning: { bg:'#FFFBEB', border:'#FDE68A', icon:'#D97706', dot:'#F59E0B', label:'Warning'  },
+  warning: { bg:'rgba(245, 158, 11, 0.05)', border:'rgba(245, 158, 11, 0.25)', icon:'#D97706', dot:'#F59E0B', label:'Warning'  },
   info:    { bg:'#EFF6FF', border:'#BFDBFE', icon:'#2563EB', dot:'#3B82F6', label:'Info'     },
   success: { bg:'var(--meadow-soft)', border:'var(--meadow-border)', icon:'var(--meadow)', dot:'var(--meadow)', label:'Good'     },
 }
@@ -285,20 +285,20 @@ function SuggestionCard({ suggestion, onAction, delay = 0 }) {
   return (
     <div className="suggestion-card"
       style={{ background:s.bg, borderColor:s.border, animationDelay:`${delay}s` }}>
-      <div style={{ width:28, height:28, borderRadius:8, background: suggestion.type === 'error' ? 'rgba(220, 38, 38, 0.25)' : suggestion.type === 'warning' ? '#FDE68A' : suggestion.type === 'success' ? 'var(--meadow-border)' : '#BFDBFE',
+      <div style={{ width:28, height:28, borderRadius:8, background: suggestion.type === 'error' ? 'rgba(220, 38, 38, 0.25)' : suggestion.type === 'warning' ? 'rgba(245, 158, 11, 0.25)' : suggestion.type === 'success' ? 'var(--meadow-border)' : '#BFDBFE',
         color:s.icon, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:1 }}>
         {SUGGESTION_ICONS[suggestion.type]}
       </div>
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
           <span style={{ fontSize:12, fontWeight:700, color:'var(--ink)' }}>{suggestion.title}</span>
-          <span style={{ fontSize:9.5, fontWeight:700, padding:'1px 7px', borderRadius:99, background:s.dot, color:'#fff' }}>{s.label}</span>
+          <span style={{ fontSize:9.5, fontWeight:700, padding:'1px 7px', borderRadius:99, background:s.dot, color: 'var(--surface)' }}>{s.label}</span>
         </div>
         <p style={{ fontSize:11, color:'var(--muted)', margin:0, lineHeight:1.5 }}>{suggestion.body}</p>
         {suggestion.action && (
           <button onClick={() => navigate(suggestion.action.href)}
             style={{ marginTop:6, padding:'4px 11px', borderRadius:7, border:'none', fontSize:10.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif',
-              background: s.icon, color:'#fff', transition:'opacity .15s' }}
+              background: s.icon, color: 'var(--surface)', transition:'opacity .15s' }}
             onMouseEnter={e => e.currentTarget.style.opacity='.85'}
             onMouseLeave={e => e.currentTarget.style.opacity='1'}>
             {suggestion.action.label} →
@@ -319,7 +319,7 @@ function SetupChecklist({ steps, onNavigate, loading }) {
 
   if (loading) {
     return (
-      <div style={{ background: 'var(--surface)', borderRadius:12, border:'1px solid #D8E8DF', padding:'14px 18px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 6px rgba(0,0,0,0.05)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius:12, border:'1px solid var(--border)', padding:'14px 18px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 6px rgba(0,0,0,0.05)' }}>
         <Skel w={30} h={30} r={99}/>
         <Skel w={180} h={12} r={4}/>
       </div>
@@ -334,7 +334,7 @@ function SetupChecklist({ steps, onNavigate, loading }) {
   if (allDone) {
     return (
       <div style={{ background:'var(--meadow-soft)', borderRadius:12, border:'1px solid var(--meadow-border)', display:'flex', alignItems:'center', gap:12, padding:'12px 18px', boxShadow:'0 1px 6px rgba(0,0,0,0.05)' }}>
-        <div style={{ width:26, height:26, borderRadius:'50%', flexShrink:0, background: 'var(--meadow)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <div style={{ width:26, height:26, borderRadius:'50%', flexShrink:0, background: 'var(--meadow)', color: 'var(--surface)', display:'flex', alignItems:'center', justifyContent:'center' }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
         <div style={{ fontSize:12.5, fontWeight:700, color: 'var(--ink)' }}>Setup complete — everything is loaded and ready to schedule.</div>
@@ -343,14 +343,14 @@ function SetupChecklist({ steps, onNavigate, loading }) {
   }
 
   return (
-    <div style={{ background: 'var(--surface)', borderRadius:12, border:'1px solid #D8E8DF', boxShadow:'0 1px 6px rgba(0,0,0,0.05)', width:'100%' }}>
+    <div style={{ background: 'var(--surface)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,0.05)', width:'100%' }}>
       {/* ── Toggle header ── */}
       <div
         onClick={() => setOpen(v => !v)}
         style={{ display:'flex', alignItems:'center', gap:12, padding:'13px 16px', background:'var(--meadow-soft)', cursor:'pointer', borderBottom: open ? '1px solid var(--meadow-soft)' : 'none', userSelect:'none', borderRadius: open ? '12px 12px 0 0' : 12 }}
       >
         {/* Done counter badge */}
-        <div style={{ width:30, height:30, borderRadius:'50%', flexShrink:0, background: 'var(--meadow)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, fontFamily:"'Sora',sans-serif" }}>
+        <div style={{ width:30, height:30, borderRadius:'50%', flexShrink:0, background: 'var(--meadow)', color: 'var(--surface)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, fontFamily:"'Sora',sans-serif" }}>
           {doneCount}/{total}
         </div>
 
@@ -409,7 +409,7 @@ function SetupChecklist({ steps, onNavigate, loading }) {
               {!step.done && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onNavigate(step.href) }}
-                  style={{ flexShrink:0, padding:'6px 13px', borderRadius:8, border:'none', background: 'var(--meadow)', color:'#fff', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif", whiteSpace:'nowrap' }}
+                  style={{ flexShrink:0, padding:'6px 13px', borderRadius:8, border:'none', background: 'var(--meadow)', color: 'var(--surface)', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif", whiteSpace:'nowrap' }}
                   onMouseEnter={e => e.currentTarget.style.background='var(--meadow-deep)'}
                   onMouseLeave={e => e.currentTarget.style.background='var(--meadow)'}
                 >
@@ -650,7 +650,7 @@ export default function DashboardPage() {
     {
       label: 'Schedules',
       color: '#D97706',
-      bg: '#FFFBEB',
+      bg: 'rgba(245, 158, 11, 0.05)',
       icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
       value: statsLoading ? null : savedList.length,
       sub: scheduleName ? `Active: ${scheduleName}` : 'None loaded',
@@ -680,7 +680,7 @@ export default function DashboardPage() {
           </h1>
         </div>
         <button id="tour-admin-scheduler" onClick={() => navigate('/dashboard/scheduler')}
-          style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:10, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color:'#fff', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 4px 14px rgba(0,0,0,0.28)', transition:'opacity .15s' }}
+          style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:10, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: 'var(--surface)', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 4px 14px rgba(0,0,0,0.28)', transition:'opacity .15s' }}
           onMouseEnter={e=>e.currentTarget.style.opacity='.9'}
           onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -761,7 +761,7 @@ export default function DashboardPage() {
                 value: statsLoading ? '…' : `${sch.coveragePct ?? 0}%`,
                 sub: statsLoading ? '' : `${sch.tbaSessions ?? 0} TBA sessions`,
                 color: (sch.coveragePct ?? 0) >= 95 ? 'var(--meadow)' : (sch.coveragePct ?? 0) >= 80 ? '#D97706' : '#C0392B',
-                bg: (sch.coveragePct ?? 0) >= 95 ? 'var(--meadow-soft)' : (sch.coveragePct ?? 0) >= 80 ? '#FFFBEB' : '#FFF5F5',
+                bg: (sch.coveragePct ?? 0) >= 95 ? 'var(--meadow-soft)' : (sch.coveragePct ?? 0) >= 80 ? 'rgba(245, 158, 11, 0.05)' : '#FFF5F5',
                 icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>,
               },
               {
@@ -785,11 +785,11 @@ export default function DashboardPage() {
                 value: wlLoading ? '…' : atRisk.length,
                 sub: atRisk.length === 0 ? 'No one near limit' : 'At ≥85% capacity',
                 color: atRisk.length === 0 ? 'var(--meadow)' : '#D97706',
-                bg: atRisk.length === 0 ? 'var(--meadow-soft)' : '#FFFBEB',
+                bg: atRisk.length === 0 ? 'var(--meadow-soft)' : 'rgba(245, 158, 11, 0.05)',
                 icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>,
               },
             ].map(item => (
-              <div key={item.label} style={{ padding:'12px 13px', borderRadius:10, background:item.bg, border:`1px solid ${item.bg === 'var(--meadow-soft)' ? 'var(--meadow-border)' : item.bg === '#FFFBEB' ? '#FDE68A' : 'rgba(220, 38, 38, 0.25)'}`, display:'flex', flexDirection:'column', gap:6 }}>
+              <div key={item.label} style={{ padding:'12px 13px', borderRadius:10, background:item.bg, border:`1px solid ${item.bg === 'var(--meadow-soft)' ? 'var(--meadow-border)' : item.bg === 'rgba(245, 158, 11, 0.05)' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(220, 38, 38, 0.25)'}`, display:'flex', flexDirection:'column', gap:6 }}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                   <span style={{ fontSize:11, fontWeight:600, color:'var(--muted2)' }}>{item.label}</span>
                   <div style={{ color:item.color, opacity:.7 }}>{item.icon}</div>
@@ -1015,7 +1015,7 @@ export default function DashboardPage() {
                     label: 'Full-time',
                     val: fac.fullTime || 0,
                     total: fac.total || 1,
-                    color: '#2563EB', bg: '#DBEAFE',
+                    color: '#2563EB', bg: 'rgba(59, 130, 246, 0.1)',
                   },
                   {
                     label: 'Part-time',

@@ -5,10 +5,10 @@ import { useTour } from '../../hooks/useTour.jsx'
 
 // ─── Proficiency levels ───────────────────────────────────────────────────────
 const LEVELS = [
-  { rating: 1, label: 'Beginner',   short: 'BEG',  color: '#B91C1C', bg: '#FEF2F2', border: 'rgba(220, 38, 38, 0.25)', dot: '#EF4444', hoverBg: '#FEE2E2' },
-  { rating: 2, label: 'Developing', short: 'DEV',  color: '#B45309', bg: '#FFFBEB', border: '#FDE68A', dot: '#F59E0B', hoverBg: '#FEF3C7' },
+  { rating: 1, label: 'Beginner',   short: 'BEG',  color: '#B91C1C', bg: 'rgba(239, 68, 68, 0.05)', border: 'rgba(220, 38, 38, 0.25)', dot: '#EF4444', hoverBg: 'rgba(239, 68, 68, 0.1)' },
+  { rating: 2, label: 'Developing', short: 'DEV',  color: '#B45309', bg: 'rgba(245, 158, 11, 0.05)', border: 'rgba(245, 158, 11, 0.25)', dot: '#F59E0B', hoverBg: 'rgba(245, 158, 11, 0.1)' },
   { rating: 3, label: 'Competent',  short: 'COMP', color: '#6D28D9', bg: '#F5F3FF', border: 'color-mix(in srgb, #6D28D9 30%, transparent)', dot: '#7C3AED', hoverBg: 'color-mix(in srgb, #6D28D9 15%, transparent)' },
-  { rating: 4, label: 'Proficient', short: 'PROF', color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE', dot: '#3B82F6', hoverBg: '#DBEAFE' },
+  { rating: 4, label: 'Proficient', short: 'PROF', color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE', dot: '#3B82F6', hoverBg: 'rgba(59, 130, 246, 0.1)' },
   { rating: 5, label: 'Expert',     short: 'EXP',  color: 'var(--meadow-deep)', bg: 'var(--meadow-soft)', border: '#A7F3D0', dot: '#10B981', hoverBg: 'var(--meadow-soft)' },
 ]
 const getLvl = r => LEVELS.find(l => l.rating === (r || 3)) || LEVELS[2]
@@ -117,7 +117,7 @@ function NavBtn({ active, onClick, icon, label, badge }) {
         <span style={{
           minWidth: 19, height: 19, borderRadius: 99,
           background: active ? 'var(--meadow)' : 'var(--hover)',
-          color: active ? '#fff' : 'var(--muted)',
+          color: active ? 'var(--surface)' : 'var(--muted)',
           fontSize: 10, fontWeight: 700,
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px',
         }}>{badge}</span>
@@ -472,7 +472,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                         <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.7 }}>Browse the catalog or add a course code manually.</div>
                       </div>
                       <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                        <button onClick={() => setTab('browse')} style={{ padding: '7px 16px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}>Browse Catalog</button>
+                        <button onClick={() => setTab('browse')} style={{ padding: '7px 16px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: 'var(--surface)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}>Browse Catalog</button>
                       </div>
                     </div>
                   ) : filteredSpecs.length === 0 ? (
@@ -525,7 +525,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
 
             {tab === 'unmatched' && (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <div style={{ padding: '16px 20px', background: '#FFFBEB', borderBottom: '1px solid #FDE68A', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div style={{ padding: '16px 20px', background: 'rgba(245, 158, 11, 0.05)', borderBottom: '1px solid #FDE68A', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                   <div>
                     <h3 style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: '#92400E' }}>Needs Review</h3>
@@ -696,7 +696,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                         Clear
                       </button>
                       <button type="button" onClick={commitPending}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 18px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter', sans-serif", boxShadow: '0 4px 14px rgba(0,0,0,0.28)' }}>
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 18px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: 'var(--surface)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter', sans-serif", boxShadow: '0 4px 14px rgba(0,0,0,0.28)' }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
                         Add {pendingCount} Course{pendingCount !== 1 ? 's' : ''}
                       </button>
@@ -726,7 +726,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                         onChange={e => { setNewCode(e.target.value.toUpperCase()); setCodeError('') }}
                         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addManual() } }}
                         placeholder="e.g. CS101"
-                        style={{ width: '100%', padding: '10px 13px', borderRadius: 9, border: `1.5px solid ${codeError ? '#FCA5A5' : '#E5E7EB'}`, fontSize: 13, fontFamily: "'DM Sans', sans-serif", boxSizing: 'border-box', outline: 'none', letterSpacing: '0.5px', background: codeError ? '#FFF5F5' : '#fff' }} />
+                        style={{ width: '100%', padding: '10px 13px', borderRadius: 9, border: `1.5px solid ${codeError ? '#FCA5A5' : '#E5E7EB'}`, fontSize: 13, fontFamily: "'DM Sans', sans-serif", boxSizing: 'border-box', outline: 'none', letterSpacing: '0.5px', background: codeError ? '#FFF5F5' : 'var(--surface)' }} />
                       {codeError && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6, color: '#DC2626', fontSize: 12, fontWeight: 500 }}>
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /></svg>
@@ -762,7 +762,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                     </div>
 
                     <button type="button" onClick={addManual}
-                      style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', borderRadius: 9, border: 'none', background: '#6D28D9', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", boxShadow: '0 4px 14px rgba(109,40,217,0.26)' }}>
+                      style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', borderRadius: 9, border: 'none', background: '#6D28D9', color: 'var(--surface)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", boxShadow: '0 4px 14px rgba(109,40,217,0.26)' }}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                       Add Course
                     </button>
@@ -799,7 +799,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
               })
               onSave(cleaned)
             }} disabled={isSaving}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 20px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize: 13, fontWeight: 600, cursor: isSaving ? 'default' : 'pointer', fontFamily: "'Inter', sans-serif", opacity: isSaving ? 0.65 : 1, boxShadow: '0 4px 14px rgba(0,0,0,0.28)' }}>
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 20px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: 'var(--surface)', fontSize: 13, fontWeight: 600, cursor: isSaving ? 'default' : 'pointer', fontFamily: "'Inter', sans-serif", opacity: isSaving ? 0.65 : 1, boxShadow: '0 4px 14px rgba(0,0,0,0.28)' }}>
               {isSaving
                 ? <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'spin 0.8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>Saving…</>
                 : <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>{specCount > 0 ? `Save Changes (${specCount})` : 'Save'}</>

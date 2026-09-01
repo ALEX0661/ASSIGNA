@@ -22,9 +22,9 @@ const G = {
   ink: 'var(--ink, #0E2A20)', inkMid: '#1C3D2A', muted: 'var(--muted, #4B7060)', muted2: 'var(--muted2, #6B8C7A)',
   border: 'var(--border)', borderLight: 'var(--hover)', bg: 'var(--bg, #F2F7F4)',
   surface: 'var(--surface, #FFFFFF)', hover: 'var(--hover)', amber: '#D97706',
-  amberSoft: '#FEF3C7', amberBorder: '#FDE68A',
+  amberSoft: 'rgba(245, 158, 11, 0.1)', amberBorder: 'rgba(245, 158, 11, 0.25)',
   red: '#C0392B', redSoft: '#FFF0F0', redBorder: 'rgba(220, 38, 38, 0.25)',
-  blue: '#1D4ED8', blueSoft: '#DBEAFE', blueBorder: '#BFDBFE',
+  blue: '#1D4ED8', blueSoft: 'rgba(59, 130, 246, 0.1)', blueBorder: '#BFDBFE',
 }
 
 const CO_STYLE = `
@@ -455,13 +455,13 @@ export default function CoordMySchedulePage() {
       <div id="tour-schedules-list" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
           {selectionMode ? (
-            <div className="co-toolbar" style={{ background: '#2C3E50', borderColor: '#1A252F', color: '#fff', padding: '10px 14px', borderRadius: 12 }}>
+            <div className="co-toolbar" style={{ background: '#2C3E50', borderColor: '#1A252F', color: 'var(--surface)', padding: '10px 14px', borderRadius: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Checkbox checked={allSel} indeterminate={someSel} onChange={togAll} />
               </div>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#fff', flex: 1, paddingLeft: 8 }}>{selCount} schedule{selCount !== 1 ? 's' : ''} selected</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--surface)', flex: 1, paddingLeft: 8 }}>{selCount} schedule{selCount !== 1 ? 's' : ''} selected</span>
               <button onClick={() => setSelected(new Set())} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.85)', fontSize: 12, padding: '5px 14px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>Deselect all</button>
-              <button onClick={() => setConfirmModal({ action: 'bulkDelete' })} disabled={deleting} style={{ background: '#C0392B', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, padding: '5px 15px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontFamily: "'Inter',sans-serif", opacity: deleting ? 0.7 : 1 }}>
+              <button onClick={() => setConfirmModal({ action: 'bulkDelete' })} disabled={deleting} style={{ background: '#C0392B', border: 'none', color: 'var(--surface)', fontSize: 12, fontWeight: 600, padding: '5px 15px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontFamily: "'Inter',sans-serif", opacity: deleting ? 0.7 : 1 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
                 Delete {selCount}
               </button>
@@ -598,7 +598,7 @@ export default function CoordMySchedulePage() {
                       else handleDelete(confirmModal.id)
                     }}
                     disabled={busy}
-                    style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: isSubmit ? `linear-gradient(135deg,${G.meadow},${G.meadowDeep})` : G.red, fontSize: 13, fontWeight: 700, color: '#fff', cursor: busy ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: busy ? 0.7 : 1 }}
+                    style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: isSubmit ? `linear-gradient(135deg,${G.meadow},${G.meadowDeep})` : G.red, fontSize: 13, fontWeight: 700, color: 'var(--surface)', cursor: busy ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: busy ? 0.7 : 1 }}
                   >
                     {busy ? (isSubmit ? 'Submitting...' : 'Deleting...') : isSubmit ? 'Submit' : isBulk ? `Delete ${selected.size}` : 'Yes, Delete'}
                   </button>

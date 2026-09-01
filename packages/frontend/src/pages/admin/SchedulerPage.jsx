@@ -47,7 +47,7 @@ const SEMESTER_OPTIONS = ['1st Semester', '2nd Semester', 'Midyear']
 
 const RATING_LABELS = { 5: 'Expert', 4: 'Highly Proficient', 3: 'Competent', 2: 'Developing', 1: 'Beginner' }
 const RATING_COLORS = { 5: 'var(--meadow-mid)', 4: '#0369A1', 3: G.meadow, 2: '#D97706', 1: '#DC2626' }
-const RATING_BG     = { 5: 'var(--meadow-soft)', 4: '#E0F2FE', 3: G.meadowSoft, 2: '#FEF3C7', 1: '#FEE2E2' }
+const RATING_BG     = { 5: 'var(--meadow-soft)', 4: 'rgba(59, 130, 246, 0.1)', 3: G.meadowSoft, 2: 'rgba(245, 158, 11, 0.1)', 1: 'rgba(239, 68, 68, 0.1)' }
 
 const OTHER_DEPT_PREFIXES = ['PE', 'NSTP', 'MAT', 'MATH', 'PATHFIT', 'GEC']
 function isOtherDept(courseCode = '') {
@@ -56,9 +56,9 @@ function isOtherDept(courseCode = '') {
 }
 
 const STATUS_META = {
-  no_faculty:  { label: 'No faculty',   color: '#DC2626', bg: '#FEE2E2', border: 'rgba(220, 38, 38, 0.25)' },
-  low_quality: { label: 'Low quality',  color: '#D97706', bg: '#FEF3C7', border: '#FDE68A' },
-  thin:        { label: 'Thin pool',    color: '#0369A1', bg: '#E0F2FE', border: '#BAE6FD' },
+  no_faculty:  { label: 'No faculty',   color: '#DC2626', bg: 'rgba(239, 68, 68, 0.1)', border: 'rgba(220, 38, 38, 0.25)' },
+  low_quality: { label: 'Low quality',  color: '#D97706', bg: 'rgba(245, 158, 11, 0.1)', border: 'rgba(245, 158, 11, 0.25)' },
+  thin:        { label: 'Thin pool',    color: '#0369A1', bg: 'rgba(59, 130, 246, 0.1)', border: 'rgba(59, 130, 246, 0.25)' },
   ready:       { label: 'Ready',        color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder },
   other_dept:  { label: 'Ext. managed', color: G.muted, bg: G.hover, border: G.border },
 }
@@ -85,20 +85,20 @@ const PRESET_NAMES = [
 
 const VERDICT_META = {
   feasible:        { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder, label: 'Feasible',           icon: '✓' },
-  likely_feasible: { color: '#0369A1',    bg: '#E0F2FE',    border: '#BAE6FD',      label: 'Likely Feasible',    icon: '~' },
-  tight:           { color: '#D97706',    bg: '#FEF3C7',    border: '#FDE68A',      label: 'Feasible but Tight', icon: '⚠' },
-  at_risk:         { color: '#DC2626',    bg: '#FEE2E2',    border: 'rgba(220, 38, 38, 0.25)',      label: 'At Risk',            icon: '!' },
-  infeasible:      { color: '#991B1B',    bg: '#FEF2F2',    border: 'rgba(220, 38, 38, 0.25)',      label: 'Likely Infeasible',  icon: '✕' },
+  likely_feasible: { color: '#0369A1',    bg: 'rgba(59, 130, 246, 0.1)',    border: 'rgba(59, 130, 246, 0.25)',      label: 'Likely Feasible',    icon: '~' },
+  tight:           { color: '#D97706',    bg: 'rgba(245, 158, 11, 0.1)',    border: 'rgba(245, 158, 11, 0.25)',      label: 'Feasible but Tight', icon: '⚠' },
+  at_risk:         { color: '#DC2626',    bg: 'rgba(239, 68, 68, 0.1)',    border: 'rgba(220, 38, 38, 0.25)',      label: 'At Risk',            icon: '!' },
+  infeasible:      { color: '#991B1B',    bg: 'rgba(239, 68, 68, 0.05)',    border: 'rgba(220, 38, 38, 0.25)',      label: 'Likely Infeasible',  icon: '✕' },
 }
 const CHECK_META = {
   pass: { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder, dot: G.meadow,  label: 'Pass' },
-  warn: { color: '#D97706',    bg: '#FFFBEB',    border: '#FDE68A',      dot: '#F59E0B', label: 'Warn' },
-  fail: { color: '#DC2626',    bg: '#FEE2E2',    border: 'rgba(220, 38, 38, 0.25)',      dot: '#EF4444', label: 'Fail' },
+  warn: { color: '#D97706',    bg: 'rgba(245, 158, 11, 0.05)',    border: 'rgba(245, 158, 11, 0.25)',      dot: '#F59E0B', label: 'Warn' },
+  fail: { color: '#DC2626',    bg: 'rgba(239, 68, 68, 0.1)',    border: 'rgba(220, 38, 38, 0.25)',      dot: '#EF4444', label: 'Fail' },
 }
 const REC_META = {
-  blocker:    { color: '#DC2626',    bg: '#FEE2E2',    border: 'rgba(220, 38, 38, 0.25)' },
-  warning:    { color: '#D97706',    bg: '#FFFBEB',    border: '#FDE68A' },
-  suggestion: { color: '#0369A1',    bg: '#E0F2FE',    border: '#BAE6FD' },
+  blocker:    { color: '#DC2626',    bg: 'rgba(239, 68, 68, 0.1)',    border: 'rgba(220, 38, 38, 0.25)' },
+  warning:    { color: '#D97706',    bg: 'rgba(245, 158, 11, 0.05)',    border: 'rgba(245, 158, 11, 0.25)' },
+  suggestion: { color: '#0369A1',    bg: 'rgba(59, 130, 246, 0.1)',    border: 'rgba(59, 130, 246, 0.25)' },
   success:    { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder },
 }
 
@@ -152,7 +152,7 @@ if (!document.getElementById('scheduler-page-style')) {
     .sch-card-body { padding:16px 18px; }
 
     /* Wizard bottom nav */
-    .wiz-footer { position:sticky; bottom:0; display:flex; align-items:center; justify-content:space-between; padding:10px 28px; background:rgba(255,255,255,0.92); backdrop-filter:blur(12px); border-top:1px solid ${G.border}; z-index:40; flex-shrink:0; }
+    .wiz-footer { position:sticky; bottom:0; display:flex; align-items:center; justify-content:space-between; padding:10px 28px; background:var(--surface); backdrop-filter:blur(12px); border-top:1px solid ${G.border}; z-index:40; flex-shrink:0; }
     .wiz-nav-btn { display:inline-flex; align-items:center; gap:8px; padding:11px 24px; border-radius:10px; font-family:'Inter',sans-serif; font-size:13.5px; font-weight:700; cursor:pointer; transition:all .18s; }
     .wiz-nav-btn.back { background: var(--surface); color:${G.muted}; border:1px solid ${G.border}; }
     .wiz-nav-btn.back:hover { background:${G.hover}; color:${G.ink}; border-color:${G.meadowBorder}; }
@@ -427,10 +427,10 @@ function ErrorBanner({ error, onDismiss }) {
     <div className="fadein" style={{
       display: 'flex', alignItems: 'flex-start', gap: 12,
       padding: '14px 16px', borderRadius: 10,
-      background: '#FEF2F2', border: '1px solid #FECACA',
+      background: 'rgba(239, 68, 68, 0.05)', border: '1px solid #FECACA',
     }}>
       <div style={{
-        width: 32, height: 32, borderRadius: 8, background: '#FEE2E2',
+        width: 32, height: 32, borderRadius: 8, background: 'rgba(239, 68, 68, 0.1)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
       }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5">
@@ -442,7 +442,7 @@ function ErrorBanner({ error, onDismiss }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
           <span style={{ fontSize: 13.5, fontWeight: 700, color: '#991B1B' }}>{error.title}</span>
           {error.code && (
-            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#FEE2E2', color: '#DC2626', border: '1px solid #FECACA' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'rgba(239, 68, 68, 0.1)', color: '#DC2626', border: '1px solid #FECACA' }}>
               {error.code}
             </span>
           )}
@@ -554,7 +554,7 @@ function DeleteModal({ name, onConfirm, onCancel }) {
     <div className="del-modal-backdrop" onClick={onCancel}>
       <div className="del-modal-box" onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid #FECACA' }}>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid #FECACA' }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5">
               <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
             </svg>
@@ -573,7 +573,7 @@ function DeleteModal({ name, onConfirm, onCancel }) {
             onMouseOut={e => {e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.color = G.muted}}>
             Cancel
           </button>
-          <button onClick={onConfirm} style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: '#DC2626', color: '#fff', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", boxShadow: '0 4px 12px rgba(220,38,38,0.25)', transition: 'all .15s' }}
+          <button onClick={onConfirm} style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: '#DC2626', color: 'var(--surface)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", boxShadow: '0 4px 12px rgba(220,38,38,0.25)', transition: 'all .15s' }}
             onMouseOver={e => {e.currentTarget.style.background = '#B91C1C'; e.currentTarget.style.transform = 'translateY(-1px)'}}
             onMouseOut={e => {e.currentTarget.style.background = '#DC2626'; e.currentTarget.style.transform = 'none'}}>
             Yes, Delete
@@ -597,7 +597,7 @@ function OverwriteModal({ name, onOverwrite, onRename, onCancel }) {
         {mode === 'choice' ? (
           <>
             <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:22 }}>
-              <div style={{ width:48, height:48, borderRadius:12, background:'#FEF3C7', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, border:'1px solid #FDE68A' }}>
+              <div style={{ width:48, height:48, borderRadius:12, background:'rgba(245, 158, 11, 0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, border:'1px solid #FDE68A' }}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5">
                   <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                   <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
@@ -613,10 +613,10 @@ function OverwriteModal({ name, onOverwrite, onRename, onCancel }) {
               <button
                 onClick={onOverwrite}
                 style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 16px', borderRadius:10, border:`1.5px solid #FECACA`, background:'rgba(220, 38, 38, 0.05)', cursor:'pointer', fontFamily:"'Inter',sans-serif", textAlign:'left', transition:'all .15s' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor='#FCA5A5'; e.currentTarget.style.background='#FEE2E2' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor='#FCA5A5'; e.currentTarget.style.background='rgba(239, 68, 68, 0.1)' }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(220, 38, 38, 0.25)'; e.currentTarget.style.background='rgba(220, 38, 38, 0.05)' }}
               >
-                <div style={{ width:36, height:36, borderRadius:9, background:'#FEE2E2', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <div style={{ width:36, height:36, borderRadius:9, background:'rgba(239, 68, 68, 0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
                 </div>
                 <div>
@@ -676,7 +676,7 @@ function OverwriteModal({ name, onOverwrite, onRename, onCancel }) {
                 Cancel
               </button>
               <button onClick={() => newName.trim() && onRename(newName.trim())} disabled={!newName.trim()}
-                style={{ padding:'9px 22px', borderRadius:8, border:'none', background:G.meadow, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'Inter',sans-serif", boxShadow:`0 3px 12px rgba(0,0,0,.25)`, opacity: newName.trim() ? 1 : 0.5 }}>
+                style={{ padding:'9px 22px', borderRadius:8, border:'none', background:G.meadow, color: 'var(--surface)', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'Inter',sans-serif", boxShadow:`0 3px 12px rgba(0,0,0,.25)`, opacity: newName.trim() ? 1 : 0.5 }}>
                 Save
               </button>
             </div>
@@ -732,7 +732,7 @@ function FacultyPoolModal({ item, onClose }) {
               </div>
             </div>
             <button onClick={onClose} style={{ width:36, height:36, borderRadius:10, border:`1px solid ${G.border}`, background: 'var(--surface)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0, lineHeight:0, transition:'all .15s' }}
-              onMouseOver={e => {e.currentTarget.style.background = '#FEE2E2'; e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.25)'}}
+              onMouseOver={e => {e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.25)'}}
               onMouseOut={e => {e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = G.border}}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
@@ -758,7 +758,7 @@ function FacultyPoolModal({ item, onClose }) {
                           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
                             <span style={{ fontSize:13.5, fontWeight:700, color:G.ink, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{f.name}</span>
                             <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0, marginLeft:8 }}>
-                              {isFull && <span style={{ fontSize:10.5, fontWeight:800, padding:'2px 8px', borderRadius:99, background:'#FEE2E2', color:'#DC2626', border: '1px solid #FECACA' }}>At cap</span>}
+                              {isFull && <span style={{ fontSize:10.5, fontWeight:800, padding:'2px 8px', borderRadius:99, background:'rgba(239, 68, 68, 0.1)', color:'#DC2626', border: '1px solid #FECACA' }}>At cap</span>}
                               <span style={{ fontSize:11.5, fontWeight:700, padding:'3px 10px', borderRadius:99, background:RATING_BG[f.rating], color:RATING_COLORS[f.rating], border: `1px solid ${RATING_COLORS[f.rating]}30` }}>{RATING_LABELS[f.rating]}</span>
                               <MiniStars rating={f.rating} size={12} />
                             </div>
@@ -862,7 +862,7 @@ function WorkloadRow({ f }) {
   return (
     <div style={{ display:'flex', alignItems:'center', gap:14, padding:'12px 0', borderBottom:`1px solid ${G.borderLight}` }}>
       <div style={{ width:32, height:32, borderRadius:'50%', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700,
-        background: f.status === 'full' ? '#FEE2E2' : f.status === 'near' ? '#FEF3C7' : G.meadowSoft, color: barColor, border: `1px solid ${f.status === 'full' ? 'rgba(220, 38, 38, 0.25)' : f.status === 'near' ? '#FDE68A' : G.meadowBorder}` }}>
+        background: f.status === 'full' ? 'rgba(239, 68, 68, 0.1)' : f.status === 'near' ? 'rgba(245, 158, 11, 0.1)' : G.meadowSoft, color: barColor, border: `1px solid ${f.status === 'full' ? 'rgba(220, 38, 38, 0.25)' : f.status === 'near' ? 'rgba(245, 158, 11, 0.25)' : G.meadowBorder}` }}>
         {f.name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase()}
       </div>
       <span style={{ fontSize:13.5, fontWeight:600, color:G.ink, flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', minWidth:0 }}>{f.name}</span>
@@ -911,7 +911,7 @@ function PhaseTimeline({ currentPhaseIdx, status, progress, order, defaultOrder,
             return (
               <div key={ph.key} className="phase-step">
                 {i < phases.length - 1 && <div className="phase-connector" style={{ background: (phaseDone && !idle) ? G.meadow : G.border }} />}
-                <div className="phase-dot" style={{ background: idle ? G.hover : phaseDone ? G.meadow : phaseActive ? '#fff' : G.bg, border: idle ? `2px solid ${G.border}` : phaseActive ? `2.5px solid ${G.meadowDeep}` : phaseDone ? 'none' : `2px solid ${G.border}`, boxShadow: phaseActive ? `0 0 0 4px rgba(0,0,0,0.15)` : 'none' }}>
+                <div className="phase-dot" style={{ background: idle ? G.hover : phaseDone ? G.meadow : phaseActive ? 'var(--surface)' : G.bg, border: idle ? `2px solid ${G.border}` : phaseActive ? `2.5px solid ${G.meadowDeep}` : phaseDone ? 'none' : `2px solid ${G.border}`, boxShadow: phaseActive ? `0 0 0 4px rgba(0,0,0,0.15)` : 'none' }}>
                   {phaseDone && !idle ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                     : phaseActive ? <div style={{ width:10, height:10, borderRadius:'50%', background:G.meadowDeep }} /> : null}
                 </div>
@@ -1191,7 +1191,7 @@ function CheckPanel({ semester }) {
 
   const rollup = (() => {
     if (diagLoading) return { label: 'Checking…', color: G.muted2, bg: G.hover, border: G.border, spin: true }
-    if (diagError)   return { label: 'Check failed', color: '#DC2626', bg: '#FEE2E2', border: 'rgba(220, 38, 38, 0.25)' }
+    if (diagError)   return { label: 'Check failed', color: '#DC2626', bg: 'rgba(239, 68, 68, 0.1)', border: 'rgba(220, 38, 38, 0.25)' }
     if (!diag)       return null
     return { label: verdict.label, color: verdict.color, bg: verdict.bg, border: verdict.border, icon: verdict.icon }
   })()
@@ -1242,7 +1242,7 @@ function CheckPanel({ semester }) {
         {subtab === 'diagnostic' && (
           <div className="fadein">
             {diagStale && (
-              <div style={{ marginBottom: 14, display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:8, background:'#FFFBEB', border:'1px solid #FDE68A' }}>
+              <div style={{ marginBottom: 14, display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:8, background:'rgba(245, 158, 11, 0.05)', border:'1px solid #FDE68A' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 <span style={{ fontSize:12.5, color:'#92400E', fontWeight:600, flex:1 }}>This result is for a different term. Re-run to refresh.</span>
                 <button className="check-btn" onClick={runDiagnostic} disabled={diagLoading} style={{ padding:'6px 12px' }}>Refresh</button>
@@ -1269,7 +1269,7 @@ function CheckPanel({ semester }) {
                 {/* Verdict header */}
                 <div style={{ padding:'14px 16px', borderRadius:10, background: verdict.bg, border: `1px solid ${verdict.border}`, display:'flex', alignItems:'center', justifyContent:'space-between', gap:14, flexWrap:'wrap', marginBottom: 12 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-                    <div style={{ width:44, height:44, borderRadius:11, background:verdict.color, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:800, flexShrink:0, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                    <div style={{ width:44, height:44, borderRadius:11, background:verdict.color, color: 'var(--surface)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:800, flexShrink:0, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
                       {verdict.icon}
                     </div>
                     <div>
@@ -1389,7 +1389,7 @@ function CheckPanel({ semester }) {
         {subtab === 'pools' && (
           <div className="fadein">
             {poolStale && readiness && (
-              <div style={{ marginBottom: 14, display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:8, background:'#FFFBEB', border:'1px solid #FDE68A' }}>
+              <div style={{ marginBottom: 14, display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:8, background:'rgba(245, 158, 11, 0.05)', border:'1px solid #FDE68A' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 <span style={{ fontSize:12.5, color:'#92400E', fontWeight:600, flex:1 }}>This result is for a different term. Re-run to refresh.</span>
                 <button className="check-btn" onClick={runPoolCheck} disabled={poolLoading} style={{ padding:'6px 12px' }}>Refresh</button>
@@ -1590,11 +1590,11 @@ function StepHeader({ number, title, subtitle, badge }) {
       <div style={{ position:'absolute', top:-30, right:-20, width:100, height:100, borderRadius:'50%', background:'rgba(255,255,255,0.05)', pointerEvents:'none' }} />
       
       <div style={{ width:32, height:32, borderRadius:'50%', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)',
-        display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color: '#fff', flexShrink:0, zIndex: 1 }}>
+        display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color: 'var(--surface)', flexShrink:0, zIndex: 1 }}>
         {number}
       </div>
       <div style={{ flex:1, minWidth:0, zIndex: 1 }}>
-        <div style={{ fontSize:16, fontWeight:800, color: '#fff', letterSpacing:'-0.3px', fontFamily:"'Poppins',sans-serif" }}>{title}</div>
+        <div style={{ fontSize:16, fontWeight:800, color: 'var(--surface)', letterSpacing:'-0.3px', fontFamily:"'Poppins',sans-serif" }}>{title}</div>
         <div style={{ fontSize:12.5, color: 'rgba(255,255,255,0.8)', fontWeight:500, marginTop:2 }}>{subtitle}</div>
       </div>
       <div style={{ zIndex: 1 }}>{badge}</div>
@@ -1680,7 +1680,7 @@ function Step1Configure({ scheduleNamePreset, setScheduleNamePreset, scheduleNam
           {effectiveScheduleName.trim() && (
             <div className="fadein" style={{ display:'flex', alignItems:'center', gap:16, padding:'16px 20px', borderRadius:12,
               background:`linear-gradient(135deg,${sc.from}08,${sc.to}18)`, border:`1px solid ${sc.from}30` }}>
-              <div style={{ width:38, height:38, borderRadius:10, background:`linear-gradient(135deg,${sc.from},${sc.to})`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color:'#fff', boxShadow:`0 3px 10px ${sc.from}40` }}><CalendarIcon size={16} /></div>
+              <div style={{ width:38, height:38, borderRadius:10, background:`linear-gradient(135deg,${sc.from},${sc.to})`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color: 'var(--surface)', boxShadow:`0 3px 10px ${sc.from}40` }}><CalendarIcon size={16} /></div>
               <div style={{ flex:1 }}>
                 <div style={{ fontSize:15, fontWeight:800, color:G.ink, letterSpacing:'-0.2px' }}>{effectiveScheduleName.trim()}</div>
                 <div style={{ fontSize:12.5, color:G.muted, fontWeight:500, marginTop:2 }}>Will load <strong style={{ color:sc.from }}>{targetSemester}</strong> course list</div>
@@ -1733,7 +1733,7 @@ function Step1Configure({ scheduleNamePreset, setScheduleNamePreset, scheduleNam
               <h2 className="sch-card-title" style={{ fontSize:13.5 }}>Saved Schedules</h2>
             </div>
             {!loadingList && savedList.length > 0 && (
-              <span style={{ fontSize:10.5, fontWeight:800, padding:'2px 8px', borderRadius:99, background:G.meadow, color:'#fff' }}>{savedList.length}</span>
+              <span style={{ fontSize:10.5, fontWeight:800, padding:'2px 8px', borderRadius:99, background:G.meadow, color: 'var(--surface)' }}>{savedList.length}</span>
             )}
           </div>
           <div style={{ flex: 1, overflowY:'auto', minHeight: 0 }}>
@@ -2278,7 +2278,7 @@ export default function SchedulerPage() {
                 number={2}
                 title="Check Readiness"
                 subtitle={<>Verify structural feasibility and faculty pools for <strong style={{ opacity:.95 }}>{originalName ? originalName.split('(').pop().replace(')', '').trim() : targetSemester}</strong> before solving.</>}
-                badge={<div style={{ padding:'5px 14px', borderRadius:99, background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', fontSize:12, fontWeight:700, color: '#fff', position:'relative' }}>{originalName ? originalName.replace(/[()]/g, '').trim() : effectiveScheduleName || '—'}</div>}
+                badge={<div style={{ padding:'5px 14px', borderRadius:99, background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', fontSize:12, fontWeight:700, color: 'var(--surface)', position:'relative' }}>{originalName ? originalName.replace(/[()]/g, '').trim() : effectiveScheduleName || '—'}</div>}
               />
               <div id="tour-sch-checkpanel">
                 <CheckPanel semester={originalName ? originalName.split('(').pop().replace(')', '').trim() : targetSemester} />
@@ -2372,12 +2372,12 @@ export default function SchedulerPage() {
 
                     {status === 'failed' && (
                       <div className="fadein solve-result failed" style={{ marginTop:14 }}>
-                        <div className="solve-result-body" style={{ background: '#FEF2F2' }}>
+                        <div className="solve-result-body" style={{ background: 'rgba(239, 68, 68, 0.05)' }}>
                           {solveError ? (
                             <ErrorBanner error={solveError} onDismiss={() => setSolveError(null)} />
                           ) : (
                             <>
-                              <div style={{ width:44, height:44, borderRadius:'50%', background:'#FEE2E2', border:'1.5px solid #FCA5A5', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                              <div style={{ width:44, height:44, borderRadius:'50%', background:'rgba(239, 68, 68, 0.1)', border:'1.5px solid #FCA5A5', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                               </div>
                               <div>
@@ -2410,7 +2410,7 @@ export default function SchedulerPage() {
                         
                         {/* Diagnostic Results Panel */}
                         {diagnostic && (
-                          <div className="fadein" style={{ marginTop:16, padding:16, borderRadius:10, border:'1px solid #D8E8DF', background:'var(--bg)' }}>
+                          <div className="fadein" style={{ marginTop:16, padding:16, borderRadius:10, border:'1px solid var(--border)', background:'var(--bg)' }}>
                             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
                               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={G.meadowDeep} strokeWidth="2.5">
                                 <path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/>
@@ -2419,7 +2419,7 @@ export default function SchedulerPage() {
                             </div>
                             
                             {diagnostic.status === 'error' ? (
-                              <div style={{ padding:12, borderRadius:8, background:'#FEE2E2', border:'1px solid #FECACA' }}>
+                              <div style={{ padding:12, borderRadius:8, background:'rgba(239, 68, 68, 0.1)', border:'1px solid #FECACA' }}>
                                 <div style={{ fontSize:13, fontWeight:600, color:'#DC2626', marginBottom:4 }}>Diagnostic Error</div>
                                 <div style={{ fontSize:12, color:'#B91C1C' }}>{diagnostic.error}</div>
                               </div>
@@ -2427,15 +2427,15 @@ export default function SchedulerPage() {
                               <div>
                                 {/* Summary */}
                                 <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:8, marginBottom:14 }}>
-                                  <div style={{ padding:8, borderRadius:6, background: 'var(--surface)', border:'1px solid #D8E8DF', textAlign:'center' }}>
+                                  <div style={{ padding:8, borderRadius:6, background: 'var(--surface)', border:'1px solid var(--border)', textAlign:'center' }}>
                                     <div style={{ fontSize:16, fontWeight:800, color:G.meadowDeep }}>{diagnostic.summary?.filtered_courses || 0}</div>
                                     <div style={{ fontSize:10, color:G.muted, textTransform:'uppercase', letterSpacing:'0.5px' }}>Courses</div>
                                   </div>
-                                  <div style={{ padding:8, borderRadius:6, background: 'var(--surface)', border:'1px solid #D8E8DF', textAlign:'center' }}>
+                                  <div style={{ padding:8, borderRadius:6, background: 'var(--surface)', border:'1px solid var(--border)', textAlign:'center' }}>
                                     <div style={{ fontSize:16, fontWeight:800, color:G.meadowDeep }}>{diagnostic.summary?.total_rooms || 0}</div>
                                     <div style={{ fontSize:10, color:G.muted, textTransform:'uppercase', letterSpacing:'0.5px' }}>Rooms</div>
                                   </div>
-                                  <div style={{ padding:8, borderRadius:6, background: 'var(--surface)', border:'1px solid #D8E8DF', textAlign:'center' }}>
+                                  <div style={{ padding:8, borderRadius:6, background: 'var(--surface)', border:'1px solid var(--border)', textAlign:'center' }}>
                                     <div style={{ fontSize:16, fontWeight:800, color:G.meadowDeep }}>{diagnostic.summary?.days_configured || 0}</div>
                                     <div style={{ fontSize:10, color:G.muted, textTransform:'uppercase', letterSpacing:'0.5px' }}>Days</div>
                                   </div>
@@ -2446,7 +2446,7 @@ export default function SchedulerPage() {
                                   <div style={{ marginBottom:12 }}>
                                     <div style={{ fontSize:12, fontWeight:700, color:'#DC2626', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.5px' }}>Issues Found</div>
                                     {diagnostic.issues.map((issue, i) => (
-                                      <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:8, padding:8, borderRadius:6, background:'#FEE2E2', border:'1px solid #FECACA', marginBottom:6 }}>
+                                      <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:8, padding:8, borderRadius:6, background:'rgba(239, 68, 68, 0.1)', border:'1px solid #FECACA', marginBottom:6 }}>
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5" style={{ flexShrink:0, marginTop:1 }}>
                                           <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                                         </svg>
@@ -2549,7 +2549,7 @@ export default function SchedulerPage() {
                 onClick={handleStop}
                 disabled={stopRequested}
                 style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'10px 18px', borderRadius:10, border:'1.5px solid #FECACA', background:'rgba(220, 38, 38, 0.05)', color:'#DC2626', fontSize:13, fontWeight:700, cursor: stopRequested ? 'default' : 'pointer', opacity: stopRequested ? 0.6 : 1, fontFamily:"'Inter',sans-serif", transition:'all .15s' }}
-                onMouseEnter={e => { if (!stopRequested) e.currentTarget.style.background='#FEE2E2' }}
+                onMouseEnter={e => { if (!stopRequested) e.currentTarget.style.background='rgba(239, 68, 68, 0.1)' }}
                 onMouseLeave={e => { if (!stopRequested) e.currentTarget.style.background='rgba(220, 38, 38, 0.05)' }}
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>

@@ -26,8 +26,8 @@ const G = {
   surface: 'var(--surface, #FFFFFF)',
   hover:        'var(--hover)',
   amber:        '#D97706',
-  amberSoft:    '#FEF3C7',
-  amberBorder:  '#FDE68A',
+  amberSoft:    'rgba(245, 158, 11, 0.1)',
+  amberBorder:  'rgba(245, 158, 11, 0.25)',
 }
 
 const EMPTY = { courseCode: '', title: '', program: '', yearLevel: '1', blocks: 1, unitsLecture: 3, unitsLab: 0, semester: '1st Semester' }
@@ -143,7 +143,7 @@ function FilterPill({ label, count, active, onClick, icon }) {
     <button onClick={onClick} style={{
       padding: '6px 14px', borderRadius: 10, fontSize: 11.5,
       fontFamily: "'Inter',sans-serif", fontWeight: active ? 600 : 500,
-      background: active ? 'var(--meadow-soft)' : '#fff',
+      background: active ? 'var(--meadow-soft)' : 'var(--surface)',
       color: active ? G.meadowDeep : G.muted,
       border: `1px solid ${active ? G.meadowBorder : G.border}`,
       cursor: 'pointer', transition: 'all .15s',
@@ -184,10 +184,10 @@ function SectionLabel({ label, count, onClear, icon }) {
 
 function progColor(p = '') {
   const v = p.toUpperCase()
-  if (v === 'BSCS') return { bg: '#E0F2FE', color: '#0369A1', border: '#BAE6FD' }
+  if (v === 'BSCS') return { bg: 'rgba(59, 130, 246, 0.1)', color: '#0369A1', border: 'rgba(59, 130, 246, 0.25)' }
   if (v === 'BSIT') return { bg: 'var(--meadow-soft)', color: 'var(--meadow)', border: 'var(--meadow-border)' }
-  if (v.includes('GD'))  return { bg: '#FEF3C7', color: '#B45309', border: '#FDE68A' }
-  if (v.includes('DAT')) return { bg: '#FEE2E2', color: '#B91C1C', border: 'rgba(220, 38, 38, 0.25)' }
+  if (v.includes('GD'))  return { bg: 'rgba(245, 158, 11, 0.1)', color: '#B45309', border: 'rgba(245, 158, 11, 0.25)' }
+  if (v.includes('DAT')) return { bg: 'rgba(239, 68, 68, 0.1)', color: '#B91C1C', border: 'rgba(220, 38, 38, 0.25)' }
   return { bg: G.borderLight, color: G.muted, border: G.border }
 }
 
@@ -218,7 +218,7 @@ function DeleteConfirmModal({ name, count, onConfirm, onCancel, deleting }) {
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={onCancel} disabled={deleting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: 'var(--surface)', fontSize: 13, fontWeight: 600, color: G.muted, cursor: deleting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>Cancel</button>
-          <button onClick={onConfirm} disabled={deleting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: '#C0392B', fontSize: 13, fontWeight: 700, color: '#fff', cursor: deleting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: deleting ? 0.7 : 1 }}>
+          <button onClick={onConfirm} disabled={deleting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: '#C0392B', fontSize: 13, fontWeight: 700, color: 'var(--surface)', cursor: deleting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: deleting ? 0.7 : 1 }}>
             {deleting ? 'Deleting...' : isBulk ? `Delete ${count}` : 'Yes, Delete'}
           </button>
         </div>
@@ -309,7 +309,7 @@ function CourseModal({ mode, initial, onSave, onClose, saving, error }) {
           </div>
 
           {error && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA', fontSize: 11.5, color: '#DC2626' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 8, background: 'rgba(239, 68, 68, 0.05)', border: '1px solid #FECACA', fontSize: 11.5, color: '#DC2626' }}>
               <WarnIcon size={16} />
               {error}
             </div>
@@ -322,7 +322,7 @@ function CourseModal({ mode, initial, onSave, onClose, saving, error }) {
             onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
             Cancel
           </button>
-          <button onClick={submit} disabled={saving || !canSave} style={{ padding: '8px 22px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 8, opacity: (saving || !canSave) ? 0.6 : 1, boxShadow: '0 4px 14px rgba(0,0,0,0.3)' }}
+          <button onClick={submit} disabled={saving || !canSave} style={{ padding: '8px 22px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: 'var(--surface)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 8, opacity: (saving || !canSave) ? 0.6 : 1, boxShadow: '0 4px 14px rgba(0,0,0,0.3)' }}
             onMouseEnter={e => { if(!saving && canSave) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)' } }}
             onMouseLeave={e => { if(!saving && canSave) { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.3)' } }}>
             {saving ? <span style={{ animation: 'cpSpin .8s linear infinite' }}>↻</span> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
@@ -403,7 +403,7 @@ function StatsBar({ loading, filtered, isFiltered }) {
         ))}
         {!loading && stats.issues > 0 && (
           <div className="cp-stat-card warn">
-            <div className="cp-stat-icon-wrap" style={{ background: '#FEF3C7', color: '#D97706' }}><WarnIcon size={16} /></div>
+            <div className="cp-stat-icon-wrap" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#D97706' }}><WarnIcon size={16} /></div>
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#D97706', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Needs Attention</div>
               <div style={{ fontSize: 18, fontWeight: 700, color: '#D97706', lineHeight: 1.1 }}>{stats.issues}</div>
@@ -758,7 +758,7 @@ export default function CourseListPage() {
                 style={{
                   padding: '5px 16px', borderRadius: 7, fontSize: 12, fontWeight: isActive ? 700 : 500,
                   background: isActive ? G.meadow : 'transparent',
-                  color: isActive ? '#fff' : G.muted,
+                  color: isActive ? 'var(--surface)' : G.muted,
                   border: isActive ? 'none' : '1px solid transparent',
                   cursor: 'pointer', transition: 'all 0.15s', fontFamily: "'Inter',sans-serif",
                   boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.28)' : 'none',
@@ -812,7 +812,7 @@ export default function CourseListPage() {
           </button>
 
           <button id="tour-add-course-btn" onClick={() => { setShowAdd(true); setError('') }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 18px', borderRadius: 10, border: 'none', fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: '#fff', boxShadow: '0 3px 12px rgba(0,0,0,0.32)' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 18px', borderRadius: 10, border: 'none', fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: 'var(--surface)', boxShadow: '0 3px 12px rgba(0,0,0,0.32)' }}
             onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 5px 18px rgba(0,0,0,0.42)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
             onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 3px 12px rgba(0,0,0,0.32)'; e.currentTarget.style.transform = 'none' }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -849,7 +849,7 @@ export default function CourseListPage() {
           display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 13px', borderRadius: 99, fontSize: 11.5,
           fontWeight: activeModalFilterCount ? 600 : 500,
           background: activeModalFilterCount ? G.meadow : G.hover,
-          color: activeModalFilterCount ? '#fff' : G.muted,
+          color: activeModalFilterCount ? 'var(--surface)' : G.muted,
           border: `1.5px solid ${activeModalFilterCount ? 'transparent' : G.border}`,
           cursor: 'pointer', transition: 'all .15s', whiteSpace: 'nowrap', fontFamily: "'Inter',sans-serif",
           boxShadow: activeModalFilterCount ? '0 2px 8px rgba(0,0,0,0.28)' : 'none',
@@ -919,9 +919,9 @@ export default function CourseListPage() {
           <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#fff', flex: 1 }}>{selCount} course{selCount !== 1 ? 's' : ''} selected</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--surface)', flex: 1 }}>{selCount} course{selCount !== 1 ? 's' : ''} selected</span>
           <button onClick={() => setSelected(new Set())} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.85)', fontSize: 12, padding: '5px 14px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>Deselect all</button>
-          <button onClick={handleBulkDelete} disabled={deleting} style={{ background: '#C0392B', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, padding: '5px 15px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontFamily: "'Inter',sans-serif", opacity: deleting ? 0.7 : 1 }}>
+          <button onClick={handleBulkDelete} disabled={deleting} style={{ background: '#C0392B', border: 'none', color: 'var(--surface)', fontSize: 12, fontWeight: 600, padding: '5px 15px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontFamily: "'Inter',sans-serif", opacity: deleting ? 0.7 : 1 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
             Delete {selCount}
           </button>
@@ -956,7 +956,7 @@ export default function CourseListPage() {
             {courses.length === 0 ? 'Add your first course or upload from Excel to get started.' : 'Try adjusting your search or clearing your filters.'}
           </div>
           {hasFilter && (
-            <button onClick={resetFilters} style={{ padding: '8px 18px', borderRadius: 9, border: 'none', background: G.meadow, color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>
+            <button onClick={resetFilters} style={{ padding: '8px 18px', borderRadius: 9, border: 'none', background: G.meadow, color: 'var(--surface)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>
               Clear all filters
             </button>
           )}
@@ -1014,7 +1014,7 @@ export default function CourseListPage() {
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ fontWeight: 700, color: G.ink, fontSize: 13 }}>{(c.unitsLecture||0)+(c.unitsLab||0)}</span>
                         <span style={{ display: 'inline-flex', minWidth: 22, justifyContent: 'center', padding: '2px 5px', borderRadius: 4, fontSize: 10.5, fontWeight: 700, background: G.meadowSoft, color: G.meadowDeep }} title="Lecture units">{c.unitsLecture}</span>
-                        <span style={{ display: 'inline-flex', minWidth: 22, justifyContent: 'center', padding: '2px 5px', borderRadius: 4, fontSize: 10.5, fontWeight: 700, background: '#E0F2FE', color: '#0369A1' }} title="Lab units">{c.unitsLab}</span>
+                        <span style={{ display: 'inline-flex', minWidth: 22, justifyContent: 'center', padding: '2px 5px', borderRadius: 4, fontSize: 10.5, fontWeight: 700, background: 'rgba(59, 130, 246, 0.1)', color: '#0369A1' }} title="Lab units">{c.unitsLab}</span>
                       </div>
                     </td>
                     <td style={{ padding: '10px 14px', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
@@ -1094,7 +1094,7 @@ export default function CourseListPage() {
                   onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
                   Reset
                 </button>
-                <button onClick={() => setShowFilters(false)} style={{ padding: '8px 22px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", boxShadow: '0 4px 14px rgba(0,0,0,0.3)', transition: 'all .15s' }}
+                <button onClick={() => setShowFilters(false)} style={{ padding: '8px 22px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: 'var(--surface)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", boxShadow: '0 4px 14px rgba(0,0,0,0.3)', transition: 'all .15s' }}
                   onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)' }}
                   onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.3)' }}>
                   Apply

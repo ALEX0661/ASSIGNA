@@ -226,7 +226,7 @@ export default function FacultyDetailPage() {
   if (pageLoading) return <PageSkeleton />
 
   if (credActivated) {
-    const copyBg = pwCopied ? 'var(--meadow-soft)' : '#fff', copyCl = pwCopied ? 'var(--meadow)' : 'var(--meadow-deep)'
+    const copyBg = pwCopied ? 'var(--meadow-soft)' : 'var(--surface)', copyCl = pwCopied ? 'var(--meadow)' : 'var(--meadow-deep)'
     return (
       <div style={{ padding:'28px 32px', fontFamily:"'Inter',sans-serif", maxWidth:560 }}>
         <div style={{ background: 'var(--surface)', borderRadius:18, border:'1px solid var(--border)', overflow:'hidden', boxShadow:'0 4px 20px rgba(0,0,0,0.08)' }}>
@@ -254,7 +254,7 @@ export default function FacultyDetailPage() {
               <div style={{ marginBottom:14, fontSize:12.5, color: 'var(--ink2)' }}>Credentials saved. The faculty member can now log in with the password you set.</div>
             )}
             <div style={{ fontSize:11.5, color: 'var(--muted)', background: 'var(--bg)', borderRadius:8, padding:'10px 14px', border:'1px solid var(--border)', marginBottom:22 }}>The faculty member must log out and back in for their role to take effect.</div>
-            <button type="button" onClick={() => { const dest = credActivated.newId || id; setCredActivated(null); navigate(`/dashboard/faculty/${dest}`) }} style={{ padding:'9px 18px', borderRadius:9, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>
+            <button type="button" onClick={() => { const dest = credActivated.newId || id; setCredActivated(null); navigate(`/dashboard/faculty/${dest}`) }} style={{ padding:'9px 18px', borderRadius:9, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: 'var(--surface)', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>
               Continue to Profile
             </button>
           </div>
@@ -264,7 +264,7 @@ export default function FacultyDetailPage() {
   }
 
   if (createdPassword) {
-    const cpBg = passwordCopied ? 'var(--meadow-soft)' : '#fff', cpCl = passwordCopied ? 'var(--meadow)' : 'var(--meadow-deep)'
+    const cpBg = passwordCopied ? 'var(--meadow-soft)' : 'var(--surface)', cpCl = passwordCopied ? 'var(--meadow)' : 'var(--meadow-deep)'
     return (
       <div style={{ padding:'28px 32px', fontFamily:"'Inter',sans-serif", maxWidth:560 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:22 }}>
@@ -293,7 +293,7 @@ export default function FacultyDetailPage() {
             </div>
             <div style={{ fontSize:11.5, color: 'var(--muted)', background: 'var(--bg)', borderRadius:8, padding:'10px 14px', border:'1px solid var(--border)', marginBottom:22 }}>The faculty member must log out and back in to pick up their new role.</div>
             <div style={{ display:'flex', gap:10 }}>
-              <button onClick={() => navigate('/dashboard/faculty')} style={{ padding:'9px 18px', borderRadius:9, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>Back to Faculty List</button>
+              <button onClick={() => navigate('/dashboard/faculty')} style={{ padding:'9px 18px', borderRadius:9, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: 'var(--surface)', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>Back to Faculty List</button>
               <button onClick={() => { setCreatedPassword(''); setPassword('') }} style={{ padding:'9px 16px', borderRadius:9, border:'1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--muted)', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>Add Another</button>
             </div>
           </div>
@@ -404,7 +404,7 @@ export default function FacultyDetailPage() {
                     </div>
                   )}
                   <div style={{ display:'flex', gap:10 }}>
-                    <button type="submit" disabled={createSaving} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 18px', borderRadius:10, border:'none', fontFamily:"'Inter',sans-serif", fontSize:12.5, fontWeight:600, cursor: createSaving ? 'default' : 'pointer', background:`linear-gradient(135deg,var(--meadow),var(--meadow-deep))`, color:'#fff', boxShadow:'0 3px 12px rgba(0,0,0,0.32)', opacity: createSaving ? 0.65 : 1 }}>
+                    <button type="submit" disabled={createSaving} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 18px', borderRadius:10, border:'none', fontFamily:"'Inter',sans-serif", fontSize:12.5, fontWeight:600, cursor: createSaving ? 'default' : 'pointer', background:`linear-gradient(135deg,var(--meadow),var(--meadow-deep))`, color: 'var(--surface)', boxShadow:'0 3px 12px rgba(0,0,0,0.32)', opacity: createSaving ? 0.65 : 1 }}>
                       {createSaving ? 'Creating...' : 'Create Faculty'}
                     </button>
                     <button type="button" onClick={() => navigate('/dashboard/faculty')} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 16px', borderRadius:10, border:'1.5px solid var(--border)', fontFamily:"'Inter',sans-serif", fontSize:12.5, fontWeight:600, cursor:'pointer', background: 'var(--surface)', color: 'var(--muted)' }}>Cancel</button>
@@ -478,7 +478,7 @@ export default function FacultyDetailPage() {
             </div>
             <div style={{ display:'flex', gap:10 }}>
               <button onClick={() => setShowArchiveModal(false)} disabled={archiving} style={{ flex:1, padding:'10px', borderRadius:9, border:'1.5px solid var(--border)', background: 'var(--surface)', fontSize:13, fontWeight:600, color: 'var(--muted)', cursor:'pointer', fontFamily:'Inter,sans-serif' }}>Cancel</button>
-              <button onClick={handleArchive} disabled={archiving} style={{ flex:1, padding:'10px', borderRadius:9, border:'none', background:'linear-gradient(135deg,#D97706,#B45309)', fontSize:13, fontWeight:700, color:'#fff', cursor: archiving ? 'default' : 'pointer', fontFamily:'Inter,sans-serif', opacity: archiving ? 0.7 : 1 }}>
+              <button onClick={handleArchive} disabled={archiving} style={{ flex:1, padding:'10px', borderRadius:9, border:'none', background:'linear-gradient(135deg,#D97706,#B45309)', fontSize:13, fontWeight:700, color: 'var(--surface)', cursor: archiving ? 'default' : 'pointer', fontFamily:'Inter,sans-serif', opacity: archiving ? 0.7 : 1 }}>
                 {archiving ? 'Archiving…' : 'Archive'}
               </button>
             </div>

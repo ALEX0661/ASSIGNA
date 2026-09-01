@@ -36,7 +36,7 @@ const ANALYTICS_STYLE = `
   }
   /* Green-tinted shimmer — matches DashboardPage .skel */
   .a-skel {
-    background: linear-gradient(90deg,var(--hover) 25%,#D8EEE3 50%,var(--hover) 75%);
+    background: linear-gradient(90deg,var(--hover) 25%,var(--border) 50%,var(--hover) 75%);
     background-size: 600px 100%;
     animation: shimmer 1.4s ease-in-out infinite;
     border-radius: 7px;
@@ -212,7 +212,7 @@ function ScoreCard({ loading, autoAssignPct, pctInWindow }) {
   const hasData = autoAssignPct !== null && autoAssignPct !== undefined;
   const status = !hasData  ? null
     : autoAssignPct >= 90  ? { label: "Excellent", color: C.green,  bg: "var(--meadow-soft)", bar: C.green  }
-    : autoAssignPct >= 70  ? { label: "Good",      color: C.blue,   bg: "#DBEAFE", bar: C.blue   }
+    : autoAssignPct >= 70  ? { label: "Good",      color: C.blue,   bg: 'rgba(59, 130, 246, 0.1)', bar: C.blue   }
     : autoAssignPct >= 50  ? { label: "Fair",       color: C.amber,  bg: 'rgba(217, 119, 6, 0.1)', bar: C.amber  }
     :                        { label: "Needs work", color: C.red,    bg: 'rgba(220, 38, 38, 0.1)', bar: C.red    };
 
@@ -619,7 +619,7 @@ export default function AnalyticsPage() {
         <StatCard
           label="Faculty Coverage" sub="Instructors assigned"
           value={loading ? null : `${dist?.facultyCoverage?.pct ?? 0}%`}
-          color={C.blue} bg="#DBEAFE" loading={loading}
+          color={C.blue} bg='rgba(59, 130, 246, 0.1)' loading={loading}
           icon={<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
         />
 

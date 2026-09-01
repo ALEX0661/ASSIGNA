@@ -74,7 +74,7 @@ function QuickActions({ filtered, selectedSet, onToggle }) {
           fontSize: 10.5, fontWeight: 600, padding: '3px 10px', borderRadius: 6,
           cursor: allSelected ? 'default' : 'pointer',
           border: `1px solid ${TV.border}`,
-          background: allSelected ? TV.pale : '#fff',
+          background: allSelected ? TV.pale : 'var(--surface)',
           color: allSelected ? TV.muted : TV.deep,
           transition: 'all .15s',
         }}
@@ -88,7 +88,7 @@ function QuickActions({ filtered, selectedSet, onToggle }) {
           fontSize: 10.5, fontWeight: 600, padding: '3px 10px', borderRadius: 6,
           cursor: noneSelected ? 'default' : 'pointer',
           border: `1px solid ${TV.border}`,
-          background: noneSelected ? TV.pale : '#fff',
+          background: noneSelected ? TV.pale : 'var(--surface)',
           color: noneSelected ? TV.muted : '#b91c1c',
           transition: 'all .15s',
         }}
@@ -257,7 +257,7 @@ export function FacultyFilterModal({
           <StatPill label="faculty" value={options.length} color={TV.deep}   bg={TV.pale}   border={TV.light}   />
           <StatPill label="units assigned" value={totalUnits} color="#1d4ed8" bg="#eff6ff" border="#bfdbfe" />
           {overloadedCnt > 0 && (
-            <StatPill label="over cap" value={overloadedCnt} color="#b91c1c" bg="#fee2e2" border="#fca5a5" icon="⚠" />
+            <StatPill label="over cap" value={overloadedCnt} color="#b91c1c" bg='rgba(239, 68, 68, 0.1)' border="#fca5a5" icon="⚠" />
           )}
 
           {/* Sort controls */}
@@ -267,8 +267,8 @@ export function FacultyFilterModal({
               <button key={val} onClick={() => setSortBy(val)} style={{
                 fontSize: 9.5, fontWeight: 700, padding: '2px 8px', borderRadius: 5, cursor: 'pointer',
                 border:     `1px solid ${sortBy === val ? TV.deep : TV.border}`,
-                background: sortBy === val ? TV.deep : '#fff',
-                color:      sortBy === val ? '#fff'  : TV.muted,
+                background: sortBy === val ? TV.deep : 'var(--surface)',
+                color:      sortBy === val ? 'var(--surface)'  : TV.muted,
                 textTransform: 'capitalize', transition: 'all .15s', fontFamily: 'Inter, sans-serif',
               }}>
                 {lbl}
@@ -291,7 +291,7 @@ export function FacultyFilterModal({
 
                 // Border / background per state
                 let rowBorder = isActive ? TV.deep : info.isOver ? '#fca5a5' : TV.border
-                let rowBg     = isActive ? TV.pale  : info.isOver ? '#fff5f5' : '#fff'
+                let rowBg     = isActive ? TV.pale  : info.isOver ? '#fff5f5' : 'var(--surface)'
 
                 return (
                   <button
@@ -312,7 +312,7 @@ export function FacultyFilterModal({
                     <span style={{
                       width: 16, height: 16, borderRadius: 5, flexShrink: 0,
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      background: isActive ? TV.deep : '#fff',
+                      background: isActive ? TV.deep : 'var(--surface)',
                       border: `2px solid ${isActive ? TV.deep : TV.border}`,
                       transition: 'all .15s',
                     }}>
@@ -343,7 +343,7 @@ export function FacultyFilterModal({
                           textTransform: 'uppercase', letterSpacing: '.5px',
                           background: info.status === 'part-time' ? '#fef9c3' : '#f0f9ff',
                           color:      info.status === 'part-time' ? '#854d0e' : '#0369a1',
-                          border:     `1px solid ${info.status === 'part-time' ? '#fde68a' : '#bae6fd'}`,
+                          border:     `1px solid ${info.status === 'part-time' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(59, 130, 246, 0.25)'}`,
                         }}>
                           {info.status === 'part-time' ? 'PT' : 'FT'}
                         </span>
@@ -352,7 +352,7 @@ export function FacultyFilterModal({
                         {info.isOver && (
                           <span style={{
                             fontSize: 8.5, fontWeight: 700, flexShrink: 0,
-                            color: '#b91c1c', background: '#fee2e2',
+                            color: '#b91c1c', background: 'rgba(239, 68, 68, 0.1)',
                             border: '1px solid #fca5a5', borderRadius: 4, padding: '1px 6px',
                           }}>
                             OVER CAP
@@ -463,7 +463,7 @@ function RoomButton({ label, active, available, sessionCount, accent, onClick })
         display: 'flex', alignItems: 'center', gap: 9,
         padding: '9px 11px', borderRadius: 10,
         border: `1.5px solid ${active ? accent.solid : TV.border}`,
-        background: active ? accent.bg : '#fff',
+        background: active ? accent.bg : 'var(--surface)',
         cursor: 'pointer', fontFamily: 'Inter, sans-serif',
         transition: 'all .15s', width: '100%', boxSizing: 'border-box',
         textAlign: 'left', outline: 'none',
@@ -486,7 +486,7 @@ function RoomButton({ label, active, available, sessionCount, accent, onClick })
         fontSize: 9.5, fontWeight: 700, flexShrink: 0,
         padding: '1px 6px', borderRadius: 10,
         color:      active ? accent.color : TV.muted,
-        background: active ? '#fff' : '#F3F4F6',
+        background: active ? 'var(--surface)' : '#F3F4F6',
         border: `1px solid ${active ? accent.border : TV.border}`,
       }}>
         {sessionCount}
@@ -496,7 +496,7 @@ function RoomButton({ label, active, available, sessionCount, accent, onClick })
       <span style={{
         width: 15, height: 15, borderRadius: 4, flexShrink: 0,
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        background: active ? accent.solid : '#fff',
+        background: active ? accent.solid : 'var(--surface)',
         border: `2px solid ${active ? accent.solid : TV.border}`,
         transition: 'all .15s',
       }}>
@@ -605,7 +605,7 @@ export function RoomFilterModal({ title, options, selectedSet, onToggle, onClose
             <button key={val} onClick={() => setTypeTab(val)} style={{
               fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 7, cursor: 'pointer',
               border: 'none',
-              background: typeTab === val ? '#fff' : 'transparent',
+              background: typeTab === val ? 'var(--surface)' : 'transparent',
               color:      typeTab === val ? TV.deep : TV.muted,
               boxShadow:  typeTab === val ? '0 1px 3px rgba(0,0,0,.08)' : 'none',
               fontFamily: 'Inter, sans-serif', transition: 'all .15s',
@@ -704,7 +704,7 @@ export function OverrideConfirmModal({ pendingDrop, onConfirm, onCancel }) {
 
   const conflictTypes = new Set(conflicts.flatMap(c => c.conflictLabel.replace(' Conflict', '').split(' + ')))
   const typeColors = {
-    Room:    { bg: '#fef2f2', text: '#b91c1c', border: 'rgba(220, 38, 38, 0.25)' },
+    Room:    { bg: 'rgba(239, 68, 68, 0.05)', text: '#b91c1c', border: 'rgba(220, 38, 38, 0.25)' },
     Section: { bg: '#fdf4ff', text: '#7e22ce', border: '#e9d5ff' },
     Faculty: { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' },
   }
@@ -779,7 +779,7 @@ export function OverrideConfirmModal({ pendingDrop, onConfirm, onCancel }) {
             style={{
               padding: '8px 20px', fontSize: 12.5, fontWeight: 700,
               background: 'linear-gradient(135deg,#dc2626,#b91c1c)',
-              color: '#fff', border: 'none', borderRadius: 8,
+              color: 'var(--surface)', border: 'none', borderRadius: 8,
               cursor: 'pointer', fontFamily: 'Inter, sans-serif',
               boxShadow: '0 4px 12px rgba(220,38,38,.30)',
               display: 'flex', alignItems: 'center', gap: 6, transition: 'all .15s',
@@ -885,7 +885,7 @@ export function StackConfirmModal({ pendingStack, onConfirm, onCancel }) {
         </div>
 
         <div style={{
-          background: '#fffbeb', border: '1px solid #fcd34d',
+          background: 'rgba(245, 158, 11, 0.05)', border: '1px solid #fcd34d',
           borderRadius: 8, padding: '10px 14px',
           display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 16,
         }}>
@@ -907,7 +907,7 @@ export function StackConfirmModal({ pendingStack, onConfirm, onCancel }) {
             style={{
               padding: '8px 20px', fontSize: 12.5, fontWeight: 700,
               background: 'linear-gradient(135deg,var(--meadow),var(--meadow-mid))',
-              color: '#fff', border: 'none', borderRadius: 8,
+              color: 'var(--surface)', border: 'none', borderRadius: 8,
               cursor: 'pointer', fontFamily: 'Inter, sans-serif',
               boxShadow: '0 4px 12px rgba(5,150,105,.30)',
               display: 'flex', alignItems: 'center', gap: 6, transition: 'all .15s',

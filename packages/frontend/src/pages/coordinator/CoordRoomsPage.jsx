@@ -167,7 +167,7 @@ function Checkbox({ checked, indeterminate, onChange }) {
     <span onClick={onChange} style={{
       width: 18, height: 18, borderRadius: 5, flexShrink: 0,
       border: `1.5px solid ${active ? G.meadow : G.muted2}`,
-      background: active ? G.meadow : '#fff',
+      background: active ? G.meadow : 'var(--surface)',
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       transition: 'all 0.15s', cursor: 'pointer',
     }}>
@@ -488,9 +488,9 @@ export default function CoordRoomsPage() {
           
           {/* Header Save Bar Logic for Campus Rooms */}
           {!loading && roomsDirty ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: '#FFFBEB', padding: '8px 16px', borderRadius: '10px', border: '1px solid #FDE68A', animation: 'fadeIn 0.2s ease-out' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'rgba(245, 158, 11, 0.05)', padding: '8px 16px', borderRadius: '10px', border: '1px solid #FDE68A', animation: 'fadeIn 0.2s ease-out' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 24, height: 24, borderRadius: 6, background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #FCD34D' }}>
+                <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #FCD34D' }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 </div>
                 <span style={{ fontSize: 13, color: G.ink, fontWeight: 600, fontFamily: "'Inter', sans-serif" }}>
@@ -572,9 +572,9 @@ export default function CoordRoomsPage() {
           
           {/* Header Save Bar Logic for Assignments */}
           {!loading && dirtyKeys.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: '#FFFBEB', padding: '8px 16px', borderRadius: '10px', border: '1px solid #FDE68A', animation: 'fadeIn 0.2s ease-out' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'rgba(245, 158, 11, 0.05)', padding: '8px 16px', borderRadius: '10px', border: '1px solid #FDE68A', animation: 'fadeIn 0.2s ease-out' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 24, height: 24, borderRadius: 6, background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #FCD34D' }}>
+                <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #FCD34D' }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 </div>
                 <span style={{ fontSize: 13, color: G.ink, fontWeight: 600, fontFamily: "'Inter', sans-serif" }}>
@@ -608,7 +608,7 @@ export default function CoordRoomsPage() {
               <div style={{ display: 'flex', gap: 4, background: G.hover, padding: 4, borderRadius: 9, border: `1px solid ${G.border}` }}>
                 {['All', 'Assigned', 'Unassigned'].map(status => (
                   <button key={status} onClick={() => { setStatusFilter(status); setSelectedCourses(new Set()) }} 
-                    style={{ padding: '6px 14px', borderRadius: 7, fontSize: 12, fontWeight: statusFilter === status ? 700 : 600, background: statusFilter === status ? '#fff' : 'transparent', color: statusFilter === status ? G.meadowDeep : G.muted, border: 'none', cursor: 'pointer', boxShadow: statusFilter === status ? '0 1px 3px rgba(0,0,0,0.04)' : 'none', transition: 'all .15s', fontFamily: "'Inter', sans-serif" }}>
+                    style={{ padding: '6px 14px', borderRadius: 7, fontSize: 12, fontWeight: statusFilter === status ? 700 : 600, background: statusFilter === status ? 'var(--surface)' : 'transparent', color: statusFilter === status ? G.meadowDeep : G.muted, border: 'none', cursor: 'pointer', boxShadow: statusFilter === status ? '0 1px 3px rgba(0,0,0,0.04)' : 'none', transition: 'all .15s', fontFamily: "'Inter', sans-serif" }}>
                     {status}
                   </button>
                 ))}
@@ -620,7 +620,7 @@ export default function CoordRoomsPage() {
         {/* Bulk Action Bar */}
         {selectedCourses.size > 0 && (
           <div style={{ background: `linear-gradient(135deg,${G.meadowDeep},${G.inkMid})`, padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 14, animation: 'fadeIn 0.15s ease' }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#fff', flex: 1 }}>{selectedCourses.size} course{selectedCourses.size !== 1 ? 's' : ''} selected</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--surface)', flex: 1 }}>{selectedCourses.size} course{selectedCourses.size !== 1 ? 's' : ''} selected</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <button onClick={() => setSelectedCourses(new Set())} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>Deselect</button>
               <button onClick={openBulkModal} style={{ background: 'var(--surface)', color: G.meadowDeep, border: 'none', fontSize: 12, fontWeight: 700, padding: '6px 14px', borderRadius: 6, cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>Bulk Assign Rooms</button>
@@ -691,7 +691,7 @@ export default function CoordRoomsPage() {
                       <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
                         <div style={{ display: 'flex', gap: 8 }}>
                           {course.unitsLecture > 0 && <span style={{ color: G.meadowDeep, fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}><div style={{width:8,height:8,borderRadius:2,background:G.meadowSoft,border:`1px solid ${G.meadowBorder}`}}/> {course.unitsLecture}L</span>}
-                          {course.unitsLab > 0 && <span style={{ color: '#0369A1', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}><div style={{width:8,height:8,borderRadius:2,background:'#E0F2FE',border:`1px solid #BAE6FD`}}/> {course.unitsLab}L</span>}
+                          {course.unitsLab > 0 && <span style={{ color: '#0369A1', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}><div style={{width:8,height:8,borderRadius:2,background:'rgba(59, 130, 246, 0.1)',border:`1px solid #BAE6FD`}}/> {course.unitsLab}L</span>}
                         </div>
                       </td>
                       <td style={{ padding: '12px 20px', verticalAlign: 'middle' }} onClick={e => e.stopPropagation()}>

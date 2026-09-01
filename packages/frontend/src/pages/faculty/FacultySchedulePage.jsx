@@ -50,7 +50,7 @@ if (!document.getElementById('fsp-style')) {
     }
 
     .fsp-select {
-      appearance: none; border: 1px solid #D8E8DF; box-sizing: border-box;
+      appearance: none; border: 1px solid var(--border); box-sizing: border-box;
       border-radius: 10px; padding: 8px 34px 8px 14px;
       font-size: 12.5px; font-weight: 600; color: #0E2A1C;
       background: #fafafa; cursor: pointer; outline: none;
@@ -69,7 +69,7 @@ if (!document.getElementById('fsp-style')) {
     }
     .fsp-search-input {
       width: 100%; box-sizing: border-box;
-      appearance: none; border: 1px solid #D8E8DF;
+      appearance: none; border: 1px solid var(--border);
       border-radius: 10px; padding: 8px 30px 8px 34px;
       font-size: 12.5px; font-weight: 500; color: #0E2A1C;
       background: #fafafa; outline: none;
@@ -92,7 +92,7 @@ if (!document.getElementById('fsp-style')) {
     }
 
     .fsp-export-btn {
-      padding: 8px 16px; border-radius: 10px; border: 1px solid #D8E8DF;
+      padding: 8px 16px; border-radius: 10px; border: 1px solid var(--border);
       background: var(--surface); color: #155C36; font-size: 12.5px; font-weight: 600;
       cursor: pointer; display: flex; align-items: center; gap: 8px;
       transition: all 0.15s; font-family: 'Inter', sans-serif;
@@ -114,14 +114,14 @@ if (!document.getElementById('fsp-style')) {
 
     .fsp-stat-card {
       display: flex; align-items: center; gap: 12px;
-      background: var(--surface); border-radius: 14px; border: 1px solid #D8E8DF;
+      background: var(--surface); border-radius: 14px; border: 1px solid var(--border);
       padding: 14px 18px; flex: 1; min-width: 140px;
       box-shadow: 0 1px 6px rgba(14,42,28,0.05);
       animation: fsp-fadeUp 0.3s ease both;
     }
 
     .fsp-list-card {
-      background: var(--surface); border-radius: 14px; border: 1px solid #D8E8DF;
+      background: var(--surface); border-radius: 14px; border: 1px solid var(--border);
       display: flex; align-items: stretch; overflow: hidden;
       transition: all 0.17s ease;
       box-shadow: 0 1px 4px rgba(14,42,28,0.04);
@@ -133,7 +133,7 @@ if (!document.getElementById('fsp-style')) {
     }
 
     .fsp-grid-card {
-      background: var(--surface); border-radius: 18px; border: 1px solid #D8E8DF;
+      background: var(--surface); border-radius: 18px; border: 1px solid var(--border);
       display: flex; flex-direction: column; overflow: hidden;
       transition: all 0.18s ease;
       box-shadow: 0 1px 5px rgba(14,42,28,0.05);
@@ -220,9 +220,9 @@ function formatPeriodCompact(period = '') {
 
 function getAvatarColor(name = '') {
   const palette = [
-    { bg:'var(--meadow-soft)', fg:'var(--meadow)' }, { bg:'#DBEAFE', fg:'#2563EB' },
+    { bg:'var(--meadow-soft)', fg:'var(--meadow)' }, { bg:'rgba(59, 130, 246, 0.1)', fg:'#2563EB' },
     { bg:'#FCE7F3', fg:'#DB2777' }, { bg:'color-mix(in srgb, #6D28D9 15%, transparent)', fg:'#7C3AED' },
-    { bg:'#FEF3C7', fg:'#D97706' }, { bg:'#FFE4E6', fg:'#E11D48' },
+    { bg:'rgba(245, 158, 11, 0.1)', fg:'#D97706' }, { bg:'#FFE4E6', fg:'#E11D48' },
   ]
   const code = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
   return palette[code % palette.length]
@@ -238,10 +238,10 @@ function getInitials(name = '') {
 function Badge({ children, type = 'default', size = 'sm' }) {
   const styles = {
     lec:     { bg:'#EFF6FF', color:'#2563EB', border:'#BFDBFE' },
-    lab:     { bg:'rgba(217, 119, 6, 0.05)', color:'#D97706', border:'#FDE68A' },
+    lab:     { bg:'rgba(217, 119, 6, 0.05)', color:'#D97706', border:'rgba(245, 158, 11, 0.25)' },
     room:    { bg: T.greenSoft, color: T.greenDeep, border: T.greenBorder },
     merged:  { bg:'var(--meadow-soft)', color:'var(--meadow)', border:'#A7F3D0' },
-    conflict:{ bg:'#FEF2F2', color:'#B91C1C', border:'rgba(220, 38, 38, 0.25)' },
+    conflict:{ bg:'rgba(239, 68, 68, 0.05)', color:'#B91C1C', border:'rgba(220, 38, 38, 0.25)' },
     default: { bg: T.bgAlt, color: T.textMid, border: T.border },
   }
   const s = styles[type] || styles.default
@@ -295,7 +295,7 @@ function SessionModal({ event, onClose }) {
             background: T.bgAlt, border: `1px solid ${T.border}`, color: T.textMuted,
             display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s'
           }}
-          onMouseEnter={e => { e.currentTarget.style.background='#FEE2E2'; e.currentTarget.style.color='#DC2626'; e.currentTarget.style.borderColor='#FCA5A5' }}
+          onMouseEnter={e => { e.currentTarget.style.background='rgba(239, 68, 68, 0.1)'; e.currentTarget.style.color='#DC2626'; e.currentTarget.style.borderColor='#FCA5A5' }}
           onMouseLeave={e => { e.currentTarget.style.background=T.bgAlt; e.currentTarget.style.color=T.textMuted; e.currentTarget.style.borderColor=T.border }}
           >
             <span style={{ fontSize: 20, lineHeight: 1, userSelect: 'none' }}>×</span>
@@ -328,7 +328,7 @@ function SessionModal({ event, onClose }) {
               {event.hasConflict && (
                 <span style={{
                   fontFamily: "'Inter',sans-serif", fontSize: 10, fontWeight: 700, padding: '4px 10px', borderRadius: 6,
-                  background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA', display: 'flex', alignItems: 'center', gap: 4
+                  background: 'rgba(239, 68, 68, 0.05)', color: '#DC2626', border: '1px solid #FECACA', display: 'flex', alignItems: 'center', gap: 4
                 }}>
                   <img src={iconConflict} alt="Conflict" style={{ width:10, height:10 }}/> Conflict
                 </span>
@@ -506,11 +506,11 @@ function GridCard({ event, index, conflictMap, onClick }) {
             <span style={{ fontFamily:"'Sora',sans-serif", fontSize:10, fontWeight:800, letterSpacing:'1.2px', textTransform:'uppercase', color:'rgba(255,255,255,0.9)', background:'rgba(255,255,255,0.18)', padding:'3px 10px', borderRadius:99 }}>
               {DAY_SHORT[event.day] || event.day || '—'}
             </span>
-            <span style={{ fontFamily:"'Inter',sans-serif", fontSize:9.5, fontWeight:700, padding:'3px 9px', borderRadius:6, background: isLab ? 'rgba(217,119,6,0.25)' : 'rgba(37,99,235,0.25)', color: isLab ? '#FDE68A' : '#BFDBFE', border: `1px solid ${isLab ? 'rgba(217,119,6,0.4)' : 'rgba(37,99,235,0.4)'}`, letterSpacing:'.3px' }}>
+            <span style={{ fontFamily:"'Inter',sans-serif", fontSize:9.5, fontWeight:700, padding:'3px 9px', borderRadius:6, background: isLab ? 'rgba(217,119,6,0.25)' : 'rgba(37,99,235,0.25)', color: isLab ? 'rgba(245, 158, 11, 0.25)' : '#BFDBFE', border: `1px solid ${isLab ? 'rgba(217,119,6,0.4)' : 'rgba(37,99,235,0.4)'}`, letterSpacing:'.3px' }}>
               {isLab ? 'LAB' : 'LEC'}
             </span>
           </div>
-          <div style={{ fontFamily:"'Sora',sans-serif", fontSize:22, fontWeight:800, color:'#fff', lineHeight:1, letterSpacing:'-0.3px', marginBottom:4 }}>
+          <div style={{ fontFamily:"'Sora',sans-serif", fontSize:22, fontWeight:800, color: 'var(--surface)', lineHeight:1, letterSpacing:'-0.3px', marginBottom:4 }}>
             {event.courseCode || '—'}
           </div>
           <div style={{ fontFamily:"'Inter',sans-serif", fontSize:11.5, color:'rgba(255,255,255,0.72)', fontWeight:500, lineHeight:1.4, display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>
@@ -653,9 +653,9 @@ function TimetableView({ events, conflictMap, onSelect }) {
                         <div style={{ fontFamily:"'Sora',sans-serif", fontSize:11, fontWeight:800, color, lineHeight:1.2, marginBottom:3 }}>{ev.courseCode}</div>
                         <div style={{ fontFamily:"'Inter',sans-serif", fontSize:9.5, color:T.textMuted, fontWeight:500, lineHeight:1.3, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{ev.title}</div>
                         <div style={{ display:'flex', gap:3, marginTop:5, flexWrap:'wrap', alignItems:'center' }}>
-                          <span style={{ fontSize:8.5, fontWeight:700, padding:'1px 5px', borderRadius:4, background: isLab ? 'rgba(217, 119, 6, 0.05)' : '#EFF6FF', color: isLab ? '#D97706' : '#2563EB', border: `1px solid ${isLab ? '#FDE68A' : '#BFDBFE'}` }}>{isLab ? 'LAB' : 'LEC'}</span>
+                          <span style={{ fontSize:8.5, fontWeight:700, padding:'1px 5px', borderRadius:4, background: isLab ? 'rgba(217, 119, 6, 0.05)' : '#EFF6FF', color: isLab ? '#D97706' : '#2563EB', border: `1px solid ${isLab ? 'rgba(245, 158, 11, 0.25)' : '#BFDBFE'}` }}>{isLab ? 'LAB' : 'LEC'}</span>
                           {ev.room && <span style={{ fontSize:8.5, fontWeight:600, color:T.textMuted }}>{ev.room}</span>}
-                          {hasConflict && <span style={{ fontSize:8.5, fontWeight:700, color:'#B91C1C', background:'#FEF2F2', padding:'1px 5px', borderRadius:4, border:'1px solid #FECACA' }}>!</span>}
+                          {hasConflict && <span style={{ fontSize:8.5, fontWeight:700, color:'#B91C1C', background:'rgba(239, 68, 68, 0.05)', padding:'1px 5px', borderRadius:4, border:'1px solid #FECACA' }}>!</span>}
                         </div>
                       </div>
                     )
@@ -897,7 +897,7 @@ export default function FacultySchedulePage() {
                   </span>
                 )}
               </div>
-              <h1 className="fsp-hero-title" style={{ fontFamily:"'Sora',sans-serif", fontSize:22, fontWeight:800, color:'#fff', margin:0, lineHeight:1.15, letterSpacing:'-.4px' }}>
+              <h1 className="fsp-hero-title" style={{ fontFamily:"'Sora',sans-serif", fontSize:22, fontWeight:800, color: 'var(--surface)', margin:0, lineHeight:1.15, letterSpacing:'-.4px' }}>
                 {listLoading ? '…' : facultyName || 'Faculty Schedule'}
               </h1>
               {facultyMeta.rank && (
@@ -924,7 +924,7 @@ export default function FacultySchedulePage() {
                   onClick={() => setViewMode(mode)}
                   style={{
                     background: viewMode === mode ? 'rgba(255,255,255,0.22)' : 'transparent',
-                    color:      viewMode === mode ? '#fff' : 'rgba(255,255,255,0.50)',
+                    color:      viewMode === mode ? 'var(--surface)' : 'rgba(255,255,255,0.50)',
                     boxShadow:  viewMode === mode ? '0 1px 4px rgba(0,0,0,0.15)' : 'none',
                   }}
                 >{icon}</button>

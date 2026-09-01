@@ -112,8 +112,8 @@ function PillModal({ status, label, onClose, onGoScheduler, onStopConfirm }) {
         <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:18 }}>
           <div style={{
             width:44, height:44, borderRadius:12, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center',
-            background: isComplete ? G.meadowSoft : isFailed ? '#FEE2E2' : '#FEF3C7',
-            border: `1px solid ${isComplete ? G.meadowBorder : isFailed ? 'rgba(220, 38, 38, 0.25)' : '#FDE68A'}`,
+            background: isComplete ? G.meadowSoft : isFailed ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+            border: `1px solid ${isComplete ? G.meadowBorder : isFailed ? 'rgba(220, 38, 38, 0.25)' : 'rgba(245, 158, 11, 0.25)'}`,
           }}>
             {isComplete && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={G.meadow} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
             {isFailed   && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>}
@@ -150,10 +150,10 @@ function PillModal({ status, label, onClose, onGoScheduler, onStopConfirm }) {
             <button
               onClick={onStopConfirm}
               style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderRadius:10, border:'1.5px solid #FECACA', background:'rgba(220, 38, 38, 0.05)', cursor:'pointer', fontFamily:'Inter,sans-serif', textAlign:'left', transition:'all .15s' }}
-              onMouseEnter={e => { e.currentTarget.style.background='#FEE2E2' }}
+              onMouseEnter={e => { e.currentTarget.style.background='rgba(239, 68, 68, 0.1)' }}
               onMouseLeave={e => { e.currentTarget.style.background='rgba(220, 38, 38, 0.05)' }}
             >
-              <div style={{ width:32, height:32, borderRadius:8, background:'#FEE2E2', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <div style={{ width:32, height:32, borderRadius:8, background:'rgba(239, 68, 68, 0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
               </div>
               <div>
@@ -323,7 +323,7 @@ export default function CoordSolverStatusWidget() {
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
           ) : (
-            <div style={{ width:36, height:36, borderRadius:'50%', background:'#FEE2E2', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <div style={{ width:36, height:36, borderRadius:'50%', background:'rgba(239, 68, 68, 0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
             </div>
           )}
