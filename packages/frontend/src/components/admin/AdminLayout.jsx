@@ -54,10 +54,10 @@ function LogoutModal({ onConfirm, onCancel }) {
           </div>
         </div>
         <div style={{ display:'flex', gap:9, justifyContent:'flex-end' }}>
-          <button onClick={onCancel} style={{ padding:'8px 18px', borderRadius:10, border:'1.5px solid #D8E8DF', background: 'var(--bg)', color: 'var(--ink2)', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
+          <button onClick={onCancel} style={{ padding:'8px 18px', borderRadius:10, border:'1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--ink2)', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
             Cancel
           </button>
-          <button onClick={onConfirm} style={{ padding:'8px 18px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#EF4444,#C0392B)', color:'#fff', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 4px 14px rgba(192,57,43,0.3)' }}>
+          <button onClick={onConfirm} style={{ padding:'8px 18px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#EF4444,#C0392B)', color: 'var(--surface)', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 4px 14px rgba(192,57,43,0.3)' }}>
             Logout
           </button>
         </div>

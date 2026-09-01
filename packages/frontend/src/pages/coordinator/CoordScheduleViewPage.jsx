@@ -100,7 +100,7 @@ function markOnboardingCompleted() {
     .sv-sched-select {
       appearance:none; -webkit-appearance:none;
       padding:6px 28px 6px 30px; border-radius:9px;
-      border:1.5px solid #D8E8DF; font-size:12px;
+      border:1.5px solid var(--border); font-size:12px;
       font-family:'Inter',sans-serif; color:#0E2A20;
       background: var(--surface); cursor:pointer; outline:none;
       font-weight:500; transition:border-color .15s, box-shadow .15s;
@@ -112,7 +112,7 @@ function markOnboardingCompleted() {
 
     .sv-save-btn {
       display:inline-flex; align-items:center; gap:5px;
-      padding:6px 10px; border-radius:9px; border:1.5px solid #D8E8DF;
+      padding:6px 10px; border-radius:9px; border:1.5px solid var(--border);
       background: var(--surface); color:#0E2A20; font-size:12px; font-weight:600;
       font-family:'Inter',sans-serif; cursor:pointer; transition:all .2s;
       white-space:nowrap; flex-shrink:0;
@@ -145,10 +145,10 @@ function markOnboardingCompleted() {
       gap:10px; flex-wrap:wrap; row-gap:8px; margin-bottom:12px;
     }
     .sv-header-cluster { display:flex; align-items:center; gap:10px; flex-shrink:0; white-space:nowrap; }
-    .sv-header-sep { width:1px; align-self:stretch; background:#D8E8DF; flex-shrink:0; margin:2px 0; }
+    .sv-header-sep { width:1px; align-self:stretch; background:var(--border); flex-shrink:0; margin:2px 0; }
 
     .sv-shimmer {
-      background: linear-gradient(90deg,var(--hover) 25%,#D8E8DF 50%,var(--hover) 75%);
+      background: linear-gradient(90deg,var(--hover) 25%,var(--border) 50%,var(--hover) 75%);
       background-size: 400px 100%;
       animation: svShimmer 1.2s ease-in-out infinite;
       border-radius:6px;
@@ -162,7 +162,7 @@ function markOnboardingCompleted() {
     }
     .sv-stat-cell {
       flex:1; padding:9px 14px; min-width:0;
-      border-right:1px solid #D8E8DF;
+      border-right:1px solid var(--border);
       display:flex; flex-direction:column; gap:1px;
     }
     .sv-stat-cell:last-child { border-right:none; }
@@ -612,7 +612,7 @@ function ExportMenuButton({ onExportSchedule, onExportRooms, disabled }) {
           <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 998 }} />
           <div style={{
             position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 999,
-            background: 'var(--surface)', border: '1px solid #D8E8DF', borderRadius: 10,
+            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10,
             boxShadow: '0 12px 32px rgba(0,0,0,.16)', minWidth: 210, overflow: 'hidden',
           }}>
             <button
@@ -1230,7 +1230,7 @@ export default function CoordScheduleViewPage() {
                 style={{ fontSize:15, fontWeight:700, padding:'4px 10px', borderRadius:8, border:`2px solid ${TV.mid}`, outline:'none', width:200, fontFamily:'Inter,sans-serif' }}
               />
               <button onClick={handleSaveName} disabled={renameState === 'saving'}
-                style={{ padding:'5px 12px', background:TV.deep, color:'#fff', border:'none', borderRadius:8, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap' }}>
+                style={{ padding:'5px 12px', background:TV.deep, color: 'var(--surface)', border:'none', borderRadius:8, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap' }}>
                 {renameState === 'saving' ? 'Saving…' : 'Save'}
               </button>
               <button onClick={() => setIsEditingName(false)} disabled={renameState === 'saving'}
@@ -1272,7 +1272,7 @@ export default function CoordScheduleViewPage() {
           {!isEditingName && allEvents.length > 0 && (
             status === 'submitted' ? (
               <div style={{ display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
-                <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'#FEF3C7', color:'#92400E', border:'1px solid #FDE68A', whiteSpace:'nowrap' }}>
+                <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(245, 158, 11, 0.1)', color:'#92400E', border:'1px solid #FDE68A', whiteSpace:'nowrap' }}>
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                   Submitted
                 </span>
@@ -1288,7 +1288,7 @@ export default function CoordScheduleViewPage() {
               </span>
             ) : (
               <button onClick={handleSubmit} disabled={actionState === 'working'}
-                style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 13px', borderRadius:8, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color:'#fff', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 2px 8px rgba(0,0,0,.25)', flexShrink:0, whiteSpace:'nowrap' }}>
+                style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 13px', borderRadius:8, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: 'var(--surface)', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 2px 8px rgba(0,0,0,.25)', flexShrink:0, whiteSpace:'nowrap' }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                 {actionState === 'working' ? 'Submitting…' : 'Submit'}
               </button>
@@ -1339,11 +1339,11 @@ export default function CoordScheduleViewPage() {
       {actionError && (
         <div style={{
           display:'flex', alignItems:'flex-start', gap:10, marginBottom:16,
-          padding:'12px 14px', borderRadius:12, background:'#FEF2F2',
+          padding:'12px 14px', borderRadius:12, background:'rgba(239, 68, 68, 0.05)',
           border:'1px solid #FECACA', animation:'svSlideIn .22s ease',
         }}>
           <div style={{
-            width:26, height:26, borderRadius:8, background:'#FEE2E2', color:'#DC2626',
+            width:26, height:26, borderRadius:8, background:'rgba(239, 68, 68, 0.1)', color:'#DC2626',
             display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:1,
           }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
@@ -1366,7 +1366,7 @@ export default function CoordScheduleViewPage() {
               width:22, height:22, borderRadius:6, border:'none', background:'transparent',
               color:'#B91C1C', cursor:'pointer', flexShrink:0, opacity:.7, transition:'opacity .15s, background .15s',
             }}
-            onMouseEnter={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.background = '#FEE2E2' }}
+            onMouseEnter={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)' }}
             onMouseLeave={e => { e.currentTarget.style.opacity = .7; e.currentTarget.style.background = 'transparent' }}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
@@ -1463,7 +1463,7 @@ export default function CoordScheduleViewPage() {
               fontFamily:'Inter,sans-serif', transition:'all .15s',
               fontWeight: filterConflicts ? 700 : 400,
               border: `1px solid ${filterConflicts ? '#fca5a5' : TV.border}`,
-              background: filterConflicts ? '#fef2f2' : '#fff',
+              background: filterConflicts ? 'rgba(239, 68, 68, 0.05)' : 'var(--surface)',
               color: filterConflicts ? '#b91c1c' : TV.muted,
             }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1478,7 +1478,7 @@ export default function CoordScheduleViewPage() {
               fontFamily:'Inter,sans-serif', transition:'all .15s',
               fontWeight: filterMerged ? 700 : 400,
               border: `1px solid ${filterMerged ? TV.light : TV.border}`,
-              background: filterMerged ? TV.pale : '#fff',
+              background: filterMerged ? TV.pale : 'var(--surface)',
               color: filterMerged ? TV.deep : TV.muted,
             }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1492,8 +1492,8 @@ export default function CoordScheduleViewPage() {
               padding:'3px 10px', borderRadius:20, fontSize:11, cursor:'pointer',
               fontFamily:'Inter,sans-serif', transition:'all .15s',
               fontWeight: filterUnassigned ? 700 : 400,
-              border: `1px solid ${filterUnassigned ? '#fcd34d' : TV.border}`,
-              background: filterUnassigned ? '#fffbeb' : '#fff',
+              border: `1px solid ${filterUnassigned ? 'rgba(245, 158, 11, 0.35)' : TV.border}`,
+              background: filterUnassigned ? 'rgba(245, 158, 11, 0.05)' : 'var(--surface)',
               color: filterUnassigned ? '#92400e' : TV.muted,
             }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1510,7 +1510,7 @@ export default function CoordScheduleViewPage() {
                 fontFamily:'Inter,sans-serif', transition:'all .15s',
                 fontWeight: showAvailableOnly ? 700 : 400,
                 border: `1px solid ${showAvailableOnly ? 'var(--meadow-border)' : TV.border}`,
-                background: showAvailableOnly ? 'var(--meadow-soft)' : '#fff',
+                background: showAvailableOnly ? 'var(--meadow-soft)' : 'var(--surface)',
                 color: showAvailableOnly ? 'var(--meadow)' : TV.muted,
               }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1533,12 +1533,12 @@ export default function CoordScheduleViewPage() {
           {/* Legend */}
           <div style={{ display:'flex', alignItems:'center', gap:14, paddingTop:10, borderTop:`1px solid ${TV.border}` }}>
             {[
-              { bg:'#fff', border:TV.border, label:'Normal', color:TV.muted },
+              { bg: 'var(--surface)', border:TV.border, label:'Normal', color:TV.muted },
               { bg:TV.pale, border:TV.light, label:'Merge', color:TV.deep,
                 icon: <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> },
-              { bg:'#fef2f2', border:'rgba(220, 38, 38, 0.25)', label:'Conflict', color:'#b91c1c',
+              { bg:'rgba(239, 68, 68, 0.05)', border:'rgba(220, 38, 38, 0.25)', label:'Conflict', color:'#b91c1c',
                 icon: <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> },
-              { bg:'#fffbeb', border:'#fcd34d', label:'Unassigned', color:'#92400e',
+              { bg:'rgba(245, 158, 11, 0.05)', border:'rgba(245, 158, 11, 0.35)', label:'Unassigned', color:'#92400e',
                 icon: <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/></svg> },
             ].map(({ bg, border, label, color, icon }) => (
               <div key={label} style={{ display:'flex', alignItems:'center', gap:6 }}>
@@ -1751,7 +1751,7 @@ export default function CoordScheduleViewPage() {
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   padding: '5px 12px', borderRadius: 8,
                   border: `1px solid ${localHasFilters ? TV.mid : TV.border}`,
-                  background: localHasFilters ? TV.pale : '#fff',
+                  background: localHasFilters ? TV.pale : 'var(--surface)',
                   color: localHasFilters ? TV.deep : TV.muted,
                   fontSize: 12, fontWeight: localHasFilters ? 700 : 500,
                   cursor: 'pointer', fontFamily: 'Inter, sans-serif',
@@ -1762,7 +1762,7 @@ export default function CoordScheduleViewPage() {
                 </svg>
                 Filters
                 {localHasFilters && (
-                  <span style={{ background: TV.deep, color: '#fff', borderRadius: 10, fontSize: 9, fontWeight: 800, padding: '1px 5px', lineHeight: 1.4 }}>
+                  <span style={{ background: TV.deep, color: 'var(--surface)', borderRadius: 10, fontSize: 9, fontWeight: 800, padding: '1px 5px', lineHeight: 1.4 }}>
                     ON
                   </span>
                 )}
@@ -1848,28 +1848,28 @@ export default function CoordScheduleViewPage() {
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         <button onClick={toggles.conflicts} style={{
                           display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'Inter,sans-serif', transition: 'all .15s',
-                          fontWeight: filterConflicts ? 700 : 400, border: `1px solid ${filterConflicts ? '#fca5a5' : TV.border}`, background: filterConflicts ? '#fef2f2' : '#fff', color: filterConflicts ? '#b91c1c' : TV.muted,
+                          fontWeight: filterConflicts ? 700 : 400, border: `1px solid ${filterConflicts ? '#fca5a5' : TV.border}`, background: filterConflicts ? 'rgba(239, 68, 68, 0.05)' : 'var(--surface)', color: filterConflicts ? '#b91c1c' : TV.muted,
                         }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                           Conflicts only
                         </button>
                         <button onClick={() => setFilterMerged(!filterMerged)} style={{
                           display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'Inter,sans-serif', transition: 'all .15s',
-                          fontWeight: filterMerged ? 700 : 400, border: `1px solid ${filterMerged ? TV.light : TV.border}`, background: filterMerged ? TV.pale : '#fff', color: filterMerged ? TV.deep : TV.muted,
+                          fontWeight: filterMerged ? 700 : 400, border: `1px solid ${filterMerged ? TV.light : TV.border}`, background: filterMerged ? TV.pale : 'var(--surface)', color: filterMerged ? TV.deep : TV.muted,
                         }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                           Merged only
                         </button>
                         <button onClick={toggles.unassigned} style={{
                           display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'Inter,sans-serif', transition: 'all .15s',
-                          fontWeight: filterUnassigned ? 700 : 400, border: `1px solid ${filterUnassigned ? '#fcd34d' : TV.border}`, background: filterUnassigned ? '#fffbeb' : '#fff', color: filterUnassigned ? '#92400e' : TV.muted,
+                          fontWeight: filterUnassigned ? 700 : 400, border: `1px solid ${filterUnassigned ? 'rgba(245, 158, 11, 0.35)' : TV.border}`, background: filterUnassigned ? 'rgba(245, 158, 11, 0.05)' : 'var(--surface)', color: filterUnassigned ? '#92400e' : TV.muted,
                         }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/></svg>
                           Unassigned only
                         </button>
                         <button onClick={() => setShowAvailableOnly(v => !v)} style={{
                           display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'Inter,sans-serif', transition: 'all .15s',
-                          fontWeight: showAvailableOnly ? 700 : 400, border: `1px solid ${showAvailableOnly ? 'var(--meadow-border)' : TV.border}`, background: showAvailableOnly ? 'var(--meadow-soft)' : '#fff', color: showAvailableOnly ? 'var(--meadow)' : TV.muted,
+                          fontWeight: showAvailableOnly ? 700 : 400, border: `1px solid ${showAvailableOnly ? 'var(--meadow-border)' : TV.border}`, background: showAvailableOnly ? 'var(--meadow-soft)' : 'var(--surface)', color: showAvailableOnly ? 'var(--meadow)' : TV.muted,
                         }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
                           Available rooms only
@@ -1945,7 +1945,7 @@ export default function CoordScheduleViewPage() {
                     )}
                     <button onClick={() => setMaximizeFilterOpen(false)} style={{
                       padding: '6px 18px', borderRadius: 8, fontSize: 11.5, fontWeight: 600,
-                      border: 'none', background: TV.deep, color: '#fff',
+                      border: 'none', background: TV.deep, color: 'var(--surface)',
                       cursor: 'pointer', fontFamily: 'Inter,sans-serif',
                     }}>
                       Done
@@ -2121,9 +2121,9 @@ function ListView({ dayEvents, conflictMap, hasFilters, clearFilters, onCardClic
             return (
               <tr key={evId}
                 onClick={() => onCardClick(ev)}
-                style={{ borderBottom:`1px solid ${TV.border}`, cursor:'pointer', background:i%2===0?'#fff':'var(--bg)', transition:'background .12s' }}
+                style={{ borderBottom:`1px solid ${TV.border}`, cursor:'pointer', background:i%2===0? 'var(--surface)':'var(--bg)', transition:'background .12s' }}
                 onMouseEnter={e => e.currentTarget.style.background = TV.pale}
-                onMouseLeave={e => e.currentTarget.style.background = i%2===0?'#fff':'var(--bg)'}
+                onMouseLeave={e => e.currentTarget.style.background = i%2===0? 'var(--surface)':'var(--bg)'}
               >
                 <td style={{ padding:'10px 14px', whiteSpace:'nowrap', fontSize:11.5, color:TV.muted }}>{ev.period}</td>
                 <td style={{ padding:'10px 14px' }}>
@@ -2153,7 +2153,7 @@ function ListView({ dayEvents, conflictMap, hasFilters, clearFilters, onCardClic
                         overlap with the merge partner (e.g. it also has a
                         faculty / section conflict). */}
                     {conf && !(merged && conf.label === 'Room Conflict') && (
-                      <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:9.5, fontWeight:700, background:'#fef2f2', color:'#b91c1c', border:'1px solid #fecaca', borderRadius:4, padding:'2px 6px' }}>
+                      <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:9.5, fontWeight:700, background:'rgba(239, 68, 68, 0.05)', color:'#b91c1c', border:'1px solid #fecaca', borderRadius:4, padding:'2px 6px' }}>
                         <svg width={9} height={9} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                         {conf.label}
                       </span>
@@ -2165,7 +2165,7 @@ function ListView({ dayEvents, conflictMap, hasFilters, clearFilters, onCardClic
                       </span>
                     )}
                     {isExtManaged && <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:9.5, fontWeight:600, background:'var(--meadow-soft)', color: 'var(--meadow)', border:'1px solid var(--meadow-border)', borderRadius:4, padding:'2px 6px' }}>Ext. managed</span>}
-                    {noFaculty && !isExtManaged && <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:9.5, fontWeight:700, background:'#fffbeb', color:'#92400e', border:'1px solid #fcd34d', borderRadius:4, padding:'2px 6px' }}>Unassigned</span>}
+                    {noFaculty && !isExtManaged && <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:9.5, fontWeight:700, background:'rgba(245, 158, 11, 0.05)', color:'#92400e', border:'1px solid #fcd34d', borderRadius:4, padding:'2px 6px' }}>Unassigned</span>}
                     {!conf && !merged && !noFaculty && <span style={{ fontSize:9.5, color:TV.muted }}>—</span>}
                     {/* Edge case: merged but also has a real non-room conflict */}
                     {conf && merged && conf.label === 'Room Conflict' && (

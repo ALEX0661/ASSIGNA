@@ -28,7 +28,7 @@ const ORDINAL = n => {
 // Program badge colors (Adapted for the new palette)
 const PROG_META = {
   'BSCS':      { color: G.meadowDeep, bg: G.meadowSoft },
-  'BSIT':      { color: '#0369A1', bg: '#E0F2FE' }, // Kept distinct blue for IT
+  'BSIT':      { color: '#0369A1', bg: 'rgba(59, 130, 246, 0.1)' }, // Kept distinct blue for IT
   'BSEMC-GD':  { color: '#D97706', bg: 'rgba(217, 119, 6, 0.1)' },
   'BSEMC-DAT': { color: '#DC2626', bg: '#FFF5F5' },
 }
@@ -298,7 +298,7 @@ export default function BlockConfigModal({ semester, onClose, onApplied }) {
 
               {/* Status Messages */}
               {error && (
-                <div style={{ background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:10, padding:'12px 16px', fontSize:13, color:'#DC2626', display:'flex', alignItems:'center', gap:8, fontWeight:600 }}>
+                <div style={{ background:'rgba(239, 68, 68, 0.05)', border:'1px solid #FECACA', borderRadius:10, padding:'12px 16px', fontSize:13, color:'#DC2626', display:'flex', alignItems:'center', gap:8, fontWeight:600 }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   {error}
                 </div>

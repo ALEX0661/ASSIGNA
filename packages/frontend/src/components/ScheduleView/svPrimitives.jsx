@@ -63,7 +63,7 @@ export function ModalFooter({ selectedCount, onClose }) {
         style={{
           padding: '7px 18px', fontSize: 12.5, fontWeight: 600,
           background: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))',
-          color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer',
+          color: 'var(--surface)', border: 'none', borderRadius: 8, cursor: 'pointer',
           fontFamily: 'Inter, sans-serif',
         }}
       >Done</button>
@@ -83,7 +83,7 @@ export function Chip({ label, active, color, onClick }) {
         padding: '4px 11px', borderRadius: 20, fontSize: 11.5, cursor: 'pointer',
         fontWeight: active ? 600 : 400,
         border:     `1px solid ${active ? activeBorder : TV.border}`,
-        background: active ? activeBg  : '#fff',
+        background: active ? activeBg  : 'var(--surface)',
         color:      active ? activeText : TV.muted,
         transition: 'all .15s', whiteSpace: 'nowrap',
         fontFamily: 'Inter, sans-serif',
@@ -100,7 +100,7 @@ export function FilterButton({ active, count, onClick }) {
       onClick={onClick}
       style={{
         padding: '4px 11px', borderRadius: 20, fontSize: 11.5, cursor: 'pointer',
-        background: active ? TV.pale   : '#fff',
+        background: active ? TV.pale   : 'var(--surface)',
         color:      active ? TV.deep   : TV.muted,
         border:     `1px solid ${active ? TV.light : TV.border}`,
         fontWeight: active ? 600 : 400,
@@ -131,7 +131,7 @@ export function ConflictBadge({ label }) {
   const isSec  = label?.includes('Section')
   const multi  = [isRoom, isFac, isSec].filter(Boolean).length > 1
 
-  let bg = '#fef2f2', color = '#b91c1c', border = 'rgba(220, 38, 38, 0.25)'
+  let bg = 'rgba(239, 68, 68, 0.05)', color = '#b91c1c', border = 'rgba(220, 38, 38, 0.25)'
   if (multi)      { bg = 'rgba(217, 119, 6, 0.05)'; color = '#c2410c'; border = 'rgba(217, 119, 6, 0.25)' }
   else if (isFac) { bg = '#eff6ff'; color = '#1d4ed8'; border = '#bfdbfe' }
   else if (isSec) { bg = '#fdf4ff'; color = '#7e22ce'; border = '#e9d5ff' }
@@ -173,7 +173,7 @@ export function ConflictSummaryBar({ conflictMap, compact = false }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
         <span style={{ fontSize: 10, fontWeight: 700, color: '#b91c1c', whiteSpace: 'nowrap' }}>⚠</span>
         {roomCount > 0 && (
-          <span style={{ fontSize: 10, background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, padding: '1px 7px', fontWeight: 700, whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 10, background: 'rgba(239, 68, 68, 0.1)', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 10, padding: '1px 7px', fontWeight: 700, whiteSpace: 'nowrap' }}>
             {roomCount}R
           </span>
         )}
@@ -199,7 +199,7 @@ export function ConflictSummaryBar({ conflictMap, compact = false }) {
       borderRadius: 10, padding: '8px 14px', marginBottom: 12,
     }}>
       <span style={{ fontSize: 12, fontWeight: 700, color: '#b91c1c' }}>⚠ Conflicts today:</span>
-      {roomCount    > 0 && <span style={{ fontSize: 11, background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 20, padding: '2px 10px', fontWeight: 600 }}>{roomCount} Room</span>}
+      {roomCount    > 0 && <span style={{ fontSize: 11, background: 'rgba(239, 68, 68, 0.1)', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 20, padding: '2px 10px', fontWeight: 600 }}>{roomCount} Room</span>}
       {sectionCount > 0 && <span style={{ fontSize: 11, background: '#fdf4ff', color: '#7e22ce', border: '1px solid #e9d5ff', borderRadius: 20, padding: '2px 10px', fontWeight: 600 }}>{sectionCount} Section</span>}
       {facultyCount > 0 && <span style={{ fontSize: 11, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 20, padding: '2px 10px', fontWeight: 600 }}>{facultyCount} Faculty</span>}
       <span style={{ fontSize: 11, color: TV.muted, marginLeft: 4 }}>{conflictMap.size} affected session{conflictMap.size > 1 ? 's' : ''}</span>
@@ -210,7 +210,7 @@ export function ConflictSummaryBar({ conflictMap, compact = false }) {
 // ── Legend ────────────────────────────────────────────────────────────────────
 export function Legend() {
   const items = [
-    { color: TV.muted,  border: TV.border, bg: '#fff',    label: 'Normal' },
+    { color: TV.muted,  border: TV.border, bg: 'var(--surface)',    label: 'Normal' },
     { color: TV.deep,   border: TV.light,  bg: TV.pale,   label: 'Merged Block' },
     { color: '#b91c1c', border: '#fca5a5', bg: '#fff5f5', label: 'Conflict' },
   ]
@@ -410,7 +410,7 @@ export function Toast({ message, type, onDismiss }) {
       style={{
         position: 'fixed', bottom: 28, right: 28, zIndex: 9999,
         padding: '12px 18px', borderRadius: 12,
-        background: isErr ? '#fef2f2' : 'var(--hover)',
+        background: isErr ? 'rgba(239, 68, 68, 0.05)' : 'var(--hover)',
         border: `1px solid ${isErr ? 'rgba(220, 38, 38, 0.25)' : 'var(--meadow-border)'}`,
         color: isErr ? '#b91c1c' : 'var(--meadow-mid)',
         fontSize: 13, fontWeight: 600, cursor: 'pointer',
@@ -434,7 +434,7 @@ export function ConflictTable({ conflicts }) {
     <div style={{ overflowX: 'auto', border: '1px solid #fecaca', borderRadius: 8, marginTop: 8 }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
         <thead>
-          <tr style={{ background: '#fef2f2' }}>
+          <tr style={{ background: 'rgba(239, 68, 68, 0.05)' }}>
             {['Course', 'Section', 'Day', 'Time', 'Room', 'Faculty', 'Type'].map(h => (
               <th key={h} style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 700, color: '#991b1b', borderBottom: '1px solid #fecaca', whiteSpace: 'nowrap' }}>{h}</th>
             ))}
@@ -444,7 +444,7 @@ export function ConflictTable({ conflicts }) {
           {conflicts.map((c, i) => {
             const id = c.schedule_id ?? `${c.courseCode}-${c.block}-${c.session}-${c.day}`
             return (
-              <tr key={id} style={{ background: i % 2 === 0 ? '#fff' : 'rgba(220, 38, 38, 0.05)' }}>
+              <tr key={id} style={{ background: i % 2 === 0 ? 'var(--surface)' : 'rgba(220, 38, 38, 0.05)' }}>
                 <td style={{ padding: '5px 8px', fontWeight: 600, whiteSpace: 'nowrap' }}>{c.courseCode}</td>
                 <td style={{ padding: '5px 8px', whiteSpace: 'nowrap' }}>{c.program} {c.year}-{c.block}</td>
                 <td style={{ padding: '5px 8px', whiteSpace: 'nowrap' }}>{c.day}</td>
@@ -471,7 +471,7 @@ export function RoomChip({ room, selected, hasRoomConflict, hasMergePreview = fa
   } else if (selected) {
     bg = TV.deep; border = TV.deep; color = '#fff'; shadow = `0 0 0 2px rgba(0,0,0,.2)`
   } else if (hasRoomConflict) {
-    bg = '#fef2f2'; border = '#fca5a5'; color = '#b91c1c'; shadow = 'none'
+    bg = 'rgba(239, 68, 68, 0.05)'; border = '#fca5a5'; color = '#b91c1c'; shadow = 'none'
   } else if (hasMergePreview) {
     bg = '#eff6ff'; border = '#93c5fd'; color = '#1d4ed8'; shadow = '0 0 0 1.5px rgba(59,130,246,.18)'
   } else {
@@ -551,7 +551,7 @@ export function PendingChangesBar({ pendingOverrides, onSave, onRevertAll, savin
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
           {/* Countdown ring */}
           <svg width="18" height="18" viewBox="0 0 18 18" style={{ transform: 'rotate(-90deg)' }}>
-            <circle cx="9" cy="9" r={r} fill="none" stroke="#fde68a" strokeWidth="2.5"/>
+            <circle cx="9" cy="9" r={r} fill="none" stroke='rgba(245, 158, 11, 0.25)' strokeWidth="2.5"/>
             <circle cx="9" cy="9" r={r} fill="none" stroke="#d97706" strokeWidth="2.5"
               strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
               style={{ transition: 'stroke-dasharray .9s linear' }}
@@ -591,7 +591,7 @@ export function PendingChangesBar({ pendingOverrides, onSave, onRevertAll, savin
             background: saving
               ? '#d97706'
               : 'linear-gradient(135deg,#d97706,#b45309)',
-            color: '#fff', border: 'none', borderRadius: 7,
+            color: 'var(--surface)', border: 'none', borderRadius: 7,
             cursor: saving ? 'not-allowed' : 'pointer',
             fontFamily: 'Inter, sans-serif',
             boxShadow: '0 3px 8px rgba(180,83,9,.30)',

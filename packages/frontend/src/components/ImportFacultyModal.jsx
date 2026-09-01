@@ -235,7 +235,7 @@ const StatusBadge = ({ status }) => (
     fontSize:10, fontWeight:700, padding:'2px 9px', borderRadius:99, flexShrink:0,
     background: status === 'full-time' ? '#EEF9F0' : 'rgba(217, 119, 6, 0.05)',
     color:      status === 'full-time' ? 'var(--meadow)' : '#D97706',
-    border:     `1px solid ${status === 'full-time' ? '#A7F3D0' : '#FDE68A'}`,
+    border:     `1px solid ${status === 'full-time' ? '#A7F3D0' : 'rgba(245, 158, 11, 0.25)'}`,
   }}>
     {status === 'full-time' ? 'Full-time' : 'Part-time'}
   </span>
@@ -256,7 +256,7 @@ function Steps({ current }) {
                 width:30, height:30, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center',
                 fontSize:12, fontWeight:700, flexShrink:0, transition:'all .2s',
                 background: done ? 'var(--meadow-deep)' : active ? 'var(--meadow)' : 'var(--meadow-soft)',
-                color: (done || active) ? '#fff' : 'var(--meadow)',
+                color: (done || active) ? 'var(--surface)' : 'var(--meadow)',
                 boxShadow: active ? '0 3px 12px var(--meadow-border)' : 'none',
               }}>
                 {done
@@ -345,7 +345,7 @@ function UploadStep({ onUploaded, courses }) {
         ) : (
           <>
             <div style={{ width:54, height:54, margin:'0 auto 14px', borderRadius:14, display:'flex', alignItems:'center', justifyContent:'center', background: dragging ? 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))' : 'linear-gradient(135deg,var(--meadow-soft),#D7F2E0)', boxShadow: dragging ? '0 6px 20px rgba(0,0,0,.35)' : 'none', transition:'all .15s' }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={dragging?'#fff':'var(--meadow)'} strokeWidth="2">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={dragging? 'var(--surface)':'var(--meadow)'} strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
@@ -483,7 +483,7 @@ function SheetStep({ sheets, fileData, rawFile, onParsed, onBack }) {
       <button
         onClick={toggleAll}
         disabled={loading}
-        style={{ alignSelf:'flex-start', display:'flex', alignItems:'center', gap:7, padding:'5px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', background: allSelected ? 'var(--meadow-soft)' : '#fff', cursor:'pointer', fontSize:12, fontWeight:600, color: allSelected ? 'var(--meadow)' : 'var(--muted)', fontFamily:'Poppins,sans-serif', transition:'all .12s' }}
+        style={{ alignSelf:'flex-start', display:'flex', alignItems:'center', gap:7, padding:'5px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', background: allSelected ? 'var(--meadow-soft)' : 'var(--surface)', cursor:'pointer', fontSize:12, fontWeight:600, color: allSelected ? 'var(--meadow)' : 'var(--muted)', fontFamily:'Poppins,sans-serif', transition:'all .12s' }}
       >
         <div style={{ width:14, height:14, borderRadius:4, border:`1.5px solid ${allSelected?'var(--meadow)':'var(--meadow-border)'}`, background:allSelected?'var(--meadow)':'transparent', display:'flex', alignItems:'center', justifyContent:'center' }}>
           {allSelected && <svg width="8" height="6" viewBox="0 0 8 6" fill="none"><polyline points="1,3 3,5 7,1" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>}
@@ -513,7 +513,7 @@ function SheetStep({ sheets, fileData, rawFile, onParsed, onBack }) {
                 </svg>
               </div>
               <span style={{ flex:1 }}>{name}</span>
-              <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:99, background: isPartTime?'rgba(217, 119, 6, 0.05)':'#EEF9F0', color: isPartTime?'#D97706':'var(--meadow)', border:`1px solid ${isPartTime?'#FDE68A':'#A7F3D0'}` }}>
+              <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:99, background: isPartTime?'rgba(217, 119, 6, 0.05)':'#EEF9F0', color: isPartTime?'#D97706':'var(--meadow)', border:`1px solid ${isPartTime?'rgba(245, 158, 11, 0.25)':'#A7F3D0'}` }}>
                 {isPartTime ? 'Part-time' : 'Full-time'}
               </span>
               {loading && isSelected && <Spin />}
@@ -671,7 +671,7 @@ function EditPreviewStep({ initialFaculty, onSave, onBack }) {
                   <button key={d} onClick={() => {
                     const days = form.preferredDays || []
                     setForm({ ...form, preferredDays: isActive ? days.filter(x => x !== d) : [...days, d] })
-                  }} style={{ padding: '6px 12px', borderRadius: 8, border: `1.5px solid ${isActive ? 'var(--meadow)' : 'var(--meadow-border)'}`, background: isActive ? 'var(--meadow-soft)' : '#fff', color: isActive ? 'var(--meadow)' : 'var(--muted)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', transition: 'all 0.1s' }}>
+                  }} style={{ padding: '6px 12px', borderRadius: 8, border: `1.5px solid ${isActive ? 'var(--meadow)' : 'var(--meadow-border)'}`, background: isActive ? 'var(--meadow-soft)' : 'var(--surface)', color: isActive ? 'var(--meadow)' : 'var(--muted)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', transition: 'all 0.1s' }}>
                     {d}
                   </button>
                 )

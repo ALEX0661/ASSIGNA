@@ -14,7 +14,7 @@ if (!document.getElementById('fd-shared-style')) {
     .fd-toast.success { background:linear-gradient(135deg,var(--meadow),var(--meadow-deep)); color:#fff; box-shadow:0 8px 24px rgba(0,0,0,0.3); border:1px solid var(--meadow-border); }
     .fd-toast.error   { background: var(--surface); color:#DC2626; border:1.5px solid #FECACA; box-shadow:0 8px 24px rgba(220,38,38,0.15); }
     .fd-toast.info    { background: var(--surface); color:var(--meadow); border:1.5px solid var(--meadow-border); box-shadow:0 8px 24px rgba(0,0,0,0.15); }
-    .fd-skel { background:linear-gradient(90deg,var(--hover) 25%,#D8EEE3 50%,var(--hover) 75%); background-size:1200px 100%; animation:fdShimmer 1.5s ease-in-out infinite; border-radius:7px; }
+    .fd-skel { background:linear-gradient(90deg,var(--hover) 25%,var(--border) 50%,var(--hover) 75%); background-size:1200px 100%; animation:fdShimmer 1.5s ease-in-out infinite; border-radius:7px; }
     .fd-skel-card { background: var(--surface); border-radius:16px; border:1.5px solid var(--border); overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,0.06); }
     .fd-skel-card-header { padding:14px 20px; border-bottom:1px solid var(--hover); display:flex; align-items:center; gap:10px; }
     .fd-skel-card-body { padding:18px 20px; display:flex; flex-direction:column; gap:14px; }
@@ -45,8 +45,8 @@ export const EMPTY_FACULTY = {
 }
 
 const AVATAR_COLORS = [
-  ['var(--meadow)','var(--meadow-soft)'],['#2563EB','#DBEAFE'],['#7C3AED','color-mix(in srgb, #6D28D9 15%, transparent)'],
-  ['#D97706','rgba(217, 119, 6, 0.1)'],['#DC2626','rgba(220, 38, 38, 0.1)'],['#0891B2','#E0F2FE'],
+  ['var(--meadow)','var(--meadow-soft)'],['#2563EB','rgba(59, 130, 246, 0.1)'],['#7C3AED','color-mix(in srgb, #6D28D9 15%, transparent)'],
+  ['#D97706','rgba(217, 119, 6, 0.1)'],['#DC2626','rgba(220, 38, 38, 0.1)'],['#0891B2','rgba(59, 130, 246, 0.1)'],
 ]
 
 // ─── Pure utilities ───────────────────────────────────────────────────────────
@@ -188,7 +188,7 @@ export function FormField({ label, required, hint, children, span }) {
 export function SectionSaveBtn({ saving, saved, onClick, disabled }) {
   const dis = saving || disabled
   return (
-    <button type="button" onClick={onClick} disabled={dis} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'5px 12px', borderRadius:8, border:saved ? '1.5px solid var(--meadow-border)' : '1.5px solid var(--border)', background:saved ? 'var(--meadow-soft)' : '#fff', color:saved ? 'var(--meadow)' : 'var(--muted)', fontFamily:"'Inter',sans-serif", fontSize:11.5, fontWeight:600, cursor:dis ? 'default' : 'pointer', flexShrink:0, opacity:disabled ? 0.5 : 1 }}>
+    <button type="button" onClick={onClick} disabled={dis} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'5px 12px', borderRadius:8, border:saved ? '1.5px solid var(--meadow-border)' : '1.5px solid var(--border)', background:saved ? 'var(--meadow-soft)' : 'var(--surface)', color:saved ? 'var(--meadow)' : 'var(--muted)', fontFamily:"'Inter',sans-serif", fontSize:11.5, fontWeight:600, cursor:dis ? 'default' : 'pointer', flexShrink:0, opacity:disabled ? 0.5 : 1 }}>
       {saving  && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation:'spin 0.8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>}
       {!saving && saved  && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
       {!saving && !saved && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>}
@@ -231,7 +231,7 @@ export function DeleteConfirmModal({ name, onConfirm, onCancel, deleting }) {
         </div>
         <div style={{ display:'flex', gap:10 }}>
           <button onClick={onCancel} style={{ flex:1, padding:'10px', borderRadius:9, border:'1.5px solid var(--border)', background: 'var(--surface)', fontSize:13, fontWeight:600, color: 'var(--muted)', cursor:'pointer', fontFamily:'Inter,sans-serif' }}>Cancel</button>
-          <button onClick={onConfirm} disabled={deleting} style={{ flex:1, padding:'10px', borderRadius:9, border:'none', background:'#C0392B', fontSize:13, fontWeight:700, color:'#fff', cursor:'pointer', fontFamily:'Inter,sans-serif', opacity:deleting ? 0.7 : 1 }}>
+          <button onClick={onConfirm} disabled={deleting} style={{ flex:1, padding:'10px', borderRadius:9, border:'none', background:'#C0392B', fontSize:13, fontWeight:700, color: 'var(--surface)', cursor:'pointer', fontFamily:'Inter,sans-serif', opacity:deleting ? 0.7 : 1 }}>
             {deleting ? 'Deleting...' : 'Yes, Permanently Delete'}
           </button>
         </div>
