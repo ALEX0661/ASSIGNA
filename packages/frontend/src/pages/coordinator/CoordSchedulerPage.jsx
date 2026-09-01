@@ -20,7 +20,7 @@ import roomsIcon from '../../assets/ROOMS.png'
 const G = {
   meadow: 'var(--meadow, var(--meadow))', meadowDeep: 'var(--meadow-deep)', meadowMid: 'var(--meadow-mid)',
   meadowSoft: 'var(--meadow-soft)', meadowBorder: 'var(--meadow-border)',
-  ink: 'var(--ink, #0E2A20)', inkMid: '#1C3D2A', muted: 'var(--muted, #4B7060)', muted2: 'var(--muted2, #6B8C7A)',
+  ink: 'var(--ink, #0E2A20)', inkMid: 'var(--ink2)', muted: 'var(--muted, #4B7060)', muted2: 'var(--muted2, #6B8C7A)',
   border: 'var(--border)', borderLight: 'var(--hover)', bg: 'var(--bg, #F2F7F4)',
   surface: 'var(--surface, #FFFFFF)', hover: 'var(--hover)', amber: '#F59E0B',
   amberSoft: 'rgba(245, 158, 11, 0.1)', amberBorder: 'rgba(245, 158, 11, 0.25)',
@@ -100,7 +100,7 @@ const REC_META = {
 }
 
 const Q_META = {
-  waiting:    { bg: '#F1F5F9', color: 'var(--muted2)', dot: '#94A3B8', label: 'Waiting' },
+  waiting:    { bg: 'var(--hover)', color: 'var(--muted2)', dot: 'var(--border)', label: 'Waiting' },
   active:     { bg: G.meadowSoft, color: G.meadowDeep, dot: G.meadow, label: 'Their turn' },
   generating: { bg: 'rgba(37, 99, 235, 0.1)', color: '#60A5FA', dot: '#3B82F6', label: 'Generating' },
   submitted:  { bg: G.amberSoft, color: '#92400E', dot: G.amber, label: 'Submitted' },
@@ -388,6 +388,7 @@ function RoundBadge({ semester, academicYear, light }) {
 }
 
 function QueueRail({ queue, myProgram, currentProgram }) {
+  const isDark = document.documentElement.getAttribute('data-mode') === 'dark'
   if (!queue || queue.length === 0) return null
   const items = queue.map((item, i) => {
     const prog = typeof item === 'string' ? item : item.program
