@@ -79,6 +79,7 @@ if (!document.getElementById('settings-page-style')) {
       background: ${G.meadowSoft}; border-color: ${G.meadowBorder}; color: ${isDark ? 'var(--mint)' : G.meadowDeep};
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
+    [data-mode="dark"] .day-btn.active { color: var(--mint) !important; }
     .day-btn-title { font-size: 13px; font-weight: 700; }
     .day-btn-sub { font-size: 10.5px; font-weight: 500; opacity: 0.8; }
 
