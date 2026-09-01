@@ -11,22 +11,25 @@ import {
 } from './svPrimitives'
 import { useTour } from '../../hooks/useTour.jsx'
 
-/* ── Inject styles once ────────────────────────────────────────────────────── */
-if (!document.getElementById('sm-style')) {
-  const s = document.createElement('style')
+/* ── Inject styles once (or update on HMR) ─────────────────────────────────── */
+let s = document.getElementById('sm-style')
+if (!s) {
+  s = document.createElement('style')
   s.id = 'sm-style'
-  s.textContent = `
+  document.head.appendChild(s)
+}
+s.textContent = `
     @keyframes sm-in   { from{opacity:0;transform:scale(.97) translateY(8px)} to{opacity:1;transform:scale(1) translateY(0)} }
     @keyframes sm-spin { to{transform:rotate(360deg)} }
 
     .sm-tab {
       padding:6px 14px; border-radius:7px; border:none;
       font-family:'Inter',sans-serif; font-size:12px; font-weight:500;
-      cursor:pointer; background:transparent; color:#4B7060;
+      cursor:pointer; background:transparent; color:var(--muted);
       transition:all 0.14s; white-space:nowrap;
       display:flex; align-items:center; gap:5px;
     }
-    .sm-tab:hover  { background:var(--hover); color:#0E2A20; }
+    .sm-tab:hover  { background:var(--hover); color:var(--ink); }
     .sm-tab.active { background:var(--meadow); color:#fff; box-shadow:0 3px 10px rgba(0,0,0,0.28); }
     .sm-tab .sm-badge {
       display:inline-flex; align-items:center; justify-content:center;
@@ -80,7 +83,7 @@ if (!document.getElementById('sm-style')) {
     .sm-cancel-btn:hover { background:var(--hover); border-color:var(--meadow-border); }
 
     .sm-field-label {
-      font-size:10px; font-weight:700; color:#4B7060;
+      font-size:10px; font-weight:700; color:var(--muted);
       text-transform:uppercase; letter-spacing:.8px; margin-bottom:8px;
       display:flex; align-items:center; gap:5px;
     }
@@ -115,9 +118,7 @@ if (!document.getElementById('sm-style')) {
     .sm-batch-col-header { flex-shrink:0; padding:16px 20px 0; }
     .sm-batch-col-body   { flex:1; overflow-y:auto; padding:12px 20px 16px; min-height:0; }
     .sm-batch-col-body.sm-scroll { scrollbar-gutter:stable; }
-  `
-  document.head.appendChild(s)
-}
+    `
 
 /* ── Reusable SVG icons ───────────────────────────────────────────────────── */
 const Ic = {
