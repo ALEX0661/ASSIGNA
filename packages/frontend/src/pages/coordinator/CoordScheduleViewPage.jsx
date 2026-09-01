@@ -62,39 +62,39 @@ function markOnboardingCompleted() {
 
     .sv-day-btn {
       padding:6px 13px; border-radius:20px; font-size:12px; font-weight:500;
-      cursor:pointer; border:1px solid #D8E8DF; background:#fff; color:#4B7060;
+      cursor:pointer; border:1px solid var(--border); background: var(--surface); color:var(--muted);
       transition:all .15s; font-family:'Inter',sans-serif; white-space:nowrap;
     }
-    .sv-day-btn:hover  { background:#EBF4EF; color:#0F5C2C; }
+    .sv-day-btn:hover  { background:var(--hover); color:var(--ink); }
     .sv-day-btn.active {
-      background:linear-gradient(135deg,#15803D,#0F5C2C); color:#fff;
-      border-color:transparent; box-shadow:0 2px 8px rgba(21,128,61,.3);
+      background:var(--meadow); color:#fff;
+      border-color:transparent; box-shadow:0 2px 8px var(--meadow-border);
     }
 
     .sv-icon-btn {
       display:inline-flex; align-items:center; justify-content:center;
-      width:30px; height:30px; border-radius:8px; border:1px solid #D8E8DF;
-      background:#fff; color:#4B7060; cursor:pointer; transition:all .15s;
+      width:30px; height:30px; border-radius:8px; border:1px solid var(--border);
+      background: var(--surface); color:var(--muted); cursor:pointer; transition:all .15s;
       flex-shrink:0; padding:0;
     }
-    .sv-icon-btn:hover:not(:disabled)  { background:#DCFCE7; color:#15803D; border-color:#BBF7D0; }
-    .sv-icon-btn.active { background:#DCFCE7; border-color:#6EE7B7; color:#0F5C2C; }
+    .sv-icon-btn:hover:not(:disabled)  { background:var(--meadow-soft); color:var(--meadow); border-color:var(--meadow-border); }
+    .sv-icon-btn.active { background:var(--meadow-soft); border-color:var(--mint); color:var(--ink); }
 
     .sv-search {
-      padding:7px 12px 7px 32px; border-radius:20px; border:1px solid #D8E8DF;
+      padding:7px 12px 7px 32px; border-radius:20px; border:1px solid var(--border);
       font-size:12.5px; font-family:'Inter',sans-serif; color:#0E2A20;
-      background:#fff; outline:none; width:190px; transition:all .15s;
+      background: var(--surface); outline:none; width:190px; transition:all .15s;
     }
-    .sv-search:focus { border-color:#6EE7B7; box-shadow:0 0 0 3px rgba(21,128,61,.12); width:220px; }
+    .sv-search:focus { border-color:var(--mint); box-shadow:0 0 0 3px rgba(0,0,0,.12); width:220px; }
     .sv-search::placeholder { color:#6B8C7A; }
 
     .sv-chip {
       padding:3px 10px; border-radius:20px; font-size:11px; cursor:pointer;
-      border:1px solid #D8E8DF; background:#fff; color:#4B7060; font-weight:400;
+      border:1px solid var(--border); background: var(--surface); color:var(--muted); font-weight:400;
       font-family:'Inter',sans-serif; transition:all .15s; white-space:nowrap;
     }
-    .sv-chip:hover  { background:#EBF4EF; color:#0F5C2C; border-color:#BBF7D0; }
-    .sv-chip.active { border-color:#6EE7B7; background:#DCFCE7; color:#0E2A20; font-weight:600; }
+    .sv-chip:hover  { background:var(--hover); color:var(--ink); border-color:var(--meadow-border); }
+    .sv-chip.active { border-color:var(--mint); background:var(--meadow-soft); color:#0E2A20; font-weight:600; }
 
     .sv-sched-wrap { position:relative; display:inline-flex; align-items:center; }
     .sv-sched-select {
@@ -102,36 +102,36 @@ function markOnboardingCompleted() {
       padding:6px 28px 6px 30px; border-radius:9px;
       border:1.5px solid #D8E8DF; font-size:12px;
       font-family:'Inter',sans-serif; color:#0E2A20;
-      background:#fff; cursor:pointer; outline:none;
+      background: var(--surface); cursor:pointer; outline:none;
       font-weight:500; transition:border-color .15s, box-shadow .15s;
       min-width:140px; max-width:210px;
     }
-    .sv-sched-select:hover  { border-color:#BBF7D0; }
-    .sv-sched-select:focus  { border-color:#6EE7B7; box-shadow:0 0 0 3px rgba(21,128,61,.12); }
+    .sv-sched-select:hover  { border-color:var(--meadow-border); }
+    .sv-sched-select:focus  { border-color:var(--mint); box-shadow:0 0 0 3px rgba(0,0,0,.12); }
     .sv-sched-select:disabled { opacity:.6; cursor:default; }
 
     .sv-save-btn {
       display:inline-flex; align-items:center; gap:5px;
       padding:6px 10px; border-radius:9px; border:1.5px solid #D8E8DF;
-      background:#fff; color:#0E2A20; font-size:12px; font-weight:600;
+      background: var(--surface); color:#0E2A20; font-size:12px; font-weight:600;
       font-family:'Inter',sans-serif; cursor:pointer; transition:all .2s;
       white-space:nowrap; flex-shrink:0;
     }
-    .sv-save-btn:hover:not(:disabled) { background:#DCFCE7; border-color:#6EE7B7; }
+    .sv-save-btn:hover:not(:disabled) { background:var(--meadow-soft); border-color:var(--mint); }
     .sv-save-btn:disabled { opacity:.65; cursor:default; }
-    .sv-save-btn.saved  { background:#ecfdf5; border-color:#6ee7b7; color:#059669; }
+    .sv-save-btn.saved  { background:#ecfdf5; border-color:var(--mint); color:var(--meadow); }
     .sv-save-btn.failed { background:#fff8f8; border-color:#fca5a5; color:#dc2626; }
     .sv-save-btn.unsaved { background:#fffbeb; border-color:#fde68a; color:#d97706; }
 
-    .sv-view-group { display:flex; border:1px solid #D8E8DF; border-radius:8px; overflow:hidden; background:#fff; }
+    .sv-view-group { display:flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; background: var(--surface); }
     .sv-view-btn {
       display:flex; align-items:center; gap:5px; padding:5px 11px;
       font-size:11.5px; font-family:'Inter',sans-serif;
       border:none; cursor:pointer; transition:all .15s; white-space:nowrap;
     }
-    .sv-view-btn.active { background:#DCFCE7; color:#0E2A20; font-weight:700; }
-    .sv-view-btn:not(.active) { background:transparent; color:#4B7060; font-weight:400; }
-    .sv-view-btn:not(.active):hover { background:#EBF4EF; color:#0F5C2C; }
+    .sv-view-btn.active { background:var(--meadow-soft); color:#0E2A20; font-weight:700; }
+    .sv-view-btn:not(.active) { background:transparent; color:var(--muted); font-weight:400; }
+    .sv-view-btn:not(.active):hover { background:var(--hover); color:var(--ink); }
 
     /* Header toolbar — back/name/status on the left, schedule actions
        (Approved So Far / Save / History / Export) pinned to the right via
@@ -148,16 +148,16 @@ function markOnboardingCompleted() {
     .sv-header-sep { width:1px; align-self:stretch; background:#D8E8DF; flex-shrink:0; margin:2px 0; }
 
     .sv-shimmer {
-      background: linear-gradient(90deg,#EBF4EF 25%,#D8E8DF 50%,#EBF4EF 75%);
+      background: linear-gradient(90deg,var(--hover) 25%,#D8E8DF 50%,var(--hover) 75%);
       background-size: 400px 100%;
       animation: svShimmer 1.2s ease-in-out infinite;
       border-radius:6px;
     }
 
     .sv-stats-row {
-      display:flex; background:#fff; border:1px solid #D8E8DF;
+      display:flex; background: var(--surface); border:1px solid var(--border);
       border-radius:10px; overflow:hidden;
-      box-shadow:0 1px 4px rgba(10,46,28,.06);
+      box-shadow:0 1px 4px rgba(0,0,0,.06);
       margin-bottom:14px;
     }
     .sv-stat-cell {
@@ -167,7 +167,7 @@ function markOnboardingCompleted() {
     }
     .sv-stat-cell:last-child { border-right:none; }
 
-    .sv-save-status-saved { background:#ecfdf5; border-color:#6ee7b7; }
+    .sv-save-status-saved { background:#ecfdf5; border-color:var(--mint); }
     .sv-save-status-saving { background:#fffbeb; border-color:#fde68a; }
     .sv-save-status-unsaved { background:#fef2f2; border-color:#fecaca; }
     .sv-save-status-ready { background:#f9fafb; border-color:#d1d5db; }
@@ -195,8 +195,8 @@ function markOnboardingCompleted() {
     }
     .sv-smart-save-btn.sv-save-status-saved {
       background: #ecfdf5;
-      border-color: #6ee7b7;
-      color: #059669;
+      border-color: var(--mint);
+      color: var(--meadow);
     }
     .sv-smart-save-btn.sv-save-status-saving {
       background: #fffbeb;
@@ -209,9 +209,9 @@ function markOnboardingCompleted() {
       color: #dc2626;
     }
     .sv-smart-save-btn.sv-save-status-ready {
-      background: #fff;
+      background: var(--surface);
       border-color: #d1d5db;
-      color: #374151;
+      color: var(--muted);
     }
     .sv-smart-save-btn:hover:not(:disabled) {
       transform: translateY(-1px);
@@ -272,7 +272,7 @@ function markOnboardingCompleted() {
       margin: 0;
       font-size: 16px;
       font-weight: 700;
-      color: #111827;
+      color: var(--ink);
     }
     .sv-version-close {
       background: none;
@@ -284,7 +284,7 @@ function markOnboardingCompleted() {
       line-height: 1;
     }
     .sv-version-close:hover {
-      color: #111827;
+      color: var(--ink);
     }
     .sv-version-list {
       overflow-y: auto;
@@ -306,7 +306,7 @@ function markOnboardingCompleted() {
       margin: 0 -20px 8px;
       padding: 12px 20px;
       border-radius: 8px;
-      border-bottom: 1px solid #bbf7d0;
+      border-bottom: 1px solid var(--meadow-border);
     }
     .sv-version-badge {
       background: #f3f4f6;
@@ -319,7 +319,7 @@ function markOnboardingCompleted() {
       flex-shrink: 0;
     }
     .sv-version-item.current .sv-version-badge {
-      background: #22c55e;
+      background: var(--meadow);
       color: white;
     }
     .sv-version-details {
@@ -329,7 +329,7 @@ function markOnboardingCompleted() {
     .sv-version-label {
       font-size: 13px;
       font-weight: 600;
-      color: #111827;
+      color: var(--ink);
     }
     .sv-version-meta {
       font-size: 11px;
@@ -345,7 +345,7 @@ function Spinner({ full = false }) {
     <svg
       width={full ? 30 : 14} height={full ? 30 : 14}
       viewBox="0 0 24 24" fill="none"
-      stroke={full ? '#15803D' : TV.deep} strokeWidth="2.2"
+      stroke={full ? 'var(--meadow)' : TV.deep} strokeWidth="2.2"
       style={{ animation: 'svSpinAnim .75s linear infinite', flexShrink: 0 }}
     >
       <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
@@ -374,7 +374,7 @@ function EmptyState({ hasFilters, onClear }) {
         </p>
       </div>
       {hasFilters && (
-        <button onClick={onClear} style={{ padding:'7px 16px', fontSize:12, fontWeight:600, borderRadius:8, border:`1px solid ${TV.border}`, background:'#fff', color:TV.deep, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
+        <button onClick={onClear} style={{ padding:'7px 16px', fontSize:12, fontWeight:600, borderRadius:8, border:`1px solid ${TV.border}`, background: 'var(--surface)', color:TV.deep, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
           Clear Filters
         </button>
       )}
@@ -583,8 +583,8 @@ function ExportMenuButton({ onExportSchedule, onExportRooms, disabled }) {
   const [open, setOpen] = useState(false)
   const itemStyle = {
     display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-    padding: '9px 14px', fontSize: 12.5, fontWeight: 600, color: '#0E2A20',
-    background: '#fff', border: 'none', cursor: 'pointer',
+    padding: '9px 14px', fontSize: 12.5, fontWeight: 600, color: 'var(--ink)',
+    background: 'var(--surface)', border: 'none', cursor: 'pointer',
     fontFamily: 'Inter, sans-serif', textAlign: 'left',
   }
   return (
@@ -612,14 +612,14 @@ function ExportMenuButton({ onExportSchedule, onExportRooms, disabled }) {
           <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 998 }} />
           <div style={{
             position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 999,
-            background: '#fff', border: '1px solid #D8E8DF', borderRadius: 10,
-            boxShadow: '0 12px 32px rgba(10,46,28,.16)', minWidth: 210, overflow: 'hidden',
+            background: 'var(--surface)', border: '1px solid #D8E8DF', borderRadius: 10,
+            boxShadow: '0 12px 32px rgba(0,0,0,.16)', minWidth: 210, overflow: 'hidden',
           }}>
             <button
               onClick={() => { setOpen(false); onExportSchedule() }}
               style={{ ...itemStyle, borderBottom: '1px solid #EEF3F0' }}
-              onMouseEnter={e => e.currentTarget.style.background = '#F0FDF4'}
-              onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--meadow-soft)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
@@ -629,8 +629,8 @@ function ExportMenuButton({ onExportSchedule, onExportRooms, disabled }) {
             <button
               onClick={() => { setOpen(false); onExportRooms() }}
               style={itemStyle}
-              onMouseEnter={e => e.currentTarget.style.background = '#F0FDF4'}
-              onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--meadow-soft)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/>
@@ -1193,7 +1193,7 @@ export default function CoordScheduleViewPage() {
 
   const statItems = [
     { label:'Sessions',      value: dayEvents.length,    sub: `on ${activeDay}` },
-    { label:'Total overall', value: allEvents.length,    sub: 'all days', accent: '#6EE7B7' },
+    { label:'Total overall', value: allEvents.length,    sub: 'all days', accent: 'var(--mint)' },
     { label:'Conflicts',     value: conflictMap.size,    accent: conflictMap.size  > 0 ? '#ef4444' : TV.deep, sub: 'detected'   },
     { label:'Unassigned',    value: unassignedCount,     accent: unassignedCount   > 0 ? '#f59e0b' : TV.deep, sub: 'dept courses only' },
     { label:'Faculty',       value: new Set(dayEvents.map(e => e.faculty).filter(f => f && f !== 'TBA')).size, sub: 'teaching' },
@@ -1234,7 +1234,7 @@ export default function CoordScheduleViewPage() {
                 {renameState === 'saving' ? 'Saving…' : 'Save'}
               </button>
               <button onClick={() => setIsEditingName(false)} disabled={renameState === 'saving'}
-                style={{ padding:'5px 12px', background:'#fff', border:`1px solid ${TV.border}`, borderRadius:8, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap' }}>
+                style={{ padding:'5px 12px', background: 'var(--surface)', border:`1px solid ${TV.border}`, borderRadius:8, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap' }}>
                 Cancel
               </button>
               {renameState === 'error' && (
@@ -1282,13 +1282,13 @@ export default function CoordScheduleViewPage() {
                 </button>
               </div>
             ) : status === 'approved' ? (
-              <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'#DCFCE7', color:'#15803D', border:'1px solid #BBF7D0', flexShrink:0, whiteSpace:'nowrap' }}>
+              <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'var(--meadow-soft)', color: 'var(--meadow)', border:'1px solid var(--meadow-border)', flexShrink:0, whiteSpace:'nowrap' }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                 Approved
               </span>
             ) : (
               <button onClick={handleSubmit} disabled={actionState === 'working'}
-                style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 13px', borderRadius:8, border:'none', background:'linear-gradient(135deg,#15803D,#0F5C2C)', color:'#fff', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 2px 8px rgba(21,128,61,.25)', flexShrink:0, whiteSpace:'nowrap' }}>
+                style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 13px', borderRadius:8, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color:'#fff', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 2px 8px rgba(0,0,0,.25)', flexShrink:0, whiteSpace:'nowrap' }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                 {actionState === 'working' ? 'Submitting…' : 'Submit'}
               </button>
@@ -1401,7 +1401,7 @@ export default function CoordScheduleViewPage() {
  
       {/* ── Filters bar ──────────────────────────────────────────────────── */}
       {allEvents.length > 0 && (
-        <div id="tour-sv-filters" style={{ background:'#fff', border:`1px solid ${TV.border}`, borderRadius:12, padding:'11px 14px', marginBottom:14, display:'flex', flexDirection:'column', gap:10 }}>
+        <div id="tour-sv-filters" style={{ background: 'var(--surface)', border:`1px solid ${TV.border}`, borderRadius:12, padding:'11px 14px', marginBottom:14, display:'flex', flexDirection:'column', gap:10 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
             <div style={{ position:'relative', flexShrink:0 }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={TV.muted} strokeWidth="2"
@@ -1509,9 +1509,9 @@ export default function CoordScheduleViewPage() {
                 padding:'3px 10px', borderRadius:20, fontSize:11, cursor:'pointer',
                 fontFamily:'Inter,sans-serif', transition:'all .15s',
                 fontWeight: showAvailableOnly ? 700 : 400,
-                border: `1px solid ${showAvailableOnly ? '#86EFAC' : TV.border}`,
-                background: showAvailableOnly ? '#F0FDF4' : '#fff',
-                color: showAvailableOnly ? '#15803D' : TV.muted,
+                border: `1px solid ${showAvailableOnly ? 'var(--meadow-border)' : TV.border}`,
+                background: showAvailableOnly ? 'var(--meadow-soft)' : '#fff',
+                color: showAvailableOnly ? 'var(--meadow)' : TV.muted,
               }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 6 9 17l-5-5"/>
@@ -1644,7 +1644,7 @@ export default function CoordScheduleViewPage() {
       {loading ? (
         <Spinner full />
       ) : hasNoSchedule ? (
-        <div style={{ background:'#fff', border:`1px solid ${TV.border}`, borderRadius:14, padding:48, textAlign:'center' }}>
+        <div style={{ background: 'var(--surface)', border:`1px solid ${TV.border}`, borderRadius:14, padding:48, textAlign:'center' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
             <img src={scheduleImage} alt="No Schedule Loaded" style={{ width: 120, height: 'auto' }} />
           </div>
@@ -1666,7 +1666,7 @@ export default function CoordScheduleViewPage() {
         /* ── Fullscreen overlay for maximize mode ── */
         <div style={{
           position: 'fixed', inset: 0, zIndex: 200,
-          background: '#fff',
+          background: 'var(--surface)',
           display: 'flex', flexDirection: 'column',
           fontFamily: 'Inter, sans-serif',
         }}>
@@ -1677,7 +1677,7 @@ export default function CoordScheduleViewPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '0 16px', height: 56, // Slightly taller to comfortably fit day buttons
             borderBottom: `1px solid ${TV.border}`,
-            background: 'linear-gradient(to bottom,#F2F7F4,#F8FAF9)',
+            background: 'linear-gradient(to bottom,#F2F7F4,var(--bg))',
           }}>
             
             {/* Left: name + stats + conflict */}
@@ -1771,11 +1771,11 @@ export default function CoordScheduleViewPage() {
               <button onClick={() => setGridSize('normal')} style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   padding: '5px 12px', borderRadius: 8, border: `1px solid ${TV.border}`,
-                  background: '#fff', color: TV.deep, fontSize: 12, fontWeight: 600,
+                  background: 'var(--surface)', color: TV.deep, fontSize: 12, fontWeight: 600,
                   cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all .15s',
                 }}
                 onMouseEnter={e => { e.currentTarget.style.background = TV.pale; e.currentTarget.style.borderColor = TV.mid }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = TV.border }}>
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = TV.border }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/>
                   <line x1="10" y1="14" x2="21" y2="3"/><line x1="3" y1="21" x2="14" y2="10"/>
@@ -1813,10 +1813,10 @@ export default function CoordScheduleViewPage() {
           {maximizeFilterOpen && (
             <ModalOverlay onClose={() => setMaximizeFilterOpen(false)}>
               <div style={{
-                background: '#fff', borderRadius: 14,
+                background: 'var(--surface)', borderRadius: 14,
                 width: 680, maxWidth: '94vw', maxHeight: '88vh',
                 display: 'flex', flexDirection: 'column',
-                boxShadow: '0 24px 64px rgba(10,46,28,0.22)',
+                boxShadow: '0 24px 64px rgba(0,0,0,0.22)',
                 border: `1px solid ${TV.border}`,
                 fontFamily: 'Inter, sans-serif',
                 overflow: 'hidden',
@@ -1869,7 +1869,7 @@ export default function CoordScheduleViewPage() {
                         </button>
                         <button onClick={() => setShowAvailableOnly(v => !v)} style={{
                           display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'Inter,sans-serif', transition: 'all .15s',
-                          fontWeight: showAvailableOnly ? 700 : 400, border: `1px solid ${showAvailableOnly ? '#86EFAC' : TV.border}`, background: showAvailableOnly ? '#F0FDF4' : '#fff', color: showAvailableOnly ? '#15803D' : TV.muted,
+                          fontWeight: showAvailableOnly ? 700 : 400, border: `1px solid ${showAvailableOnly ? 'var(--meadow-border)' : TV.border}`, background: showAvailableOnly ? 'var(--meadow-soft)' : '#fff', color: showAvailableOnly ? 'var(--meadow)' : TV.muted,
                         }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
                           Available rooms only
@@ -1928,7 +1928,7 @@ export default function CoordScheduleViewPage() {
                 {/* Footer */}
                 <div style={{
                   flexShrink: 0, padding: '12px 20px', borderTop: `1px solid ${TV.border}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F8FAF9',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg)',
                 }}>
                   <span style={{ fontSize: 11.5, color: TV.muted, fontWeight: 500 }}>
                     {dayEvents.length} session{dayEvents.length !== 1 ? 's' : ''} shown
@@ -1958,8 +1958,8 @@ export default function CoordScheduleViewPage() {
         </div>
       ) : (
         <div id="tour-sv-grid" style={{
-          background:'#fff', border:`1px solid ${TV.border}`, borderRadius:14,
-          overflow:'hidden', boxShadow:'0 1px 4px rgba(10,46,28,.07)',
+          background: 'var(--surface)', border:`1px solid ${TV.border}`, borderRadius:14,
+          overflow:'hidden', boxShadow:'0 1px 4px rgba(0,0,0,.07)',
           display:'flex', flexDirection:'column', width:'100%', minWidth:0,
           padding:'12px 14px 0',
         }}>
@@ -2098,10 +2098,10 @@ export default function CoordScheduleViewPage() {
 function ListView({ dayEvents, conflictMap, hasFilters, clearFilters, onCardClick, mergedIds }) {
   if (dayEvents.length === 0) return <EmptyState hasFilters={hasFilters} onClear={clearFilters} />
   return (
-    <div style={{ background:'#fff', border:`1px solid ${TV.border}`, borderRadius:14, overflow:'hidden' }}>
+    <div style={{ background: 'var(--surface)', border:`1px solid ${TV.border}`, borderRadius:14, overflow:'hidden' }}>
       <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12.5 }}>
         <thead>
-          <tr style={{ background:'#F8FAF9' }}>
+          <tr style={{ background:'var(--bg)' }}>
             {['Time','Course','Section','Type','Faculty','Room','Status'].map(h => (
               <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:10.5, fontWeight:700, color:TV.muted, textTransform:'uppercase', letterSpacing:'.6px', borderBottom:`1px solid ${TV.border}`, whiteSpace:'nowrap' }}>
                 {h}
@@ -2121,9 +2121,9 @@ function ListView({ dayEvents, conflictMap, hasFilters, clearFilters, onCardClic
             return (
               <tr key={evId}
                 onClick={() => onCardClick(ev)}
-                style={{ borderBottom:`1px solid ${TV.border}`, cursor:'pointer', background:i%2===0?'#fff':'#F8FAF9', transition:'background .12s' }}
+                style={{ borderBottom:`1px solid ${TV.border}`, cursor:'pointer', background:i%2===0?'#fff':'var(--bg)', transition:'background .12s' }}
                 onMouseEnter={e => e.currentTarget.style.background = TV.pale}
-                onMouseLeave={e => e.currentTarget.style.background = i%2===0?'#fff':'#F8FAF9'}
+                onMouseLeave={e => e.currentTarget.style.background = i%2===0?'#fff':'var(--bg)'}
               >
                 <td style={{ padding:'10px 14px', whiteSpace:'nowrap', fontSize:11.5, color:TV.muted }}>{ev.period}</td>
                 <td style={{ padding:'10px 14px' }}>
@@ -2136,12 +2136,12 @@ function ListView({ dayEvents, conflictMap, hasFilters, clearFilters, onCardClic
                   </span>
                 </td>
                 <td style={{ padding:'10px 14px', whiteSpace:'nowrap' }}>
-                  <span style={{ fontSize:9, fontWeight:800, letterSpacing:'0.5px', color:isLab?TV.deep:TV.text, background:isLab?`rgba(21,128,61,.12)`:`rgba(0,0,0,.04)`, border:`1px solid ${isLab?TV.mid:TV.border}`, padding:'2px 6px', borderRadius:4 }}>
+                  <span style={{ fontSize:9, fontWeight:800, letterSpacing:'0.5px', color:isLab?TV.deep:TV.text, background:isLab?`rgba(0,0,0,.12)`:`rgba(0,0,0,.04)`, border:`1px solid ${isLab?TV.mid:TV.border}`, padding:'2px 6px', borderRadius:4 }}>
                     {sessionType}
                   </span>
                 </td>
                 <td style={{ padding:'10px 14px', fontSize:12, maxWidth:150, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                  {isExtManaged ? <span style={{ color:'#6EE7B7', fontWeight:500 }}>Ext. managed</span> : noFaculty ? <span style={{ color:'#f59e0b', fontWeight:600 }}>Unassigned</span> : <span style={{ color:TV.text }}>{ev.faculty}</span>}
+                  {isExtManaged ? <span style={{ color:'var(--mint)', fontWeight:500 }}>Ext. managed</span> : noFaculty ? <span style={{ color:'#f59e0b', fontWeight:600 }}>Unassigned</span> : <span style={{ color:TV.text }}>{ev.faculty}</span>}
                 </td>
                 <td style={{ padding:'10px 14px', fontSize:12, color:TV.text, whiteSpace:'nowrap' }}>
                   {ev.room && ev.room !== 'TBA' ? ev.room : <span style={{ color:TV.muted }}>TBA</span>}
@@ -2164,7 +2164,7 @@ function ListView({ dayEvents, conflictMap, hasFilters, clearFilters, onCardClic
                         Merge
                       </span>
                     )}
-                    {isExtManaged && <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:9.5, fontWeight:600, background:'#E5F9EC', color:'#15803D', border:'1px solid #BBF7D0', borderRadius:4, padding:'2px 6px' }}>Ext. managed</span>}
+                    {isExtManaged && <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:9.5, fontWeight:600, background:'var(--meadow-soft)', color: 'var(--meadow)', border:'1px solid var(--meadow-border)', borderRadius:4, padding:'2px 6px' }}>Ext. managed</span>}
                     {noFaculty && !isExtManaged && <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:9.5, fontWeight:700, background:'#fffbeb', color:'#92400e', border:'1px solid #fcd34d', borderRadius:4, padding:'2px 6px' }}>Unassigned</span>}
                     {!conf && !merged && !noFaculty && <span style={{ fontSize:9.5, color:TV.muted }}>—</span>}
                     {/* Edge case: merged but also has a real non-room conflict */}

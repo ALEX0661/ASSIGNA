@@ -29,25 +29,25 @@ const DASH_STYLE = `
     50%     { box-shadow: 0 0 0 6px rgba(110,231,183,0) }
   }
   .skel {
-    background: linear-gradient(90deg,#EBF4EF 25%,#D8EEE3 50%,#EBF4EF 75%);
+    background: linear-gradient(90deg,var(--hover) 25%,#D8EEE3 50%,var(--hover) 75%);
     background-size: 600px 100%;
     animation: shimmer 1.4s ease-in-out infinite;
     border-radius: 7px;
   }
   .d-card {
-    background: #ffffff;
+    background: var(--surface);
     border-radius: 14px;
     border: 1px solid #D8E8DF;
-    box-shadow: 0 1px 8px rgba(10,46,28,0.06);
+    box-shadow: 0 1px 8px rgba(0,0,0,0.06);
     overflow: visible;
   }
   .d-row { cursor:pointer; transition:background 0.13s; }
-  .d-row:hover { background: #EBF4EF !important; }
+  .d-row:hover { background: var(--hover) !important; }
   .stat-card {
-    background: #ffffff;
+    background: var(--surface);
     border-radius: 14px;
     border: 1px solid #D8E8DF;
-    box-shadow: 0 1px 8px rgba(10,46,28,0.06);
+    box-shadow: 0 1px 8px rgba(0,0,0,0.06);
     padding: 18px 20px 16px;
     transition: box-shadow .18s, transform .18s;
     display: flex;
@@ -55,7 +55,7 @@ const DASH_STYLE = `
     gap: 10px;
   }
   .stat-card:hover {
-    box-shadow: 0 4px 18px rgba(10,46,28,0.1);
+    box-shadow: 0 4px 18px rgba(0,0,0,0.1);
     transform: translateY(-2px);
   }
   .setup-row {
@@ -64,10 +64,10 @@ const DASH_STYLE = `
     gap: 14px;
     padding: 12px 18px;
     cursor: pointer;
-    background: #ffffff;
+    background: var(--surface);
     transition: background 0.12s;
   }
-  .setup-row:hover { background: #EBF4EF; }
+  .setup-row:hover { background: var(--hover); }
   .suggestion-card {
     border-radius: 12px;
     padding: 12px 14px;
@@ -80,7 +80,7 @@ const DASH_STYLE = `
   }
   .suggestion-card:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(10,46,28,0.1);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.1);
   }
 
   /* ── Responsive grid ── */
@@ -199,7 +199,7 @@ function MiniBar({ label, value, max, onClick, tier }) {
   const pct  = Math.min(100, Math.round((value / Math.max(max, 1)) * 100))
   const over = value > max
   const warn = pct >= 85 && !over
-  const c = over ? '#C0392B' : warn ? '#D97706' : '#15803D'
+  const c = over ? '#C0392B' : warn ? '#D97706' : 'var(--meadow)'
   const b = over ? '#FFE8E8' : warn ? '#FEF3CD' : '#E6FAF3'
   return (
     <div className="d-row" onClick={onClick}
@@ -217,7 +217,7 @@ function MiniBar({ label, value, max, onClick, tier }) {
         </div>
         <div style={{ height:5, borderRadius:99, background:'var(--hover)', overflow:'hidden' }}>
           <div style={{ height:'100%', borderRadius:99,
-            background: over ? 'linear-gradient(90deg,#EF4444,#C0392B)' : warn ? 'linear-gradient(90deg,#FBBF24,#D97706)' : `linear-gradient(90deg,#6EE7B7,${c})`,
+            background: over ? 'linear-gradient(90deg,#EF4444,#C0392B)' : warn ? 'linear-gradient(90deg,#FBBF24,#D97706)' : `linear-gradient(90deg,var(--mint),${c})`,
             width:`${pct}%`, animation:'barIn 0.8s cubic-bezier(.4,0,.15,1) both' }}/>
         </div>
       </div>
@@ -228,7 +228,7 @@ function MiniBar({ label, value, max, onClick, tier }) {
 /* ─── Day heatmap cell ──────────────────────────────────────────────────── */
 function HeatCell({ count, max, label }) {
   const intensity = max > 0 ? count / max : 0
-  const bg = intensity === 0 ? 'var(--hover)' : `rgba(21,128,61,${0.12 + intensity * 0.75})`
+  const bg = intensity === 0 ? 'var(--hover)' : `rgba(0,0,0,${0.12 + intensity * 0.75})`
   const textColor = intensity > 0.5 ? '#fff' : 'var(--ink)'
   return (
     <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
@@ -241,7 +241,7 @@ function HeatCell({ count, max, label }) {
 }
 
 /* ─── Score ring ─────────────────────────────────────────────────────────── */
-function ScoreRing({ score, label, color = '#15803D' }) {
+function ScoreRing({ score, label, color = 'var(--meadow)' }) {
   const size = 76; const stroke = 9
   const r = (size - stroke) / 2
   const circ = 2 * Math.PI * r
@@ -269,7 +269,7 @@ const SUGGESTION_STYLES = {
   error:   { bg:'#FFF5F5', border:'#FECACA', icon:'#DC2626', dot:'#EF4444', label:'Critical' },
   warning: { bg:'#FFFBEB', border:'#FDE68A', icon:'#D97706', dot:'#F59E0B', label:'Warning'  },
   info:    { bg:'#EFF6FF', border:'#BFDBFE', icon:'#2563EB', dot:'#3B82F6', label:'Info'     },
-  success: { bg:'#F0FDF4', border:'#BBF7D0', icon:'#15803D', dot:'#22C55E', label:'Good'     },
+  success: { bg:'var(--meadow-soft)', border:'var(--meadow-border)', icon:'var(--meadow)', dot:'var(--meadow)', label:'Good'     },
 }
 
 const SUGGESTION_ICONS = {
@@ -285,7 +285,7 @@ function SuggestionCard({ suggestion, onAction, delay = 0 }) {
   return (
     <div className="suggestion-card"
       style={{ background:s.bg, borderColor:s.border, animationDelay:`${delay}s` }}>
-      <div style={{ width:28, height:28, borderRadius:8, background: suggestion.type === 'error' ? '#FECACA' : suggestion.type === 'warning' ? '#FDE68A' : suggestion.type === 'success' ? '#BBF7D0' : '#BFDBFE',
+      <div style={{ width:28, height:28, borderRadius:8, background: suggestion.type === 'error' ? '#FECACA' : suggestion.type === 'warning' ? '#FDE68A' : suggestion.type === 'success' ? 'var(--meadow-border)' : '#BFDBFE',
         color:s.icon, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:1 }}>
         {SUGGESTION_ICONS[suggestion.type]}
       </div>
@@ -319,7 +319,7 @@ function SetupChecklist({ steps, onNavigate, loading }) {
 
   if (loading) {
     return (
-      <div style={{ background:'#ffffff', borderRadius:12, border:'1px solid #D8E8DF', padding:'14px 18px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 6px rgba(10,46,28,0.05)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius:12, border:'1px solid #D8E8DF', padding:'14px 18px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 6px rgba(0,0,0,0.05)' }}>
         <Skel w={30} h={30} r={99}/>
         <Skel w={180} h={12} r={4}/>
       </div>
@@ -333,42 +333,42 @@ function SetupChecklist({ steps, onNavigate, loading }) {
 
   if (allDone) {
     return (
-      <div style={{ background:'#F0FDF4', borderRadius:12, border:'1px solid #BBF7D0', display:'flex', alignItems:'center', gap:12, padding:'12px 18px', boxShadow:'0 1px 6px rgba(10,46,28,0.05)' }}>
-        <div style={{ width:26, height:26, borderRadius:'50%', flexShrink:0, background:'#15803D', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <div style={{ background:'var(--meadow-soft)', borderRadius:12, border:'1px solid var(--meadow-border)', display:'flex', alignItems:'center', gap:12, padding:'12px 18px', boxShadow:'0 1px 6px rgba(0,0,0,0.05)' }}>
+        <div style={{ width:26, height:26, borderRadius:'50%', flexShrink:0, background: 'var(--meadow)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center' }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
-        <div style={{ fontSize:12.5, fontWeight:700, color:'#0E2A20' }}>Setup complete — everything is loaded and ready to schedule.</div>
+        <div style={{ fontSize:12.5, fontWeight:700, color: 'var(--ink)' }}>Setup complete — everything is loaded and ready to schedule.</div>
       </div>
     )
   }
 
   return (
-    <div style={{ background:'#ffffff', borderRadius:12, border:'1px solid #D8E8DF', boxShadow:'0 1px 6px rgba(10,46,28,0.05)', width:'100%' }}>
+    <div style={{ background: 'var(--surface)', borderRadius:12, border:'1px solid #D8E8DF', boxShadow:'0 1px 6px rgba(0,0,0,0.05)', width:'100%' }}>
       {/* ── Toggle header ── */}
       <div
         onClick={() => setOpen(v => !v)}
-        style={{ display:'flex', alignItems:'center', gap:12, padding:'13px 16px', background:'#F0FDF4', cursor:'pointer', borderBottom: open ? '1px solid #DCFCE7' : 'none', userSelect:'none', borderRadius: open ? '12px 12px 0 0' : 12 }}
+        style={{ display:'flex', alignItems:'center', gap:12, padding:'13px 16px', background:'var(--meadow-soft)', cursor:'pointer', borderBottom: open ? '1px solid var(--meadow-soft)' : 'none', userSelect:'none', borderRadius: open ? '12px 12px 0 0' : 12 }}
       >
         {/* Done counter badge */}
-        <div style={{ width:30, height:30, borderRadius:'50%', flexShrink:0, background:'#15803D', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, fontFamily:"'Sora',sans-serif" }}>
+        <div style={{ width:30, height:30, borderRadius:'50%', flexShrink:0, background: 'var(--meadow)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, fontFamily:"'Sora',sans-serif" }}>
           {doneCount}/{total}
         </div>
 
         {/* Title + subtitle */}
         <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontSize:13, fontWeight:800, color:'#0E2A20', fontFamily:"'Sora',sans-serif" }}>Setup Checklist</div>
-          <div style={{ fontSize:11, color:'#15803D', fontWeight:600, marginTop:1 }}>
+          <div style={{ fontSize:13, fontWeight:800, color: 'var(--ink)', fontFamily:"'Sora',sans-serif" }}>Setup Checklist</div>
+          <div style={{ fontSize:11, color: 'var(--meadow)', fontWeight:600, marginTop:1 }}>
             {open ? 'Click to collapse' : `Next: ${steps[nextIdx]?.label}`}
           </div>
         </div>
 
         {/* Progress bar */}
-        <div style={{ width:80, height:5, borderRadius:99, background:'#BBF7D0', overflow:'hidden', flexShrink:0 }}>
-          <div style={{ height:'100%', borderRadius:99, width:`${(doneCount/total)*100}%`, background:'#15803D', transition:'width .4s ease' }}/>
+        <div style={{ width:80, height:5, borderRadius:99, background:'var(--meadow-border)', overflow:'hidden', flexShrink:0 }}>
+          <div style={{ height:'100%', borderRadius:99, width:`${(doneCount/total)*100}%`, background: 'var(--meadow)', transition:'width .4s ease' }}/>
         </div>
 
         {/* Chevron */}
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2.5"
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2.5"
           style={{ transform: open ? 'rotate(180deg)' : 'none', transition:'transform .2s', flexShrink:0 }}>
           <polyline points="6 9 12 15 18 9"/>
         </svg>
@@ -379,16 +379,16 @@ function SetupChecklist({ steps, onNavigate, loading }) {
         <div style={{ borderRadius:'0 0 12px 12px', overflow:'hidden' }}>
           {steps.map((step, i) => (
             <div key={step.label}
-              style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderBottom: i < steps.length - 1 ? '1px solid #EBF4EF' : 'none', background: step.done ? '#F8FBF9' : i === nextIdx ? '#F0FDF4' : '#ffffff' }}
+              style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderBottom: i < steps.length - 1 ? '1px solid var(--hover)' : 'none', background: step.done ? '#F8FBF9' : i === nextIdx ? 'var(--meadow-soft)' : '#ffffff' }}
             >
               {/* Circle */}
               <div style={{
                 width:24, height:24, borderRadius:'50%', flexShrink:0,
                 display:'flex', alignItems:'center', justifyContent:'center',
                 fontSize:10.5, fontWeight:800, fontFamily:"'Sora',sans-serif",
-                background: step.done ? '#15803D' : i === nextIdx ? '#DCFCE7' : '#EBF4EF',
-                color:      step.done ? '#ffffff' : i === nextIdx ? '#15803D' : '#6B8C7A',
-                border: i === nextIdx && !step.done ? '2px solid #15803D' : '2px solid transparent',
+                background: step.done ? 'var(--meadow)' : i === nextIdx ? 'var(--meadow-soft)' : 'var(--hover)',
+                color:      step.done ? '#ffffff' : i === nextIdx ? 'var(--meadow)' : 'var(--muted2)',
+                border: i === nextIdx && !step.done ? '2px solid var(--meadow)' : '2px solid transparent',
               }}>
                 {step.done
                   ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
@@ -397,10 +397,10 @@ function SetupChecklist({ steps, onNavigate, loading }) {
 
               {/* Text */}
               <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:12.5, fontWeight:700, color: step.done ? '#6B8C7A' : '#0E2A20', marginBottom:2, textDecoration: step.done ? 'line-through' : 'none' }}>
+                <div style={{ fontSize:12.5, fontWeight:700, color: step.done ? 'var(--muted2)' : 'var(--ink)', marginBottom:2, textDecoration: step.done ? 'line-through' : 'none' }}>
                   {step.label}
                 </div>
-                <div style={{ fontSize:11, color:'#6B8C7A', lineHeight:1.45 }}>
+                <div style={{ fontSize:11, color: 'var(--muted2)', lineHeight:1.45 }}>
                   {step.desc}
                 </div>
               </div>
@@ -409,9 +409,9 @@ function SetupChecklist({ steps, onNavigate, loading }) {
               {!step.done && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onNavigate(step.href) }}
-                  style={{ flexShrink:0, padding:'6px 13px', borderRadius:8, border:'none', background:'#15803D', color:'#fff', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif", whiteSpace:'nowrap' }}
-                  onMouseEnter={e => e.currentTarget.style.background='#0F5C2C'}
-                  onMouseLeave={e => e.currentTarget.style.background='#15803D'}
+                  style={{ flexShrink:0, padding:'6px 13px', borderRadius:8, border:'none', background: 'var(--meadow)', color:'#fff', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif", whiteSpace:'nowrap' }}
+                  onMouseEnter={e => e.currentTarget.style.background='var(--meadow-deep)'}
+                  onMouseLeave={e => e.currentTarget.style.background='var(--meadow)'}
                 >
                   {step.cta} →
                 </button>
@@ -425,7 +425,7 @@ function SetupChecklist({ steps, onNavigate, loading }) {
 }
 
 /* ─── PROGRAM COLORS ─────────────────────────────────────────────────────── */
-const PROG_COLORS = ['#15803D','#2563EB','#7C3AED','#D97706','#0891B2','#DC2626','#0F766E','#9333EA']
+const PROG_COLORS = ['var(--meadow)','#2563EB','#7C3AED','#D97706','#0891B2','#DC2626','#0F766E','#9333EA']
 
 /* ─── Main Page ──────────────────────────────────────────────────────────── */
 export default function DashboardPage() {
@@ -560,7 +560,7 @@ export default function DashboardPage() {
   const donutSegs = [
     { label:'Over cap',  value: overList.length, color:'#EF4444' },
     { label:'Near cap',  value: atRisk.length,   color:'#F59E0B' },
-    { label:'Healthy',   value: ok.length,        color:'#22C55E' },
+    { label:'Healthy',   value: ok.length,        color:'var(--meadow)' },
   ]
 
   const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat']
@@ -609,8 +609,8 @@ export default function DashboardPage() {
   const STAT_CARDS = [
     {
       label: 'Total Faculty',
-      color: '#15803D',
-      bg: '#F0FDF4',
+      color: 'var(--meadow)',
+      bg: 'var(--meadow-soft)',
       icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
       value: statsLoading ? null : (fac.total ?? '—'),
       sub: fac.total > 0 ? `${fac.fullTime||0} full-time · ${fac.partTime||0} part-time` : null,
@@ -645,7 +645,7 @@ export default function DashboardPage() {
       sub: fac.total > 0
         ? (fac.withoutSpecializations > 0 ? `${fac.withoutSpecializations} missing` : 'All covered')
         : null,
-      subColor: fac.withoutSpecializations > 0 ? '#D97706' : '#15803D',
+      subColor: fac.withoutSpecializations > 0 ? '#D97706' : 'var(--meadow)',
     },
     {
       label: 'Schedules',
@@ -680,7 +680,7 @@ export default function DashboardPage() {
           </h1>
         </div>
         <button id="tour-admin-scheduler" onClick={() => navigate('/dashboard/scheduler')}
-          style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#15803D,#0F5C2C)', color:'#fff', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 4px 14px rgba(15,92,44,0.28)', transition:'opacity .15s' }}
+          style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:10, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color:'#fff', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 4px 14px rgba(0,0,0,0.28)', transition:'opacity .15s' }}
           onMouseEnter={e=>e.currentTarget.style.opacity='.9'}
           onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -712,17 +712,17 @@ export default function DashboardPage() {
               {c.icon}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#6B8C7A', letterSpacing: '.4px', textTransform: 'uppercase', marginBottom: 2 }}>{c.label}</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted2)', letterSpacing: '.4px', textTransform: 'uppercase', marginBottom: 2 }}>{c.label}</div>
               {statsLoading
                 ? <Skel w={48} h={22} r={6} />
-                : <div style={{ fontSize: 24, fontWeight: 800, color: '#0E2A20', lineHeight: 1.1, fontFamily: "'Sora',sans-serif" }}>
+                : <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--ink)', lineHeight: 1.1, fontFamily: "'Sora',sans-serif" }}>
                     <AnimatedNumber value={c.value} />
                   </div>
               }
               {statsLoading
                 ? <Skel w="80%" h={10} r={4} style={{ marginTop: 4 }} />
                 : c.sub
-                  ? <div style={{ fontSize: 11.5, color: c.subColor || '#6B8C7A', fontWeight: 500, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.sub}</div>
+                  ? <div style={{ fontSize: 11.5, color: c.subColor || 'var(--muted2)', fontWeight: 500, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.sub}</div>
                   : null
               }
             </div>
@@ -760,36 +760,36 @@ export default function DashboardPage() {
                 label: 'Coverage',
                 value: statsLoading ? '…' : `${sch.coveragePct ?? 0}%`,
                 sub: statsLoading ? '' : `${sch.tbaSessions ?? 0} TBA sessions`,
-                color: (sch.coveragePct ?? 0) >= 95 ? '#15803D' : (sch.coveragePct ?? 0) >= 80 ? '#D97706' : '#C0392B',
-                bg: (sch.coveragePct ?? 0) >= 95 ? '#F0FDF4' : (sch.coveragePct ?? 0) >= 80 ? '#FFFBEB' : '#FFF5F5',
+                color: (sch.coveragePct ?? 0) >= 95 ? 'var(--meadow)' : (sch.coveragePct ?? 0) >= 80 ? '#D97706' : '#C0392B',
+                bg: (sch.coveragePct ?? 0) >= 95 ? 'var(--meadow-soft)' : (sch.coveragePct ?? 0) >= 80 ? '#FFFBEB' : '#FFF5F5',
                 icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>,
               },
               {
                 label: 'Conflicts',
                 value: statsLoading ? '…' : (sch.conflictCount ?? 0),
                 sub: (sch.conflictCount ?? 0) === 0 ? 'None detected' : 'Need resolution',
-                color: (sch.conflictCount ?? 0) === 0 ? '#15803D' : '#C0392B',
-                bg: (sch.conflictCount ?? 0) === 0 ? '#F0FDF4' : '#FFF5F5',
+                color: (sch.conflictCount ?? 0) === 0 ? 'var(--meadow)' : '#C0392B',
+                bg: (sch.conflictCount ?? 0) === 0 ? 'var(--meadow-soft)' : '#FFF5F5',
                 icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
               },
               {
                 label: 'Overloaded Faculty',
                 value: wlLoading ? '…' : overList.length,
                 sub: overList.length === 0 ? 'All within cap' : `${overList.length} over unit cap`,
-                color: overList.length === 0 ? '#15803D' : '#C0392B',
-                bg: overList.length === 0 ? '#F0FDF4' : '#FFF5F5',
+                color: overList.length === 0 ? 'var(--meadow)' : '#C0392B',
+                bg: overList.length === 0 ? 'var(--meadow-soft)' : '#FFF5F5',
                 icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>,
               },
               {
                 label: 'Near Cap',
                 value: wlLoading ? '…' : atRisk.length,
                 sub: atRisk.length === 0 ? 'No one near limit' : 'At ≥85% capacity',
-                color: atRisk.length === 0 ? '#15803D' : '#D97706',
-                bg: atRisk.length === 0 ? '#F0FDF4' : '#FFFBEB',
+                color: atRisk.length === 0 ? 'var(--meadow)' : '#D97706',
+                bg: atRisk.length === 0 ? 'var(--meadow-soft)' : '#FFFBEB',
                 icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>,
               },
             ].map(item => (
-              <div key={item.label} style={{ padding:'12px 13px', borderRadius:10, background:item.bg, border:`1px solid ${item.bg === '#F0FDF4' ? '#BBF7D0' : item.bg === '#FFFBEB' ? '#FDE68A' : '#FECACA'}`, display:'flex', flexDirection:'column', gap:6 }}>
+              <div key={item.label} style={{ padding:'12px 13px', borderRadius:10, background:item.bg, border:`1px solid ${item.bg === 'var(--meadow-soft)' ? 'var(--meadow-border)' : item.bg === '#FFFBEB' ? '#FDE68A' : '#FECACA'}`, display:'flex', flexDirection:'column', gap:6 }}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                   <span style={{ fontSize:11, fontWeight:600, color:'var(--muted2)' }}>{item.label}</span>
                   <div style={{ color:item.color, opacity:.7 }}>{item.icon}</div>
@@ -810,11 +810,11 @@ export default function DashboardPage() {
               const isActive = scheduleName === sName
               return (
                 <button key={sName} onClick={() => loadSchedule(sName)}
-                  style={{ padding:'4px 11px', borderRadius:7, border:`1.5px solid ${isActive?'#15803D':'var(--border)'}`, background:isActive?'#DCFCE7':'var(--hover)', color:isActive?'#15803D':'var(--muted)', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', transition:'all .15s', display:'flex', alignItems:'center', gap:4 }}>
+                  style={{ padding:'4px 11px', borderRadius:7, border:`1.5px solid ${isActive?'var(--meadow)':'var(--border)'}`, background:isActive?'var(--meadow-soft)':'var(--hover)', color:isActive?'var(--meadow)':'var(--muted)', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', transition:'all .15s', display:'flex', alignItems:'center', gap:4 }}>
                   {isActive && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
                   {sName}
                   {sFinalized && (
-                    <span style={{ display:'inline-flex', alignItems:'center', gap:2, padding:'0px 5px', borderRadius:99, fontSize:9, fontWeight:700, background:'#DCFCE7', color:'#15803D', border:'1px solid #BBF7D0', marginLeft:2 }}>
+                    <span style={{ display:'inline-flex', alignItems:'center', gap:2, padding:'0px 5px', borderRadius:99, fontSize:9, fontWeight:700, background:'var(--meadow-soft)', color: 'var(--meadow)', border:'1px solid var(--meadow-border)', marginLeft:2 }}>
                       <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                       Final
                     </span>
@@ -840,7 +840,7 @@ export default function DashboardPage() {
             sub={
               <span>
                 Based on loaded schedule:&nbsp;
-                <span style={{ fontWeight:700, color:'var(--meadow)', background:'#DCFCE7', padding:'1px 8px', borderRadius:99, fontSize:10.5 }}>
+                <span style={{ fontWeight:700, color:'var(--meadow)', background:'var(--meadow-soft)', padding:'1px 8px', borderRadius:99, fontSize:10.5 }}>
                   {scheduleName}
                 </span>
               </span>
@@ -850,7 +850,7 @@ export default function DashboardPage() {
                 <div style={{ display:'flex', gap:5 }}>
                   {suggestions.some(s=>s.type==='error') && <Badge label={`${suggestions.filter(s=>s.type==='error').length} critical`} color="#C0392B" bg="#FFE8E8"/>}
                   {suggestions.some(s=>s.type==='warning') && <Badge label={`${suggestions.filter(s=>s.type==='warning').length} warnings`} color="#D97706" bg="#FEF3CD"/>}
-                  {suggestions.some(s=>s.type==='success') && <Badge label="✓ healthy" color="#15803D" bg="#DCFCE7"/>}
+                  {suggestions.some(s=>s.type==='success') && <Badge label="✓ healthy" color="var(--meadow)" bg="var(--meadow-soft)"/>}
                 </div>
               )
             }
@@ -890,7 +890,7 @@ export default function DashboardPage() {
           ) : (
             <>
               {[
-                { key:'1st Semester', color:'#15803D' },
+                { key:'1st Semester', color: 'var(--meadow)' },
                 { key:'2nd Semester', color:'#2563EB' },
                 { key:'Midyear',      color:'#D97706' },
               ].filter(x => bySem[x.key] > 0).map(x => (
@@ -904,7 +904,7 @@ export default function DashboardPage() {
                 <div style={{ width:1, background:'var(--border)' }}/>
                 <div style={{ flex:1, textAlign:'center' }}>
                   <div style={{ fontSize:11, color:'var(--muted2)', marginBottom:2 }}>Lecture Only</div>
-                  <div style={{ fontSize:18, fontWeight:800, color:'#15803D', fontFamily:"'Sora',sans-serif" }}>{crs.coursesLectureOnly||0}</div>
+                  <div style={{ fontSize:18, fontWeight:800, color: 'var(--meadow)', fontFamily:"'Sora',sans-serif" }}>{crs.coursesLectureOnly||0}</div>
                 </div>
                 <div style={{ width:1, background:'var(--border)' }}/>
                 <div style={{ flex:1, textAlign:'center' }}>
@@ -972,7 +972,7 @@ export default function DashboardPage() {
               {Object.entries(crs.byYearLevel||{}).map(([yr, count], i) => {
                 const total = Object.values(crs.byYearLevel||{}).reduce((s,v)=>s+v,0)||1
                 const pct   = Math.round(count/total*100)
-                const yearColors = ['#15803D','#2563EB','#7C3AED','#D97706']
+                const yearColors = ['var(--meadow)','#2563EB','#7C3AED','#D97706']
                 const color = yearColors[i % yearColors.length]
                 return (
                   <div key={yr}>
@@ -1006,7 +1006,7 @@ export default function DashboardPage() {
                 <DonutChart
                   segments={[
                     { label:'Full-time', value: fac.fullTime || 0, color:'#2563EB' },
-                    { label:'Part-time', value: fac.partTime || 0, color:'#15803D' },
+                    { label:'Part-time', value: fac.partTime || 0, color: 'var(--meadow)' },
                   ]}
                   size={120} stroke={20} label={fac.total || 0} sublabel="faculty"
                 />
@@ -1021,7 +1021,7 @@ export default function DashboardPage() {
                     label: 'Part-time',
                     val: fac.partTime || 0,
                     total: fac.total || 1,
-                    color: '#15803D', bg: '#DCFCE7',
+                    color: 'var(--meadow)', bg: 'var(--meadow-soft)',
                   },
                 ].map(row => {
                   const pct = Math.round(row.val / row.total * 100)

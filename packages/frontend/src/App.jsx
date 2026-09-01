@@ -31,16 +31,16 @@ function LoadingScreen() {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center',
-      justifyContent: 'center', height: '100vh', backgroundColor: '#F2F7F4',
-      color: '#0E2A20', fontFamily: "'Inter', sans-serif"
+      justifyContent: 'center', height: '100vh', backgroundColor: 'var(--bg)',
+      color: 'var(--ink)', fontFamily: "'Inter', sans-serif"
     }}>
       <div style={{
         width: '44px', height: '44px',
-        border: '4px solid #BBF7D0', borderTop: '4px solid #15803D',
+        border: '4px solid var(--meadow-border)', borderTop: '4px solid var(--meadow)',
         borderRadius: '50%', animation: 'spin 1s linear infinite',
-        marginBottom: '20px', boxShadow: '0 4px 14px rgba(21,128,61,0.2)'
+        marginBottom: '20px', boxShadow: '0 4px 14px rgba(0,0,0,0.2)'
       }} />
-      <h3 style={{ fontSize: '13px', fontWeight: '700', color: '#15803D', letterSpacing: '2px', textTransform: 'uppercase', margin: 0 }}>
+      <h3 style={{ fontSize: '13px', fontWeight: '700', color: 'var(--meadow)', letterSpacing: '2px', textTransform: 'uppercase', margin: 0 }}>
         Loading
       </h3>
       <style>{`@keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }`}</style>

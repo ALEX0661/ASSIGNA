@@ -34,17 +34,17 @@ if (!document.getElementById('fsp-style')) {
     @keyframes fsp-spin     { to{transform:rotate(360deg)} }
 
     .fsp-card-clickable { cursor: pointer; }
-    .fsp-card-clickable:focus-visible { outline: 2px solid #6EE7B7; outline-offset: 2px; }
+    .fsp-card-clickable:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
 
     .fsp-modal-overlay {
       position: fixed; inset: 0; z-index: 1000;
-      background: rgba(10,46,28,0.72); backdrop-filter: blur(6px);
+      background: rgba(0,0,0,0.72); backdrop-filter: blur(6px);
       display: flex; align-items: center; justify-content: center; padding: 20px;
       animation: fsp-fadeIn 0.18s ease;
     }
     .fsp-modal-card {
-      background: #fff; border-radius: 20px; width: 100%; max-width: 480px;
-      box-shadow: 0 32px 80px rgba(10,46,28,0.35), 0 0 0 1px rgba(110,231,183,0.15);
+      background: var(--surface); border-radius: 20px; width: 100%; max-width: 480px;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.35), 0 0 0 1px rgba(110,231,183,0.15);
       animation: fsp-scaleIn 0.22s cubic-bezier(0.34,1.56,0.64,1);
       overflow: hidden; max-height: 90vh; display: flex; flex-direction: column;
     }
@@ -57,8 +57,8 @@ if (!document.getElementById('fsp-style')) {
       font-family: 'Inter', sans-serif;
       transition: all 0.15s;
     }
-    .fsp-select:hover { background: #fff; border-color: #B8D9C6; }
-    .fsp-select:focus { background: #fff; border-color: #1E7A4A; box-shadow: 0 0 0 3px rgba(110,231,183,0.25); }
+    .fsp-select:hover { background: var(--surface); border-color: #B8D9C6; }
+    .fsp-select:focus { background: var(--surface); border-color: #1E7A4A; box-shadow: 0 0 0 3px rgba(110,231,183,0.25); }
 
     .fsp-search-wrapper {
       position: relative;
@@ -77,7 +77,7 @@ if (!document.getElementById('fsp-style')) {
       transition: all 0.2s ease;
     }
     .fsp-search-input::placeholder { color: #6B8C7A; }
-    .fsp-search-input:focus { border-color: #1E7A4A; background: #fff; box-shadow: 0 0 0 3px rgba(110,231,183,0.25); }
+    .fsp-search-input:focus { border-color: #1E7A4A; background: var(--surface); box-shadow: 0 0 0 3px rgba(110,231,183,0.25); }
 
     .fsp-search-clear {
       position: absolute; right: 8px; background: none; border: none;
@@ -93,7 +93,7 @@ if (!document.getElementById('fsp-style')) {
 
     .fsp-export-btn {
       padding: 8px 16px; border-radius: 10px; border: 1px solid #D8E8DF;
-      background: #fff; color: #155C36; font-size: 12.5px; font-weight: 600;
+      background: var(--surface); color: #155C36; font-size: 12.5px; font-weight: 600;
       cursor: pointer; display: flex; align-items: center; gap: 8px;
       transition: all 0.15s; font-family: 'Inter', sans-serif;
       box-shadow: 0 1px 4px rgba(14,42,28,0.04);
@@ -114,14 +114,14 @@ if (!document.getElementById('fsp-style')) {
 
     .fsp-stat-card {
       display: flex; align-items: center; gap: 12px;
-      background: #fff; border-radius: 14px; border: 1px solid #D8E8DF;
+      background: var(--surface); border-radius: 14px; border: 1px solid #D8E8DF;
       padding: 14px 18px; flex: 1; min-width: 140px;
       box-shadow: 0 1px 6px rgba(14,42,28,0.05);
       animation: fsp-fadeUp 0.3s ease both;
     }
 
     .fsp-list-card {
-      background: #fff; border-radius: 14px; border: 1px solid #D8E8DF;
+      background: var(--surface); border-radius: 14px; border: 1px solid #D8E8DF;
       display: flex; align-items: stretch; overflow: hidden;
       transition: all 0.17s ease;
       box-shadow: 0 1px 4px rgba(14,42,28,0.04);
@@ -133,7 +133,7 @@ if (!document.getElementById('fsp-style')) {
     }
 
     .fsp-grid-card {
-      background: #fff; border-radius: 18px; border: 1px solid #D8E8DF;
+      background: var(--surface); border-radius: 18px; border: 1px solid #D8E8DF;
       display: flex; flex-direction: column; overflow: hidden;
       transition: all 0.18s ease;
       box-shadow: 0 1px 5px rgba(14,42,28,0.05);
@@ -173,16 +173,16 @@ const T = {
   green:       '#2E7D52',
   greenDeep:   '#236040',
   greenSoft:   '#E8F5EE',
-  greenBorder: '#B8D9C6',
-  mint:        '#6EE7B7',
+  greenBorder: 'var(--meadow-border)',
+  mint:        'var(--mint)',
   meadow:      '#4A9B6F',
   textMain:    '#0E2A1C',
   textMid:     '#3A5448',
-  textMuted:   '#6B8C7A',
+  textMuted:   'var(--muted2, #6B8C7A)',
   textLight:   '#A0BCAD',
-  border:      '#D8E8DF',
+  border:      'var(--border)',
   borderLight: '#EFF6F2',
-  bg:          '#FFFFFF',
+  bg: 'var(--surface, #FFFFFF)',
   bgAlt:       '#F6FAF8',
   bgPage:      '#F2F7F4',
 }
@@ -220,8 +220,8 @@ function formatPeriodCompact(period = '') {
 
 function getAvatarColor(name = '') {
   const palette = [
-    { bg:'#D1FAE5', fg:'#059669' }, { bg:'#DBEAFE', fg:'#2563EB' },
-    { bg:'#FCE7F3', fg:'#DB2777' }, { bg:'#EDE9FE', fg:'#7C3AED' },
+    { bg:'var(--meadow-soft)', fg:'var(--meadow)' }, { bg:'#DBEAFE', fg:'#2563EB' },
+    { bg:'#FCE7F3', fg:'#DB2777' }, { bg:'color-mix(in srgb, #6D28D9 15%, transparent)', fg:'#7C3AED' },
     { bg:'#FEF3C7', fg:'#D97706' }, { bg:'#FFE4E6', fg:'#E11D48' },
   ]
   const code = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
@@ -240,7 +240,7 @@ function Badge({ children, type = 'default', size = 'sm' }) {
     lec:     { bg:'#EFF6FF', color:'#2563EB', border:'#BFDBFE' },
     lab:     { bg:'#FFF7ED', color:'#D97706', border:'#FDE68A' },
     room:    { bg: T.greenSoft, color: T.greenDeep, border: T.greenBorder },
-    merged:  { bg:'#ECFDF5', color:'#059669', border:'#A7F3D0' },
+    merged:  { bg:'var(--meadow-soft)', color:'var(--meadow)', border:'#A7F3D0' },
     conflict:{ bg:'#FEF2F2', color:'#B91C1C', border:'#FECACA' },
     default: { bg: T.bgAlt, color: T.textMid, border: T.border },
   }
@@ -320,7 +320,7 @@ function SessionModal({ event, onClose }) {
               {isMerged && (
                 <span style={{
                   fontFamily: "'Inter',sans-serif", fontSize: 10, fontWeight: 700, padding: '4px 10px', borderRadius: 6,
-                  background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0', display: 'flex', alignItems: 'center', gap: 4
+                  background: 'var(--meadow-soft)', color: 'var(--meadow)', border: '1px solid #A7F3D0', display: 'flex', alignItems: 'center', gap: 4
                 }}>
                   <img src={iconMerged} alt="Merged" style={{ width:10, height:10 }}/> Merged
                 </span>
@@ -348,8 +348,8 @@ function SessionModal({ event, onClose }) {
         <div className="fsp-scrollable" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             {[
-              { label: 'Schedule', value: `${event.day} · ${timeParts.join(' – ')}`, iconSrc: iconClock, bg: '#F0FDF4', border: '#DCFCE7' },
-              { label: 'Room', value: event.room || 'TBA', iconSrc: isLab ? iconLab : iconRoom, bg: '#F0FDF4', border: '#DCFCE7' },
+              { label: 'Schedule', value: `${event.day} · ${timeParts.join(' – ')}`, iconSrc: iconClock, bg: 'var(--meadow-soft)', border: 'var(--meadow-soft)' },
+              { label: 'Room', value: event.room || 'TBA', iconSrc: isLab ? iconLab : iconRoom, bg: 'var(--meadow-soft)', border: 'var(--meadow-soft)' },
             ].map(({ label, value, iconSrc, bg, border }) => (
               <div key={label} style={{
                 padding: '14px', borderRadius: 14, background: T.bgAlt, border: `1px solid ${T.borderLight}`,
@@ -374,7 +374,7 @@ function SessionModal({ event, onClose }) {
             background: T.bgAlt, border: `1px solid ${T.borderLight}`
           }}>
             <div style={{
-              width: 38, height: 38, borderRadius: 10, background: '#F0FDF4', border: '1px solid #DCFCE7', flexShrink: 0,
+              width: 38, height: 38, borderRadius: 10, background: 'var(--meadow-soft)', border: '1px solid var(--meadow-soft)', flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
               <img src={iconSection} alt="Section" style={{ width: 22, height: 22, objectFit: 'contain' }} />
@@ -633,7 +633,7 @@ function TimetableView({ events, conflictMap, onSelect }) {
       </div>
       <div style={{ overflowY:'auto', maxHeight:520 }}>
         {timeSlots.map((slot, ri) => (
-          <div key={slot} style={{ display:'flex', minHeight:72, borderBottom: ri < timeSlots.length - 1 ? `1px solid ${T.borderLight}` : 'none', background: ri % 2 === 0 ? T.bg : '#FAFCFB' }}>
+          <div key={slot} style={{ display:'flex', minHeight:72, borderBottom: ri < timeSlots.length - 1 ? `1px solid ${T.borderLight}` : 'none', background: ri % 2 === 0 ? T.bg : 'var(--bg)' }}>
             <div style={{ width:TIME_W, flexShrink:0, padding:'10px 6px', borderRight:`1px solid ${T.border}`, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:2 }}>
               {formatPeriodCompact(slot).map((t, ti) => (
                 <span key={ti} style={{ fontFamily:"'Inter',sans-serif", fontSize: ti === 0 ? 10.5 : 9.5, fontWeight: ti === 0 ? 700 : 500, color: ti === 0 ? T.textMid : T.textMuted, lineHeight:1.3, whiteSpace:'nowrap', textAlign:'center' }}>{t}</span>
@@ -871,7 +871,7 @@ export default function FacultySchedulePage() {
             <div className="fsp-hero-avatar" style={{
               width:56, height:56, borderRadius:16, flexShrink:0,
               background: listLoading ? 'rgba(110,231,183,0.12)' : avatarColor.bg,
-              color: listLoading ? '#6EE7B7' : avatarColor.fg,
+              color: listLoading ? 'var(--mint)' : avatarColor.fg,
               display:'flex', alignItems:'center', justifyContent:'center',
               fontSize:19, fontWeight:800, letterSpacing:'-0.5px', fontFamily:"'Sora',sans-serif",
               border:`2.5px solid ${listLoading ? 'rgba(110,231,183,0.25)' : avatarColor.fg + '30'}`,
@@ -889,7 +889,7 @@ export default function FacultySchedulePage() {
                   <span style={{
                     fontSize:10, fontWeight:700, padding:'2px 9px', borderRadius:99,
                     background: facultyMeta.status === 'full-time' ? 'rgba(110,231,183,0.15)' : 'rgba(255,255,255,0.08)',
-                    color:      facultyMeta.status === 'full-time' ? '#6EE7B7' : 'rgba(255,255,255,0.65)',
+                    color:      facultyMeta.status === 'full-time' ? 'var(--mint)' : 'rgba(255,255,255,0.65)',
                     border:    `1px solid ${facultyMeta.status === 'full-time' ? 'rgba(110,231,183,0.30)' : 'rgba(255,255,255,0.15)'}`,
                     fontFamily:"'Inter',sans-serif"
                   }}>
@@ -947,7 +947,7 @@ export default function FacultySchedulePage() {
       {!loading && scheduleNames.length > 0 && (
         <div style={{
           display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between',
-          background: '#fff', padding: '14px 18px', borderRadius: 16, border: `1px solid ${T.border}`,
+          background: 'var(--surface)', padding: '14px 18px', borderRadius: 16, border: `1px solid ${T.border}`,
           boxShadow: '0 1px 6px rgba(14,42,28,0.03)', marginBottom: 20
         }}>
           {/* Left Side: Schedule & Type Dropdowns */}
@@ -962,7 +962,7 @@ export default function FacultySchedulePage() {
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
                   padding: '2px 9px', borderRadius: 99, fontSize: 10, fontWeight: 700,
-                  background: '#DCFCE7', color: '#15803D', border: '1px solid #BBF7D0',
+                  background: 'var(--meadow-soft)', color: 'var(--meadow)', border: '1px solid var(--meadow-border)',
                   whiteSpace: 'nowrap'
                 }}>
                   <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -1010,7 +1010,7 @@ export default function FacultySchedulePage() {
                 onChange={e => setSearchQuery(e.target.value)}
                 className="fsp-search-input"
               />
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B8C7A" strokeWidth="2.5"
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted2)" strokeWidth="2.5"
                 style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}>
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
               </svg>

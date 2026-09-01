@@ -21,60 +21,60 @@ if (!document.getElementById('ifm-style')) {
       padding:9px 20px; border-radius:10px; border:none;
       font-family:'Poppins',sans-serif; font-size:12.5px; font-weight:600;
       cursor:pointer; transition:all .15s;
-      background:linear-gradient(135deg,#2E9E5B,#1F7A45); color:#fff;
-      box-shadow:0 3px 12px rgba(46,158,91,.32);
+      background:linear-gradient(135deg,var(--meadow),var(--meadow-deep)); color:#fff;
+      box-shadow:0 3px 12px rgba(0,0,0,.32);
     }
-    .ifm-primary:hover:not(:disabled) { background:linear-gradient(135deg,#4BB377,#27914F); transform:translateY(-1px); box-shadow:0 5px 18px rgba(46,158,91,.4); }
+    .ifm-primary:hover:not(:disabled) { background:linear-gradient(135deg,var(--meadow-mid),var(--meadow-deep)); transform:translateY(-1px); box-shadow:0 5px 18px rgba(0,0,0,.4); }
     .ifm-primary:active:not(:disabled) { transform:translateY(0); }
     .ifm-primary:disabled { opacity:.45; cursor:default; transform:none; box-shadow:none; }
 
     .ifm-ghost {
       display:inline-flex; align-items:center; gap:6px;
       padding:8px 15px; border-radius:10px;
-      border:1.5px solid #DCF3E4; font-family:'Poppins',sans-serif;
+      border:1.5px solid var(--meadow-border); font-family:'Poppins',sans-serif;
       font-size:12px; font-weight:500; cursor:pointer;
-      background:#fff; color:#5C8A6E; transition:all .13s;
+      background:#fff; color:var(--muted); transition:all .13s;
     }
-    .ifm-ghost:hover:not(:disabled) { background:#EFFAF4; border-color:#9EDDB7; color:#1F7A45; }
+    .ifm-ghost:hover:not(:disabled) { background:var(--meadow-soft); border-color:var(--meadow-border); color:var(--meadow-deep); }
     .ifm-ghost:disabled { opacity:.45; cursor:default; }
 
     .ifm-download {
       display:inline-flex; align-items:center; gap:6px;
       padding:7px 14px; border-radius:9px;
-      border:1.5px solid #C9ECD6; font-family:'Poppins',sans-serif;
+      border:1.5px solid var(--meadow-border); font-family:'Poppins',sans-serif;
       font-size:11.5px; font-weight:600; cursor:pointer;
-      background:#F1FBF5; color:#2E9E5B; transition:all .13s;
+      background:var(--meadow-soft); color:var(--meadow); transition:all .13s;
     }
-    .ifm-download:hover { background:#E5F9EC; border-color:#6FC795; color:#1F7A45; transform:translateY(-1px); box-shadow:0 3px 10px rgba(46,158,91,.15); }
+    .ifm-download:hover { background:var(--meadow-soft); border-color:var(--meadow-mid); color:var(--meadow-deep); transform:translateY(-1px); box-shadow:0 3px 10px rgba(0,0,0,.15); }
     .ifm-download:active { transform:translateY(0); box-shadow:none; }
 
     .ifm-close {
       display: inline-flex; align-items: center; justify-content: center;
       width: 32px; height: 32px; border-radius: 8px;
-      border: 1.5px solid #DCF3E4; cursor: pointer;
-      background: #EFFAF4; color: #2E9E5B; transition: all 0.2s; flex-shrink: 0;
+      border: 1.5px solid var(--meadow-border); cursor: pointer;
+      background: var(--meadow-soft); color: var(--meadow); transition: all 0.2s; flex-shrink: 0;
       padding: 0;
     }
     .ifm-close:hover { background:#FFE8E8; border-color:#FECACA; color:#DC2626; }
 
     .ifm-sheet-btn {
       text-align:left; display:flex; align-items:center; gap:10px;
-      padding:12px 16px; border-radius:10px; border:1.5px solid #DCF3E4;
-      background:#F7FCF9; cursor:pointer; transition:all .13s;
-      font-family:'Poppins',sans-serif; font-size:13px; font-weight:600; color:#0E2A20;
+      padding:12px 16px; border-radius:10px; border:1.5px solid var(--meadow-border);
+      background:var(--bg); cursor:pointer; transition:all .13s;
+      font-family:'Poppins',sans-serif; font-size:13px; font-weight:600; color:var(--ink);
     }
-    .ifm-sheet-btn:hover:not(:disabled) { background:#E5F9EC; border-color:#9EDDB7; }
-    .ifm-sheet-btn.active { background:#E5F9EC; border-color:#6FC795; }
+    .ifm-sheet-btn:hover:not(:disabled) { background:var(--meadow-soft); border-color:var(--meadow-border); }
+    .ifm-sheet-btn.active { background:var(--meadow-soft); border-color:var(--meadow-mid); }
     .ifm-sheet-btn:disabled { opacity:.5; cursor:wait; }
 
     .ifm-card {
       display:flex; align-items:center; gap:14px;
       padding:12px 16px; border-radius:11px;
-      border:1.5px solid #DCF3E4; background:#F7FCF9;
+      border:1.5px solid var(--meadow-border); background:var(--bg);
       transition:border-color .12s;
       animation: ifmFadeIn .15s ease both;
     }
-    .ifm-card:hover { border-color:#9EDDB7; }
+    .ifm-card:hover { border-color:var(--meadow-border); }
 
     .ifm-remove {
       width:24px; height:24px; border-radius:7px;
@@ -214,7 +214,7 @@ function validateFacultyMatrixFile(file) {
 }
 
 const Spin = () => (
-  <div style={{ width:16, height:16, border:'2px solid #DCF3E4', borderTopColor:'#2E9E5B', borderRadius:'50%', animation:'ifmSpin .8s linear infinite', flexShrink:0 }} />
+  <div style={{ width:16, height:16, border:'2px solid var(--meadow-border)', borderTopColor:'var(--meadow)', borderRadius:'50%', animation:'ifmSpin .8s linear infinite', flexShrink:0 }} />
 )
 
 const ErrBox = ({ msg }) => !msg ? null : (
@@ -225,7 +225,7 @@ const ErrBox = ({ msg }) => !msg ? null : (
 )
 
 const HintBox = ({ children }) => (
-  <div style={{ background:'#F1FBF5', border:'1px solid #DCF3E4', borderRadius:10, padding:'11px 14px', fontSize:12, color:'#5C8A6E', lineHeight:1.65 }}>
+  <div style={{ background:'var(--meadow-soft)', border:'1px solid var(--meadow-border)', borderRadius:10, padding:'11px 14px', fontSize:12, color:'var(--muted)', lineHeight:1.65 }}>
     {children}
   </div>
 )
@@ -234,41 +234,41 @@ const StatusBadge = ({ status }) => (
   <span style={{
     fontSize:10, fontWeight:700, padding:'2px 9px', borderRadius:99, flexShrink:0,
     background: status === 'full-time' ? '#EEF9F0' : '#FFF7ED',
-    color:      status === 'full-time' ? '#16A34A' : '#D97706',
+    color:      status === 'full-time' ? 'var(--meadow)' : '#D97706',
     border:     `1px solid ${status === 'full-time' ? '#A7F3D0' : '#FDE68A'}`,
   }}>
     {status === 'full-time' ? 'Full-time' : 'Part-time'}
   </span>
 )
 
-const ratingColor = r => r >= 4 ? '#16A34A' : r === 3 ? '#2E9E5B' : r === 2 ? '#D97706' : '#7DAB8E'
+const ratingColor = r => r >= 4 ? 'var(--meadow)' : r === 3 ? 'var(--meadow)' : r === 2 ? '#D97706' : 'var(--muted)'
 
 function Steps({ current }) {
   const labels = ['Upload', 'Select Sheets', 'Review & Import']
   return (
-    <div style={{ display:'flex', alignItems:'center', marginBottom:26, padding:'0 2px' }}>
+    <div style={{ display:'flex', alignItems:'center', marginBottom:42, padding:'0 16px' }}>
       {labels.map((label, i) => {
         const idx = i + 1, done = idx < current, active = idx === current
         return (
           <div key={label} style={{ display:'flex', alignItems:'center', flex: i < labels.length - 1 ? 1 : 'none' }}>
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
+            <div style={{ position: 'relative', display:'flex', flexDirection:'column', alignItems:'center' }}>
               <div style={{
                 width:30, height:30, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center',
                 fontSize:12, fontWeight:700, flexShrink:0, transition:'all .2s',
-                background: done ? 'linear-gradient(135deg,#2E9E5B,#1F7A45)' : active ? 'linear-gradient(135deg,#6FC795,#2E9E5B)' : '#E5F9EC',
-                color: (done || active) ? '#fff' : '#A8D9BB',
-                boxShadow: active ? '0 3px 12px rgba(46,158,91,.35)' : done ? '0 2px 8px rgba(46,158,91,.2)' : 'none',
+                background: done ? 'var(--meadow-deep)' : active ? 'var(--meadow)' : 'var(--meadow-soft)',
+                color: (done || active) ? '#fff' : 'var(--meadow)',
+                boxShadow: active ? '0 3px 12px var(--meadow-border)' : 'none',
               }}>
                 {done
                   ? <svg width="12" height="9" viewBox="0 0 12 9" fill="none"><polyline points="1,4.5 4.5,8 11,1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   : idx}
               </div>
-              <span style={{ fontSize:10.5, fontWeight:active?700:500, color:active?'#2E9E5B':done?'#6FC795':'#A8D9BB', whiteSpace:'nowrap', letterSpacing:'.3px' }}>
+              <span style={{ position: 'absolute', top: 38, fontSize:10.5, fontWeight:active?700:500, color:active?'var(--meadow)':done?'var(--meadow-deep)':'var(--muted)', whiteSpace:'nowrap', letterSpacing:'.3px' }}>
                 {label}
               </span>
             </div>
             {i < labels.length - 1 && (
-              <div style={{ flex:1, height:2, margin:'0 8px 18px', borderRadius:99, background: done ? 'linear-gradient(90deg,#2E9E5B,#6FC795)' : '#DCF3E4', transition:'background .3s' }} />
+              <div style={{ flex:1, height:2, margin:'0 12px', borderRadius:99, background: done ? 'var(--meadow)' : 'var(--meadow-border)', transition:'background .3s' }} />
             )}
           </div>
         )
@@ -329,32 +329,32 @@ function UploadStep({ onUploaded, courses }) {
         onDrop={e => { e.preventDefault(); setDragging(false); processFile(e.dataTransfer.files[0]) }}
         onClick={() => !isBusy && inputRef.current?.click()}
         style={{
-          border:`2px dashed ${dragging ? '#2E9E5B' : '#C9ECD6'}`, borderRadius:14,
+          border:`2px dashed ${dragging ? 'var(--meadow)' : 'var(--meadow-border)'}`, borderRadius:14,
           padding:'44px 24px', textAlign:'center',
-          background: dragging ? '#F1FBF5' : '#F7FCF9',
+          background: dragging ? 'var(--meadow-soft)' : 'var(--bg)',
           cursor: isBusy ? 'wait' : 'pointer', transition:'all .15s',
         }}
       >
         {isBusy ? (
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
-            <div style={{ width:40, height:40, borderRadius:'50%', border:'3px solid #DCF3E4', borderTopColor:'#2E9E5B', animation:'ifmSpin .8s linear infinite' }} />
-            <p style={{ fontSize:13, color:'#5C8A6E', fontWeight:500, margin:0 }}>
+            <div style={{ width:40, height:40, borderRadius:'50%', border:'3px solid var(--meadow-border)', borderTopColor:'var(--meadow)', animation:'ifmSpin .8s linear infinite' }} />
+            <p style={{ fontSize:13, color:'var(--muted)', fontWeight:500, margin:0 }}>
               {validating ? 'Checking template…' : 'Reading file…'}
             </p>
           </div>
         ) : (
           <>
-            <div style={{ width:54, height:54, margin:'0 auto 14px', borderRadius:14, display:'flex', alignItems:'center', justifyContent:'center', background: dragging ? 'linear-gradient(135deg,#2E9E5B,#1F7A45)' : 'linear-gradient(135deg,#E5F9EC,#D7F2E0)', boxShadow: dragging ? '0 6px 20px rgba(46,158,91,.35)' : 'none', transition:'all .15s' }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={dragging?'#fff':'#2E9E5B'} strokeWidth="2">
+            <div style={{ width:54, height:54, margin:'0 auto 14px', borderRadius:14, display:'flex', alignItems:'center', justifyContent:'center', background: dragging ? 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))' : 'linear-gradient(135deg,var(--meadow-soft),#D7F2E0)', boxShadow: dragging ? '0 6px 20px rgba(0,0,0,.35)' : 'none', transition:'all .15s' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={dragging?'#fff':'var(--meadow)'} strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
             </div>
-            <p style={{ fontWeight:700, fontSize:14, color:'#0E2A20', marginBottom:4 }}>
+            <p style={{ fontWeight:700, fontSize:14, color:'var(--ink)', marginBottom:4 }}>
               {dragging ? 'Drop it here!' : 'Drop your Faculty Matrix Excel file'}
             </p>
-            <p style={{ fontSize:12, color:'#7DAB8E', margin:0 }}>
-              or <span style={{ color:'#2E9E5B', fontWeight:600 }}>click to browse</span> · .xlsx or .xls
+            <p style={{ fontSize:12, color:'var(--muted)', margin:0 }}>
+              or <span style={{ color:'var(--meadow)', fontWeight:600 }}>click to browse</span> · .xlsx or .xls
             </p>
           </>
         )}
@@ -381,7 +381,7 @@ function UploadStep({ onUploaded, courses }) {
       )}
 
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
-        <p style={{ fontSize:11.5, color:'#7DAB8E', margin:0, lineHeight:1.5 }}>
+        <p style={{ fontSize:11.5, color:'var(--muted)', margin:0, lineHeight:1.5 }}>
           Matrix sheet(s) for ratings · "Faculty Info" sheet for basic info, login &amp; schedule (dropdowns included)
         </p>
         <button
@@ -389,11 +389,11 @@ function UploadStep({ onUploaded, courses }) {
           style={{
             background:'none', border:'none', padding:0, cursor:'pointer',
             display:'inline-flex', alignItems:'center', gap:4,
-            fontSize:11.5, color:'#6FC795', fontFamily:"'Poppins',sans-serif",
+            fontSize:11.5, color:'var(--meadow-mid)', fontFamily:"'Poppins',sans-serif",
             fontWeight:500, flexShrink:0, transition:'color .13s',
           }}
-          onMouseEnter={e => e.currentTarget.style.color='#2E9E5B'}
-          onMouseLeave={e => e.currentTarget.style.color='#6FC795'}
+          onMouseEnter={e => e.currentTarget.style.color='var(--meadow)'}
+          onMouseLeave={e => e.currentTarget.style.color='var(--meadow-mid)'}
           title="Download the Faculty Import template (specialization matrix + Faculty Info sheet)"
         >
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -476,16 +476,16 @@ function SheetStep({ sheets, fileData, rawFile, onParsed, onBack }) {
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-      <p style={{ fontSize:13, color:'#5C8A6E', margin:0 }}>
+      <p style={{ fontSize:13, color:'var(--muted)', margin:0 }}>
         Select the sheet(s) that contain faculty specialization data. You can import all at once.
       </p>
 
       <button
         onClick={toggleAll}
         disabled={loading}
-        style={{ alignSelf:'flex-start', display:'flex', alignItems:'center', gap:7, padding:'5px 12px', borderRadius:8, border:'1.5px solid #DCF3E4', background: allSelected ? '#E5F9EC' : '#fff', cursor:'pointer', fontSize:12, fontWeight:600, color: allSelected ? '#2E9E5B' : '#5C8A6E', fontFamily:'Poppins,sans-serif', transition:'all .12s' }}
+        style={{ alignSelf:'flex-start', display:'flex', alignItems:'center', gap:7, padding:'5px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', background: allSelected ? 'var(--meadow-soft)' : '#fff', cursor:'pointer', fontSize:12, fontWeight:600, color: allSelected ? 'var(--meadow)' : 'var(--muted)', fontFamily:'Poppins,sans-serif', transition:'all .12s' }}
       >
-        <div style={{ width:14, height:14, borderRadius:4, border:`1.5px solid ${allSelected?'#2E9E5B':'#A8D9BB'}`, background:allSelected?'#2E9E5B':'transparent', display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <div style={{ width:14, height:14, borderRadius:4, border:`1.5px solid ${allSelected?'var(--meadow)':'var(--meadow-border)'}`, background:allSelected?'var(--meadow)':'transparent', display:'flex', alignItems:'center', justifyContent:'center' }}>
           {allSelected && <svg width="8" height="6" viewBox="0 0 8 6" fill="none"><polyline points="1,3 3,5 7,1" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>}
         </div>
         Select all sheets
@@ -502,18 +502,18 @@ function SheetStep({ sheets, fileData, rawFile, onParsed, onBack }) {
               disabled={loading}
               className={`ifm-sheet-btn${isSelected ? ' active' : ''}`}
             >
-              <div style={{ width:16, height:16, borderRadius:5, border:`1.5px solid ${isSelected?'#2E9E5B':'#A8D9BB'}`, background:isSelected?'#2E9E5B':'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition:'all .12s' }}>
+              <div style={{ width:16, height:16, borderRadius:5, border:`1.5px solid ${isSelected?'var(--meadow)':'var(--meadow-border)'}`, background:isSelected?'var(--meadow)':'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition:'all .12s' }}>
                 {isSelected && <svg width="8" height="6" viewBox="0 0 8 6" fill="none"><polyline points="1,3 3,5 7,1" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>}
               </div>
-              <div style={{ width:28, height:28, borderRadius:7, background: isPartTime ? '#FFF7ED' : '#E5F9EC', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={isPartTime?'#D97706':'#2E9E5B'} strokeWidth="2">
+              <div style={{ width:28, height:28, borderRadius:7, background: isPartTime ? '#FFF7ED' : 'var(--meadow-soft)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={isPartTime?'#D97706':'var(--meadow)'} strokeWidth="2">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                   <polyline points="14 2 14 8 20 8"/>
                   <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
                 </svg>
               </div>
               <span style={{ flex:1 }}>{name}</span>
-              <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:99, background: isPartTime?'#FFF7ED':'#EEF9F0', color: isPartTime?'#D97706':'#16A34A', border:`1px solid ${isPartTime?'#FDE68A':'#A7F3D0'}` }}>
+              <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:99, background: isPartTime?'#FFF7ED':'#EEF9F0', color: isPartTime?'#D97706':'var(--meadow)', border:`1px solid ${isPartTime?'#FDE68A':'#A7F3D0'}` }}>
                 {isPartTime ? 'Part-time' : 'Full-time'}
               </span>
               {loading && isSelected && <Spin />}
@@ -546,17 +546,17 @@ function FacultyCard({ faculty, onRemove, onEdit, animDelay }) {
   return (
     <div className="ifm-card" style={{ flexDirection:'column', alignItems:'stretch', animationDelay:`${animDelay}ms`, cursor:'pointer' }} onClick={onEdit}>
       <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-        <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,#E5F9EC,#C9ECD6)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:13, fontWeight:700, color:'#2E9E5B' }}>
+        <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,var(--meadow-soft),var(--meadow-border))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:13, fontWeight:700, color:'var(--meadow)' }}>
           {faculty.name.split(',')[0].charAt(0)}
         </div>
 
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ display:'flex', alignItems:'center', gap:7, flexWrap:'wrap' }}>
-            <span style={{ fontSize:13, fontWeight:700, color:'#0E2A20' }}>{faculty.name}</span>
+            <span style={{ fontSize:13, fontWeight:700, color:'var(--ink)' }}>{faculty.name}</span>
             <StatusBadge status={faculty.status} />
           </div>
-          <div style={{ fontSize:11.5, color:'#5C8A6E', marginTop:2 }}>
-            <strong style={{ color:'#2E9E5B' }}>{totalGood}</strong> rated courses · <strong style={{ color:'#0E2A20' }}>{specs.length}</strong> total
+          <div style={{ fontSize:11.5, color:'var(--muted)', marginTop:2 }}>
+            <strong style={{ color:'var(--meadow)' }}>{totalGood}</strong> rated courses · <strong style={{ color:'var(--ink)' }}>{specs.length}</strong> total
           </div>
         </div>
 
@@ -572,14 +572,14 @@ function FacultyCard({ faculty, onRemove, onEdit, animDelay }) {
           {topSpecs.map(s => (
             <span 
               key={`${s.courseTitle || s.title || 'untitled'}-${s.courseCode}`} 
-              style={{ fontSize:10.5, fontWeight:600, padding:'2px 8px', borderRadius:99, background:'#E5F9EC', color:'#2E9E5B', border:'1px solid #DCF3E4' }}
+              style={{ fontSize:10.5, fontWeight:600, padding:'2px 8px', borderRadius:99, background:'var(--meadow-soft)', color:'var(--meadow)', border:'1px solid var(--meadow-border)' }}
             >
               {s.courseTitle || s.title || s.courseCode}
               <span style={{ marginLeft:4, color: ratingColor(s.rating), fontWeight:700 }}>{s.rating}</span>
             </span>
           ))}
           {specs.filter(s => s.rating >= 4).length > 5 && (
-            <span style={{ fontSize:10.5, color:'#7DAB8E', padding:'2px 4px' }}>+{specs.filter(s => s.rating >= 4).length - 5} more</span>
+            <span style={{ fontSize:10.5, color:'var(--muted)', padding:'2px 4px' }}>+{specs.filter(s => s.rating >= 4).length - 5} more</span>
           )}
         </div>
       )}
@@ -602,21 +602,21 @@ function EditPreviewStep({ initialFaculty, onSave, onBack }) {
   
   return (
     <div style={{ animation:'ifmFadeIn .2s ease' }}>
-      <h3 style={{ margin:'0 0 16px', color:'#0E2A20', fontSize:15, fontWeight:700 }}>Edit Faculty Info</h3>
+      <h3 style={{ margin:'0 0 16px', color:'var(--ink)', fontSize:15, fontWeight:700 }}>Edit Faculty Info</h3>
       
       <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
         <div style={{ display:'flex', gap:14 }}>
           <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
-            <label style={{ fontSize:11.5, fontWeight:600, color:'#5C8A6E' }}>Last Name *</label>
-            <input style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid #DCF3E4', outline:'none', fontSize:12.5, textTransform:'uppercase' }} value={form.lastName || ''} onChange={e => { const v = e.target.value.toUpperCase(); setForm(f => { const fn = f.firstName || ''; return {...f, lastName:v, name: v && fn ? `${v}, ${fn}` : v || fn }})}} />
+            <label style={{ fontSize:11.5, fontWeight:600, color:'var(--muted)' }}>Last Name *</label>
+            <input style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', outline:'none', fontSize:12.5, textTransform:'uppercase' }} value={form.lastName || ''} onChange={e => { const v = e.target.value.toUpperCase(); setForm(f => { const fn = f.firstName || ''; return {...f, lastName:v, name: v && fn ? `${v}, ${fn}` : v || fn }})}} />
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
-            <label style={{ fontSize:11.5, fontWeight:600, color:'#5C8A6E' }}>First Name *</label>
-            <input style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid #DCF3E4', outline:'none', fontSize:12.5, textTransform:'uppercase' }} value={form.firstName || ''} onChange={e => { const v = e.target.value.toUpperCase(); setForm(f => { const ln = f.lastName || ''; return {...f, firstName:v, name: ln && v ? `${ln}, ${v}` : ln || v }})}} />
+            <label style={{ fontSize:11.5, fontWeight:600, color:'var(--muted)' }}>First Name *</label>
+            <input style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', outline:'none', fontSize:12.5, textTransform:'uppercase' }} value={form.firstName || ''} onChange={e => { const v = e.target.value.toUpperCase(); setForm(f => { const ln = f.lastName || ''; return {...f, firstName:v, name: ln && v ? `${ln}, ${v}` : ln || v }})}} />
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
-            <label style={{ fontSize:11.5, fontWeight:600, color:'#5C8A6E' }}>Status *</label>
-            <select style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid #DCF3E4', outline:'none', fontSize:12.5, background:'#fff' }} value={form.status || 'full-time'} onChange={e => setForm({...form, status:e.target.value})}>
+            <label style={{ fontSize:11.5, fontWeight:600, color:'var(--muted)' }}>Status *</label>
+            <select style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', outline:'none', fontSize:12.5, background:'#fff' }} value={form.status || 'full-time'} onChange={e => setForm({...form, status:e.target.value})}>
               <option value="full-time">Full-time</option>
               <option value="part-time">Part-time</option>
             </select>
@@ -625,12 +625,12 @@ function EditPreviewStep({ initialFaculty, onSave, onBack }) {
 
         <div style={{ display:'flex', gap:14 }}>
           <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
-            <label style={{ fontSize:11.5, fontWeight:600, color:'#5C8A6E' }}>Email Address</label>
-            <input type="email" placeholder="faculty@university.edu" style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid #DCF3E4', outline:'none', fontSize:12.5 }} value={form.email || ''} onChange={e => setForm({...form, email:e.target.value})} />
+            <label style={{ fontSize:11.5, fontWeight:600, color:'var(--muted)' }}>Email Address</label>
+            <input type="email" placeholder="faculty@university.edu" style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', outline:'none', fontSize:12.5 }} value={form.email || ''} onChange={e => setForm({...form, email:e.target.value})} />
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
-            <label style={{ fontSize:11.5, fontWeight:600, color:'#5C8A6E' }}>Sex at Birth</label>
-            <select style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid #DCF3E4', outline:'none', fontSize:12.5, background:'#fff' }} value={form.SexAtBirth || ''} onChange={e => setForm({...form, SexAtBirth:e.target.value})}>
+            <label style={{ fontSize:11.5, fontWeight:600, color:'var(--muted)' }}>Sex at Birth</label>
+            <select style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', outline:'none', fontSize:12.5, background:'#fff' }} value={form.SexAtBirth || ''} onChange={e => setForm({...form, SexAtBirth:e.target.value})}>
               <option value="">Select...</option>
               <option value="Male">Male</option>
               <option value="Female">Female</option>
@@ -641,15 +641,15 @@ function EditPreviewStep({ initialFaculty, onSave, onBack }) {
 
         <div style={{ display:'flex', gap:14 }}>
           <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
-            <label style={{ fontSize:11.5, fontWeight:600, color:'#5C8A6E' }}>Academic Rank</label>
-            <select style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid #DCF3E4', outline:'none', fontSize:12.5, background:'#fff' }} value={form.AcademicRank || ''} onChange={e => setForm({...form, AcademicRank:e.target.value})}>
+            <label style={{ fontSize:11.5, fontWeight:600, color:'var(--muted)' }}>Academic Rank</label>
+            <select style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', outline:'none', fontSize:12.5, background:'#fff' }} value={form.AcademicRank || ''} onChange={e => setForm({...form, AcademicRank:e.target.value})}>
               <option value="">Select rank...</option>
               {ACADEMIC_RANKS.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
-            <label style={{ fontSize:11.5, fontWeight:600, color:'#5C8A6E' }}>Department</label>
-            <select style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid #DCF3E4', outline:'none', fontSize:12.5, background:'#fff' }} value={form.Department || ''} onChange={e => setForm({...form, Department:e.target.value})}>
+            <label style={{ fontSize:11.5, fontWeight:600, color:'var(--muted)' }}>Department</label>
+            <select style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', outline:'none', fontSize:12.5, background:'#fff' }} value={form.Department || ''} onChange={e => setForm({...form, Department:e.target.value})}>
               <option value="">Select department...</option>
               {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
@@ -657,13 +657,13 @@ function EditPreviewStep({ initialFaculty, onSave, onBack }) {
         </div>
 
         <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-          <label style={{ fontSize:11.5, fontWeight:600, color:'#5C8A6E' }}>Educational Attainment</label>
-          <input type="text" placeholder="e.g. Master's Degree, PhD" style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid #DCF3E4', outline:'none', fontSize:12.5 }} value={form.Educational_attainment || ''} onChange={e => setForm({...form, Educational_attainment:e.target.value})} />
+          <label style={{ fontSize:11.5, fontWeight:600, color:'var(--muted)' }}>Educational Attainment</label>
+          <input type="text" placeholder="e.g. Master's Degree, PhD" style={{ padding:'8px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', outline:'none', fontSize:12.5 }} value={form.Educational_attainment || ''} onChange={e => setForm({...form, Educational_attainment:e.target.value})} />
         </div>
 
         {form.status === 'part-time' && (
           <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-            <label style={{ fontSize:11.5, fontWeight:600, color:'#5C8A6E' }}>Preferred Days</label>
+            <label style={{ fontSize:11.5, fontWeight:600, color:'var(--muted)' }}>Preferred Days</label>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => {
                 const isActive = (form.preferredDays || []).includes(d)
@@ -671,7 +671,7 @@ function EditPreviewStep({ initialFaculty, onSave, onBack }) {
                   <button key={d} onClick={() => {
                     const days = form.preferredDays || []
                     setForm({ ...form, preferredDays: isActive ? days.filter(x => x !== d) : [...days, d] })
-                  }} style={{ padding: '6px 12px', borderRadius: 8, border: `1.5px solid ${isActive ? '#15803D' : '#DCF3E4'}`, background: isActive ? '#DCFCE7' : '#fff', color: isActive ? '#15803D' : '#5C8A6E', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', transition: 'all 0.1s' }}>
+                  }} style={{ padding: '6px 12px', borderRadius: 8, border: `1.5px solid ${isActive ? 'var(--meadow)' : 'var(--meadow-border)'}`, background: isActive ? 'var(--meadow-soft)' : '#fff', color: isActive ? 'var(--meadow)' : 'var(--muted)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', transition: 'all 0.1s' }}>
                     {d}
                   </button>
                 )
@@ -681,8 +681,8 @@ function EditPreviewStep({ initialFaculty, onSave, onBack }) {
         )}
 
         <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-          <label style={{ fontSize:11.5, fontWeight:600, color:'#5C8A6E' }}>Specializations</label>
-          <button className="ifm-ghost" onClick={() => setShowSpec(true)} style={{ justifyContent:'center', background:'#fff', color:'#2E9E5B' }}>
+          <label style={{ fontSize:11.5, fontWeight:600, color:'var(--muted)' }}>Specializations</label>
+          <button className="ifm-ghost" onClick={() => setShowSpec(true)} style={{ justifyContent:'center', background:'#fff', color:'var(--meadow)' }}>
             Manage {form.specializations?.length || 0} specializations...
           </button>
         </div>
@@ -753,14 +753,14 @@ function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
       <div style={{ display:'flex', flexDirection:'column', gap:16, animation:'ifmPop .2s ease' }}>
         {allGood ? (
           <div style={{ textAlign:'center', padding:'36px 0', display:'flex', flexDirection:'column', alignItems:'center', gap:14 }}>
-            <div style={{ width:60, height:60, borderRadius:'50%', background:'linear-gradient(135deg,#2E9E5B,#1F7A45)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 6px 20px rgba(46,158,91,.35)' }}>
+            <div style={{ width:60, height:60, borderRadius:'50%', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 6px 20px rgba(0,0,0,.35)' }}>
               <svg width="26" height="20" viewBox="0 0 26 20" fill="none"><polyline points="2,10 9,17 24,2" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
             <div>
-              <p style={{ fontWeight:700, fontSize:17, color:'#0E2A20', marginBottom:5 }}>
+              <p style={{ fontWeight:700, fontSize:17, color:'var(--ink)', marginBottom:5 }}>
                 {results.committed} {results.committed !== 1 ? 'faculty records' : 'faculty record'} imported!
               </p>
-              <p style={{ color:'#5C8A6E', fontSize:13, margin:0 }}>
+              <p style={{ color:'var(--muted)', fontSize:13, margin:0 }}>
                 Specializations saved. Add emails to each profile to enable faculty login.
               </p>
             </div>
@@ -768,12 +768,12 @@ function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
         ) : (
           <>
             <div style={{ background:'#FEF3CD', border:'1px solid #F0C040', borderRadius:10, padding:'12px 16px' }}>
-              <p style={{ fontWeight:700, fontSize:13, color:'#0E2A20', marginBottom:3 }}>{results.committed} saved · {results.failed.length} failed</p>
-              <p style={{ fontSize:12, color:'#5C8A6E', margin:0 }}>Some records could not be saved.</p>
+              <p style={{ fontWeight:700, fontSize:13, color:'var(--ink)', marginBottom:3 }}>{results.committed} saved · {results.failed.length} failed</p>
+              <p style={{ fontSize:12, color:'var(--muted)', margin:0 }}>Some records could not be saved.</p>
             </div>
-            <div style={{ maxHeight:200, overflowY:'auto', border:'1px solid #DCF3E4', borderRadius:10 }}>
+            <div style={{ maxHeight:200, overflowY:'auto', border:'1px solid var(--meadow-border)', borderRadius:10 }}>
               {results.failed.map((f, i) => (
-                <div key={i} style={{ padding:'10px 14px', borderBottom: i < results.failed.length - 1 ? '1px solid #E5F9EC' : 'none', fontSize:12 }}>
+                <div key={i} style={{ padding:'10px 14px', borderBottom: i < results.failed.length - 1 ? '1px solid var(--meadow-soft)' : 'none', fontSize:12 }}>
                   <strong>{f.faculty?.name}</strong> — <span style={{ color:'#DC2626' }}>{f.reason}</span>
                 </div>
               ))}
@@ -797,27 +797,27 @@ function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
       <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-        <span style={{ fontSize:13, color:'#5C8A6E' }}>
-          <strong style={{ color:'#0E2A20' }}>{faculty.length}</strong> faculty ready to import
+        <span style={{ fontSize:13, color:'var(--muted)' }}>
+          <strong style={{ color:'var(--ink)' }}>{faculty.length}</strong> faculty ready to import
         </span>
-        <span style={{ fontSize:10.5, padding:'2px 9px', borderRadius:99, background:'#EEF9F0', color:'#16A34A', border:'1px solid #A7F3D0', fontWeight:600 }}>{fullTime} full-time</span>
+        <span style={{ fontSize:10.5, padding:'2px 9px', borderRadius:99, background:'#EEF9F0', color:'var(--meadow)', border:'1px solid #A7F3D0', fontWeight:600 }}>{fullTime} full-time</span>
         <span style={{ fontSize:10.5, padding:'2px 9px', borderRadius:99, background:'#FFF7ED', color:'#D97706', border:'1px solid #FDE68A', fontWeight:600 }}>{partTime} part-time</span>
-        <span style={{ fontSize:11, color:'#7DAB8E', marginLeft:'auto' }}>Click a card to edit</span>
+        <span style={{ fontSize:11, color:'var(--muted)', marginLeft:'auto' }}>Click a card to edit</span>
       </div>
 
       <div style={{ position:'relative' }}>
-        <svg style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7DAB8E" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <svg style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="Search faculty name…"
-          style={{ width:'100%', paddingLeft:32, paddingRight:12, paddingTop:8, paddingBottom:8, borderRadius:9, border:'1.5px solid #DCF3E4', fontFamily:'Poppins,sans-serif', fontSize:12.5, outline:'none', boxSizing:'border-box' }}
+          style={{ width:'100%', paddingLeft:32, paddingRight:12, paddingTop:8, paddingBottom:8, borderRadius:9, border:'1.5px solid var(--meadow-border)', fontFamily:'Poppins,sans-serif', fontSize:12.5, outline:'none', boxSizing:'border-box' }}
         />
       </div>
 
       <div style={{ maxHeight:360, overflowY:'auto', display:'flex', flexDirection:'column', gap:8, paddingRight:2 }}>
         {filtered.length === 0 && (
-          <div style={{ textAlign:'center', padding:'30px 0', color:'#7DAB8E', fontSize:13 }}>No faculty match your search.</div>
+          <div style={{ textAlign:'center', padding:'30px 0', color:'var(--muted)', fontSize:13 }}>No faculty match your search.</div>
         )}
         {filtered.map((f, i) => (
           <FacultyCard
@@ -833,7 +833,7 @@ function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
       <ErrBox msg={error} />
 
       <HintBox>
-        <strong style={{ color:'#2E9E5B' }}>Note:</strong> Specialization ratings come from the matrix sheet(s) you selected. Basic info, login email, and preferred schedule come from the "Faculty Info" sheet if you filled it in — otherwise add them per profile after importing.
+        <strong style={{ color:'var(--meadow)' }}>Note:</strong> Specialization ratings come from the matrix sheet(s) you selected. Basic info, login email, and preferred schedule come from the "Faculty Info" sheet if you filled it in — otherwise add them per profile after importing.
       </HintBox>
 
       <div style={{ display:'flex', gap:8, alignItems:'center' }}>
@@ -893,7 +893,7 @@ export default function ImportFacultyModal({ onClose, onImported, courses = [] }
           background:'#fff', borderRadius:18, padding:'26px 28px',
           width: step === 3 ? 620 : 500, maxWidth:'95vw', maxHeight:'90vh',
           overflowY:'auto', fontFamily:"'Poppins',sans-serif",
-          boxShadow:'0 24px 64px rgba(14,42,32,0.24),0 4px 16px rgba(46,158,91,0.12)',
+          boxShadow:'0 24px 64px rgba(14,42,32,0.24),0 4px 16px rgba(0,0,0,0.12)',
           transition:'width .2s ease',
         }}
         onClick={e => e.stopPropagation()}
@@ -902,17 +902,17 @@ export default function ImportFacultyModal({ onClose, onImported, courses = [] }
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:22 }}>
           <div>
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4 }}>
-              <div style={{ width:34, height:34, borderRadius:10, background:'linear-gradient(135deg,#E5F9EC,#C9ECD6)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2E9E5B" strokeWidth="2">
+              <div style={{ width:34, height:34, borderRadius:10, background:'linear-gradient(135deg,var(--meadow-soft),var(--meadow-border))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
                   <circle cx="9" cy="7" r="4"/>
                   <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
                   <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                 </svg>
               </div>
-              <h2 style={{ fontSize:16, fontWeight:700, color:'#0E2A20', margin:0 }}>{stepTitles[step]}</h2>
+              <h2 style={{ fontSize:16, fontWeight:700, color:'var(--ink)', margin:0 }}>{stepTitles[step]}</h2>
             </div>
-            <p style={{ fontSize:11.5, color:'#7DAB8E', margin:0, marginLeft:44 }}>
+            <p style={{ fontSize:11.5, color:'var(--muted)', margin:0, marginLeft:44 }}>
               Step {step} of 3 · Upload → Sheets → Review
             </p>
           </div>

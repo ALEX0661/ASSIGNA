@@ -20,20 +20,20 @@ import iconAssign from '../../assets/ASSIGMENT.png'
 
 /* ── Design tokens (Unified) ── */
 const G = {
-  meadow:       '#15803D',
-  meadowDeep:   '#0F5C2C',
-  meadowMid:    '#166534',
-  meadowSoft:   '#DCFCE7',
-  meadowBorder: '#BBF7D0',
-  ink:          '#0E2A20',
+  meadow: 'var(--meadow, var(--meadow))',
+  meadowDeep:   'var(--meadow-deep)',
+  meadowMid:    'var(--meadow-mid)',
+  meadowSoft:   'var(--meadow-soft)',
+  meadowBorder: 'var(--meadow-border)',
+  ink: 'var(--ink, #0E2A20)',
   inkMid:       '#1C3D2A',
-  muted:        '#4B7060',
-  muted2:       '#6B8C7A',
-  border:       '#D8E8DF',
-  borderLight:  '#EBF4EF',
-  bg:           '#F2F7F4',
-  surface:      '#FFFFFF',
-  hover:        '#EBF4EF',
+  muted: 'var(--muted, #4B7060)',
+  muted2: 'var(--muted2, #6B8C7A)',
+  border:       'var(--border)',
+  borderLight:  'var(--hover)',
+  bg: 'var(--bg, #F2F7F4)',
+  surface: 'var(--surface, #FFFFFF)',
+  hover:        'var(--hover)',
 }
 
 /* ─── Styles ─────────────────────────────────────────────────────────────── */
@@ -58,13 +58,13 @@ if (!document.getElementById('coord-rooms-style')) {
 
     /* Toasts */
     .cp-toast-wrap { position:fixed;bottom:20px;left:50%;z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;transform:translateX(-50%); }
-    .cp-toast { display:flex;align-items:center;gap:8px;padding:12px 20px;border-radius:12px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;animation:cpToastIn .2s cubic-bezier(.4,0,.2,1);white-space:nowrap;pointer-events:auto; box-shadow: 0 8px 24px rgba(21,128,61,0.15); }
+    .cp-toast { display:flex;align-items:center;gap:8px;padding:12px 20px;border-radius:12px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;animation:cpToastIn .2s cubic-bezier(.4,0,.2,1);white-space:nowrap;pointer-events:auto; box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
     .cp-toast.success { background:${G.meadow};color:#fff;border:1px solid ${G.meadowDeep}; }
-    .cp-toast.error   { background:#fff;color:#DC2626;border:1px solid #FECACA; }
-    .cp-toast.info    { background:#fff;color:${G.meadowDeep};border:1px solid ${G.meadowBorder}; }
+    .cp-toast.error   { background: var(--surface);color:#DC2626;border:1px solid #FECACA; }
+    .cp-toast.info    { background: var(--surface);color:${G.meadowDeep};border:1px solid ${G.meadowBorder}; }
 
     /* Compact Layout Cards */
-    .room-card { background: #fff; border-radius: 12px; border: 1px solid ${G.border}; overflow: hidden; box-shadow: 0 4px 12px rgba(10,46,28,0.04); display: flex; flex-direction: column; }
+    .room-card { background: var(--surface); border-radius: 12px; border: 1px solid ${G.border}; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.04); display: flex; flex-direction: column; }
     .room-card-head { display: flex; align-items: center; gap: 14px; padding: 16px 20px; border-bottom: 1px solid ${G.border}; background: ${G.surface}; flex-wrap: wrap; }
 
     /* Room Chips */
@@ -74,39 +74,39 @@ if (!document.getElementById('coord-rooms-style')) {
       padding: 5px 8px 5px 10px; border-radius: 8px; 
       border: 1px solid ${G.meadowBorder}; background: ${G.meadowSoft}; 
       font-size: 12.5px; font-weight: 700; color: ${G.meadowDeep};
-      cursor: pointer; transition: all 0.15s; box-shadow: 0 1px 3px rgba(21,128,61,0.05);
+      cursor: pointer; transition: all 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-    .room-chip:hover { border-color: ${G.meadow}; box-shadow: 0 3px 8px rgba(21,128,61,0.15); transform: translateY(-1px); }
-    .room-chip.unselected { background:#fff;color:${G.muted};border-color:${G.border};opacity:0.65; box-shadow:none; }
+    .room-chip:hover { border-color: ${G.meadow}; box-shadow: 0 3px 8px rgba(0,0,0,0.15); transform: translateY(-1px); }
+    .room-chip.unselected { background: var(--surface);color:${G.muted};border-color:${G.border};opacity:0.65; box-shadow:none; }
     .room-chip.unselected:hover { opacity:1;border-color:${G.meadowBorder};color:${G.meadowDeep}; }
     .room-chip-idx { font-size: 10px; font-weight: 800; color: #fff; background: ${G.meadow}; padding: 2px 6px; border-radius: 4px; }
 
     /* Buttons */
-    .btn-outline { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; border: 1px solid ${G.border}; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; background: #fff; color: ${G.muted}; transition: all 0.13s; flex-shrink: 0; }
+    .btn-outline { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; border: 1px solid ${G.border}; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; background: var(--surface); color: ${G.muted}; transition: all 0.13s; flex-shrink: 0; }
     .btn-outline:hover:not(:disabled) { background: ${G.hover}; color: ${G.ink}; border-color: ${G.meadowBorder}; }
     .btn-outline:disabled { opacity: .6; cursor: default; }
 
-    .btn-primary { display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; border-radius: 8px; border: none; font-family: 'Inter',sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s; background: ${G.meadow}; color: #fff; box-shadow: 0 3px 10px rgba(21,128,61,0.25); }
-    .btn-primary:hover:not(:disabled) { background: ${G.meadowDeep}; box-shadow: 0 5px 15px rgba(21,128,61,0.35); transform: translateY(-1px); }
+    .btn-primary { display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; border-radius: 8px; border: none; font-family: 'Inter',sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s; background: ${G.meadow}; color: #fff; box-shadow: 0 3px 10px rgba(0,0,0,0.25); }
+    .btn-primary:hover:not(:disabled) { background: ${G.meadowDeep}; box-shadow: 0 5px 15px rgba(0,0,0,0.35); transform: translateY(-1px); }
     .btn-primary:disabled { opacity: .6; cursor: default; }
 
     /* Compact Data Table */
-    .cp-search { flex: 1; padding: 8px 14px 8px 36px; border-radius: 8px; border: 1px solid ${G.border}; font-family: 'Inter', sans-serif; font-size: 13px; color: ${G.ink}; background: #fff; outline: none; transition: all 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
-    .cp-search:focus { border-color: ${G.meadow}; box-shadow: 0 0 0 2px rgba(21,128,61,0.1); }
+    .cp-search { flex: 1; padding: 8px 14px 8px 36px; border-radius: 8px; border: 1px solid ${G.border}; font-family: 'Inter', sans-serif; font-size: 13px; color: ${G.ink}; background: var(--surface); outline: none; transition: all 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+    .cp-search:focus { border-color: ${G.meadow}; box-shadow: 0 0 0 2px rgba(0,0,0,0.1); }
     
     .cp-tr-hover:hover td { background: ${G.hover}; }
 
     /* Tab Styles */
     .room-tabs { display: flex; gap: 4px; background: ${G.hover}; padding: 4px; border-radius: 9px; border: 1px solid ${G.border}; width: fit-content; }
     .room-tab { padding: 5px 14px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; border: none; background: transparent; color: ${G.muted}; font-family: 'Inter', sans-serif; }
-    .room-tab.active { background: #fff; color: ${G.ink}; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .room-tab.active { background: var(--surface); color: ${G.ink}; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 
     /* Modal Styles */
     .rm-modal-overlay { position: fixed; inset: 0; background: rgba(14,42,32,0.6); backdrop-filter: blur(4px); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn 0.2s ease-out; }
-    .rm-modal-box { background: #fff; border-radius: 16px; width: 100%; max-width: 540px; box-shadow: 0 24px 48px rgba(10,46,28,0.25); overflow: hidden; display: flex; flex-direction: column; max-height: 85vh; animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-    .rm-modal-head { padding: 20px 24px; border-bottom: 1px solid ${G.border}; display: flex; align-items: center; justify-content: space-between; background: #fff; }
+    .rm-modal-box { background: var(--surface); border-radius: 16px; width: 100%; max-width: 540px; box-shadow: 0 24px 48px rgba(0,0,0,0.25); overflow: hidden; display: flex; flex-direction: column; max-height: 85vh; animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+    .rm-modal-head { padding: 20px 24px; border-bottom: 1px solid ${G.border}; display: flex; align-items: center; justify-content: space-between; background: var(--surface); }
     .rm-modal-body { padding: 24px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 24px; background: ${G.bg}; }
-    .rm-modal-foot { padding: 16px 24px; border-top: 1px solid ${G.border}; display: flex; justify-content: flex-end; gap: 10px; background: #fff; }
+    .rm-modal-foot { padding: 16px 24px; border-top: 1px solid ${G.border}; display: flex; justify-content: flex-end; gap: 10px; background: var(--surface); }
 
     .modal-close-btn { 
       display: inline-flex; align-items: center; justify-content: center; 
@@ -118,13 +118,13 @@ if (!document.getElementById('coord-rooms-style')) {
     .modal-close-btn:hover { background: #FFE8E8; border-color: #FECACA; color: #DC2626; }
 
     /* Modal Selectable Cards */
-    .modal-room-card { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #fff; border: 1.5px solid ${G.border}; border-radius: 10px; cursor: pointer; transition: all 0.15s; color: ${G.ink}; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
-    .modal-room-card:hover { border-color: ${G.meadowBorder}; background: ${G.surface}; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(21,128,61,0.08); }
-    .modal-room-card.selected { border-color: ${G.meadow}; background: ${G.meadowSoft}; color: ${G.meadowDeep}; box-shadow: 0 2px 8px rgba(21,128,61,0.15); }
+    .modal-room-card { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--surface); border: 1.5px solid ${G.border}; border-radius: 10px; cursor: pointer; transition: all 0.15s; color: ${G.ink}; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+    .modal-room-card:hover { border-color: ${G.meadowBorder}; background: ${G.surface}; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.08); }
+    .modal-room-card.selected { border-color: ${G.meadow}; background: ${G.meadowSoft}; color: ${G.meadowDeep}; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
     .modal-room-card-inner { display: flex; align-items: center; gap: 12px; }
 
     /* Green Room Pills for Table */
-    .assign-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 7px; font-size: 11.5px; font-weight: 600; background: #fff; color: ${G.meadowDeep}; border: 1px dashed ${G.meadow}; cursor: pointer; transition: all 0.15s; }
+    .assign-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 7px; font-size: 11.5px; font-weight: 600; background: var(--surface); color: ${G.meadowDeep}; border: 1px dashed ${G.meadow}; cursor: pointer; transition: all 0.15s; }
     .assign-trigger:hover { background: ${G.meadowSoft}; border-style: solid; }
     
     .assigned-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background: ${G.meadowSoft}; color: ${G.meadowDeep}; border: 1px solid ${G.meadowBorder}; }
@@ -210,7 +210,7 @@ function RoomAssignModal({ isOpen, onClose, onSave, title, initialRooms = [], le
         </div>
         
         <div className="rm-modal-body">
-          <div style={{ background: '#fff', padding: '16px', borderRadius: 12, border: `1px solid ${G.border}`, boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+          <div style={{ background: 'var(--surface)', padding: '16px', borderRadius: 12, border: `1px solid ${G.border}`, boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <span style={{ fontSize: 11.5, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Selected Rooms ({selected.length})</span>
               {selected.length > 0 && (
@@ -268,7 +268,7 @@ function RoomAssignModal({ isOpen, onClose, onSave, title, initialRooms = [], le
             )}
 
             {lectureRooms.length === 0 && labRooms.length === 0 && (
-              <div style={{ fontSize: 13, color: G.muted, textAlign: 'center', padding: '30px', background: '#fff', borderRadius: 12, border: `1px dashed ${G.border}` }}>
+              <div style={{ fontSize: 13, color: G.muted, textAlign: 'center', padding: '30px', background: 'var(--surface)', borderRadius: 12, border: `1px dashed ${G.border}` }}>
                 No rooms selected for this program yet. Choose some in the section above first.
               </div>
             )}
@@ -597,7 +597,7 @@ export default function CoordRoomsPage() {
         </div>
 
         {/* Filters */}
-        <div style={{ padding: '14px 20px', borderBottom: `1px solid ${G.borderLight}`, display: 'flex', flexDirection: 'column', gap: 12, background: '#fff' }}>
+        <div style={{ padding: '14px 20px', borderBottom: `1px solid ${G.borderLight}`, display: 'flex', flexDirection: 'column', gap: 12, background: 'var(--surface)' }}>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 160 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={G.muted2} strokeWidth="2.5" style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -623,7 +623,7 @@ export default function CoordRoomsPage() {
             <span style={{ fontSize: 13, fontWeight: 600, color: '#fff', flex: 1 }}>{selectedCourses.size} course{selectedCourses.size !== 1 ? 's' : ''} selected</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <button onClick={() => setSelectedCourses(new Set())} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>Deselect</button>
-              <button onClick={openBulkModal} style={{ background: '#fff', color: G.meadowDeep, border: 'none', fontSize: 12, fontWeight: 700, padding: '6px 14px', borderRadius: 6, cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>Bulk Assign Rooms</button>
+              <button onClick={openBulkModal} style={{ background: 'var(--surface)', color: G.meadowDeep, border: 'none', fontSize: 12, fontWeight: 700, padding: '6px 14px', borderRadius: 6, cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>Bulk Assign Rooms</button>
             </div>
           </div>
         )}
@@ -631,7 +631,7 @@ export default function CoordRoomsPage() {
         {/* High-Density Data Table */}
         <div style={{ maxHeight: 550, overflowY: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ position: 'sticky', top: 0, zIndex: 5, background: '#fff' }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 5, background: 'var(--surface)' }}>
               <tr>
                 <th style={{ width: 48, padding: '12px 20px', borderBottom: `1.5px solid ${G.border}`, background: G.hover }}>
                   <div style={{ display: 'flex', justifyContent: 'center' }}><Checkbox checked={allSel} indeterminate={someSel} onChange={togAll}/></div>

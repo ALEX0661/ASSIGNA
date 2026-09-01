@@ -15,11 +15,11 @@ import { useTour } from '../../hooks/useTour.jsx'
    reads as part of the same product instead of a one-off. ── 
    Cache bust comment for Vite */
 const G = {
-  meadow: '#15803D', meadowDeep: '#0F5C2C', meadowMid: '#166534',
-  meadowSoft: '#DCFCE7', meadowBorder: '#BBF7D0',
-  ink: '#0E2A20', inkMid: '#1C3D2A', muted: '#4B7060', muted2: '#6B8C7A',
-  border: '#D8E8DF', borderLight: '#EBF4EF', bg: '#F2F7F4',
-  surface: '#FFFFFF', hover: '#EBF4EF',
+  meadow: 'var(--meadow, var(--meadow))', meadowDeep: 'var(--meadow-deep)', meadowMid: 'var(--meadow-mid)',
+  meadowSoft: 'var(--meadow-soft)', meadowBorder: 'var(--meadow-border)',
+  ink: 'var(--ink, #0E2A20)', inkMid: '#1C3D2A', muted: 'var(--muted, #4B7060)', muted2: 'var(--muted2, #6B8C7A)',
+  border: 'var(--border)', borderLight: 'var(--hover)', bg: 'var(--bg, #F2F7F4)',
+  surface: 'var(--surface, #FFFFFF)', hover: 'var(--hover)',
   amber: '#D97706', amberSoft: '#FEF3C7', amberBorder: '#FDE68A',
   blue: '#1D4ED8', blueSoft: '#DBEAFE', blueBorder: '#BFDBFE',
   red: '#DC2626', redSoft: '#FEE2E2', redBorder: '#FECACA',
@@ -41,18 +41,18 @@ if (!document.getElementById('approval-dashboard-style')) {
     .ap-spin { animation:apSpin .8s linear infinite; }
     .ap-skeleton { background:linear-gradient(90deg,${G.hover} 25%,${G.borderLight} 50%,${G.hover} 75%); background-size:600px 100%; animation:apShimmer 1.4s ease-in-out infinite; border-radius:7px; }
 
-    .ap-card { background:#fff; border-radius:12px; border:1px solid ${G.border}; box-shadow:0 2px 12px rgba(10,46,28,0.03); overflow:hidden; }
+    .ap-card { background: var(--surface); border-radius:12px; border:1px solid ${G.border}; box-shadow:0 2px 12px rgba(0,0,0,0.03); overflow:hidden; }
     .ap-row { display:flex; align-items:center; gap:14px; padding:13px 18px; border-bottom:1px solid ${G.borderLight}; transition:background .12s; }
     .ap-row:last-child { border-bottom:none; }
     .ap-row:hover { background:${G.hover}; }
 
-    .btn-outline { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; border:1px solid ${G.border}; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; background:#fff; color:${G.muted}; transition:all .13s; }
+    .btn-outline { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; border:1px solid ${G.border}; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; background: var(--surface); color:${G.muted}; transition:all .13s; }
     .btn-outline:hover:not(:disabled) { background:${G.hover}; color:${G.ink}; border-color:${G.meadowBorder}; }
     .btn-outline:disabled { opacity:.5; cursor:default; }
-    .btn-primary { display:inline-flex; align-items:center; gap:6px; padding:7px 16px; border-radius:8px; border:none; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; background:${G.meadow}; color:#fff; box-shadow:0 3px 10px rgba(21,128,61,0.25); }
+    .btn-primary { display:inline-flex; align-items:center; gap:6px; padding:7px 16px; border-radius:8px; border:none; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; background:${G.meadow}; color:#fff; box-shadow:0 3px 10px rgba(0,0,0,0.25); }
     .btn-primary:hover:not(:disabled) { background:${G.meadowDeep}; transform:translateY(-1px); }
     .btn-primary:disabled { opacity:.55; cursor:default; transform:none; box-shadow:none; }
-    .btn-danger { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; border:1px solid ${G.redBorder}; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; background:#fff; color:${G.red}; transition:all .13s; }
+    .btn-danger { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; border:1px solid ${G.redBorder}; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; background: var(--surface); color:${G.red}; transition:all .13s; }
     .btn-danger:hover:not(:disabled) { background:${G.redSoft}; border-color:${G.red}; }
     .btn-danger:disabled { opacity:.5; cursor:default; }
     .btn-amber { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; border:1px solid ${G.amberBorder}; font-family:'Inter',sans-serif; font-size:11.5px; font-weight:600; cursor:pointer; background:${G.amberSoft}; color:#92400E; transition:all .13s; }
@@ -60,38 +60,38 @@ if (!document.getElementById('approval-dashboard-style')) {
     .btn-blue { display:inline-flex; align-items:center; gap:6px; padding:7px 16px; border-radius:8px; border:none; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; background:${G.blue}; color:#fff; box-shadow:0 3px 10px rgba(29,78,216,0.22); }
     .btn-blue:hover:not(:disabled) { background:#1E40AF; transform:translateY(-1px); }
 
-    .ap-icon-btn { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; border:1px solid ${G.border}; background:#fff; color:${G.muted}; cursor:pointer; transition:all .15s; padding:0; flex-shrink:0; }
+    .ap-icon-btn { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; border:1px solid ${G.border}; background: var(--surface); color:${G.muted}; cursor:pointer; transition:all .15s; padding:0; flex-shrink:0; }
     .ap-icon-btn:hover:not(:disabled) { background:${G.hover}; color:${G.meadowDeep}; border-color:${G.meadowBorder}; }
     .ap-icon-btn:disabled { opacity:.4; cursor:default; }
 
-    .cp-inp { padding:8px 12px; border-radius:8px; border:1.5px solid ${G.border}; font-family:'Inter',sans-serif; font-size:12.5px; color:${G.ink}; background:#fff; outline:none; transition:all .15s; width:100%; box-sizing:border-box; }
-    .cp-inp:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(21,128,61,0.1); }
+    .cp-inp { padding:8px 12px; border-radius:8px; border:1.5px solid ${G.border}; font-family:'Inter',sans-serif; font-size:12.5px; color:${G.ink}; background: var(--surface); outline:none; transition:all .15s; width:100%; box-sizing:border-box; }
+    .cp-inp:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
     .cp-inp.sm { padding:5px 8px; font-size:11.5px; border-radius:6px; }
 
     .ap-badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:99px; font-family:'Inter',sans-serif; font-size:10.5px; font-weight:700; border:1px solid transparent; line-height:1.5; white-space:nowrap; }
 
     .ap-tab { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:9px; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:700; cursor:pointer; transition:all .15s; border:1px solid transparent; background:transparent; color:${G.muted}; }
     .ap-tab:hover:not(.active) { background:${G.hover}; color:${G.ink}; }
-    .ap-tab.active { background:${G.meadow}; color:#fff; box-shadow:0 3px 10px rgba(21,128,61,0.22); }
+    .ap-tab.active { background:${G.meadow}; color:#fff; box-shadow:0 3px 10px rgba(0,0,0,0.22); }
     .ap-tab-count { display:inline-flex; align-items:center; justify-content:center; min-width:17px; height:17px; padding:0 6px; border-radius:99px; font-size:10px; font-weight:800; background:rgba(255,255,255,0.28); font-family:'IBM Plex Mono',monospace; }
     .ap-tab:not(.active) .ap-tab-count { background:${G.amberSoft}; color:#92400E; }
 
-    .r-tab { display:inline-flex; align-items:center; gap:5px; padding:6px 13px; border-radius:8px; font-family:'Inter',sans-serif; font-size:11.5px; font-weight:600; cursor:pointer; transition:all .15s; border:1px solid ${G.border}; background:#fff; color:${G.muted}; }
-    .r-tab.active { background:${G.meadow}; color:#fff; border-color:${G.meadowDeep}; box-shadow:0 3px 10px rgba(21,128,61,0.22); }
+    .r-tab { display:inline-flex; align-items:center; gap:5px; padding:6px 13px; border-radius:8px; font-family:'Inter',sans-serif; font-size:11.5px; font-weight:600; cursor:pointer; transition:all .15s; border:1px solid ${G.border}; background: var(--surface); color:${G.muted}; }
+    .r-tab.active { background:${G.meadow}; color:#fff; border-color:${G.meadowDeep}; box-shadow:0 3px 10px rgba(0,0,0,0.22); }
     .r-tab:hover:not(.active) { background:${G.hover}; border-color:${G.meadowBorder}; color:${G.ink}; }
 
-    .ap-tile { flex:1; display:flex; flex-direction:column; align-items:flex-start; gap:2px; padding:11px 15px; border-radius:11px; border:1px solid; background:#fff; font-family:'Inter',sans-serif; text-align:left; transition:transform .15s, box-shadow .15s; cursor:pointer; }
-    .ap-tile:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(10,46,28,0.08); }
+    .ap-tile { flex:1; display:flex; flex-direction:column; align-items:flex-start; gap:2px; padding:11px 15px; border-radius:11px; border:1px solid; background: var(--surface); font-family:'Inter',sans-serif; text-align:left; transition:transform .15s, box-shadow .15s; cursor:pointer; }
+    .ap-tile:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,0.08); }
     .ap-tile-value { font-family:'IBM Plex Mono',monospace; font-size:21px; font-weight:800; line-height:1; }
     .ap-tile-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; opacity:.85; }
 
     .prog-bar-wrap { height:6px; background:${G.borderLight}; border-radius:99px; overflow:hidden; width:100%; }
-    .prog-bar-fill { height:100%; border-radius:99px; transition:width .4s cubic-bezier(.4,0,.2,1); background:linear-gradient(90deg,${G.meadow},#22C55E); }
+    .prog-bar-fill { height:100%; border-radius:99px; transition:width .4s cubic-bezier(.4,0,.2,1); background:linear-gradient(90deg,${G.meadow},var(--meadow)); }
 
     /* Queue rail — mirrors the coordinator-side queue card (gradient head
        + circular status rail) so the admin queue view reads as the same
        product instead of the old boxy phase-track squares. */
-    .aq-card { border-radius:13px; border:1px solid ${G.border}; overflow:hidden; background:#fff; }
+    .aq-card { border-radius:13px; border:1px solid ${G.border}; overflow:hidden; background: var(--surface); }
     .aq-head { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:12px 16px; background:linear-gradient(135deg, ${G.meadowDeep}, ${G.meadow}); color:#fff; }
     .aq-head-title { font-size:13px; font-weight:800; letter-spacing:-.1px; line-height:1.3; }
     .aq-head-sub { font-size:11px; font-weight:500; color:rgba(255,255,255,0.82); margin-top:2px; line-height:1.3; }
@@ -99,25 +99,25 @@ if (!document.getElementById('approval-dashboard-style')) {
     .aq-head-of { font-size:9.5px; font-weight:600; color:rgba(255,255,255,0.75); margin-left:2px; }
     .aq-rail-wrap { padding:20px 16px 16px; }
 
-    .ap-order-item { display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:9px; background:#fff; cursor:grab; transition:border-color .12s, box-shadow .12s; }
+    .ap-order-item { display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:9px; background: var(--surface); cursor:grab; transition:border-color .12s, box-shadow .12s; }
 
     .cp-toast-wrap { position:fixed; bottom:24px; right:26px; z-index:9999; display:flex; flex-direction:column-reverse; gap:10px; align-items:flex-end; pointer-events:none; }
-    .cp-toast { display:flex; align-items:center; gap:10px; padding:13px 20px; border-radius:11px; font-family:'Inter',sans-serif; font-size:13px; font-weight:600; animation:apFadeUp .22s cubic-bezier(.4,0,.2,1); white-space:nowrap; pointer-events:auto; box-shadow:0 8px 24px rgba(10,46,28,0.15); }
+    .cp-toast { display:flex; align-items:center; gap:10px; padding:13px 20px; border-radius:11px; font-family:'Inter',sans-serif; font-size:13px; font-weight:600; animation:apFadeUp .22s cubic-bezier(.4,0,.2,1); white-space:nowrap; pointer-events:auto; box-shadow:0 8px 24px rgba(0,0,0,0.15); }
     .cp-toast.success { background:${G.meadow}; color:#fff; border:1px solid ${G.meadowBorder}; }
-    .cp-toast.error { background:#fff; color:${G.red}; border:1px solid ${G.redBorder}; }
-    .cp-toast.info { background:#fff; color:${G.meadowDeep}; border:1px solid ${G.meadowBorder}; }
+    .cp-toast.error { background: var(--surface); color:${G.red}; border:1px solid ${G.redBorder}; }
+    .cp-toast.info { background: var(--surface); color:${G.meadowDeep}; border:1px solid ${G.meadowBorder}; }
 
     .ap-modal-overlay { position:fixed; inset:0; background:rgba(10,30,20,0.48); z-index:2000; display:flex; align-items:center; justify-content:center; padding:20px; animation:apOverlayIn .15s ease; }
-    .ap-modal { background:#fff; border-radius:15px; box-shadow:0 24px 60px rgba(10,46,28,0.22); overflow:hidden; }
+    .ap-modal { background: var(--surface); border-radius:15px; box-shadow:0 24px 60px rgba(0,0,0,0.22); overflow:hidden; }
     .ap-modal-header { padding:17px 20px; border-bottom:1px solid ${G.border}; display:flex; align-items:flex-start; gap:12px; background:${G.bg}; }
     .ap-modal-title { font-size:15.5px; font-weight:800; color:${G.ink}; margin:0; letter-spacing:-.1px; }
-    .ap-modal-close { width:28px; height:28px; border-radius:8px; border:1px solid ${G.border}; background:#fff; cursor:pointer; color:${G.muted}; font-size:15px; line-height:1; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .ap-modal-close { width:28px; height:28px; border-radius:8px; border:1px solid ${G.border}; background: var(--surface); cursor:pointer; color:${G.muted}; font-size:15px; line-height:1; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     .ap-modal-close:hover { background:${G.hover}; }
 
     /* Review panel — slide-over from the right, keeps queue context visible
        behind a dim backdrop instead of yanking the admin to a full modal. */
     .ap-panel-overlay { position:fixed; inset:0; background:rgba(10,30,20,0.4); z-index:2500; animation:apOverlayIn .15s ease; }
-    .ap-panel { position:fixed; top:0; right:0; bottom:0; width:min(620px, 100vw); background:#fff; z-index:2501; display:flex; flex-direction:column; box-shadow:-16px 0 48px rgba(10,46,28,0.18); animation:apSlideIn .22s cubic-bezier(.16,1,.3,1); }
+    .ap-panel { position:fixed; top:0; right:0; bottom:0; width:min(620px, 100vw); background: var(--surface); z-index:2501; display:flex; flex-direction:column; box-shadow:-16px 0 48px rgba(0,0,0,0.18); animation:apSlideIn .22s cubic-bezier(.16,1,.3,1); }
     .ap-kbd { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 4px; border-radius:5px; background:${G.hover}; border:1px solid ${G.border}; font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:700; color:${G.muted}; }
   `
   document.head.appendChild(s)
@@ -147,7 +147,7 @@ function academicYearOptions() {
 }
 
 const STATUS = {
-  waiting:    { bg: '#F1F5F9', color: '#64748B', dot: '#94A3B8', label: 'Waiting'    },
+  waiting:    { bg: '#F1F5F9', color: 'var(--muted2)', dot: '#94A3B8', label: 'Waiting'    },
   active:     { bg: G.meadowSoft, color: G.meadowDeep, dot: G.meadow, label: 'Their turn' },
   generating: { bg: G.blueSoft, color: G.blue, dot: '#3B82F6', label: 'Generating' },
   submitted:  { bg: G.amberSoft, color: '#92400E', dot: G.amber, label: 'Submitted'  },
@@ -161,7 +161,7 @@ const SCHED_STATUS = {
 }
 
 const PROG_COLORS = { 'BSIT': G.meadow, 'BSCS': '#2563EB', 'BSEMC-GD': '#7C3AED', 'BSEMC-DAT': '#D97706' }
-const PROG_COLOR_PALETTE = [G.meadow, '#2563EB', '#7C3AED', '#D97706', '#DB2777', '#0EA5E9', '#CA8A04', '#059669']
+const PROG_COLOR_PALETTE = [G.meadow, '#2563EB', '#7C3AED', '#D97706', '#DB2777', '#0EA5E9', '#CA8A04', 'var(--meadow)']
 function getProgColor(prog) {
   if (!prog) return G.meadow
   if (PROG_COLORS[prog]) return PROG_COLORS[prog]
@@ -303,7 +303,7 @@ function DraggableOrderList({ order, dragIndex, overIndex, onDragStart, onDragEn
             className="ap-order-item"
             style={{
               border: `1.5px solid ${isOver ? G.meadow : G.border}`,
-              boxShadow: isDragging ? '0 6px 16px rgba(10,46,28,0.16)' : '0 1px 3px rgba(10,46,28,0.04)',
+              boxShadow: isDragging ? '0 6px 16px rgba(0,0,0,0.16)' : '0 1px 3px rgba(0,0,0,0.04)',
               opacity: isDragging ? 0.55 : 1,
             }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#B8CCC0" strokeWidth="2" style={{ flexShrink: 0 }}><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg>
@@ -650,7 +650,7 @@ function ReviewPanel({ scheduleId, pendingList, masterEvents, onClose, onApprove
 
         {/* Edit toolbar */}
         {!loading && isSubmitted && (
-          <div style={{ padding: '9px 20px', borderBottom: `1px solid ${G.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: '#fff' }}>
+          <div style={{ padding: '9px 20px', borderBottom: `1px solid ${G.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: 'var(--surface)' }}>
             <span style={{ fontSize: 11, color: G.muted2, display: 'flex', alignItems: 'center', gap: 12 }}>
               <span><span className="ap-kbd">J</span><span className="ap-kbd">K</span> nav · <span className="ap-kbd">A</span> approve</span>
               
@@ -693,7 +693,7 @@ function ReviewPanel({ scheduleId, pendingList, masterEvents, onClose, onApprove
             <EmptyState icon={ICONS.clipboard} text="No events found in this schedule." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: reviewViewMode === 'grid' ? 500 : 'auto' }}>
-              <div style={{ display: 'flex', padding: '12px 20px', background: '#F8FAF9', borderBottom: `1px solid ${G.border}`, alignItems: 'center', gap: 12 }}>
+              <div style={{ display: 'flex', padding: '12px 20px', background: 'var(--bg)', borderBottom: `1px solid ${G.border}`, alignItems: 'center', gap: 12 }}>
                 <div style={{ display: 'flex', background: G.hover, borderRadius: 8, padding: 4 }}>
                   <button onClick={() => setReviewViewMode('grid')}
                     style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'grid' ? '#fff' : 'transparent', color: reviewViewMode === 'grid' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'grid' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
@@ -714,7 +714,7 @@ function ReviewPanel({ scheduleId, pendingList, masterEvents, onClose, onApprove
                           background: activeDay === d ? `linear-gradient(135deg, ${G.meadow}, ${G.meadowDeep})` : '#fff',
                           color: activeDay === d ? '#fff' : G.muted,
                           transition: 'all .15s', whiteSpace: 'nowrap',
-                          boxShadow: activeDay === d ? '0 2px 8px rgba(21,128,61,.3)' : 'none'
+                          boxShadow: activeDay === d ? '0 2px 8px rgba(0,0,0,.3)' : 'none'
                         }}>
                         {d}
                       </button>
@@ -760,7 +760,7 @@ function ReviewPanel({ scheduleId, pendingList, masterEvents, onClose, onApprove
                   </tbody>
                 </table>
               ) : (
-                <div style={{ flex: 1, padding: '16px', background: '#fff', minHeight: 400 }}>
+                <div style={{ flex: 1, padding: '16px', background: 'var(--surface)', minHeight: 400 }}>
                   <TimeGrid 
                     rooms={Array.from(new Set(events.map(e => e.room))).sort()} 
                     dayEvents={events.filter(e => e.day === activeDay)} 
@@ -936,7 +936,7 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, 
 
       {showDeleteConfirm && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(10,30,18,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => !deletingQueue && setShowDeleteConfirm(false)}>
-          <div style={{ background: '#fff', borderRadius: 18, padding: '28px 28px 24px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(10,30,18,0.22)', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: 'var(--surface)', borderRadius: 18, padding: '28px 28px 24px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(10,30,18,0.22)', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
             <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#FFE8E8', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
             </div>
@@ -945,7 +945,7 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, 
               This cannot be undone. The queue and its scheduling order will be removed forever.
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setShowDeleteConfirm(false)} disabled={deletingQueue} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: '#fff', fontSize: 13, fontWeight: 600, color: G.muted, cursor: deletingQueue ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
+              <button onClick={() => setShowDeleteConfirm(false)} disabled={deletingQueue} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: 'var(--surface)', fontSize: 13, fontWeight: 600, color: G.muted, cursor: deletingQueue ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
                 Cancel
               </button>
               <button
@@ -1216,7 +1216,7 @@ function MasterTab({ queueId, onFinalize, programs }) {
                     </tbody>
                   </table>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 450, padding: '12px 16px', background: '#fff' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 450, padding: '12px 16px', background: 'var(--surface)' }}>
                     <div style={{ display: 'flex', gap: 6, marginBottom: 12, overflowX: 'auto', paddingBottom: 4 }}>
                       {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(d => (
                         <button key={d} onClick={() => setActiveDay(d)} 
@@ -1226,7 +1226,7 @@ function MasterTab({ queueId, onFinalize, programs }) {
                             background: activeDay === d ? `linear-gradient(135deg, ${G.meadow}, ${G.meadowDeep})` : '#fff',
                             color: activeDay === d ? '#fff' : G.muted,
                             transition: 'all .15s', whiteSpace: 'nowrap',
-                            boxShadow: activeDay === d ? '0 2px 8px rgba(21,128,61,.3)' : 'none'
+                            boxShadow: activeDay === d ? '0 2px 8px rgba(0,0,0,.3)' : 'none'
                           }}>
                           {d}
                         </button>
@@ -1254,7 +1254,7 @@ function MasterTab({ queueId, onFinalize, programs }) {
 
       {showFinalizeConfirm && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(10,30,18,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => !acting && setShowFinalizeConfirm(false)}>
-          <div style={{ background: '#fff', borderRadius: 18, padding: '28px 28px 24px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(10,30,18,0.22)', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: 'var(--surface)', borderRadius: 18, padding: '28px 28px 24px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(10,30,18,0.22)', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
             <div style={{ width: 52, height: 52, borderRadius: '50%', background: G.blueSoft, margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={G.blue} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             </div>
@@ -1263,7 +1263,7 @@ function MasterTab({ queueId, onFinalize, programs }) {
               Finalize and publish this schedule to faculty. This cannot be undone.
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setShowFinalizeConfirm(false)} disabled={acting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: '#fff', fontSize: 13, fontWeight: 600, color: G.muted, cursor: acting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
+              <button onClick={() => setShowFinalizeConfirm(false)} disabled={acting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: 'var(--surface)', fontSize: 13, fontWeight: 600, color: G.muted, cursor: acting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
                 Cancel
               </button>
               <button onClick={handleFinalize} disabled={acting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: G.blue, fontSize: 13, fontWeight: 700, color: '#fff', cursor: acting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: acting ? 0.7 : 1 }}>

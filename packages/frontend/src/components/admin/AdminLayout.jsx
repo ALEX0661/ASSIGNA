@@ -49,12 +49,12 @@ function LogoutModal({ onConfirm, onCancel }) {
             </svg>
           </div>
           <div>
-            <p style={{ fontSize:14, fontWeight:700, color:'#0E2A20' }}>Confirm Logout</p>
-            <p style={{ fontSize:12, color:'#6B8C7A', marginTop:3 }}>Are you sure you want to exit?</p>
+            <p style={{ fontSize:14, fontWeight:700, color: 'var(--ink)' }}>Confirm Logout</p>
+            <p style={{ fontSize:12, color: 'var(--muted2)', marginTop:3 }}>Are you sure you want to exit?</p>
           </div>
         </div>
         <div style={{ display:'flex', gap:9, justifyContent:'flex-end' }}>
-          <button onClick={onCancel} style={{ padding:'8px 18px', borderRadius:10, border:'1.5px solid #D8E8DF', background:'#F2F7F4', color:'#1C3D2A', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
+          <button onClick={onCancel} style={{ padding:'8px 18px', borderRadius:10, border:'1.5px solid #D8E8DF', background: 'var(--bg)', color: 'var(--ink2)', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
             Cancel
           </button>
           <button onClick={onConfirm} style={{ padding:'8px 18px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#EF4444,#C0392B)', color:'#fff', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 4px 14px rgba(192,57,43,0.3)' }}>
@@ -113,7 +113,7 @@ export default function AdminLayout() {
       {/* ── Sidebar ── */}
       <aside style={{
         width: sidebarWidth,
-        background: 'linear-gradient(180deg, #1A5C35 0%, #154D2C 60%, #0F3D22 100%)',
+        background: 'linear-gradient(180deg, var(--meadow-mid) 0%, var(--meadow-deep) 100%)',
         display:'flex', flexDirection:'column', flexShrink:0,
         boxShadow:'4px 0 20px rgba(10,40,20,0.22)', zIndex:100,
         position: isMobile ? 'absolute' : 'sticky', top:0, left:0, height:'100vh', overflow:'visible',
@@ -215,7 +215,7 @@ export default function AdminLayout() {
                 style={{ 
                   display:'flex', alignItems:'center', justifyContent:'center', 
                   width: 24, height: 24, borderRadius: '50%', border: '1.5px solid var(--border)', 
-                  background: '#fff', color: 'var(--muted)', cursor: 'pointer', transition: 'all .15s', flexShrink: 0,
+                  background: 'var(--surface)', color: 'var(--muted)', cursor: 'pointer', transition: 'all .15s', flexShrink: 0,
                   fontSize: 13, fontWeight: 800, fontFamily: "'Inter',sans-serif", padding: 0, lineHeight: 1
                 }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'var(--meadowSoft)'; e.currentTarget.style.color = 'var(--meadowDeep)' }}

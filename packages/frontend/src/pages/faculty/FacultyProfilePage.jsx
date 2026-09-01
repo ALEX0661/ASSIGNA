@@ -5,29 +5,29 @@ import SpecializationModal from '../../components/FacultyDetail/SpecializationMo
 
 // ─── Theme — matches FacultyCards/FacultyDetailPage exactly ──────────────────
 const T = {
-  green:        '#15803D',
-  greenDeep:    '#0F5C2C',
-  greenMid:     '#166534',
-  greenSoft:    '#DCFCE7',
-  greenBorder:  '#BBF7D0',
-  textMain:     '#0E2A20',
+  green: 'var(--meadow, var(--meadow))',
+  greenDeep:    'var(--meadow-deep)',
+  greenMid:     'var(--meadow-mid)',
+  greenSoft:    'var(--meadow-soft)',
+  greenBorder:  'var(--meadow-border)',
+  textMain:     'var(--ink)',
   textMid:      '#1C3D2A',
-  textMuted:    '#4B7060',
-  textLight:    '#6B8C7A',
-  border:       '#D8E8DF',
-  borderLight:  '#EBF4EF',
-  bg:           '#FFFFFF',
-  bgAlt:        '#F2F7F4',
+  textMuted: 'var(--muted, #4B7060)',
+  textLight: 'var(--muted2, #6B8C7A)',
+  border:       'var(--border)',
+  borderLight:  'var(--hover)',
+  bg: 'var(--surface, #FFFFFF)',
+  bgAlt: 'var(--bg, #F2F7F4)',
   bgPage:       '#F2F7F4',
   danger:       '#EF4444',
   dangerSoft:   '#FEF2F2',
-  headerBg:     '#F0FDF4',
-  headerBorder: '#BBF7D0',
+  headerBg:     'var(--meadow-soft)',
+  headerBorder: 'var(--meadow-border)',
   // Specialization accent
-  specGreen:    '#15803D',
-  specGreenDeep:'#0F5C2C',
-  specGreenSoft:'#DCFCE7',
-  specGreenBorder:'#BBF7D0',
+  specGreen:    'var(--meadow, var(--meadow))',
+  specGreenDeep:'var(--meadow-deep)',
+  specGreenSoft:'var(--meadow-soft)',
+  specGreenBorder:'var(--meadow-border)',
   // Orange (part-time notice)
   orange:       '#D97706',
   orangeDeep:   '#92400E',
@@ -55,8 +55,8 @@ function getInitials(name = '') {
 
 function getAvatarColor(name = '') {
   const palette = [
-    { bg: '#D1FAE5', fg: '#059669' }, { bg: '#DBEAFE', fg: '#2563EB' },
-    { bg: '#FCE7F3', fg: '#DB2777' }, { bg: '#EDE9FE', fg: '#7C3AED' },
+    { bg: 'var(--meadow-soft)', fg: 'var(--meadow)' }, { bg: '#DBEAFE', fg: '#2563EB' },
+    { bg: '#FCE7F3', fg: '#DB2777' }, { bg: 'color-mix(in srgb, #6D28D9 15%, transparent)', fg: '#7C3AED' },
     { bg: '#FEF3C7', fg: '#D97706' }, { bg: '#FFE4E6', fg: '#E11D48' },
   ]
   const code = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
@@ -105,7 +105,7 @@ function SaveBtn({ saving, saved, dirty, onClick }) {
         color: saved ? T.greenDeep : '#fff',
         fontSize: 12, fontWeight: 600, cursor: saving ? 'default' : 'pointer',
         fontFamily: "'Inter',sans-serif",
-        boxShadow: saved ? 'none' : `0 3px 10px rgba(15,92,44,0.28)`,
+        boxShadow: saved ? 'none' : `0 3px 10px rgba(0,0,0,0.28)`,
         opacity: saving ? 0.7 : 1, transition: 'all 0.2s',
       }}
     >
@@ -157,7 +157,7 @@ function SpecTag({ spec, courseMap = {} }) {
       <span style={{ fontSize: 12.5, fontWeight: 600, color: T.textMain, fontFamily: "'Inter',sans-serif" }}>{title}</span>
       <span style={{
         fontSize: 10, fontWeight: 700, color: T.greenDeep,
-        background: '#fff', padding: '2px 9px', borderRadius: 99,
+        background: 'var(--surface)', padding: '2px 9px', borderRadius: 99,
         border: `1.5px solid ${T.greenBorder}`, letterSpacing: '.3px', flexShrink: 0,
       }}>{spec.courseCode}</span>
     </div>
@@ -368,7 +368,7 @@ export default function FacultyProfilePage() {
             )}
           </div>
           {!loading && (
-            <div className="fp-hero-badge" style={{ padding: '6px 16px', borderRadius: 99, fontSize: 11, fontWeight: 700, alignSelf: 'center', background: isPartTime ? 'rgba(255,255,255,0.08)' : 'rgba(110,231,183,0.15)', color: isPartTime ? 'rgba(255,255,255,0.65)' : '#6EE7B7', border: `1px solid ${isPartTime ? 'rgba(255,255,255,0.15)' : 'rgba(110,231,183,0.30)'}`, textTransform: 'uppercase', letterSpacing: '.5px' }}>
+            <div className="fp-hero-badge" style={{ padding: '6px 16px', borderRadius: 99, fontSize: 11, fontWeight: 700, alignSelf: 'center', background: isPartTime ? 'rgba(255,255,255,0.08)' : 'rgba(110,231,183,0.15)', color: isPartTime ? 'rgba(255,255,255,0.65)' : 'var(--mint)', border: `1px solid ${isPartTime ? 'rgba(255,255,255,0.15)' : 'rgba(110,231,183,0.30)'}`, textTransform: 'uppercase', letterSpacing: '.5px' }}>
               {isPartTime ? 'Part-Time' : 'Full-Time'}
             </div>
           )}
@@ -388,9 +388,9 @@ export default function FacultyProfilePage() {
         <div className="fp-sidebar" style={{ flex: '0 0 280px', minWidth: 260, display: 'flex', flexDirection: 'column', gap: 16, animation: 'fp-fadeUp 0.3s ease both' }}>
 
           {/* Profile card — dark green gradient header, matches FacultyCards ProfileCard */}
-          <div style={{ background: T.bg, borderRadius: 16, border: `1px solid ${T.border}`, overflow: 'hidden', boxShadow: '0 4px 20px rgba(10,46,28,0.08)' }}>
+          <div style={{ background: T.bg, borderRadius: 16, border: `1px solid ${T.border}`, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
             {/* Avatar header */}
-            <div className="fp-sidebar-card-top" style={{ background: `linear-gradient(160deg,#166534 0%,${T.greenDeep} 100%)`, padding: '28px 24px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, position: 'relative', overflow: 'hidden' }}>
+            <div className="fp-sidebar-card-top" style={{ background: `linear-gradient(160deg,var(--meadow-mid) 0%,${T.greenDeep} 100%)`, padding: '28px 24px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: -30, right: -30, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
               <div style={{ position: 'absolute', bottom: -20, left: -14, width: 72, height: 72, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', pointerEvents: 'none' }} />
               {loading ? (
@@ -459,7 +459,7 @@ export default function FacultyProfilePage() {
         <div className="fp-right-col" style={{ flex: 1, minWidth: 280, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           {/* ── Basic Information Card ── */}
-          <div style={{ background: T.bg, borderRadius: 16, border: `1px solid ${T.border}`, overflow: 'hidden', boxShadow: '0 4px 20px rgba(10,46,28,0.08)', animation: 'fp-fadeUp 0.3s ease 0.05s both' }}>
+          <div style={{ background: T.bg, borderRadius: 16, border: `1px solid ${T.border}`, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', animation: 'fp-fadeUp 0.3s ease 0.05s both' }}>
             <CardHeader
               title="Basic Information"
               right={<SaveBtn dirty={isInfoChanged} saving={infoSaving} saved={infoSaved} onClick={handleSaveInfo} />}
@@ -537,7 +537,7 @@ export default function FacultyProfilePage() {
 
       {/* ── Schedule Preferences Card — full width, part-time only ── */}
       {(loading || isPartTime) && (
-        <div style={{ background: T.bg, borderRadius: 16, border: `1px solid ${T.border}`, overflow: 'hidden', boxShadow: '0 4px 20px rgba(10,46,28,0.08)', animation: 'fp-fadeUp 0.3s ease 0.15s both', marginTop: 16 }}>
+        <div style={{ background: T.bg, borderRadius: 16, border: `1px solid ${T.border}`, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', animation: 'fp-fadeUp 0.3s ease 0.15s both', marginTop: 16 }}>
           <CardHeader
             title="Schedule Preferences"
             sub="Preferred teaching days and time window"
@@ -562,7 +562,7 @@ export default function FacultyProfilePage() {
                         background: on ? T.green : T.bgAlt, color: on ? '#fff' : T.textMuted,
                         border: on ? '1.5px solid transparent' : `1.5px solid ${T.border}`,
                         cursor: 'pointer', fontWeight: on ? 700 : 500, transition: 'all 0.15s',
-                        boxShadow: on ? '0 2px 8px rgba(21,128,61,0.28)' : 'none',
+                        boxShadow: on ? '0 2px 8px rgba(0,0,0,0.28)' : 'none',
                       }}>
                         {day.slice(0, 3)}
                       </button>
@@ -614,13 +614,13 @@ export default function FacultyProfilePage() {
 
       {/* ── Login Credentials Card — full width ── */}
       {!loading && (
-        <div style={{ background: T.bg, borderRadius: 16, border: `1px solid ${T.border}`, overflow: 'hidden', boxShadow: '0 4px 20px rgba(10,46,28,0.08)', animation: 'fp-fadeUp 0.3s ease 0.2s both', marginTop: 16 }}>
+        <div style={{ background: T.bg, borderRadius: 16, border: `1px solid ${T.border}`, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', animation: 'fp-fadeUp 0.3s ease 0.2s both', marginTop: 16 }}>
           <CardHeader
             title="Login Credentials"
             sub={form.email ? undefined : 'No account activated yet'}
             right={
               form.email
-                ? <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, background: 'rgba(134,239,172,0.25)', color: '#059669', border: '1px solid rgba(134,239,172,0.5)' }}>Active</span>
+                ? <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, background: 'rgba(134,239,172,0.25)', color: 'var(--meadow)', border: '1px solid rgba(134,239,172,0.5)' }}>Active</span>
                 : <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, background: 'rgba(239,68,68,0.15)', color: T.danger, border: '1px solid rgba(239,68,68,0.3)' }}>Not Activated</span>
             }
           />
@@ -658,13 +658,13 @@ export default function FacultyProfilePage() {
                 </FormField>
               )}
               <div style={{ paddingTop: credPassword ? 0 : 24 }}>
-                <button type="button" onClick={handleSaveCredentials} disabled={credSaving} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 20px', borderRadius: 8, border: 'none', fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 600, cursor: credSaving ? 'default' : 'pointer', background: `linear-gradient(135deg,${T.green},${T.greenDeep})`, color: '#fff', boxShadow: '0 4px 14px rgba(15,92,44,0.25)', opacity: credSaving ? 0.7 : 1, width: '100%', transition: 'all 0.2s' }}>
+                <button type="button" onClick={handleSaveCredentials} disabled={credSaving} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 20px', borderRadius: 8, border: 'none', fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 600, cursor: credSaving ? 'default' : 'pointer', background: `linear-gradient(135deg,${T.green},${T.greenDeep})`, color: '#fff', boxShadow: '0 4px 14px rgba(0,0,0,0.25)', opacity: credSaving ? 0.7 : 1, width: '100%', transition: 'all 0.2s' }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                   {credSaving ? 'Saving…' : (form.email ? 'Update Credentials' : 'Activate Account')}
                 </button>
                 {credSuccess && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, fontSize: 12, color: '#166534', fontWeight: 600 }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#166534" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, fontSize: 12, color: 'var(--meadow-mid)', fontWeight: 600 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--meadow-mid)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                     {credSuccess}
                   </div>
                 )}

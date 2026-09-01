@@ -6,18 +6,18 @@ import iconTime from '../../assets/TIME.png'
 
 /* ── Design tokens (Unified with RoomsPage & CourseListPage) ── */
 const G = {
-  meadow:       '#15803D',
-  meadowDeep:   '#0F5C2C',
-  meadowSoft:   '#DCFCE7',
-  meadowBorder: '#BBF7D0',
-  ink:          '#0E2A20',
-  muted:        '#4B7060',
-  muted2:       '#6B8C7A',
-  border:       '#D8E8DF',
-  borderLight:  '#EBF4EF',
-  bg:           '#F2F7F4',
-  surface:      '#FFFFFF',
-  hover:        '#EBF4EF',
+  meadow: 'var(--meadow, var(--meadow))',
+  meadowDeep:   'var(--meadow-deep)',
+  meadowSoft:   'var(--meadow-soft)',
+  meadowBorder: 'var(--meadow-border)',
+  ink: 'var(--ink, #0E2A20)',
+  muted: 'var(--muted, #4B7060)',
+  muted2: 'var(--muted2, #6B8C7A)',
+  border:       'var(--border)',
+  borderLight:  'var(--hover)',
+  bg: 'var(--bg, #F2F7F4)',
+  surface: 'var(--surface, #FFFFFF)',
+  hover:        'var(--hover)',
 }
 
 /* ─── Styles ──────────────────────────────────────────────────────────────── */
@@ -41,13 +41,13 @@ if (!document.getElementById('settings-page-style')) {
     /* ── Toasts (From CourseListPage) ── */
     .cp-toast-wrap { position:fixed;bottom:24px;left:50%;z-index:9999;display:flex;flex-direction:column;gap:10px;align-items:center;pointer-events:none;transform:translateX(-50%); }
     .cp-toast { display:flex;align-items:center;gap:10px;padding:12px 20px;border-radius:12px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;animation:cpToastIn .22s cubic-bezier(.4,0,.2,1);white-space:nowrap;pointer-events:auto; }
-    .cp-toast.success { background:linear-gradient(135deg,${G.meadow},${G.meadowDeep});color:#fff;box-shadow:0 8px 24px rgba(21,128,61,0.3);border:1px solid ${G.meadowBorder}; }
-    .cp-toast.error   { background:#fff;color:#DC2626;border:1.5px solid #FECACA;box-shadow:0 8px 24px rgba(220,38,38,0.15); }
+    .cp-toast.success { background:linear-gradient(135deg,${G.meadow},${G.meadowDeep});color:#fff;box-shadow:0 8px 24px rgba(0,0,0,0.3);border:1px solid ${G.meadowBorder}; }
+    .cp-toast.error   { background: var(--surface);color:#DC2626;border:1.5px solid #FECACA;box-shadow:0 8px 24px rgba(220,38,38,0.15); }
 
     /* ── Standard Cards (Matches RoomsPage) ── */
     .stg-card { 
-      background: #fff; border-radius: 10px; border: 1px solid ${G.border}; 
-      overflow: hidden; box-shadow: 0 2px 8px rgba(10,46,28,0.03); 
+      background: var(--surface); border-radius: 10px; border: 1px solid ${G.border}; 
+      overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.03); 
       display: flex; flex-direction: column; margin-bottom: 20px;
     }
     .stg-card-head { 
@@ -67,7 +67,7 @@ if (!document.getElementById('settings-page-style')) {
     .day-row { display: flex; gap: 8px; flex-wrap: wrap; }
     .day-btn {
       flex: 1; min-width: 90px; padding: 14px 10px; border-radius: 8px;
-      border: 1px solid ${G.border}; background: #fff; color: ${G.muted};
+      border: 1px solid ${G.border}; background: var(--surface); color: ${G.muted};
       font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.15s;
       display: flex; flex-direction: column; align-items: center; gap: 4px;
       box-shadow: 0 1px 2px rgba(0,0,0,0.02);
@@ -75,7 +75,7 @@ if (!document.getElementById('settings-page-style')) {
     .day-btn:hover:not(.active) { border-color: ${G.meadowBorder}; background: ${G.hover}; color: ${G.ink}; }
     .day-btn.active {
       background: ${G.meadowSoft}; border-color: ${G.meadowBorder}; color: ${G.meadowDeep};
-      box-shadow: 0 2px 8px rgba(21,128,61,0.08);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
     .day-btn-title { font-size: 13px; font-weight: 700; }
     .day-btn-sub { font-size: 10.5px; font-weight: 500; opacity: 0.8; }
@@ -84,21 +84,21 @@ if (!document.getElementById('settings-page-style')) {
     .cp-sel { 
       padding: 9px 12px; border-radius: 10px; border: 1px solid ${G.border}; 
       font-family: 'Inter',sans-serif; font-size: 12.5px; color: ${G.ink}; 
-      background: #fff; outline: none; transition: all 0.15s ease; width: 100%; 
+      background: var(--surface); outline: none; transition: all 0.15s ease; width: 100%; 
       box-sizing: border-box; box-shadow: 0 1px 3px rgba(0,0,0,0.02);
       appearance:none; cursor:pointer; padding-right:32px; 
       background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B8C7A' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); 
       background-repeat:no-repeat; background-position:right 12px center; 
     }
-    .cp-sel:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(21,128,61,0.1); }
+    .cp-sel:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
 
     /* Buttons */
-    .btn-outline { display: inline-flex; align-items: center; gap: 5px; padding: 8px 16px; border-radius: 8px; border: 1px solid ${G.border}; font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 600; cursor: pointer; background: #fff; color: ${G.muted}; transition: all 0.13s; }
+    .btn-outline { display: inline-flex; align-items: center; gap: 5px; padding: 8px 16px; border-radius: 8px; border: 1px solid ${G.border}; font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 600; cursor: pointer; background: var(--surface); color: ${G.muted}; transition: all 0.13s; }
     .btn-outline:hover:not(:disabled) { background: ${G.hover}; color: ${G.ink}; border-color: ${G.meadowBorder}; }
     .btn-outline:disabled { opacity: .6; cursor: default; }
 
-    .btn-primary { display: inline-flex; align-items: center; gap: 6px; padding: 8px 20px; border-radius: 8px; border: none; fontFamily: 'Inter',sans-serif; fontSize: 12.5px; font-weight: 600; cursor: pointer; transition: all .15s; background: linear-gradient(135deg,${G.meadow},${G.meadowDeep}); color: #fff; box-shadow: 0 3px 10px rgba(21,128,61,0.25); }
-    .btn-primary:hover:not(:disabled) { box-shadow: 0 5px 14px rgba(21,128,61,0.35); transform: translateY(-1px); }
+    .btn-primary { display: inline-flex; align-items: center; gap: 6px; padding: 8px 20px; border-radius: 8px; border: none; fontFamily: 'Inter',sans-serif; fontSize: 12.5px; font-weight: 600; cursor: pointer; transition: all .15s; background: linear-gradient(135deg,${G.meadow},${G.meadowDeep}); color: #fff; box-shadow: 0 3px 10px rgba(0,0,0,0.25); }
+    .btn-primary:hover:not(:disabled) { box-shadow: 0 5px 14px rgba(0,0,0,0.35); transform: translateY(-1px); }
     .btn-primary:disabled { opacity: .6; cursor: default; transform: none; box-shadow: none; }
   `
   document.head.appendChild(s)
@@ -168,6 +168,49 @@ function markOnboardingCompleted() {
 /* ─── Main Page ───────────────────────────────────────────────────────────── */
 export default function SettingsPage() {
   const { toasts, toast } = useToast()
+
+  const [activeTheme, setActiveTheme] = useState('default')
+  const [isDarkMode, setIsDarkMode] = useState(false)
+
+  const availableThemes = [
+    { id: 'default', name: 'Meadow Green', color: '#15803D' },
+    { id: 'blue', name: 'Ocean Blue', color: '#2563EB' },
+    { id: 'purple', name: 'Royal Purple', color: '#9333EA' },
+    { id: 'rose', name: 'Rose Red', color: '#E11D48' },
+    { id: 'amber', name: 'Sunset Amber', color: '#D97706' },
+    { id: 'slate', name: 'Slate Gray', color: '#475569' },
+    { id: 'teal', name: 'Teal', color: '#0D9488' },
+    { id: 'indigo', name: 'Indigo', color: '#4F46E5' },
+    { id: 'crimson', name: 'Crimson', color: '#DC2626' }
+  ]
+
+  useEffect(() => {
+    const root = document.documentElement
+    const theme = root.getAttribute('data-theme') || 'default'
+    setActiveTheme(theme)
+    setIsDarkMode(root.getAttribute('data-mode') === 'dark')
+  }, [])
+
+  const handleModeChange = (dark) => {
+    setIsDarkMode(dark)
+    const root = document.documentElement
+    if (dark) {
+      root.setAttribute('data-mode', 'dark')
+      localStorage.setItem('agy-mode', 'dark')
+    } else {
+      root.removeAttribute('data-mode')
+      localStorage.setItem('agy-mode', 'light')
+    }
+  }
+
+  const handleThemeChange = (t) => {
+    setActiveTheme(t)
+    localStorage.setItem('agy-theme', t)
+    if (t === 'default') document.documentElement.removeAttribute('data-theme')
+    else document.documentElement.setAttribute('data-theme', t)
+    toast('Theme updated!', 'success')
+  }
+
 
   const { TourElement, startTour } = useTour('adminSettings', [
     {
@@ -416,7 +459,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div style={{ marginTop: 24, padding: '12px 16px', borderRadius: 8, background: '#FAFAFE', border: `1px solid ${G.borderLight}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ marginTop: 24, padding: '12px 16px', borderRadius: 8, background: 'var(--bg)', border: `1px solid ${G.borderLight}`, display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 6, height: 6, borderRadius: '50%', background: G.meadow, flexShrink: 0 }} />
               {loading ? <Skel w={280} h={12} /> : (
                 <div style={{ fontSize: 12, color: G.muted }}>
@@ -427,7 +470,73 @@ export default function SettingsPage() {
                 </div>
               )}
             </div>
+
+        {/* Card 3 - Color Theme */}
+        <div className="stg-card">
+          <div className="stg-card-head">
+            <div className="stg-icon-box" style={{ background: G.meadowSoft, border: `1px solid ${G.meadowBorder}` }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={G.meadow} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+            </div>
+            <div style={{ flex: 1, minWidth: '200px' }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: G.ink }}>Color Theme</div>
+              <div style={{ fontSize: 12.5, color: G.muted }}>Personalize the appearance of the application</div>
+            </div>
           </div>
+          <div className="stg-card-body">
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              {availableThemes.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => handleThemeChange(t.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px',
+                    borderRadius: 10, background: activeTheme === t.id ? G.hover : 'var(--surface)',
+                    border: `1px solid ${activeTheme === t.id ? 'var(--meadow-border)' : 'var(--border)'}`,
+                    cursor: 'pointer', transition: 'all 0.15s',
+                    boxShadow: activeTheme === t.id ? `0 2px 8px ${t.color}33` : 'none'
+                  }}
+                >
+                  <div style={{ width: 18, height: 18, borderRadius: '50%', background: t.color, border: '2px solid var(--surface)', boxShadow: '0 0 0 1px rgba(0,0,0,0.1)' }} />
+                  <span style={{ fontSize: 13, fontWeight: activeTheme === t.id ? 700 : 500, color: activeTheme === t.id ? G.meadow : G.muted }}>
+                    {t.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div style={{ marginTop: 24, padding: '12px 16px', borderRadius: 8, background: G.bg, border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: G.meadowSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {isDarkMode ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={G.meadow} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={G.meadow} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+                  )}
+                </div>
+                <div>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: G.ink }}>Dark Mode</div>
+                  <div style={{ fontSize: 11.5, color: G.muted }}>Switch to a darker appearance</div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleModeChange(!isDarkMode)}
+                style={{
+                  width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+                  background: isDarkMode ? G.meadow : '#CBD5E1', position: 'relative',
+                  transition: 'background 0.2s'
+                }}
+              >
+                <div style={{
+                  width: 20, height: 20, borderRadius: '50%', background: 'var(--surface, #fff)',
+                  position: 'absolute', top: 2, left: isDarkMode ? 22 : 2,
+                  transition: 'left 0.2s, transform 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                }} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+                </div>
         </div>
       </div>
 

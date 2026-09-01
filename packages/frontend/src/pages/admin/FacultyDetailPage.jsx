@@ -120,9 +120,9 @@ export default function FacultyDetailPage() {
   const displayUnits  = scheduleUnits ?? (form.units || 0)
   const isOverloaded  = displayUnits > effectiveCap
   const loadPct       = Math.min(100, (displayUnits / effectiveCap) * 100)
-  const barBg         = isOverloaded ? 'linear-gradient(90deg,#E74C3C,#C0392B)' : loadPct > 80 ? 'linear-gradient(90deg,#D97706,#F59E0B)' : 'linear-gradient(90deg,#6EE7B7,#15803D)'
-  const statusBg      = form.status === 'full-time' ? '#DCFCE7' : '#EBF4EF'
-  const statusCl      = form.status === 'full-time' ? '#15803D' : '#4B7060'
+  const barBg         = isOverloaded ? 'linear-gradient(90deg,#E74C3C,#C0392B)' : loadPct > 80 ? 'linear-gradient(90deg,#D97706,#F59E0B)' : 'linear-gradient(90deg,var(--mint),var(--meadow))'
+  const statusBg      = form.status === 'full-time' ? 'var(--meadow-soft)' : 'var(--hover)'
+  const statusCl      = form.status === 'full-time' ? 'var(--meadow)' : 'var(--muted)'
 
   const infoChanged  = savedInfo  != null && ['name','firstName','lastName','status','AcademicRank','Department','Educational_attainment','SexAtBirth'].some(k => form[k] !== savedInfo[k])
   const prefsChanged = savedPrefs != null && (
@@ -226,35 +226,35 @@ export default function FacultyDetailPage() {
   if (pageLoading) return <PageSkeleton />
 
   if (credActivated) {
-    const copyBg = pwCopied ? '#DCFCE7' : '#fff', copyCl = pwCopied ? '#15803D' : '#0F5C2C'
+    const copyBg = pwCopied ? 'var(--meadow-soft)' : '#fff', copyCl = pwCopied ? 'var(--meadow)' : 'var(--meadow-deep)'
     return (
       <div style={{ padding:'28px 32px', fontFamily:"'Inter',sans-serif", maxWidth:560 }}>
-        <div style={{ background:'#fff', borderRadius:18, border:'1px solid #D8E8DF', overflow:'hidden', boxShadow:'0 4px 20px rgba(10,46,28,0.08)' }}>
-          <div style={{ padding:'24px 28px', borderBottom:'1px solid #EBF4EF', display:'flex', gap:14, alignItems:'center' }}>
-            <div style={{ width:44, height:44, borderRadius:'50%', background:'#DCFCE7', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        <div style={{ background: 'var(--surface)', borderRadius:18, border:'1px solid var(--border)', overflow:'hidden', boxShadow:'0 4px 20px rgba(0,0,0,0.08)' }}>
+          <div style={{ padding:'24px 28px', borderBottom:'1px solid var(--hover)', display:'flex', gap:14, alignItems:'center' }}>
+            <div style={{ width:44, height:44, borderRadius:'50%', background:'var(--meadow-soft)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
             <div>
-              <div style={{ fontSize:15, fontWeight:700, color:'#15803D' }}>Account activated</div>
-              <div style={{ fontSize:12, color:'#4B7060', marginTop:2 }}>Firebase Auth account created and profile migrated.</div>
+              <div style={{ fontSize:15, fontWeight:700, color: 'var(--meadow)' }}>Account activated</div>
+              <div style={{ fontSize:12, color: 'var(--muted)', marginTop:2 }}>Firebase Auth account created and profile migrated.</div>
             </div>
           </div>
           <div style={{ padding:'24px 28px' }}>
             {credActivated.tempPassword ? (
               <>
-                <div style={{ fontSize:11, fontWeight:700, color:'#4B7060', textTransform:'uppercase', letterSpacing:'.6px', marginBottom:10 }}>Auto-generated Password</div>
+                <div style={{ fontSize:11, fontWeight:700, color: 'var(--muted)', textTransform:'uppercase', letterSpacing:'.6px', marginBottom:10 }}>Auto-generated Password</div>
                 <div style={{ display:'flex', gap:10, marginBottom:14 }}>
-                  <code style={{ flex:1, padding:'12px 16px', background:'#F2F7F4', borderRadius:10, border:'1.5px solid #D8E8DF', fontSize:15, fontFamily:'monospace', letterSpacing:2, color:'#0E2A20' }}>{credActivated.tempPassword}</code>
-                  <button type="button" onClick={() => { navigator.clipboard.writeText(credActivated.tempPassword); setPwCopied(true); setTimeout(() => setPwCopied(false), 2000) }} style={{ padding:'12px 16px', borderRadius:10, border:'1.5px solid #D8E8DF', background:copyBg, color:copyCl, fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif", whiteSpace:'nowrap' }}>
+                  <code style={{ flex:1, padding:'12px 16px', background: 'var(--bg)', borderRadius:10, border:'1.5px solid var(--border)', fontSize:15, fontFamily:'monospace', letterSpacing:2, color: 'var(--ink)' }}>{credActivated.tempPassword}</code>
+                  <button type="button" onClick={() => { navigator.clipboard.writeText(credActivated.tempPassword); setPwCopied(true); setTimeout(() => setPwCopied(false), 2000) }} style={{ padding:'12px 16px', borderRadius:10, border:'1.5px solid var(--border)', background:copyBg, color:copyCl, fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif", whiteSpace:'nowrap' }}>
                     {pwCopied ? 'Copied!' : 'Copy'}
                   </button>
                 </div>
               </>
             ) : (
-              <div style={{ marginBottom:14, fontSize:12.5, color:'#1C3D2A' }}>Credentials saved. The faculty member can now log in with the password you set.</div>
+              <div style={{ marginBottom:14, fontSize:12.5, color: 'var(--ink2)' }}>Credentials saved. The faculty member can now log in with the password you set.</div>
             )}
-            <div style={{ fontSize:11.5, color:'#4B7060', background:'#F2F7F4', borderRadius:8, padding:'10px 14px', border:'1px solid #D8E8DF', marginBottom:22 }}>The faculty member must log out and back in for their role to take effect.</div>
-            <button type="button" onClick={() => { const dest = credActivated.newId || id; setCredActivated(null); navigate(`/dashboard/faculty/${dest}`) }} style={{ padding:'9px 18px', borderRadius:9, border:'none', background:'linear-gradient(135deg,#15803D,#0F5C2C)', color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>
+            <div style={{ fontSize:11.5, color: 'var(--muted)', background: 'var(--bg)', borderRadius:8, padding:'10px 14px', border:'1px solid var(--border)', marginBottom:22 }}>The faculty member must log out and back in for their role to take effect.</div>
+            <button type="button" onClick={() => { const dest = credActivated.newId || id; setCredActivated(null); navigate(`/dashboard/faculty/${dest}`) }} style={{ padding:'9px 18px', borderRadius:9, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>
               Continue to Profile
             </button>
           </div>
@@ -264,37 +264,37 @@ export default function FacultyDetailPage() {
   }
 
   if (createdPassword) {
-    const cpBg = passwordCopied ? '#DCFCE7' : '#fff', cpCl = passwordCopied ? '#15803D' : '#0F5C2C'
+    const cpBg = passwordCopied ? 'var(--meadow-soft)' : '#fff', cpCl = passwordCopied ? 'var(--meadow)' : 'var(--meadow-deep)'
     return (
       <div style={{ padding:'28px 32px', fontFamily:"'Inter',sans-serif", maxWidth:560 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:22 }}>
-          <button onClick={() => navigate('/dashboard/faculty')} style={{ background:'none', border:'none', color:'#4B7060', cursor:'pointer', display:'flex', alignItems:'center', gap:5, fontSize:12.5, fontFamily:"'Inter',sans-serif", padding:0 }}>
+          <button onClick={() => navigate('/dashboard/faculty')} style={{ background:'none', border:'none', color: 'var(--muted)', cursor:'pointer', display:'flex', alignItems:'center', gap:5, fontSize:12.5, fontFamily:"'Inter',sans-serif", padding:0 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>Faculty
           </button>
-          <span style={{ fontSize:12.5, color:'#0E2A20', fontWeight:600 }}>Account Created</span>
+          <span style={{ fontSize:12.5, color: 'var(--ink)', fontWeight:600 }}>Account Created</span>
         </div>
-        <div style={{ background:'#fff', borderRadius:18, border:'1px solid #D8E8DF', overflow:'hidden', boxShadow:'0 4px 20px rgba(10,46,28,0.08)' }}>
-          <div style={{ padding:'24px 28px', borderBottom:'1px solid #EBF4EF', display:'flex', gap:14, alignItems:'center' }}>
-            <div style={{ width:44, height:44, borderRadius:'50%', background:'#DCFCE7', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        <div style={{ background: 'var(--surface)', borderRadius:18, border:'1px solid var(--border)', overflow:'hidden', boxShadow:'0 4px 20px rgba(0,0,0,0.08)' }}>
+          <div style={{ padding:'24px 28px', borderBottom:'1px solid var(--hover)', display:'flex', gap:14, alignItems:'center' }}>
+            <div style={{ width:44, height:44, borderRadius:'50%', background:'var(--meadow-soft)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
             <div>
-              <div style={{ fontSize:15, fontWeight:700, color:'#15803D' }}>Account created</div>
-              <div style={{ fontSize:12, color:'#4B7060', marginTop:2 }}>Share the password with {form.name || form.email}.</div>
+              <div style={{ fontSize:15, fontWeight:700, color: 'var(--meadow)' }}>Account created</div>
+              <div style={{ fontSize:12, color: 'var(--muted)', marginTop:2 }}>Share the password with {form.name || form.email}.</div>
             </div>
           </div>
           <div style={{ padding:'24px 28px' }}>
-            <div style={{ fontSize:11, fontWeight:700, color:'#4B7060', textTransform:'uppercase', letterSpacing:'.6px', marginBottom:10 }}>Temporary Password</div>
+            <div style={{ fontSize:11, fontWeight:700, color: 'var(--muted)', textTransform:'uppercase', letterSpacing:'.6px', marginBottom:10 }}>Temporary Password</div>
             <div style={{ display:'flex', gap:10, marginBottom:16 }}>
-              <code style={{ flex:1, padding:'12px 16px', background:'#F2F7F4', borderRadius:10, border:'1.5px solid #D8E8DF', fontSize:15, fontFamily:'monospace', letterSpacing:2, color:'#0E2A20' }}>{createdPassword}</code>
-              <button onClick={() => { navigator.clipboard.writeText(createdPassword); setPasswordCopied(true); setTimeout(() => setPasswordCopied(false), 2000) }} style={{ padding:'12px 16px', borderRadius:10, border:'1.5px solid #D8E8DF', background:cpBg, color:cpCl, fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif", whiteSpace:'nowrap' }}>
+              <code style={{ flex:1, padding:'12px 16px', background: 'var(--bg)', borderRadius:10, border:'1.5px solid var(--border)', fontSize:15, fontFamily:'monospace', letterSpacing:2, color: 'var(--ink)' }}>{createdPassword}</code>
+              <button onClick={() => { navigator.clipboard.writeText(createdPassword); setPasswordCopied(true); setTimeout(() => setPasswordCopied(false), 2000) }} style={{ padding:'12px 16px', borderRadius:10, border:'1.5px solid var(--border)', background:cpBg, color:cpCl, fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif", whiteSpace:'nowrap' }}>
                 {passwordCopied ? 'Copied!' : 'Copy'}
               </button>
             </div>
-            <div style={{ fontSize:11.5, color:'#4B7060', background:'#F2F7F4', borderRadius:8, padding:'10px 14px', border:'1px solid #D8E8DF', marginBottom:22 }}>The faculty member must log out and back in to pick up their new role.</div>
+            <div style={{ fontSize:11.5, color: 'var(--muted)', background: 'var(--bg)', borderRadius:8, padding:'10px 14px', border:'1px solid var(--border)', marginBottom:22 }}>The faculty member must log out and back in to pick up their new role.</div>
             <div style={{ display:'flex', gap:10 }}>
-              <button onClick={() => navigate('/dashboard/faculty')} style={{ padding:'9px 18px', borderRadius:9, border:'none', background:'linear-gradient(135deg,#15803D,#0F5C2C)', color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>Back to Faculty List</button>
-              <button onClick={() => { setCreatedPassword(''); setPassword('') }} style={{ padding:'9px 16px', borderRadius:9, border:'1.5px solid #D8E8DF', background:'#fff', color:'#4B7060', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>Add Another</button>
+              <button onClick={() => navigate('/dashboard/faculty')} style={{ padding:'9px 18px', borderRadius:9, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>Back to Faculty List</button>
+              <button onClick={() => { setCreatedPassword(''); setPassword('') }} style={{ padding:'9px 16px', borderRadius:9, border:'1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--muted)', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>Add Another</button>
             </div>
           </div>
         </div>
@@ -311,11 +311,11 @@ export default function FacultyDetailPage() {
       {/* Breadcrumb + actions */}
       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:20, flexWrap:'wrap' }}>
         <div style={{ display:'flex', alignItems:'center', gap:8, flex:1 }}>
-          <button onClick={() => navigate('/dashboard/faculty')} style={{ background:'none', border:'none', color:'#4B7060', cursor:'pointer', display:'flex', alignItems:'center', gap:5, fontSize:12.5, fontFamily:"'Inter',sans-serif", padding:0 }}>
+          <button onClick={() => navigate('/dashboard/faculty')} style={{ background:'none', border:'none', color: 'var(--muted)', cursor:'pointer', display:'flex', alignItems:'center', gap:5, fontSize:12.5, fontFamily:"'Inter',sans-serif", padding:0 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>Faculty
           </button>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#D8E8DF" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          <span style={{ fontSize:12.5, color:'#0E2A20', fontWeight:600 }}>{isNew ? 'New Faculty' : (form.name || 'Edit Faculty')}</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--border)" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          <span style={{ fontSize:12.5, color: 'var(--ink)', fontWeight:600 }}>{isNew ? 'New Faculty' : (form.name || 'Edit Faculty')}</span>
           {!isNew && form.status   && <span style={{ padding:'1px 8px', borderRadius:99, fontSize:10.5, fontWeight:700, background:statusBg, color:statusCl }}>{form.status}</span>}
           {!isNew && form.archived && <span style={{ padding:'1px 8px', borderRadius:99, fontSize:10.5, fontWeight:700, background:'#FEF3CD', color:'#B45309' }}>Archived</span>}
           {!isNew && isOverloaded  && <span style={{ padding:'1px 8px', borderRadius:99, fontSize:10.5, fontWeight:700, background:'#FFE8E8', color:'#C0392B' }}>Overloaded</span>}
@@ -324,12 +324,12 @@ export default function FacultyDetailPage() {
         {!isNew && (
           <div id="tour-fac-actions" style={{ display:'flex', alignItems:'center', gap:6 }}>
             {form.archived ? (
-              <button type="button" onClick={handleUnarchive} disabled={archiving} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, border:'1.5px solid #BBF7D0', background:'#DCFCE7', color:'#15803D', fontSize:12, fontWeight:600, cursor: archiving ? 'default' : 'pointer', fontFamily:"'Inter',sans-serif", opacity: archiving ? 0.7 : 1 }}>
+              <button type="button" onClick={handleUnarchive} disabled={archiving} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', background:'var(--meadow-soft)', color: 'var(--meadow)', fontSize:12, fontWeight:600, cursor: archiving ? 'default' : 'pointer', fontFamily:"'Inter',sans-serif", opacity: archiving ? 0.7 : 1 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
                 {archiving ? 'Restoring…' : 'Restore'}
               </button>
             ) : (
-              <button type="button" onClick={() => setShowArchiveModal(true)} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, border:'1.5px solid #D8E8DF', background:'#fff', color:'#4B7060', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>
+              <button type="button" onClick={() => setShowArchiveModal(true)} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, border:'1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--muted)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 8v13H3V8"/><path d="M23 3H1v5h22z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>Archive
               </button>
             )}
@@ -342,16 +342,16 @@ export default function FacultyDetailPage() {
 
       {/* Banners */}
       {isNew && (
-        <div style={{ background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:12, padding:'12px 16px', marginBottom:20, display:'flex', gap:10, alignItems:'flex-start' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2" style={{ flexShrink:0, marginTop:1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <span style={{ fontSize:12.5, color:'#166534', lineHeight:1.5 }}>Adding a faculty member automatically creates their Firebase login account and assigns the faculty role.</span>
+        <div style={{ background:'var(--meadow-soft)', border:'1px solid var(--meadow-border)', borderRadius:12, padding:'12px 16px', marginBottom:20, display:'flex', gap:10, alignItems:'flex-start' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2" style={{ flexShrink:0, marginTop:1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span style={{ fontSize:12.5, color:'var(--meadow-mid)', lineHeight:1.5 }}>Adding a faculty member automatically creates their Firebase login account and assigns the faculty role.</span>
         </div>
       )}
       {!isNew && form.archived && (
         <div style={{ background:'#FEF3CD', border:'1px solid #FDE68A', borderRadius:12, padding:'12px 16px', marginBottom:20, display:'flex', gap:10, alignItems:'center' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" style={{ flexShrink:0 }}><path d="M21 8v13H3V8"/><path d="M23 3H1v5h22z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
           <span style={{ fontSize:12.5, color:'#92400E', lineHeight:1.5, flex:1 }}>This faculty member is <strong>archived</strong> and excluded from scheduling. Edits are still saved normally.</span>
-          <button onClick={handleUnarchive} disabled={archiving} style={{ padding:'5px 14px', borderRadius:8, border:'1.5px solid #D97706', background:'#fff', color:'#B45309', fontSize:12, fontWeight:600, cursor: archiving ? 'default' : 'pointer', fontFamily:"'Inter',sans-serif", flexShrink:0, opacity: archiving ? 0.7 : 1 }}>
+          <button onClick={handleUnarchive} disabled={archiving} style={{ padding:'5px 14px', borderRadius:8, border:'1.5px solid #D97706', background: 'var(--surface)', color:'#B45309', fontSize:12, fontWeight:600, cursor: archiving ? 'default' : 'pointer', fontFamily:"'Inter',sans-serif", flexShrink:0, opacity: archiving ? 0.7 : 1 }}>
             {archiving ? 'Restoring…' : 'Restore Now'}
           </button>
         </div>
@@ -404,10 +404,10 @@ export default function FacultyDetailPage() {
                     </div>
                   )}
                   <div style={{ display:'flex', gap:10 }}>
-                    <button type="submit" disabled={createSaving} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 18px', borderRadius:10, border:'none', fontFamily:"'Inter',sans-serif", fontSize:12.5, fontWeight:600, cursor: createSaving ? 'default' : 'pointer', background:`linear-gradient(135deg,#15803D,#0F5C2C)`, color:'#fff', boxShadow:'0 3px 12px rgba(15,92,44,0.32)', opacity: createSaving ? 0.65 : 1 }}>
+                    <button type="submit" disabled={createSaving} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 18px', borderRadius:10, border:'none', fontFamily:"'Inter',sans-serif", fontSize:12.5, fontWeight:600, cursor: createSaving ? 'default' : 'pointer', background:`linear-gradient(135deg,var(--meadow),var(--meadow-deep))`, color:'#fff', boxShadow:'0 3px 12px rgba(0,0,0,0.32)', opacity: createSaving ? 0.65 : 1 }}>
                       {createSaving ? 'Creating...' : 'Create Faculty'}
                     </button>
-                    <button type="button" onClick={() => navigate('/dashboard/faculty')} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 16px', borderRadius:10, border:'1.5px solid #D8E8DF', fontFamily:"'Inter',sans-serif", fontSize:12.5, fontWeight:600, cursor:'pointer', background:'#fff', color:'#4B7060' }}>Cancel</button>
+                    <button type="button" onClick={() => navigate('/dashboard/faculty')} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 16px', borderRadius:10, border:'1.5px solid var(--border)', fontFamily:"'Inter',sans-serif", fontSize:12.5, fontWeight:600, cursor:'pointer', background: 'var(--surface)', color: 'var(--muted)' }}>Cancel</button>
                   </div>
                 </div>
               )}
@@ -468,16 +468,16 @@ export default function FacultyDetailPage() {
 
       {showArchiveModal && (
         <div style={{ position:'fixed', inset:0, zIndex:1100, background:'rgba(10,30,18,0.55)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
-          <div style={{ background:'#fff', borderRadius:18, padding:'28px 28px 24px', maxWidth:400, width:'100%', boxShadow:'0 20px 60px rgba(10,30,18,0.22)', border:'1px solid #D8E8DF', textAlign:'center' }}>
+          <div style={{ background: 'var(--surface)', borderRadius:18, padding:'28px 28px 24px', maxWidth:400, width:'100%', boxShadow:'0 20px 60px rgba(10,30,18,0.22)', border:'1px solid var(--border)', textAlign:'center' }}>
             <div style={{ width:52, height:52, borderRadius:'50%', background:'#FEF3CD', margin:'0 auto 16px', display:'flex', alignItems:'center', justifyContent:'center' }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2"><path d="M21 8v13H3V8"/><path d="M23 3H1v5h22z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
             </div>
-            <div style={{ fontSize:16, fontWeight:700, color:'#0E2A20', marginBottom:8 }}>Archive Faculty Member?</div>
-            <div style={{ fontSize:13, color:'#4B7060', marginBottom:24, lineHeight:1.5 }}>
-              <strong style={{ color:'#0E2A20' }}>{form.name}</strong> will be hidden from active scheduling. You can restore them at any time.
+            <div style={{ fontSize:16, fontWeight:700, color: 'var(--ink)', marginBottom:8 }}>Archive Faculty Member?</div>
+            <div style={{ fontSize:13, color: 'var(--muted)', marginBottom:24, lineHeight:1.5 }}>
+              <strong style={{ color: 'var(--ink)' }}>{form.name}</strong> will be hidden from active scheduling. You can restore them at any time.
             </div>
             <div style={{ display:'flex', gap:10 }}>
-              <button onClick={() => setShowArchiveModal(false)} disabled={archiving} style={{ flex:1, padding:'10px', borderRadius:9, border:'1.5px solid #D8E8DF', background:'#fff', fontSize:13, fontWeight:600, color:'#4B7060', cursor:'pointer', fontFamily:'Inter,sans-serif' }}>Cancel</button>
+              <button onClick={() => setShowArchiveModal(false)} disabled={archiving} style={{ flex:1, padding:'10px', borderRadius:9, border:'1.5px solid var(--border)', background: 'var(--surface)', fontSize:13, fontWeight:600, color: 'var(--muted)', cursor:'pointer', fontFamily:'Inter,sans-serif' }}>Cancel</button>
               <button onClick={handleArchive} disabled={archiving} style={{ flex:1, padding:'10px', borderRadius:9, border:'none', background:'linear-gradient(135deg,#D97706,#B45309)', fontSize:13, fontWeight:700, color:'#fff', cursor: archiving ? 'default' : 'pointer', fontFamily:'Inter,sans-serif', opacity: archiving ? 0.7 : 1 }}>
                 {archiving ? 'Archiving…' : 'Archive'}
               </button>

@@ -16,16 +16,16 @@ if (!document.getElementById('tg-glow-style')) {
       50%      { background:rgba(239,68,68,.13); box-shadow:inset 0 0 0 1px rgba(239,68,68,.32); }
     }
     @keyframes tg-merge-glow {
-      0%,100% { background:rgba(21,128,61,.04); box-shadow:inset 0 0 0 1px rgba(21,128,61,.12); }
-      50%      { background:rgba(21,128,61,.10); box-shadow:inset 0 0 0 1px rgba(21,128,61,.26); }
+      0%,100% { background:rgba(0,0,0,.04); box-shadow:inset 0 0 0 1px rgba(0,0,0,.12); }
+      50%      { background:rgba(0,0,0,.10); box-shadow:inset 0 0 0 1px rgba(0,0,0,.26); }
     }
     @keyframes tg-row-conflict {
       0%,100% { background:rgba(239,68,68,.04); border-right-color:rgba(239,68,68,.28); }
       50%      { background:rgba(239,68,68,.10); border-right-color:rgba(239,68,68,.50); }
     }
     @keyframes tg-available-glow {
-      0%,100% { background:rgba(21,128,61,.05);  box-shadow: inset 0 0 0 1px rgba(21,128,61,.15); }
-      50%      { background:rgba(110,231,183,.20); box-shadow: inset 0 0 0 1px rgba(21,128,61,.34); }
+      0%,100% { background:rgba(0,0,0,.05);  box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+      50%      { background:rgba(110,231,183,.20); box-shadow: inset 0 0 0 1px rgba(0,0,0,.34); }
     }
     .tg-cell-conflict  { animation:tg-conflict-glow  1.7s ease-in-out infinite; }
     .tg-cell-merge     { animation:tg-merge-glow     1.7s ease-in-out infinite; }
@@ -177,10 +177,10 @@ function RoomColumn({
                 : `1px dashed rgba(180,220,195,.38)`,
               background: isHov
                 ? isHovMergeOnly
-                   ? 'rgba(21,128,61,.07)'   // merge hover → green
+                   ? 'rgba(0,0,0,.07)'   // merge hover → green
                   : dropConf
                     ? 'rgba(239,68,68,.07)'   // conflict hover → red
-                     : 'rgba(21,128,61,.05)' // clean hover → soft green
+                     : 'rgba(0,0,0,.05)' // clean hover → soft green
                 : 'transparent',
               transition: (isPreConflict || isPreMerge || isAvailableSlot) ? 'none' : 'background .1s',
               zIndex: 1,
@@ -197,7 +197,7 @@ function RoomColumn({
                 {isHovMergeOnly && (
                   <span style={{
                     fontSize: 8.5, fontWeight: 700, color: TV.deep,
-                    background: '#fff', padding: '2px 6px', borderRadius: 4,
+                    background: 'var(--surface)', padding: '2px 6px', borderRadius: 4,
                     boxShadow: '0 2px 6px rgba(0,0,0,.08)',
                     display: 'inline-flex', alignItems: 'center', gap: 3,
                   }}>
@@ -212,7 +212,7 @@ function RoomColumn({
                 {!isHovMergeOnly && dropConf && (
                   <span style={{
                     fontSize: 8.5, fontWeight: 700, color: '#ef4444',
-                    background: '#fff', padding: '2px 6px', borderRadius: 4,
+                    background: 'var(--surface)', padding: '2px 6px', borderRadius: 4,
                     boxShadow: '0 2px 6px rgba(0,0,0,.08)',
                   }}>
                     <svg width={8} height={8} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline',verticalAlign:'middle',marginRight:2}}>
@@ -459,14 +459,14 @@ export default function TimeGrid({
         {/* ── HEADER ── */}
         <div style={{
           display: 'flex',
-          background: 'linear-gradient(to bottom,#F2F7F4,#F8FAF9)',
+          background: 'linear-gradient(to bottom,#F2F7F4,var(--bg))',
           position: 'sticky', top: 0, zIndex: 30, flexShrink: 0,
         }}>
           <div style={{
             width: TIME_COL_W, flexShrink: 0,
             borderRight: `2px solid ${TV.border}`,
             position: 'sticky', left: 0, zIndex: 31,
-            background: 'linear-gradient(to bottom,#F2F7F4,#F8FAF9)',
+            background: 'linear-gradient(to bottom,#F2F7F4,var(--bg))',
           }} />
           {rooms.map((room, idx) => (
             <div key={room} style={{
@@ -501,7 +501,7 @@ export default function TimeGrid({
           <div style={{
             width: TIME_COL_W, flexShrink: 0,
             borderRight: `2px solid ${TV.border}`,
-            position: 'sticky', left: 0, background: '#F8FAF9', zIndex: 20,
+            position: 'sticky', left: 0, background: 'var(--bg)', zIndex: 20,
             boxShadow: '2px 0 6px rgba(0,0,0,0.03)',
           }}>
             {TIME_SLOTS.map(slot => {
@@ -527,7 +527,7 @@ export default function TimeGrid({
                     borderBottom: isHour
                       ? `1px solid ${TV.border}`
                       : `1px dashed rgba(180,220,195,.65)`,
-                    borderRight: isRowConflict ? '3px solid rgba(239,68,68,.40)' : isRowMerge ? `3px solid rgba(21,128,61,.30)` : undefined,
+                    borderRight: isRowConflict ? '3px solid rgba(239,68,68,.40)' : isRowMerge ? `3px solid rgba(0,0,0,.30)` : undefined,
                     transition: 'border-color .1s',
                   }}>
                   {isHour ? (
@@ -631,7 +631,7 @@ export default function TimeGrid({
                 <div style={{
                   position: 'absolute', left: '50%', top: '50%',
                   transform: 'translate(-50%,-50%)',
-                  background: '#fff',
+                  background: 'var(--surface)',
                   border: `1px solid ${border}44`,
                   borderRadius: 4,
                   padding: '1px 8px',

@@ -28,7 +28,7 @@ function ModalSearch({ value, onChange, placeholder = 'Search…' }) {
           color: TV.text, background: '#fafafa', outline: 'none',
           boxSizing: 'border-box', transition: 'border-color .15s, background .15s',
         }}
-        onFocus={e => { e.target.style.borderColor = TV.mid; e.target.style.background = '#fff' }}
+        onFocus={e => { e.target.style.borderColor = TV.mid; e.target.style.background = 'var(--surface)' }}
         onBlur={e  => { e.target.style.borderColor = TV.border; e.target.style.background = '#fafafa' }}
       />
       {value && (
@@ -45,10 +45,10 @@ function ModalSearch({ value, onChange, placeholder = 'Search…' }) {
 function ModalShell({ width = 480, children }) {
   return (
     <div style={{
-      background: '#fff', borderRadius: 14, padding: '22px 24px 20px',
+      background: 'var(--surface)', borderRadius: 14, padding: '22px 24px 20px',
       width, maxWidth: '92vw', maxHeight: '82vh',
       display: 'flex', flexDirection: 'column',
-      boxShadow: '0 24px 64px rgba(10,46,28,0.22), 0 0 0 1px rgba(0,0,0,.05)',
+      boxShadow: '0 24px 64px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,.05)',
       border: `1px solid ${TV.border}`,
       fontFamily: 'Inter, sans-serif',
     }}>
@@ -136,12 +136,12 @@ function CancelButton({ onClick }) {
       onClick={onClick}
       style={{
         padding: '8px 20px', fontSize: 12.5, fontWeight: 600,
-        background: '#fff', color: TV.muted,
+        background: 'var(--surface)', color: TV.muted,
         border: `1.5px solid ${TV.border}`, borderRadius: 8,
         cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all .15s',
       }}
       onMouseEnter={e => { e.currentTarget.style.background = TV.pale; e.currentTarget.style.color = TV.text }}
-      onMouseLeave={e => { e.currentTarget.style.background = '#fff';  e.currentTarget.style.color = TV.muted }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)';  e.currentTarget.style.color = TV.muted }}
     >
       Cancel
     </button>
@@ -245,7 +245,7 @@ export function FacultyFilterModal({
   const overloadedCnt = [...unitMap.values()].filter(v => v.isOver).length
 
   // Bar colour helper
-  const barColor = (pct, isOver) => isOver ? '#ef4444' : pct >= 80 ? '#f59e0b' : '#22c55e'
+  const barColor = (pct, isOver) => isOver ? '#ef4444' : pct >= 80 ? '#f59e0b' : 'var(--meadow)'
 
   return (
     <ModalOverlay onClose={onClose}>
@@ -362,7 +362,7 @@ export function FacultyFilterModal({
 
                       {/* Bottom: unit progress bar + label */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                        <div style={{ flex: 1, height: 5, borderRadius: 99, background: '#E5F9EC', overflow: 'hidden' }}>
+                        <div style={{ flex: 1, height: 5, borderRadius: 99, background: 'var(--meadow-soft)', overflow: 'hidden' }}>
                           <div style={{
                             height: '100%', borderRadius: 99,
                             width: `${info.pct}%`,
@@ -426,7 +426,7 @@ function LabIcon({ color }) {
 // ── Room-type accent palettes ──────────────────────────────────────────────────
 const ROOM_ACCENTS = {
   lecture: { color: TV.deep,   bg: TV.pale,   border: TV.light,   solid: TV.deep   },
-  lab:     { color: '#7C3AED', bg: '#F3E8FF', border: '#DDD6FE',  solid: '#7C3AED' },
+  lab:     { color: '#7C3AED', bg: '#F3E8FF', border: 'color-mix(in srgb, #6D28D9 30%, transparent)',  solid: '#7C3AED' },
 }
 
 // ── Room-type group header ──────────────────────────────────────────────────────
@@ -469,7 +469,7 @@ function RoomButton({ label, active, available, sessionCount, accent, onClick })
         textAlign: 'left', outline: 'none',
       }}
       onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = accent.border; e.currentTarget.style.background = '#FAFAFA' } }}
-      onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = TV.border;      e.currentTarget.style.background = '#fff' } }}
+      onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = TV.border;      e.currentTarget.style.background = 'var(--surface)' } }}
     >
       {/* Label */}
       <span style={{
@@ -577,7 +577,7 @@ export function RoomFilterModal({ title, options, selectedSet, onToggle, onClose
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 14, flexWrap: 'wrap' }}>
           <StatPill label="rooms"   value={options.length}  color={TV.deep} bg={TV.pale}  border={TV.light} />
           {availableRooms && (
-            <StatPill label="open now" value={availableCnt} color="#15803D" bg="#F0FDF4" border="#86EFAC" />
+            <StatPill label="open now" value={availableCnt} color="var(--meadow)" bg="var(--meadow-soft)" border="var(--mint)" />
           )}
           {availableRooms && (
             <button
@@ -587,7 +587,7 @@ export function RoomFilterModal({ title, options, selectedSet, onToggle, onClose
                 marginLeft: 'auto',
                 fontSize: 10.5, fontWeight: 600, padding: '4px 11px', borderRadius: 20,
                 cursor: availableRooms.size === 0 ? 'default' : 'pointer',
-                border: '1px solid #86EFAC', background: '#F0FDF4', color: '#15803D',
+                border: '1px solid var(--mint)', background: 'var(--meadow-soft)', color: 'var(--meadow)',
                 opacity: availableRooms.size === 0 ? 0.5 : 1,
                 fontFamily: 'Inter, sans-serif', transition: 'all .15s', flexShrink: 0,
               }}
@@ -712,10 +712,10 @@ export function OverrideConfirmModal({ pendingDrop, onConfirm, onCancel }) {
   return (
     <ModalOverlay onClose={onCancel}>
       <div style={{
-        background: '#fff', borderRadius: 14, padding: 28,
+        background: 'var(--surface)', borderRadius: 14, padding: 28,
         width: 560, maxWidth: '94vw', maxHeight: '88vh',
         display: 'flex', flexDirection: 'column',
-        boxShadow: '0 24px 72px rgba(10,46,28,0.24), 0 0 0 1px rgba(0,0,0,.06)',
+        boxShadow: '0 24px 72px rgba(0,0,0,0.24), 0 0 0 1px rgba(0,0,0,.06)',
         border: `1px solid ${TV.border}`,
         fontFamily: 'Inter, sans-serif',
       }}>
@@ -816,8 +816,8 @@ export function StackConfirmModal({ pendingStack, onConfirm, onCancel }) {
     return (
       <div style={{
         flex: 1, minWidth: 0,
-        background: accent === 'src' ? TV.pale : '#f0fdf4',
-        border: `1.5px solid ${accent === 'src' ? TV.light : '#6ee7b7'}`,
+        background: accent === 'src' ? TV.pale : 'var(--hover)',
+        border: `1.5px solid ${accent === 'src' ? TV.light : 'var(--mint)'}`,
         borderRadius: 10, padding: '10px 14px',
         display: 'flex', flexDirection: 'column', gap: 3,
       }}>
@@ -844,11 +844,11 @@ export function StackConfirmModal({ pendingStack, onConfirm, onCancel }) {
   return (
     <ModalOverlay onClose={onCancel}>
       <div style={{
-        background: '#fff', borderRadius: 14, padding: 28,
+        background: 'var(--surface)', borderRadius: 14, padding: 28,
         width: 540, maxWidth: '94vw', maxHeight: '88vh',
         display: 'flex', flexDirection: 'column',
         boxShadow: '0 24px 72px rgba(16,185,129,0.18), 0 0 0 1px rgba(0,0,0,.06)',
-        border: '1px solid #d1fae5',
+        border: '1px solid var(--meadow-soft)',
         fontFamily: 'Inter, sans-serif',
       }}>
         <ModalHeader
@@ -860,7 +860,7 @@ export function StackConfirmModal({ pendingStack, onConfirm, onCancel }) {
         <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'stretch' }}>
           <EventPill event={src} section={srcSection} label="Moving"        accent="src" />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="5" y1="12" x2="19" y2="12"/>
               <polyline points="12 5 19 12 12 19"/>
             </svg>
@@ -869,16 +869,16 @@ export function StackConfirmModal({ pendingStack, onConfirm, onCancel }) {
         </div>
 
         <div style={{
-          background: '#f0fdf4', border: '1.5px solid #6ee7b7',
+          background: 'var(--hover)', border: '1.5px solid var(--mint)',
           borderRadius: 10, padding: '12px 16px', marginBottom: 14,
           display: 'flex', flexDirection: 'column', gap: 6,
         }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#065f46', textTransform: 'uppercase', letterSpacing: '.7px' }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--meadow-deep)', textTransform: 'uppercase', letterSpacing: '.7px' }}>
             After stacking
           </span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            <Pill icon="📍" label={`Room: ${tgt.room || 'TBA'}`} color="#059669" bg="#dcfce7" border="#86efac" />
-            <Pill icon="🕐" label={`Time: ${tgt.period || '—'}`}  color="#059669" bg="#dcfce7" border="#86efac" />
+            <Pill icon="📍" label={`Room: ${tgt.room || 'TBA'}`} color="var(--meadow)" bg="var(--meadow-soft)" border="var(--mint)" />
+            <Pill icon="🕐" label={`Time: ${tgt.period || '—'}`}  color="var(--meadow)" bg="var(--meadow-soft)" border="var(--mint)" />
           </div>
           {!isSameRoom   && <Notice text={`${src.courseCode} will move from ${src.room} → ${tgt.room}`} />}
           {!isSamePeriod && <Notice text={`${src.courseCode} will shift to ${tgt.period}`} />}
@@ -906,7 +906,7 @@ export function StackConfirmModal({ pendingStack, onConfirm, onCancel }) {
             onClick={onConfirm}
             style={{
               padding: '8px 20px', fontSize: 12.5, fontWeight: 700,
-              background: 'linear-gradient(135deg,#059669,#047857)',
+              background: 'linear-gradient(135deg,var(--meadow),var(--meadow-mid))',
               color: '#fff', border: 'none', borderRadius: 8,
               cursor: 'pointer', fontFamily: 'Inter, sans-serif',
               boxShadow: '0 4px 12px rgba(5,150,105,.30)',
@@ -944,8 +944,8 @@ function Pill({ icon, label, color, bg, border }) {
 function Notice({ text }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-      <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#059669', flexShrink: 0 }} />
-      <span style={{ fontSize: 10.5, color: '#047857' }}>{text}</span>
+      <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--meadow)', flexShrink: 0 }} />
+      <span style={{ fontSize: 10.5, color: 'var(--meadow-mid)' }}>{text}</span>
     </div>
   )
 }

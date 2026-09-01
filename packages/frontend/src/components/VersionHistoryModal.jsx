@@ -420,12 +420,12 @@ const VersionHistoryModal = ({
           display: flex; align-items: flex-start; justify-content: space-between;
           padding: 18px 22px 14px; border-bottom: 1px solid #e5e7eb;
         }
-        .sv-version-header h3 { margin: 0; font-size: 16px; font-weight: 700; color: #111827; }
+        .sv-version-header h3 { margin: 0; font-size: 16px; font-weight: 700; color: var(--ink); }
         .sv-version-close {
           background: none; border: none; font-size: 22px; cursor: pointer;
           color: #9ca3af; padding: 2px 5px; line-height: 1; border-radius: 5px;
         }
-        .sv-version-close:hover { color: #111827; background: #f3f4f6; }
+        .sv-version-close:hover { color: var(--ink); background: #f3f4f6; }
         .sv-version-list { overflow-y: auto; flex: 1; padding: 10px 22px 14px; }
         .sv-version-item {
           display: flex; align-items: center; gap: 12px;
@@ -435,7 +435,7 @@ const VersionHistoryModal = ({
         .sv-version-item-wrap:last-child:not(:has(.sv-changelog-panel)) { margin-bottom: 0; }
         .sv-version-item.current {
           background: rgba(34,197,94,0.06); margin: 0 -22px 6px;
-          padding: 12px 22px; border-radius: 8px; border-bottom: 1px solid #bbf7d0;
+          padding: 12px 22px; border-radius: 8px; border-bottom: 1px solid var(--meadow-border);
         }
         .sv-version-item.current.preview {
           background: rgba(245,158,11,0.08); border-bottom: 1px solid #fde68a;
@@ -445,16 +445,16 @@ const VersionHistoryModal = ({
           border-radius: 6px; font-size: 10.5px; font-weight: 700;
           font-family: 'SF Mono', Consolas, monospace; flex-shrink: 0; min-width: 38px; text-align: center;
         }
-        .sv-version-badge.current { background: #22c55e; color: white; }
+        .sv-version-badge.current { background: var(--meadow); color: white; }
         .sv-version-badge.current.preview { background: #f59e0b; }
         .sv-version-details { flex: 1; min-width: 0; }
-        .sv-version-label { font-size: 13px; font-weight: 600; color: #111827; }
+        .sv-version-label { font-size: 13px; font-weight: 600; color: var(--ink); }
         .sv-version-meta { font-size: 11px; color: #6b7280; margin-top: 1px; }
         .sv-version-actions { flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
         .sv-restore-btn {
           display: inline-flex; align-items: center; gap: 5px;
           padding: 6px 11px; border: 1px solid #d1d5db; background: white;
-          color: #374151; font-size: 11.5px; font-weight: 600; border-radius: 6px;
+          color: var(--muted); font-size: 11.5px; font-weight: 600; border-radius: 6px;
           cursor: pointer; transition: all 0.14s; font-family: 'Inter', sans-serif;
         }
         .sv-restore-btn:hover:not(:disabled) { background: #f3f4f6; border-color: #9ca3af; }
@@ -463,7 +463,7 @@ const VersionHistoryModal = ({
           padding: 3px 8px; border-radius: 6px; font-size: 10.5px;
           font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; flex-shrink: 0;
         }
-        .sv-status-badge.current { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .sv-status-badge.current { background: var(--meadow-soft); color: var(--meadow-mid); border: 1px solid var(--meadow-border); }
         .sv-status-badge.preview { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
         .sv-version-footer {
           padding: 12px 22px; border-top: 1px solid #e5e7eb;
@@ -478,7 +478,7 @@ const VersionHistoryModal = ({
           color: #6b7280; font-size: 11.5px; font-weight: 600; border-radius: 6px;
           cursor: pointer; transition: all 0.14s; font-family: 'Inter', sans-serif;
         }
-        .sv-changelog-toggle:hover { background: #f3f4f6; color: #374151; }
+        .sv-changelog-toggle:hover { background: #f3f4f6; color: var(--muted); }
         .sv-changelog-toggle.open { background: #eef2ff; color: #4338ca; }
 
         .sv-changelog-panel {
@@ -495,7 +495,7 @@ const VersionHistoryModal = ({
         .sv-changelog-pill {
           font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 99px;
         }
-        .sv-pill-added    { background: #dcfce7; color: #166534; }
+        .sv-pill-added    { background: var(--meadow-soft); color: var(--meadow-mid); }
         .sv-pill-removed  { background: #fee2e2; color: #b91c1c; }
         .sv-pill-modified { background: #fef3c7; color: #92400e; }
 
@@ -505,11 +505,11 @@ const VersionHistoryModal = ({
           flex-shrink: 0; width: 16px; text-align: center; font-weight: 800; font-size: 12px;
           font-family: 'SF Mono', Consolas, monospace; line-height: 1.4;
         }
-        .sv-changelog-row-added   .sv-changelog-marker { color: #16a34a; }
+        .sv-changelog-row-added   .sv-changelog-marker { color: var(--meadow); }
         .sv-changelog-row-removed .sv-changelog-marker { color: #dc2626; }
         .sv-changelog-row-modified .sv-changelog-marker { color: #d97706; }
         .sv-changelog-row-body { flex: 1; min-width: 0; }
-        .sv-changelog-row-title { font-size: 12.5px; font-weight: 600; color: #111827; }
+        .sv-changelog-row-title { font-size: 12.5px; font-weight: 600; color: var(--ink); }
         .sv-changelog-field-count { font-size: 11px; font-weight: 500; color: #9ca3af; }
         .sv-changelog-row-meta { font-size: 11px; color: #6b7280; margin-top: 1px; }
         .sv-changelog-field-list { margin-top: 3px; display: flex; flex-direction: column; gap: 2px; }
@@ -517,7 +517,7 @@ const VersionHistoryModal = ({
         .sv-changelog-field-label { color: #6b7280; font-weight: 600; }
         .sv-changelog-field-from { color: #b91c1c; text-decoration: line-through; opacity: 0.75; }
         .sv-changelog-field-arrow { color: #9ca3af; }
-        .sv-changelog-field-to { color: #166534; font-weight: 600; }
+        .sv-changelog-field-to { color: var(--meadow-mid); font-weight: 600; }
 
         @keyframes svFadeIn { from{opacity:0} to{opacity:1} }
         @keyframes svSlideIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }

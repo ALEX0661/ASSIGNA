@@ -18,14 +18,15 @@ body {
 }
 
 a { color: inherit; text-decoration: none; }
+img { filter: var(--logo-filter, none); }
 
 /* ── Design tokens ── */
 :root {
   --forest:      #0A2E1C;
   --canopy:      #0C3822;
   --canopy2:     #0F4528;
-  --meadow:      #15803D;
-  --meadow-mid:  #166534;
+  --meadow:      var(--meadow);
+  --meadow-mid:  var(--meadow-mid);
   --meadow-deep: #0F5C2C;
   --mint:        #6EE7B7;
   --mint-dim:    rgba(110,231,183,0.15);
@@ -41,10 +42,95 @@ a { color: inherit; text-decoration: none; }
   --shadow:      0 2px 12px rgba(10,46,28,0.08);
 }
 
+
+/* ── Dynamic Colors ── */
+:root {
+  --meadow-soft:   color-mix(in srgb, var(--meadow) 12%, transparent);
+  --meadow-border: color-mix(in srgb, var(--meadow) 25%, transparent);
+  --logo-filter: none;
+}
+
+[data-theme="blue"] {
+  --meadow: #2563EB;
+  --meadow-mid: #1D4ED8;
+  --meadow-deep: #1E40AF;
+  --mint: #93C5FD;
+  --logo-filter: hue-rotate(90deg);
+}
+
+[data-theme="purple"] {
+  --meadow: #9333EA;
+  --meadow-mid: #7E22CE;
+  --meadow-deep: #6B21A8;
+  --mint: #D8B4FE;
+  --logo-filter: hue-rotate(140deg);
+}
+
+[data-theme="rose"] {
+  --meadow: #E11D48;
+  --meadow-mid: #BE123C;
+  --meadow-deep: #9F1239;
+  --mint: #FDA4AF;
+  --logo-filter: hue-rotate(200deg);
+}
+
+[data-theme="amber"] {
+  --meadow: #D97706;
+  --meadow-mid: #B45309;
+  --meadow-deep: #92400E;
+  --mint: #FCD34D;
+  --logo-filter: hue-rotate(-90deg);
+}
+
+[data-theme="slate"] {
+  --meadow: #475569;
+  --meadow-mid: #334155;
+  --meadow-deep: #1E293B;
+  --mint: #CBD5E1;
+  --logo-filter: grayscale(1) brightness(1.8);
+}
+
+[data-theme="teal"] {
+  --meadow: #0D9488;
+  --meadow-mid: #0F766E;
+  --meadow-deep: #115E59;
+  --mint: #5EEAD4;
+  --logo-filter: hue-rotate(35deg);
+}
+
+[data-theme="indigo"] {
+  --meadow: #4F46E5;
+  --meadow-mid: #4338CA;
+  --meadow-deep: #3730A3;
+  --mint: #A5B4FC;
+  --logo-filter: hue-rotate(100deg);
+}
+
+[data-theme="crimson"] {
+  --meadow: #DC2626;
+  --meadow-mid: #B91C1C;
+  --meadow-deep: #991B1B;
+  --mint: #FCA5A5;
+  --logo-filter: hue-rotate(220deg);
+}
+
+/* ── Dark Mode ── */
+[data-mode="dark"] {
+  --bg: #121212;
+  --surface: #1E1E1E;
+  --ink: #E0E0E0;
+  --ink2: #A0A0A0;
+  --muted: #888888;
+  --muted2: #666666;
+  --border: #333333;
+  --hover: #2A2A2A;
+  --shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
 /* ── Topbar ── */
 .topbar {
   height: 58px;
-  background: #ffffff;
+  background: var(--surface);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -98,7 +184,7 @@ a { color: inherit; text-decoration: none; }
 /* ── Badges ── */
 .badge { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; }
 .badge-red   { background: #FFE8E8; color: #C0392B; }
-.badge-green { background: #E6FAF3; color: #0F7A45; }
+.badge-green { background: var(--meadow-soft); color: var(--meadow-deep); }
 .badge-blue  { background: #E8F0FF; color: #1A56B0; }
 .badge-amber { background: #FEF3CD; color: #B45309; }
 
@@ -155,7 +241,7 @@ button.danger:hover { background: #FFE0E0; }
   animation: fadeInM 0.18s ease;
 }
 .logout-modal-box {
-  background: #fff; border-radius: 18px; width: 340px;
+  background: var(--surface); border-radius: 18px; width: 340px;
   padding: 28px; box-shadow: 0 24px 60px rgba(10,30,18,0.22);
   border: 1px solid var(--border);
   animation: slideUpM 0.2s cubic-bezier(0.34,1.56,0.64,1);
@@ -180,7 +266,7 @@ button.danger:hover { background: #FFE0E0; }
 }
 .sidebar-logo-img {
   width: 30px; height: 30px; object-fit: contain; flex-shrink: 0;
-  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.20));
+  filter: var(--logo-filter, none) drop-shadow(0 2px 6px rgba(0,0,0,0.20));
 }
 .sidebar-logo-name {
   font-family: 'Sora', sans-serif;
@@ -198,7 +284,7 @@ button.danger:hover { background: #FFE0E0; }
   position: absolute; top: 50%; right: -13px;
   transform: translateY(-50%) scale(0.85);
   width: 26px; height: 26px; border-radius: 50%;
-  background: #2D7A4F;
+  background: var(--meadow-mid);
   border: 1.5px solid rgba(255,255,255,0.18);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; z-index: 50; padding: 0;
@@ -211,7 +297,7 @@ aside:hover .sidebar-toggle {
   opacity: 1; pointer-events: auto; transform: translateY(-50%) scale(1);
 }
 .sidebar-toggle:hover {
-  background: #3A9060;
+  background: var(--meadow);
   color: #fff;
   border-color: rgba(255,255,255,0.30);
 }

@@ -13,20 +13,20 @@ import ScheduleGeneratorLoader from './ScheduleGeneratorLoader'
 
 /* ── Design tokens (Unified Green Theme — matches Dashboard / Faculty pages) ── */
 const G = {
-  meadow:       '#15803D',
-  meadowDeep:   '#0F5C2C',
-  meadowMid:    '#166534',
-  meadowSoft:   '#DCFCE7',
-  meadowBorder: '#BBF7D0',
-  ink:          '#0E2A20',
+  meadow: 'var(--meadow, var(--meadow))',
+  meadowDeep:   'var(--meadow-deep)',
+  meadowMid:    'var(--meadow-mid)',
+  meadowSoft:   'var(--meadow-soft)',
+  meadowBorder: 'var(--meadow-border)',
+  ink: 'var(--ink, #0E2A20)',
   inkMid:       '#1C3D2A',
-  muted:        '#4B7060',
-  muted2:       '#6B8C7A',
-  border:       '#D8E8DF',
-  borderLight:  '#EBF4EF',
-  bg:           '#F2F7F4',
-  surface:      '#FFFFFF',
-  hover:        '#EBF4EF',
+  muted: 'var(--muted, #4B7060)',
+  muted2: 'var(--muted2, #6B8C7A)',
+  border:       'var(--border)',
+  borderLight:  'var(--hover)',
+  bg: 'var(--bg, #F2F7F4)',
+  surface: 'var(--surface, #FFFFFF)',
+  hover:        'var(--hover)',
 }
 
 /* ─────────────────────────── constants ─────────────────────────── */
@@ -46,8 +46,8 @@ const DEFAULT_PHASE_KEYS = PHASES.map(p => p.key)
 const SEMESTER_OPTIONS = ['1st Semester', '2nd Semester', 'Midyear']
 
 const RATING_LABELS = { 5: 'Expert', 4: 'Highly Proficient', 3: 'Competent', 2: 'Developing', 1: 'Beginner' }
-const RATING_COLORS = { 5: '#047857', 4: '#0369A1', 3: G.meadow, 2: '#D97706', 1: '#DC2626' }
-const RATING_BG     = { 5: '#D1FAE5', 4: '#E0F2FE', 3: G.meadowSoft, 2: '#FEF3C7', 1: '#FEE2E2' }
+const RATING_COLORS = { 5: 'var(--meadow-mid)', 4: '#0369A1', 3: G.meadow, 2: '#D97706', 1: '#DC2626' }
+const RATING_BG     = { 5: 'var(--meadow-soft)', 4: '#E0F2FE', 3: G.meadowSoft, 2: '#FEF3C7', 1: '#FEE2E2' }
 
 const OTHER_DEPT_PREFIXES = ['PE', 'NSTP', 'MAT', 'MATH', 'PATHFIT', 'GEC']
 function isOtherDept(courseCode = '') {
@@ -115,14 +115,14 @@ if (!document.getElementById('scheduler-page-style')) {
 
     /* ── Wizard top bar (Slimmer Pill Stepper) ── */
     .wiz-topbar { display:flex; align-items:center; justify-content:center; padding:0; background:transparent; border:none; flex-shrink:0; z-index:10; }
-    .wiz-steps { display:flex; align-items:center; gap:4px; position:relative; background:#fff; padding:6px 12px; border-radius:99px; border:1px solid ${G.border}; box-shadow:0 2px 8px rgba(10,46,28,0.04); }
+    .wiz-steps { display:flex; align-items:center; gap:4px; position:relative; background: var(--surface); padding:6px 12px; border-radius:99px; border:1px solid ${G.border}; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
     .wiz-step-node { display:flex; align-items:center; gap:6px; padding:4px 12px; border-radius:99px; transition:all .2s; cursor:pointer; }
     .wiz-step-node.active { background:${G.meadowSoft}; }
     .wiz-step-node.done { cursor:pointer; }
     .wiz-step-node.done:hover { background:${G.hover}; }
     .wiz-step-circle { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:800; flex-shrink:0; transition:all .2s; border:2px solid transparent; }
     .wiz-step-circle.done   { background:${G.meadow}; color:#fff; }
-    .wiz-step-circle.active { background:${G.meadow}; color:#fff; border-color:${G.meadowBorder}; box-shadow:0 0 0 3px rgba(21,128,61,0.15); }
+    .wiz-step-circle.active { background:${G.meadow}; color:#fff; border-color:${G.meadowBorder}; box-shadow:0 0 0 3px rgba(0,0,0,0.15); }
     .wiz-step-circle.todo   { background:${G.hover}; color:${G.muted2}; border-color:${G.border}; }
     .wiz-step-label { font-size:11.5px; font-weight:700; transition:color .2s; white-space:nowrap; }
     .wiz-step-label.active { color:${G.meadowDeep}; }
@@ -145,7 +145,7 @@ if (!document.getElementById('scheduler-page-style')) {
     .panel-body { padding:16px 18px; display:flex; flex-direction:column; gap:0; }
 
     /* Card shell (consistent across panels) */
-    .sch-card { background:#fff; border-radius:12px; border:1px solid ${G.border}; box-shadow:0 2px 12px rgba(10,46,28,0.03); overflow:hidden; }
+    .sch-card { background: var(--surface); border-radius:12px; border:1px solid ${G.border}; box-shadow:0 2px 12px rgba(0,0,0,0.03); overflow:hidden; }
     .sch-card-header { display:flex; align-items:center; gap:12px; padding:12px 18px; border-bottom:1px solid ${G.border}; }
     .sch-card-title { font-size:14px; font-weight:800; color:${G.ink}; margin:0; letter-spacing:-0.1px; }
     .sch-card-sub { font-size:11.5px; color:${G.muted}; margin-top:1px; font-weight:500; }
@@ -154,20 +154,20 @@ if (!document.getElementById('scheduler-page-style')) {
     /* Wizard bottom nav */
     .wiz-footer { position:sticky; bottom:0; display:flex; align-items:center; justify-content:space-between; padding:10px 28px; background:rgba(255,255,255,0.92); backdrop-filter:blur(12px); border-top:1px solid ${G.border}; z-index:40; flex-shrink:0; }
     .wiz-nav-btn { display:inline-flex; align-items:center; gap:8px; padding:11px 24px; border-radius:10px; font-family:'Inter',sans-serif; font-size:13.5px; font-weight:700; cursor:pointer; transition:all .18s; }
-    .wiz-nav-btn.back { background:#fff; color:${G.muted}; border:1px solid ${G.border}; }
+    .wiz-nav-btn.back { background: var(--surface); color:${G.muted}; border:1px solid ${G.border}; }
     .wiz-nav-btn.back:hover { background:${G.hover}; color:${G.ink}; border-color:${G.meadowBorder}; }
-    .wiz-nav-btn.next { background:${G.meadow}; color:#fff; border:none; box-shadow:0 4px 14px rgba(21,128,61,0.2); }
-    .wiz-nav-btn.next:hover { background:${G.meadowDeep}; transform:translateY(-1px); box-shadow:0 6px 20px rgba(21,128,61,0.3); }
+    .wiz-nav-btn.next { background:${G.meadow}; color:#fff; border:none; box-shadow:0 4px 14px rgba(0,0,0,0.2); }
+    .wiz-nav-btn.next:hover { background:${G.meadowDeep}; transform:translateY(-1px); box-shadow:0 6px 20px rgba(0,0,0,0.3); }
     .wiz-nav-btn.next:disabled { opacity:.5; cursor:not-allowed; transform:none; box-shadow:none; }
-    .wiz-nav-btn.solve-main { background:${G.meadow}; color:#fff; border:none; box-shadow:0 4px 20px rgba(21,128,61,0.3); padding:13px 32px; font-size:14.5px; }
+    .wiz-nav-btn.solve-main { background:${G.meadow}; color:#fff; border:none; box-shadow:0 4px 20px rgba(0,0,0,0.3); padding:13px 32px; font-size:14.5px; }
 
-    .sch-select { padding:9px 36px 9px 14px; border-radius:8px; border:1px solid ${G.border}; background:#fff; color:${G.ink}; font-size:13px; font-weight:600; font-family:'Inter',sans-serif; appearance:none; cursor:pointer; outline:none; transition:all .15s; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234B7060' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; box-shadow:0 1px 3px rgba(0,0,0,0.02); }
-    .sch-select:focus, .sch-input:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(21,128,61,0.1); }
+    .sch-select { padding:9px 36px 9px 14px; border-radius:8px; border:1px solid ${G.border}; background: var(--surface); color:${G.ink}; font-size:13px; font-weight:600; font-family:'Inter',sans-serif; appearance:none; cursor:pointer; outline:none; transition:all .15s; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234B7060' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; box-shadow:0 1px 3px rgba(0,0,0,0.02); }
+    .sch-select:focus, .sch-input:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
 
-    .sch-input { padding:9px 14px; border-radius:8px; border:1px solid ${G.border}; background:#fff; color:${G.ink}; font-size:13px; font-weight:600; font-family:'Inter',sans-serif; outline:none; transition:all .15s; }
+    .sch-input { padding:9px 14px; border-radius:8px; border:1px solid ${G.border}; background: var(--surface); color:${G.ink}; font-size:13px; font-weight:600; font-family:'Inter',sans-serif; outline:none; transition:all .15s; }
     .sch-input::placeholder { color:${G.muted2}; font-weight:500; }
 
-    .saved-item { display:flex; align-items:center; gap:14px; padding:14px 18px; cursor:pointer; transition:background .15s, border-color .15s; border-bottom:1px solid ${G.borderLight}; background:#fff; }
+    .saved-item { display:flex; align-items:center; gap:14px; padding:14px 18px; cursor:pointer; transition:background .15s, border-color .15s; border-bottom:1px solid ${G.borderLight}; background: var(--surface); }
     .saved-item:last-child { border-bottom:none; }
     .saved-item:hover { background:${G.hover}; border-bottom-color:${G.meadowBorder}; }
     .saved-item:hover .saved-name { color:${G.meadowDeep}; }
@@ -185,15 +185,15 @@ if (!document.getElementById('scheduler-page-style')) {
     .saved-chevron { color:${G.muted2}; transition:color .15s; flex-shrink:0; }
     .saved-current-badge { font-size:10px; font-weight:800; padding:2px 8px; border-radius:99px; background:${G.meadow}; color:#fff; letter-spacing:.3px; text-transform:uppercase; flex-shrink:0; }
 
-    .r-tab { display:inline-flex; align-items:center; gap:5px; padding:8px 16px; border-radius:8px; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; transition:all .15s; border:1px solid ${G.border}; background:#fff; color:${G.muted}; box-shadow:0 1px 2px rgba(0,0,0,0.02); }
-    .r-tab.active { background:${G.meadow}; color:#fff; border-color:${G.meadowDeep}; box-shadow:0 3px 10px rgba(21,128,61,0.25); }
+    .r-tab { display:inline-flex; align-items:center; gap:5px; padding:8px 16px; border-radius:8px; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; transition:all .15s; border:1px solid ${G.border}; background: var(--surface); color:${G.muted}; box-shadow:0 1px 2px rgba(0,0,0,0.02); }
+    .r-tab.active { background:${G.meadow}; color:#fff; border-color:${G.meadowDeep}; box-shadow:0 3px 10px rgba(0,0,0,0.25); }
     .r-tab:hover:not(.active) { background:${G.hover}; border-color:${G.meadowBorder}; color:${G.ink}; }
 
-    .r-stat { flex:1; display:flex; flex-direction:column; align-items:center; padding:10px 8px; border-radius:10px; border:1px solid; transition:transform .15s, box-shadow .15s; background:#fff; }
+    .r-stat { flex:1; display:flex; flex-direction:column; align-items:center; padding:10px 8px; border-radius:10px; border:1px solid; transition:transform .15s, box-shadow .15s; background: var(--surface); }
     .r-stat.clickable { cursor:pointer; }
-    .r-stat.clickable:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(10,46,28,0.06); }
+    .r-stat.clickable:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,0.06); }
 
-    .course-row { border-bottom:1px solid ${G.borderLight}; transition:background .15s; cursor:pointer; background:#fff; }
+    .course-row { border-bottom:1px solid ${G.borderLight}; transition:background .15s; cursor:pointer; background: var(--surface); }
     .course-row:hover { background:${G.hover}; }
     .course-row:last-child { border-bottom:none; }
     .course-row-main { display:flex; align-items:center; gap:12px; padding:10px 16px; }
@@ -203,10 +203,10 @@ if (!document.getElementById('scheduler-page-style')) {
 
     /* Faculty pool modal */
     .fp-modal-backdrop { position:fixed; inset:0; background:rgba(14,42,32,0.6); display:flex; align-items:center; justify-content:center; z-index:600; backdrop-filter:blur(4px); padding:24px; animation:fadeIn 0.2s ease-out; }
-    .fp-modal { background:#fff; border-radius:16px; width:100%; max-width:520px; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 24px 48px rgba(10,46,28,0.25); border:1px solid ${G.border}; animation:slideUp .25s cubic-bezier(0.16, 1, 0.3, 1); overflow:hidden; }
-    .fp-modal-head { padding:24px 28px 20px; border-bottom:1px solid ${G.border}; flex-shrink:0; background:#fff; }
+    .fp-modal { background: var(--surface); border-radius:16px; width:100%; max-width:520px; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 24px 48px rgba(0,0,0,0.25); border:1px solid ${G.border}; animation:slideUp .25s cubic-bezier(0.16, 1, 0.3, 1); overflow:hidden; }
+    .fp-modal-head { padding:24px 28px 20px; border-bottom:1px solid ${G.border}; flex-shrink:0; background: var(--surface); }
     .fp-modal-body { overflow-y:auto; flex:1; padding:0 28px 24px; background:${G.bg}; }
-    .fp-frow { display:flex; align-items:center; gap:14px; padding:14px 16px; border-bottom:1px solid ${G.borderLight}; background:#fff; border-radius:10px; margin-top:10px; border:1px solid ${G.border}; box-shadow:0 1px 2px rgba(0,0,0,0.02); }
+    .fp-frow { display:flex; align-items:center; gap:14px; padding:14px 16px; border-bottom:1px solid ${G.borderLight}; background: var(--surface); border-radius:10px; margin-top:10px; border:1px solid ${G.border}; box-shadow:0 1px 2px rgba(0,0,0,0.02); }
     .fp-frow:last-child { border-bottom:1px solid ${G.border}; }
     .fp-avatar { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0; border:1px solid rgba(0,0,0,0.05); }
     .fp-ubar-wrap { flex:1; height:6px; background:${G.borderLight}; border-radius:99px; overflow:hidden; }
@@ -236,11 +236,11 @@ if (!document.getElementById('scheduler-page-style')) {
     .phase-chip.drop-before::before,
     .phase-chip.drop-after::after {
       content:''; position:absolute; top:2px; width:3px; height:26px; border-radius:99px; background:${G.meadow};
-      box-shadow:0 0 0 3px rgba(21,128,61,0.15);
+      box-shadow:0 0 0 3px rgba(0,0,0,0.15);
     }
     .phase-chip.drop-before::before { left:-2px; }
     .phase-chip.drop-after::after   { right:-2px; }
-    .phase-chip.keyboard-grabbed .phase-chip-dot { border-color:${G.meadow} !important; box-shadow:0 0 0 4px rgba(21,128,61,0.18); }
+    .phase-chip.keyboard-grabbed .phase-chip-dot { border-color:${G.meadow} !important; box-shadow:0 0 0 4px rgba(0,0,0,0.18); }
     .phase-chip-dot {
       width:30px; height:30px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center;
       font-size:11px; font-weight:800; background:${G.meadowSoft}; color:${G.meadowDeep}; border:2px solid ${G.meadowBorder};
@@ -248,7 +248,7 @@ if (!document.getElementById('scheduler-page-style')) {
     }
     .phase-chip:hover .phase-chip-dot { background:${G.meadow}; color:#fff; border-color:${G.meadowDeep}; transform:scale(1.08); }
     .phase-chip-order {
-      position:absolute; top:-5px; right:-5px; width:15px; height:15px; border-radius:50%; background:#fff;
+      position:absolute; top:-5px; right:-5px; width:15px; height:15px; border-radius:50%; background: var(--surface);
       border:1.5px solid ${G.border}; color:${G.muted2}; font-size:8.5px; font-weight:800;
       display:flex; align-items:center; justify-content:center; transition:all .15s;
     }
@@ -258,7 +258,7 @@ if (!document.getElementById('scheduler-page-style')) {
     .phase-chip:hover .phase-chip-handle, .phase-chip:focus-within .phase-chip-handle { opacity:1; }
     .phase-chip-arrows { display:flex; gap:3px; margin-top:2px; opacity:0; transition:opacity .15s; }
     .phase-chip:hover .phase-chip-arrows, .phase-chip:focus-within .phase-chip-arrows { opacity:1; }
-    .phase-chip-arrow { width:18px; height:18px; padding:0; border-radius:5px; border:1px solid ${G.border}; background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; color:${G.muted2}; transition:all .15s; }
+    .phase-chip-arrow { width:18px; height:18px; padding:0; border-radius:5px; border:1px solid ${G.border}; background: var(--surface); display:flex; align-items:center; justify-content:center; cursor:pointer; color:${G.muted2}; transition:all .15s; }
     .phase-chip-arrow:hover:not(:disabled) { background:${G.meadowSoft}; border-color:${G.meadowBorder}; color:${G.meadowDeep}; }
     .phase-chip-arrow:disabled { opacity:0.25; cursor:default; }
     @media (max-width: 720px) {
@@ -270,18 +270,18 @@ if (!document.getElementById('scheduler-page-style')) {
     .prog-bar-fill { height:100%; border-radius:99px; transition:width .6s cubic-bezier(.4,0,.2,1); }
 
     .action-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 24px; border-radius:8px; font-family:'Inter',sans-serif; font-size:13px; font-weight:600; cursor:pointer; transition:all .2s; border:none; }
-    .action-btn.solve { background:${G.meadow}; color:#fff; box-shadow:0 4px 12px rgba(21,128,61,0.2); }
-    .action-btn.solve:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 16px rgba(21,128,61,0.3); background:${G.meadowDeep}; }
+    .action-btn.solve { background:${G.meadow}; color:#fff; box-shadow:0 4px 12px rgba(0,0,0,0.2); }
+    .action-btn.solve:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,0.3); background:${G.meadowDeep}; }
     .action-btn.solve:disabled { opacity:0.5; cursor:not-allowed; transform:none; box-shadow:none; }
-    .action-btn.save { background:${G.inkMid}; color:#fff; box-shadow:0 4px 12px rgba(10,46,28,0.2); }
-    .action-btn.save:hover:not(:disabled) { transform:translateY(-1px); background:${G.ink}; box-shadow:0 6px 16px rgba(10,46,28,0.3); }
+    .action-btn.save { background:${G.inkMid}; color:#fff; box-shadow:0 4px 12px rgba(0,0,0,0.2); }
+    .action-btn.save:hover:not(:disabled) { transform:translateY(-1px); background:${G.ink}; box-shadow:0 6px 16px rgba(0,0,0,0.3); }
     .action-btn.save:disabled { opacity:0.5; cursor:not-allowed; }
-    .action-btn.view { background:#fff; color:${G.ink}; border:1px solid ${G.border}; box-shadow:0 1px 3px rgba(0,0,0,0.02); }
+    .action-btn.view { background: var(--surface); color:${G.ink}; border:1px solid ${G.border}; box-shadow:0 1px 3px rgba(0,0,0,0.02); }
     .action-btn.view:hover { background:${G.hover}; border-color:${G.meadowBorder}; color:${G.meadowDeep}; }
 
     .status-strip { display:flex; align-items:center; gap:12px; padding:14px 20px; border-radius:10px; font-size:13.5px; font-weight:600; font-family:'Inter', sans-serif; }
     .status-strip.running  { background:${G.meadowSoft}; color:${G.meadowDeep}; border:1px solid ${G.meadowBorder}; }
-    .status-strip.complete { background:#D1FAE5; color:#065F46; border:1px solid #A7F3D0; }
+    .status-strip.complete { background:var(--meadow-soft); color:var(--meadow-deep); border:1px solid #A7F3D0; }
     .status-strip.failed   { background:#FEE2E2; color:#B91C1C; border:1px solid #FECACA; }
 
     /* Step 3 result block */
@@ -289,17 +289,17 @@ if (!document.getElementById('scheduler-page-style')) {
     .solve-result.complete { border-color:${G.meadowBorder}; }
     .solve-result.failed   { border-color:#FECACA; }
     .solve-result-body { display:flex; align-items:center; gap:16px; padding:24px 28px; }
-    .solve-result-actions { display:flex; flex-wrap:wrap; gap:10px; padding:16px 28px; border-top:1px solid; background:#fff; justify-content:flex-end; }
-    .solve-result.complete .solve-result-actions { border-color:${G.meadowBorder}; background:#F8FAF9; }
+    .solve-result-actions { display:flex; flex-wrap:wrap; gap:10px; padding:16px 28px; border-top:1px solid; background: var(--surface); justify-content:flex-end; }
+    .solve-result.complete .solve-result-actions { border-color:${G.meadowBorder}; background:var(--bg); }
     .solve-result.failed   .solve-result-actions { border-color:#FECACA; background:#FEF2F2; }
     .solve-action-btn { display:inline-flex; align-items:center; gap:8px; padding:10px 20px; border-radius:9px; font-family:'Inter',sans-serif; font-size:13px; font-weight:700; cursor:pointer; transition:all .2s; }
-    .solve-action-btn.primary { background:${G.meadow}; color:#fff; border:none; box-shadow:0 4px 12px rgba(21,128,61,0.2); }
-    .solve-action-btn.primary:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 16px rgba(21,128,61,0.3); background:${G.meadowDeep}; }
+    .solve-action-btn.primary { background:${G.meadow}; color:#fff; border:none; box-shadow:0 4px 12px rgba(0,0,0,0.2); }
+    .solve-action-btn.primary:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,0.3); background:${G.meadowDeep}; }
     .solve-action-btn.primary:disabled { opacity:.5; cursor:not-allowed; transform:none; box-shadow:none; }
-    .solve-action-btn.ghost { background:#fff; color:${G.ink}; border:1px solid ${G.border}; }
+    .solve-action-btn.ghost { background: var(--surface); color:${G.ink}; border:1px solid ${G.border}; }
     .solve-action-btn.ghost:hover { background:${G.bg}; border-color:${G.meadowBorder}; color:${G.meadowDeep}; }
     
-    .check-btn { display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:8px; border:1px solid ${G.border}; background:#fff; color:${G.ink}; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; transition:all .15s; box-shadow:0 1px 2px rgba(0,0,0,0.02); white-space:nowrap; }
+    .check-btn { display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:8px; border:1px solid ${G.border}; background: var(--surface); color:${G.ink}; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; transition:all .15s; box-shadow:0 1px 2px rgba(0,0,0,0.02); white-space:nowrap; }
     .check-btn:hover:not(:disabled) { background:${G.hover}; color:${G.meadowDeep}; border-color:${G.meadowBorder}; }
     .check-btn:disabled { opacity:.6; cursor:not-allowed; }
 
@@ -315,7 +315,7 @@ if (!document.getElementById('scheduler-page-style')) {
     /* Sub-tabs inside the Check card (Diagnostic / Faculty Pools / Workload) */
     .subtab-row { display:flex; gap:4px; padding:3px; background:${G.hover}; border-radius:9px; border:1px solid ${G.border}; }
     .subtab-btn { flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:7px 12px; border-radius:7px; font-family:'Inter',sans-serif; font-size:12px; font-weight:700; cursor:pointer; transition:all .15s; border:none; background:transparent; color:${G.muted}; }
-    .subtab-btn.active { background:#fff; color:${G.meadowDeep}; box-shadow:0 2px 6px rgba(10,46,28,0.08); }
+    .subtab-btn.active { background: var(--surface); color:${G.meadowDeep}; box-shadow:0 2px 6px rgba(0,0,0,0.08); }
     .subtab-btn:hover:not(.active) { color:${G.ink}; }
     .subtab-count { font-size:10.5px; font-weight:800; padding:1px 7px; border-radius:99; background:${G.borderLight}; color:${G.muted2}; }
     .subtab-btn.active .subtab-count { background:${G.meadowSoft}; color:${G.meadowDeep}; }
@@ -341,18 +341,18 @@ if (!document.getElementById('scheduler-page-style')) {
       align-items: center; 
       pointer-events: none; 
     }
-    .sch-toast { display:flex; align-items:center; gap:10px; padding:14px 22px; border-radius:12px; font-family:'Inter',sans-serif; font-size:13.5px; font-weight:600; animation:slideUp .25s cubic-bezier(.4,0,.2,1); white-space:nowrap; pointer-events:auto; box-shadow:0 8px 24px rgba(10,46,28,0.15); }
+    .sch-toast { display:flex; align-items:center; gap:10px; padding:14px 22px; border-radius:12px; font-family:'Inter',sans-serif; font-size:13.5px; font-weight:600; animation:slideUp .25s cubic-bezier(.4,0,.2,1); white-space:nowrap; pointer-events:auto; box-shadow:0 8px 24px rgba(0,0,0,0.15); }
     .sch-toast.success { background:${G.meadow}; color:#fff; border:1px solid ${G.meadowBorder}; }
-    .sch-toast.error   { background:#fff; color:#DC2626; border:1px solid #FECACA; }
-    .sch-toast.info    { background:#fff; color:${G.meadowDeep}; border:1px solid ${G.meadowBorder}; }
+    .sch-toast.error   { background: var(--surface); color:#DC2626; border:1px solid #FECACA; }
+    .sch-toast.info    { background: var(--surface); color:${G.meadowDeep}; border:1px solid ${G.meadowBorder}; }
 
     /* Search */
-    .sch-search { padding:9px 14px 9px 36px; border-radius:8px; border:1px solid ${G.border}; font-family:'Inter',sans-serif; font-size:13px; background:#fff; color:${G.ink}; outline:none; transition:all .15s; width:100%; box-sizing:border-box; box-shadow:0 1px 3px rgba(0,0,0,0.02); }
-    .sch-search:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(21,128,61,0.1); }
+    .sch-search { padding:9px 14px 9px 36px; border-radius:8px; border:1px solid ${G.border}; font-family:'Inter',sans-serif; font-size:13px; background: var(--surface); color:${G.ink}; outline:none; transition:all .15s; width:100%; box-sizing:border-box; box-shadow:0 1px 3px rgba(0,0,0,0.02); }
+    .sch-search:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
 
     /* Delete modal */
     .del-modal-backdrop { position:fixed; inset:0; background:rgba(14,42,32,0.6); display:flex; align-items:center; justify-content:center; z-index:500; backdrop-filter:blur(4px); }
-    .del-modal-box { background:#fff; border-radius:16px; width:380px; padding:32px; box-shadow:0 24px 48px rgba(10,46,28,0.25); border:1px solid ${G.border}; animation:slideUp .25s cubic-bezier(0.16, 1, 0.3, 1); }
+    .del-modal-box { background: var(--surface); border-radius:16px; width:380px; padding:32px; box-shadow:0 24px 48px rgba(0,0,0,0.25); border:1px solid ${G.border}; animation:slideUp .25s cubic-bezier(0.16, 1, 0.3, 1); }
 
     /* Skeleton */
     .sch-skeleton { background:linear-gradient(90deg, ${G.hover} 25%, ${G.borderLight} 50%, ${G.hover} 75%); background-size:800px 100%; animation:schShimmer 1.4s ease-in-out infinite; border-radius:8px; }
@@ -568,9 +568,9 @@ function DeleteModal({ name, onConfirm, onCancel }) {
           <p style={{ fontSize: 14, color: G.ink, fontWeight: 700, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>"{name}"</p>
         </div>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-          <button onClick={onCancel} style={{ padding: '10px 20px', borderRadius: 8, border: `1px solid ${G.border}`, background: '#fff', color: G.muted, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", transition: 'all .15s' }}
+          <button onClick={onCancel} style={{ padding: '10px 20px', borderRadius: 8, border: `1px solid ${G.border}`, background: 'var(--surface)', color: G.muted, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", transition: 'all .15s' }}
             onMouseOver={e => {e.currentTarget.style.background = G.hover; e.currentTarget.style.color = G.ink}}
-            onMouseOut={e => {e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = G.muted}}>
+            onMouseOut={e => {e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.color = G.muted}}>
             Cancel
           </button>
           <button onClick={onConfirm} style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: '#DC2626', color: '#fff', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", boxShadow: '0 4px 12px rgba(220,38,38,0.25)', transition: 'all .15s' }}
@@ -628,10 +628,10 @@ function OverwriteModal({ name, onOverwrite, onRename, onCancel }) {
               <button
                 onClick={() => setMode('rename')}
                 style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 16px', borderRadius:10, border:`1.5px solid ${G.meadowBorder}`, background:G.meadowSoft, cursor:'pointer', fontFamily:"'Inter',sans-serif", textAlign:'left', transition:'all .15s' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor=G.meadow; e.currentTarget.style.background='#BBF7D0' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor=G.meadow; e.currentTarget.style.background='var(--meadow-border)' }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor=G.meadowBorder; e.currentTarget.style.background=G.meadowSoft }}
               >
-                <div style={{ width:36, height:36, borderRadius:9, background:'#BBF7D0', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <div style={{ width:36, height:36, borderRadius:9, background:'var(--meadow-border)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G.meadowDeep} strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </div>
                 <div>
@@ -643,7 +643,7 @@ function OverwriteModal({ name, onOverwrite, onRename, onCancel }) {
 
             <div style={{ display:'flex', justifyContent:'flex-end' }}>
               <button onClick={onCancel}
-                style={{ padding:'9px 20px', borderRadius:8, border:`1px solid ${G.border}`, background:'#fff', color:G.muted, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>
+                style={{ padding:'9px 20px', borderRadius:8, border:`1px solid ${G.border}`, background: 'var(--surface)', color:G.muted, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>
                 Cancel
               </button>
             </div>
@@ -672,11 +672,11 @@ function OverwriteModal({ name, onOverwrite, onRename, onCancel }) {
 
             <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
               <button onClick={onCancel}
-                style={{ padding:'9px 20px', borderRadius:8, border:`1px solid ${G.border}`, background:'#fff', color:G.muted, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>
+                style={{ padding:'9px 20px', borderRadius:8, border:`1px solid ${G.border}`, background: 'var(--surface)', color:G.muted, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>
                 Cancel
               </button>
               <button onClick={() => newName.trim() && onRename(newName.trim())} disabled={!newName.trim()}
-                style={{ padding:'9px 22px', borderRadius:8, border:'none', background:G.meadow, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'Inter',sans-serif", boxShadow:`0 3px 12px rgba(21,128,61,.25)`, opacity: newName.trim() ? 1 : 0.5 }}>
+                style={{ padding:'9px 22px', borderRadius:8, border:'none', background:G.meadow, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'Inter',sans-serif", boxShadow:`0 3px 12px rgba(0,0,0,.25)`, opacity: newName.trim() ? 1 : 0.5 }}>
                 Save
               </button>
             </div>
@@ -731,10 +731,10 @@ function FacultyPoolModal({ item, onClose }) {
                 ))}
               </div>
             </div>
-            <button onClick={onClose} style={{ width:36, height:36, borderRadius:10, border:`1px solid ${G.border}`, background:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0, lineHeight:0, transition:'all .15s' }}
+            <button onClick={onClose} style={{ width:36, height:36, borderRadius:10, border:`1px solid ${G.border}`, background: 'var(--surface)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0, lineHeight:0, transition:'all .15s' }}
               onMouseOver={e => {e.currentTarget.style.background = '#FEE2E2'; e.currentTarget.style.borderColor = '#FECACA'}}
-              onMouseOut={e => {e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = G.border}}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4B7060" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              onMouseOut={e => {e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = G.border}}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
         </div>
@@ -779,11 +779,11 @@ function FacultyPoolModal({ item, onClose }) {
                   <p style={{ fontSize:11.5, fontWeight:800, color:G.muted2, textTransform:'uppercase', letterSpacing:'.8px', marginBottom:12 }}>Below threshold — not eligible</p>
                   {unqualified.map((f, i) => (
                     <div key={i} className="fp-frow" style={{ opacity:0.6, background: G.hover, borderColor: G.borderLight, boxShadow: 'none' }}>
-                      <div className="fp-avatar" style={{ background:'#fff', color:G.muted2, border: `1px solid ${G.border}` }}>{mkIni(f.name)}</div>
+                      <div className="fp-avatar" style={{ background: 'var(--surface)', color:G.muted2, border: `1px solid ${G.border}` }}>{mkIni(f.name)}</div>
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                           <span style={{ fontSize:13.5, fontWeight:600, color:G.muted, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{f.name}</span>
-                          <span style={{ fontSize:11.5, fontWeight:700, padding:'3px 10px', borderRadius:99, background:'#fff', color:G.muted2, flexShrink:0, marginLeft:8, border: `1px solid ${G.border}` }}>{RATING_LABELS[f.rating]}</span>
+                          <span style={{ fontSize:11.5, fontWeight:700, padding:'3px 10px', borderRadius:99, background: 'var(--surface)', color:G.muted2, flexShrink:0, marginLeft:8, border: `1px solid ${G.border}` }}>{RATING_LABELS[f.rating]}</span>
                         </div>
                       </div>
                     </div>
@@ -911,7 +911,7 @@ function PhaseTimeline({ currentPhaseIdx, status, progress, order, defaultOrder,
             return (
               <div key={ph.key} className="phase-step">
                 {i < phases.length - 1 && <div className="phase-connector" style={{ background: (phaseDone && !idle) ? G.meadow : G.border }} />}
-                <div className="phase-dot" style={{ background: idle ? G.hover : phaseDone ? G.meadow : phaseActive ? '#fff' : G.bg, border: idle ? `2px solid ${G.border}` : phaseActive ? `2.5px solid ${G.meadowDeep}` : phaseDone ? 'none' : `2px solid ${G.border}`, boxShadow: phaseActive ? `0 0 0 4px rgba(21,128,61,0.15)` : 'none' }}>
+                <div className="phase-dot" style={{ background: idle ? G.hover : phaseDone ? G.meadow : phaseActive ? '#fff' : G.bg, border: idle ? `2px solid ${G.border}` : phaseActive ? `2.5px solid ${G.meadowDeep}` : phaseDone ? 'none' : `2px solid ${G.border}`, boxShadow: phaseActive ? `0 0 0 4px rgba(0,0,0,0.15)` : 'none' }}>
                   {phaseDone && !idle ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                     : phaseActive ? <div style={{ width:10, height:10, borderRadius:'50%', background:G.meadowDeep }} /> : null}
                 </div>
@@ -1063,7 +1063,7 @@ function SavedItem({ name, academicYear, semester, finalized, onLoad, onDelete, 
           <span className="saved-name">{name}</span>
           {isCurrent && <span className="saved-current-badge">Active</span>}
           {finalized && (
-            <span style={{ display:'inline-flex', alignItems:'center', gap:3, padding:'1px 7px', borderRadius:99, fontSize:9.5, fontWeight:700, background:'#DCFCE7', color:'#15803D', border:'1px solid #BBF7D0', flexShrink:0 }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:3, padding:'1px 7px', borderRadius:99, fontSize:9.5, fontWeight:700, background:'var(--meadow-soft)', color: 'var(--meadow)', border:'1px solid var(--meadow-border)', flexShrink:0 }}>
               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
               Finalized
             </span>
@@ -1480,7 +1480,7 @@ function CheckPanel({ semester }) {
                 </div>
 
                 {/* Course table */}
-                <div style={{ borderRadius:10, border:`1px solid ${G.border}`, overflow:'hidden', maxHeight:320, overflowY:'auto', boxShadow:'0 2px 6px rgba(10,46,28,0.04)', background: '#fff' }}>
+                <div style={{ borderRadius:10, border:`1px solid ${G.border}`, overflow:'hidden', maxHeight:320, overflowY:'auto', boxShadow:'0 2px 6px rgba(0,0,0,0.04)', background: 'var(--surface)' }}>
                   <div style={{ display:'grid', gridTemplateColumns:'24px 1fr 110px 110px 24px', gap:14, padding:'12px 20px', background:G.hover, borderBottom:`1px solid ${G.border}`, position:'sticky', top:0, zIndex:1, alignItems:'center' }}>
                     <span />
                     <span style={{ fontSize:11.5, fontWeight:800, color:G.muted2, textTransform:'uppercase', letterSpacing:'.8px' }}>Course</span>
@@ -1515,7 +1515,7 @@ function CheckPanel({ semester }) {
                       </svg>
                     </button>
                     {showOtherDept && (
-                      <div className="fadein" style={{ borderTop:`1px solid ${G.border}`, maxHeight:320, overflowY:'auto', background: '#fff' }}>
+                      <div className="fadein" style={{ borderTop:`1px solid ${G.border}`, maxHeight:320, overflowY:'auto', background: 'var(--surface)' }}>
                         <div style={{ padding:'12px 20px', background:G.bg, borderBottom:`1px solid ${G.borderLight}`, fontSize:12.5, color:G.muted, fontWeight: 500 }}>
                           PE, NSTP, MAT, and GEC are assigned by other departments and skipped by the automated solver.
                         </div>
@@ -1583,7 +1583,7 @@ function StepHeader({ number, title, subtitle, badge }) {
   return (
     <div style={{ display:'flex', alignItems:'center', gap:14, padding:'16px 22px', borderRadius:14,
       background: `linear-gradient(135deg, ${G.meadowDeep}, ${G.meadow})`, 
-      boxShadow: '0 4px 14px rgba(21,128,61,0.15)',
+      boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
       marginBottom:16, position:'relative', overflow:'hidden' }}>
       
       {/* Decorative background circle */}
@@ -2410,7 +2410,7 @@ export default function SchedulerPage() {
                         
                         {/* Diagnostic Results Panel */}
                         {diagnostic && (
-                          <div className="fadein" style={{ marginTop:16, padding:16, borderRadius:10, border:'1px solid #D8E8DF', background:'#F8FAF9' }}>
+                          <div className="fadein" style={{ marginTop:16, padding:16, borderRadius:10, border:'1px solid #D8E8DF', background:'var(--bg)' }}>
                             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
                               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={G.meadowDeep} strokeWidth="2.5">
                                 <path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/>
@@ -2427,15 +2427,15 @@ export default function SchedulerPage() {
                               <div>
                                 {/* Summary */}
                                 <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:8, marginBottom:14 }}>
-                                  <div style={{ padding:8, borderRadius:6, background:'#fff', border:'1px solid #D8E8DF', textAlign:'center' }}>
+                                  <div style={{ padding:8, borderRadius:6, background: 'var(--surface)', border:'1px solid #D8E8DF', textAlign:'center' }}>
                                     <div style={{ fontSize:16, fontWeight:800, color:G.meadowDeep }}>{diagnostic.summary?.filtered_courses || 0}</div>
                                     <div style={{ fontSize:10, color:G.muted, textTransform:'uppercase', letterSpacing:'0.5px' }}>Courses</div>
                                   </div>
-                                  <div style={{ padding:8, borderRadius:6, background:'#fff', border:'1px solid #D8E8DF', textAlign:'center' }}>
+                                  <div style={{ padding:8, borderRadius:6, background: 'var(--surface)', border:'1px solid #D8E8DF', textAlign:'center' }}>
                                     <div style={{ fontSize:16, fontWeight:800, color:G.meadowDeep }}>{diagnostic.summary?.total_rooms || 0}</div>
                                     <div style={{ fontSize:10, color:G.muted, textTransform:'uppercase', letterSpacing:'0.5px' }}>Rooms</div>
                                   </div>
-                                  <div style={{ padding:8, borderRadius:6, background:'#fff', border:'1px solid #D8E8DF', textAlign:'center' }}>
+                                  <div style={{ padding:8, borderRadius:6, background: 'var(--surface)', border:'1px solid #D8E8DF', textAlign:'center' }}>
                                     <div style={{ fontSize:16, fontWeight:800, color:G.meadowDeep }}>{diagnostic.summary?.days_configured || 0}</div>
                                     <div style={{ fontSize:10, color:G.muted, textTransform:'uppercase', letterSpacing:'0.5px' }}>Days</div>
                                   </div>
@@ -2477,9 +2477,9 @@ export default function SchedulerPage() {
 
                     {status === 'complete' && (
                       <div className="fadein solve-result complete" style={{ marginTop:14 }}>
-                        <div className="solve-result-body" style={{ background:'#F0FDF4' }}>
-                          <div style={{ width:44, height:44, borderRadius:'50%', background:'#D1FAE5', border:'1.5px solid #6EE7B7', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        <div className="solve-result-body" style={{ background:'var(--meadow-soft)' }}>
+                          <div style={{ width:44, height:44, borderRadius:'50%', background:'var(--meadow-soft)', border:'1.5px solid var(--mint)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                           </div>
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ fontSize:16, fontWeight:800, color:G.ink, marginBottom:3 }}>Schedule Generated Successfully</div>

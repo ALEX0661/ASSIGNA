@@ -25,15 +25,15 @@ const FULL_POLL_MS = 90000
 const RECENT_SCHEDULES_LIMIT = 30
 
 const G = {
-  meadow: '#15803D', meadowDeep: '#0F5C2C', meadowMid: '#166534',
-  meadowSoft: '#DCFCE7', meadowBorder: '#BBF7D0',
-  ink: '#0E2A20', inkMid: '#1C3D2A', muted: '#4B7060', muted2: '#6B8C7A',
-  border: '#D8E8DF', borderLight: '#EBF4EF', bg: '#F2F7F4',
-  surface: '#FFFFFF', hover: '#EBF4EF',
+  meadow: 'var(--meadow, var(--meadow))', meadowDeep: 'var(--meadow-deep)', meadowMid: 'var(--meadow-mid)',
+  meadowSoft: 'var(--meadow-soft)', meadowBorder: 'var(--meadow-border)',
+  ink: 'var(--ink, #0E2A20)', inkMid: '#1C3D2A', muted: 'var(--muted, #4B7060)', muted2: 'var(--muted2, #6B8C7A)',
+  border: 'var(--border)', borderLight: 'var(--hover)', bg: 'var(--bg, #F2F7F4)',
+  surface: 'var(--surface, #FFFFFF)', hover: 'var(--hover)',
   amber: '#B45309', amberSoft: '#FEF3C7', amberBorder: '#FDE68A',
   red: '#DC2626', redDeep: '#B91C1C', redSoft: '#FEF2F2', redBorder: '#FECACA',
   blue: '#1D4ED8', blueSoft: '#DBEAFE', blueBorder: '#BFDBFE',
-  violet: '#7C3AED', violetSoft: '#EDE9FE',
+  violet: '#7C3AED', violetSoft: 'color-mix(in srgb, #6D28D9 15%, transparent)',
   cyan: '#0891B2', cyanSoft: '#CFFAFE',
 }
 
@@ -64,14 +64,14 @@ if (!document.getElementById(STYLE_TAG_ID)) {
     
     .cp-toast-wrap { position:fixed; bottom:24px; left:50%; z-index:9999; display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none; transform:translateX(-50%); }
     .cp-toast { display:flex; align-items:center; gap:9px; padding:11px 18px; border-radius:10px; font-family:'Inter',sans-serif; font-size:13px; font-weight:600; animation:cpToastIn .2s ease-out; white-space:nowrap; pointer-events:auto; background:${G.ink}; color:#fff; box-shadow:0 8px 28px rgba(0,0,0,0.18); }
-    .cp-toast.error { background:#fff; color:${G.redDeep}; border:1.5px solid ${G.redBorder}; }
-    .cp-toast.info { background:#fff; color:${G.ink}; border:1.5px solid ${G.border}; }
+    .cp-toast.error { background: var(--surface); color:${G.redDeep}; border:1.5px solid ${G.redBorder}; }
+    .cp-toast.info { background: var(--surface); color:${G.ink}; border:1.5px solid ${G.border}; }
     
-    .d-card { background:#fff; border-radius:12px; border:1px solid ${G.border}; box-shadow:0 2px 8px rgba(10,46,28,0.05); animation:fadeUp .28s ease both; overflow:hidden; }
+    .d-card { background: var(--surface); border-radius:12px; border:1px solid ${G.border}; box-shadow:0 2px 8px rgba(0,0,0,0.05); animation:fadeUp .28s ease both; overflow:hidden; }
     .d-card-hover { transition:box-shadow .15s, transform .15s; }
-    .d-card-hover:hover { box-shadow:0 4px 12px rgba(10,46,28,0.08); transform:translateY(-1px); }
+    .d-card-hover:hover { box-shadow:0 4px 12px rgba(0,0,0,0.08); transform:translateY(-1px); }
     
-    .cd-refresh-btn { display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:8px; border:1px solid ${G.border}; background:#fff; color:${G.muted}; font-size:11.5px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; transition:all .12s; }
+    .cd-refresh-btn { display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:8px; border:1px solid ${G.border}; background: var(--surface); color:${G.muted}; font-size:11.5px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; transition:all .12s; }
     .cd-refresh-btn:hover { color:${G.meadowDeep}; background:${G.hover}; border-color:${G.meadowBorder}; }
     .cd-refresh-btn:disabled { opacity:.55; cursor:default; }
     .cd-refresh-btn.spinning svg { animation:spin-r .8s linear infinite; }
@@ -81,15 +81,15 @@ if (!document.getElementById(STYLE_TAG_ID)) {
     .cd-sched-row:hover { background:${G.hover}; }
     .cd-row-actions { opacity:1; }
     
-    .cd-icon-btn { width:30px; height:30px; border-radius:8px; border:1px solid ${G.border}; background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; color:${G.muted} !important; transition:all .12s; flex-shrink:0; }
+    .cd-icon-btn { width:30px; height:30px; border-radius:8px; border:1px solid ${G.border}; background: var(--surface); display:flex; align-items:center; justify-content:center; cursor:pointer; color:${G.muted} !important; transition:all .12s; flex-shrink:0; }
     .cd-icon-btn svg { fill:none !important; stroke:currentColor !important; display:block; flex-shrink:0; }
     .cd-icon-btn:hover { background:${G.hover}; color:${G.meadowDeep} !important; border-color:${G.meadowBorder}; }
     .cd-icon-btn.danger:hover { background:${G.redSoft}; color:${G.redDeep} !important; border-color:${G.redBorder}; }
     .cd-icon-btn:disabled { opacity:.5; cursor:default; }
     
     
-    .cd-run-btn { display:inline-flex; align-items:center; gap:7px; padding:9px 20px; border-radius:10px; border:none; background:linear-gradient(135deg,${G.meadow},${G.meadowDeep}); color:#fff; font-size:13px; font-weight:700; cursor:pointer; font-family:'Inter',sans-serif; box-shadow:0 3px 12px rgba(21,128,61,0.25); transition:transform .15s, box-shadow .15s, background .15s; }
-    .cd-run-btn:hover { transform:translateY(-1px); box-shadow:0 5px 16px rgba(21,128,61,0.3); }
+    .cd-run-btn { display:inline-flex; align-items:center; gap:7px; padding:9px 20px; border-radius:10px; border:none; background:linear-gradient(135deg,${G.meadow},${G.meadowDeep}); color:#fff; font-size:13px; font-weight:700; cursor:pointer; font-family:'Inter',sans-serif; box-shadow:0 3px 12px rgba(0,0,0,0.25); transition:transform .15s, box-shadow .15s, background .15s; }
+    .cd-run-btn:hover { transform:translateY(-1px); box-shadow:0 5px 16px rgba(0,0,0,0.3); }
     
     .stat-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:20px; }
     @media (max-width: 900px) { .stat-grid { grid-template-columns:repeat(2, 1fr); } }
@@ -100,7 +100,7 @@ if (!document.getElementById(STYLE_TAG_ID)) {
     [data-action="primary"] {
       background:linear-gradient(135deg,${G.meadow},${G.meadowDeep}) !important;
       border-radius:8px !important; font-family:'Inter',sans-serif !important; font-weight:700 !important;
-      font-size:13px !important; padding:8px 18px !important; box-shadow:0 3px 10px rgba(21,128,61,0.3) !important; border:none !important; color:#fff !important;
+      font-size:13px !important; padding:8px 18px !important; box-shadow:0 3px 10px rgba(0,0,0,0.3) !important; border:none !important; color:#fff !important;
     }
     [data-action="back"] { color:${G.muted} !important; font-family:'Inter',sans-serif !important; font-weight:600 !important; font-size:13px !important; }
     [data-action="skip"] { color:${G.muted2} !important; font-family:'Inter',sans-serif !important; font-weight:600 !important; font-size:12.5px !important; }
@@ -118,12 +118,12 @@ if (!document.getElementById(STYLE_TAG_ID)) {
     .cd-analytics-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px; margin-bottom:20px; }
     @media (max-width: 720px) { .cd-analytics-row { grid-template-columns:1fr; } }
     
-    .stat-card { background:#fff; border-radius:12px; border:1px solid ${G.border}; box-shadow:0 2px 4px rgba(10,46,28,0.03); padding:16px 20px; display:flex; align-items:center; gap:14px; min-height:80px; transition:all .15s; position:relative; }
-    .stat-card:hover { border-color:${G.meadowBorder}; box-shadow:0 4px 12px rgba(10,46,28,0.06); transform:translateY(-1px); }
+    .stat-card { background: var(--surface); border-radius:12px; border:1px solid ${G.border}; box-shadow:0 2px 4px rgba(0,0,0,0.03); padding:16px 20px; display:flex; align-items:center; gap:14px; min-height:80px; transition:all .15s; position:relative; }
+    .stat-card:hover { border-color:${G.meadowBorder}; box-shadow:0 4px 12px rgba(0,0,0,0.06); transform:translateY(-1px); }
     .stat-icon-wrap { width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     
     .suggestion-card { border-radius:10px; padding:12px 14px; display:flex; align-items:flex-start; gap:10px; cursor:default; transition:transform .15s, box-shadow .15s; border:1px solid transparent; }
-    .suggestion-card:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(10,46,28,0.06); }
+    .suggestion-card:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,0.06); }
     
     .setup-row { display:flex; align-items:center; gap:16px; padding:14px 20px; cursor:default; transition:background 0.12s; }
     .setup-row:hover { background: ${G.hover} !important; }
@@ -134,23 +134,23 @@ if (!document.getElementById(STYLE_TAG_ID)) {
     
     .cd-search-wrap { position:relative; display:flex; align-items:center; }
     .cd-search-wrap svg { position:absolute; left:12px; pointer-events:none; }
-    .cd-search-input { font-family:'Inter',sans-serif; font-size:13px; font-weight:500; padding:8px 12px 8px 34px; border-radius:10px; border:1px solid ${G.border}; background:#fff; color:${G.ink}; width:200px; transition:border-color .12s, width .15s, box-shadow .15s; }
+    .cd-search-input { font-family:'Inter',sans-serif; font-size:13px; font-weight:500; padding:8px 12px 8px 34px; border-radius:10px; border:1px solid ${G.border}; background: var(--surface); color:${G.ink}; width:200px; transition:border-color .12s, width .15s, box-shadow .15s; }
     .cd-search-input::placeholder { color:${G.muted2}; }
-    .cd-search-input:focus { outline:none; border-color:${G.meadow}; width:240px; box-shadow:0 0 0 3px rgba(21,128,61,0.1); }
+    .cd-search-input:focus { outline:none; border-color:${G.meadow}; width:240px; box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
     
-    .cd-filter-chip { font-family:'Inter',sans-serif; font-size:11.5px; font-weight:600; padding:5px 12px; border-radius:10px; border:1px solid ${G.border}; background:#fff; color:${G.muted}; cursor:pointer; transition:all .12s; white-space:nowrap; }
+    .cd-filter-chip { font-family:'Inter',sans-serif; font-size:11.5px; font-weight:600; padding:5px 12px; border-radius:10px; border:1px solid ${G.border}; background: var(--surface); color:${G.muted}; cursor:pointer; transition:all .12s; white-space:nowrap; }
     .cd-filter-chip:hover { border-color:${G.meadowBorder}; color:${G.meadowDeep}; background:${G.hover}; }
     .cd-filter-chip.active { background:${G.meadowSoft}; border-color:${G.meadowBorder}; color:${G.meadowDeep}; }
     
     .cd-empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:40px 20px; text-align:center; }
-    .cd-rename-input { font-family:'Inter',sans-serif; font-size:14px; font-weight:700; color:${G.ink}; padding:8px 12px; border-radius:8px; border:2px solid ${G.meadow}; outline:none; width:100%; max-width:300px; box-shadow:0 0 0 3px rgba(21,128,61,0.1); }
+    .cd-rename-input { font-family:'Inter',sans-serif; font-size:14px; font-weight:700; color:${G.ink}; padding:8px 12px; border-radius:8px; border:2px solid ${G.meadow}; outline:none; width:100%; max-width:300px; box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
     .cd-sched-scroll { max-height: 320px; overflow-y: auto; }
     .cd-sched-scroll::-webkit-scrollbar { width: 6px; }
     .cd-sched-scroll::-webkit-scrollbar-track { background: transparent; }
     .cd-sched-scroll::-webkit-scrollbar-thumb { background: ${G.border}; border-radius: 99px; }
     .cd-sched-scroll::-webkit-scrollbar-thumb:hover { background: ${G.muted2}; }
     
-    .cd-retry-btn { padding:6px 14px; border-radius:8px; border:1px solid ${G.redBorder}; background:#fff; color:${G.redDeep}; font-size:12px; font-weight:700; cursor:pointer; font-family:'Inter',sans-serif; flex-shrink:0; transition:background .12s; }
+    .cd-retry-btn { padding:6px 14px; border-radius:8px; border:1px solid ${G.redBorder}; background: var(--surface); color:${G.redDeep}; font-size:12px; font-weight:700; cursor:pointer; font-family:'Inter',sans-serif; flex-shrink:0; transition:background .12s; }
     .cd-retry-btn:hover { background:${G.redSoft}; }
     
     .cd-progress-ring { transform: rotate(-90deg); }
@@ -165,7 +165,7 @@ function Skel({ w = '100%', h = 14, r = 6, style = {} }) {
 
 function SectionHeader({ title, sub, right }) {
   return (
-    <div style={{ padding: '20px 24px', borderBottom: `1px solid ${G.borderLight}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, background: '#fff' }}>
+    <div style={{ padding: '20px 24px', borderBottom: `1px solid ${G.borderLight}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, background: 'var(--surface)' }}>
       <div>
         <div className="cd-section-title">{title}</div>
         {sub && <div className="cd-section-sub">{sub}</div>}
@@ -291,7 +291,7 @@ function SetupChecklist({ steps, onNavigate, loading }) {
   return (
     <div className="d-card" style={{ overflow: 'hidden', marginBottom: 24 }}>
       <div onClick={() => setOpen(o => !o)}
-        style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 24px', cursor: 'pointer', background: '#fff', borderBottom: open ? `1px solid ${G.meadowSoft}` : 'none' }}>
+        style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 24px', cursor: 'pointer', background: 'var(--surface)', borderBottom: open ? `1px solid ${G.meadowSoft}` : 'none' }}>
         <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, background: G.meadowSoft, color: G.meadowDeep, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, fontFamily: "'Sora',sans-serif" }}>
           {doneCount}/{total}
         </div>
@@ -311,10 +311,10 @@ function SetupChecklist({ steps, onNavigate, loading }) {
       </div>
 
       {open && (
-        <div style={{ background: '#fff' }}>
+        <div style={{ background: 'var(--surface)' }}>
           {steps.map((step, i) => (
             <div key={step.title} className="setup-row"
-              style={{ borderTop: i > 0 ? `1px solid ${G.borderLight}` : 'none', background: step.done ? '#F8FBF9' : i === nextIdx ? '#F0FDF4' : '#fff' }}>
+              style={{ borderTop: i > 0 ? `1px solid ${G.borderLight}` : 'none', background: step.done ? '#F8FBF9' : i === nextIdx ? 'var(--meadow-soft)' : '#fff' }}>
               <div style={{
                 width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -336,7 +336,7 @@ function SetupChecklist({ steps, onNavigate, loading }) {
               {!step.done && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onNavigate(step.href) }}
-                  style={{ flexShrink: 0, padding: '8px 16px', borderRadius: 10, border: 'none', background: G.meadow, color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(21,128,61,0.2)' }}
+                  style={{ flexShrink: 0, padding: '8px 16px', borderRadius: 10, border: 'none', background: G.meadow, color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}
                   onMouseEnter={e => e.currentTarget.style.background = G.meadowDeep}
                   onMouseLeave={e => e.currentTarget.style.background = G.meadow}
                 >
@@ -430,7 +430,7 @@ const SUGGESTION_STYLES = {
   error:   { bg: G.redSoft,    border: G.redBorder,    icon: G.redDeep,    chip: '#FECACA', dot: '#EF4444', label: 'Critical' },
   warning: { bg: G.amberSoft,  border: G.amberBorder,  icon: G.amber,      chip: '#FDE68A', dot: '#F59E0B', label: 'Warning'  },
   info:    { bg: G.blueSoft,   border: G.blueBorder,   icon: G.blue,       chip: '#BFDBFE', dot: '#3B82F6', label: 'Info'     },
-  success: { bg: G.meadowSoft, border: G.meadowBorder, icon: G.meadowDeep, chip: '#BBF7D0', dot: '#22C55E', label: 'Good'     },
+  success: { bg: G.meadowSoft, border: G.meadowBorder, icon: G.meadowDeep, chip: 'var(--meadow-border)', dot: 'var(--meadow)', label: 'Good'     },
 }
 const SUGGESTION_ICONS = {
   error:   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
@@ -949,7 +949,7 @@ export default function CoordDashboard() {
             <span style={{ color: G.muted }}> — {topSuggestion.body}</span>
           </div>
           {topSuggestion.action && (
-            <button onClick={() => navigate(topSuggestion.action.href)} style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 8, background: G.meadow, color: '#fff', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(21,128,61,0.2)' }}>
+            <button onClick={() => navigate(topSuggestion.action.href)} style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 8, background: G.meadow, color: '#fff', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
               {topSuggestion.action.label}
             </button>
           )}
@@ -1227,13 +1227,13 @@ export default function CoordDashboard() {
                     Active Submission
                   </span>
                </div>
-               <div style={{ padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff' }}>
+               <div style={{ padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface)' }}>
                   <div>
                     <div style={{ fontSize: 18, fontWeight: 800, color: G.ink, marginBottom: 4 }}>{pinnedSchedule.name || 'Unnamed Schedule'}</div>
                     <div style={{ fontSize: 13, color: G.muted }}>Last updated {pinnedSchedule.updatedAt || 'recently'}</div>
                   </div>
                   <div style={{ display: 'flex', gap: 12 }}>
-                    <button onClick={() => navigate('/coordinator/schedules', { state: { scheduleId: pinnedSchedule.id } })} style={{ padding: '10px 20px', borderRadius: 8, background: '#fff', border: `1px solid ${G.border}`, fontSize: 13, fontWeight: 700, color: G.ink, cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>View Schedule</button>
+                    <button onClick={() => navigate('/coordinator/schedules', { state: { scheduleId: pinnedSchedule.id } })} style={{ padding: '10px 20px', borderRadius: 8, background: 'var(--surface)', border: `1px solid ${G.border}`, fontSize: 13, fontWeight: 700, color: G.ink, cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>View Schedule</button>
                     {pinnedSchedule.status === 'submitted' && (
                       <button onClick={() => handleUnsubmit(pinnedSchedule.id)} disabled={rowBusyId === pinnedSchedule.id} style={{ padding: '10px 20px', borderRadius: 8, background: G.hover, border: 'none', fontSize: 13, fontWeight: 700, color: G.ink, cursor: 'pointer' }}>Recall to Draft</button>
                     )}

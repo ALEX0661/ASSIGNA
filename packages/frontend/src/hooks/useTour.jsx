@@ -177,10 +177,10 @@ export function useTour(tourId, steps, isReady = true, { isPrimary = true } = {}
       locale={{ back: 'Back', close: 'Close', last: 'Done', next: 'Next', skip: 'Skip' }}
       options={{
         arrowColor: '#FFFFFF',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: 'var(--surface)',
         overlayColor: 'rgba(14, 42, 32, 0.55)',
-        primaryColor: '#15803D',
-        textColor: '#0E2A20',
+        primarycolor: 'var(--meadow)',
+        textColor: 'var(--ink)',
         width: 340,
         zIndex: 10000,
         showProgress: true,
@@ -196,7 +196,7 @@ export function useTour(tourId, steps, isReady = true, { isPrimary = true } = {}
           borderRadius: 14,
           padding: '20px 22px 16px',
           fontFamily: "'Inter', sans-serif",
-          boxShadow: '0 20px 50px rgba(10,46,28,0.28)',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.28)',
         },
         tooltipContainer: {
           textAlign: 'left',
@@ -205,13 +205,13 @@ export function useTour(tourId, steps, isReady = true, { isPrimary = true } = {}
           fontFamily: "'Sora', sans-serif",
           fontSize: 16,
           fontWeight: 800,
-          color: '#0E2A20',
+          color: 'var(--ink)',
           marginBottom: 4,
         },
         tooltipContent: {
           fontSize: 13.5,
           lineHeight: 1.55,
-          color: '#4B7060',
+          color: 'var(--muted)',
           padding: '4px 0 0',
         },
         tooltipFooter: {
@@ -219,39 +219,39 @@ export function useTour(tourId, steps, isReady = true, { isPrimary = true } = {}
           alignItems: 'center',
         },
         buttonPrimary: {
-          backgroundColor: '#15803D',
-          backgroundImage: 'linear-gradient(135deg,#15803D,#0F5C2C)',
+          backgroundcolor: 'var(--meadow)',
+          backgroundImage: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))',
           borderRadius: '8px',
           fontFamily: "'Inter', sans-serif",
           fontWeight: 700,
           fontSize: 13,
           padding: '8px 18px',
-          boxShadow: '0 3px 10px rgba(21,128,61,0.3)',
+          boxShadow: '0 3px 10px rgba(0,0,0,0.3)',
           border: 'none',
         },
         buttonBack: {
-          color: '#4B7060',
+          color: 'var(--muted)',
           fontFamily: "'Inter', sans-serif",
           fontWeight: 600,
           fontSize: 13,
           marginRight: 10,
         },
         buttonSkip: {
-          color: '#6B8C7A',
+          color: 'var(--muted2)',
           fontFamily: "'Inter', sans-serif",
           fontWeight: 600,
           fontSize: 12.5,
         },
         buttonClose: {
-          color: '#6B8C7A',
+          color: 'var(--muted2)',
           padding: 14,
         },
         beaconInner: {
-          backgroundColor: '#15803D',
+          backgroundcolor: 'var(--meadow)',
         },
         beaconOuter: {
-          backgroundColor: 'rgba(21,128,61,0.35)',
-          borderColor: '#15803D',
+          backgroundColor: 'rgba(0,0,0,0.35)',
+          bordercolor: 'var(--meadow)',
         },
       }}
     />

@@ -34,11 +34,11 @@ export default function SessionCard({
   let accentColor, bgGradient, borderColor, badgeBg, textColor, glowColor
 
   if (isStackTarget) {
-    accentColor = '#059669'
-    bgGradient  = 'linear-gradient(160deg,#d1fae5 0%,#ecfdf5 100%)'
-    borderColor = '#6ee7b7'
+    accentColor = 'var(--meadow)'
+    bgGradient  = 'linear-gradient(160deg,var(--meadow-soft) 0%,#ecfdf5 100%)'
+    borderColor = 'var(--mint)'
     badgeBg     = 'rgba(5,150,105,.12)'
-    textColor   = '#065f46'
+    textColor   = 'var(--meadow-deep)'
     glowColor   = 'rgba(16,185,129,.40)'
   } else if (isConflictTarget && !isDragging) {
     accentColor = '#dc2626'
@@ -66,9 +66,9 @@ export default function SessionCard({
     borderColor = '#fca5a5'; badgeBg = 'rgba(239,68,68,.10)'; textColor = '#991b1b'
     glowColor   = 'rgba(239,68,68,.30)'
   } else if (merged) {
-    accentColor = TV.deep; bgGradient = `linear-gradient(160deg,#BBF7D0 0%,#DCFCE7 100%)`
-    borderColor = TV.mid;  badgeBg    = `rgba(21,128,61,.12)`; textColor = '#065f46'
-    glowColor   = 'rgba(21,128,61,.35)'
+    accentColor = TV.deep; bgGradient = `linear-gradient(160deg,var(--meadow-border) 0%,var(--meadow-soft) 100%)`
+    borderColor = TV.mid;  badgeBg    = `rgba(0,0,0,.12)`; textColor = 'var(--meadow-deep)'
+    glowColor   = 'rgba(0,0,0,.35)'
   } else {
     // Normal state — solid saturated program tint, no white washout
     accentColor = stripeColor
@@ -130,7 +130,7 @@ export default function SessionCard({
   const hoverShadow  = `0 12px 36px ${glowColor}, 0 3px 10px rgba(0,0,0,.12), 0 0 0 2px ${accentColor}66`
   const groupShadow  = `0 5px 16px ${glowColor}, 0 0 0 1.5px ${borderColor}99`
   const conflictRing = `0 0 0 2.5px #dc2626, 0 0 0 5px rgba(220,38,38,.28), 0 6px 28px rgba(239,68,68,.50)`
-  const stackRing    = `0 0 0 2.5px #059669, 0 0 0 5px rgba(16,185,129,.28), 0 6px 28px rgba(16,185,129,.45)`
+  const stackRing    = `0 0 0 2.5px var(--meadow), 0 0 0 5px rgba(16,185,129,.28), 0 6px 28px rgba(16,185,129,.45)`
   const ambientConflictRing = `0 0 0 1.5px #fca5a5, 0 0 0 3.5px rgba(220,38,38,.18), 0 4px 16px rgba(239,68,68,.30)`
   const ambientMergeRing    = `0 0 0 1.5px #93c5fd, 0 0 0 3.5px rgba(59,130,246,.18), 0 4px 16px rgba(37,99,235,.28)`
 
@@ -313,8 +313,8 @@ export default function SessionCard({
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           <span style={{
-            fontSize: 8, fontWeight: 800, color: '#059669',
-            background: '#fff', padding: '2px 8px', borderRadius: 4,
+            fontSize: 8, fontWeight: 800, color: 'var(--meadow)',
+            background: 'var(--surface)', padding: '2px 8px', borderRadius: 4,
             boxShadow: '0 2px 6px rgba(0,0,0,.08)',
           }}>
             ⊕ Stack here

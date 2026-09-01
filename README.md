@@ -208,9 +208,3 @@ python scripts/set_role.py <uid> admin
 | `VITE_FIREBASE_AUTH_DOMAIN` | Frontend | Firebase client config |
 | `VITE_FIREBASE_PROJECT_ID` | Frontend | Firebase client config |
 
-
-## Recent Updates (Aug 2026)
-* **Smart Faculty Import/Export**: The Excel template now dynamically pre-fills available courses, features strict data validation (1-5 drop-downs for ratings), and ignores safety placeholder names on import.
-* **Integrated Institutional Email**: Added a visual @gordoncollege.edu.ph suffix across the Login, Faculty Detail, and Faculty Profile pages for seamless login, while still allowing custom domains.
-* **Intelligent Assignment Engine**: Improved the scheduling constraint solver to heavily prioritize specializations, handle over-capacity gracefully with penalties, and prevent cross-section overlaps.
-* **Coordinator Roles**: Added role-based access for Coordinators to securely manage programs.
