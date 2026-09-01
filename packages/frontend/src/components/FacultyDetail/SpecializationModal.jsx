@@ -3,6 +3,8 @@ import { getCourses } from '../../services/api'
 import { dedupeSpecs } from './fdShared'
 import { useTour } from '../../hooks/useTour.jsx'
 
+const isDark = document.documentElement.getAttribute('data-mode') === 'dark';
+
 // ─── Proficiency levels ───────────────────────────────────────────────────────
 const LEVELS = [
   { rating: 1, label: 'Beginner',   short: 'BEG',  color: '#EF4444', bg: 'rgba(239, 68, 68, 0.05)', border: 'rgba(220, 38, 38, 0.25)', dot: '#EF4444', hoverBg: 'rgba(239, 68, 68, 0.1)' },
