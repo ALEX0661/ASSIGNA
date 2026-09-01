@@ -25,8 +25,8 @@ img { filter: var(--logo-filter, none); }
   --forest:      #0A2E1C;
   --canopy:      #0C3822;
   --canopy2:     #0F4528;
-  --meadow:      var(--meadow);
-  --meadow-mid:  var(--meadow-mid);
+  --meadow:      #15803D;
+  --meadow-mid:  #166534;
   --meadow-deep: #0F5C2C;
   --mint:        #6EE7B7;
   --mint-dim:    rgba(110,231,183,0.15);
