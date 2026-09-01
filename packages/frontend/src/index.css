@@ -18,7 +18,7 @@ body {
 }
 
 a { color: inherit; text-decoration: none; }
-img { filter: var(--logo-filter, none); }
+
 
 /* ── Design tokens ── */
 :root {
