@@ -41,7 +41,7 @@ if (!document.getElementById('scheduler-hub-style')) {
     .sh-back-btn { display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:8px;
       border:1.5px solid ${G.border}; background: var(--surface); color:${G.muted}; font-size:11.5px; font-weight:700;
       cursor:pointer; font-family:'Poppins',sans-serif; transition:all .15s; }
-    .sh-back-btn:hover { border-color:${G.meadowBorder}; color:${G.meadowDeep}; background:${G.hover}; }
+    .sh-back-btn:hover { border-color:${G.meadowBorder}; color: var(--meadow-text); background:${G.hover}; }
   `
   document.head.appendChild(s)
 }
@@ -182,7 +182,7 @@ export default function SchedulerHub() {
           Back
         </button>
         <span style={{ width: 1, height: 12, background: G.border, flexShrink: 0 }} />
-        <span style={{ fontSize: 12, fontWeight: 700, color: G.meadowDeep }}>{activeChoice.title}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--meadow-text)' }}>{activeChoice.title}</span>
       </div>
 
       {/* Active screen — each page manages its own data/state, untouched */}

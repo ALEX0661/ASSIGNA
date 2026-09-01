@@ -59,7 +59,7 @@ const STATUS_META = {
   no_faculty:  { label: 'No faculty',   color: '#EF4444', bg: 'rgba(239, 68, 68, 0.1)', border: 'rgba(220, 38, 38, 0.25)' },
   low_quality: { label: 'Low quality',  color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.1)', border: 'rgba(245, 158, 11, 0.25)' },
   thin:        { label: 'Thin pool',    color: '#38BDF8', bg: 'rgba(59, 130, 246, 0.1)', border: 'rgba(59, 130, 246, 0.25)' },
-  ready:       { label: 'Ready',        color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder },
+  ready:       { label: 'Ready',        color: 'var(--meadow-text)', bg: G.meadowSoft, border: G.meadowBorder },
   other_dept:  { label: 'Ext. managed', color: G.muted, bg: G.hover, border: G.border },
 }
 
@@ -84,14 +84,14 @@ const PRESET_NAMES = [
 ]
 
 const VERDICT_META = {
-  feasible:        { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder, label: 'Feasible',           icon: '✓' },
+  feasible:        { color: 'var(--meadow-text)', bg: G.meadowSoft, border: G.meadowBorder, label: 'Feasible',           icon: '✓' },
   likely_feasible: { color: '#38BDF8',    bg: 'rgba(59, 130, 246, 0.1)',    border: 'rgba(59, 130, 246, 0.25)',      label: 'Likely Feasible',    icon: '~' },
   tight:           { color: '#F59E0B',    bg: 'rgba(245, 158, 11, 0.1)',    border: 'rgba(245, 158, 11, 0.25)',      label: 'Feasible but Tight', icon: '⚠' },
   at_risk:         { color: '#EF4444',    bg: 'rgba(239, 68, 68, 0.1)',    border: 'rgba(220, 38, 38, 0.25)',      label: 'At Risk',            icon: '!' },
   infeasible:      { color: '#FCA5A5',    bg: 'rgba(239, 68, 68, 0.05)',    border: 'rgba(220, 38, 38, 0.25)',      label: 'Likely Infeasible',  icon: '✕' },
 }
 const CHECK_META = {
-  pass: { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder, dot: G.meadow,  label: 'Pass' },
+  pass: { color: 'var(--meadow-text)', bg: G.meadowSoft, border: G.meadowBorder, dot: G.meadow,  label: 'Pass' },
   warn: { color: '#F59E0B',    bg: 'rgba(245, 158, 11, 0.05)',    border: 'rgba(245, 158, 11, 0.25)',      dot: '#F59E0B', label: 'Warn' },
   fail: { color: '#EF4444',    bg: 'rgba(239, 68, 68, 0.1)',    border: 'rgba(220, 38, 38, 0.25)',      dot: '#EF4444', label: 'Fail' },
 }
@@ -99,7 +99,7 @@ const REC_META = {
   blocker:    { color: '#EF4444',    bg: 'rgba(239, 68, 68, 0.1)',    border: 'rgba(220, 38, 38, 0.25)' },
   warning:    { color: '#F59E0B',    bg: 'rgba(245, 158, 11, 0.05)',    border: 'rgba(245, 158, 11, 0.25)' },
   suggestion: { color: '#38BDF8',    bg: 'rgba(59, 130, 246, 0.1)',    border: 'rgba(59, 130, 246, 0.25)' },
-  success:    { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder },
+  success:    { color: 'var(--meadow-text)', bg: G.meadowSoft, border: G.meadowBorder },
 }
 
 /* ─────────────────────────── styles ─────────────────────────── */
@@ -125,7 +125,7 @@ if (!document.getElementById('scheduler-page-style')) {
     .wiz-step-circle.active { background:${G.meadow}; color:#fff; border-color:${G.meadowBorder}; box-shadow:0 0 0 3px rgba(0,0,0,0.15); }
     .wiz-step-circle.todo   { background:${G.hover}; color:${G.muted2}; border-color:${G.border}; }
     .wiz-step-label { font-size:11.5px; font-weight:700; transition:color .2s; white-space:nowrap; }
-    .wiz-step-label.active { color:${G.meadowDeep}; }
+    .wiz-step-label.active { color: var(--meadow-text); }
     .wiz-step-label.done   { color:${G.ink}; }
     .wiz-step-label.todo   { color:${G.muted}; }
     .wiz-step-div { width:16px; height:2px; background:${G.border}; border-radius:99px; flex-shrink:0; }
@@ -162,7 +162,7 @@ if (!document.getElementById('scheduler-page-style')) {
     .wiz-nav-btn.solve-main { background:${G.meadow}; color:#fff; border:none; box-shadow:0 4px 20px rgba(0,0,0,0.3); padding:13px 32px; font-size:14.5px; }
 
     .sch-select { padding:9px 36px 9px 14px; border-radius:8px; border:1px solid ${G.border}; background: var(--surface); color:${G.ink}; font-size:13px; font-weight:600; font-family:'Inter',sans-serif; appearance:none; cursor:pointer; outline:none; transition:all .15s; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234B7060' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; box-shadow:0 1px 3px rgba(0,0,0,0.02); }
-    .sch-select:focus, .sch-input:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
+    .sch-select:focus, .sch-input:focus { border-color: var(--meadow-text-hover); box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
 
     .sch-input { padding:9px 14px; border-radius:8px; border:1px solid ${G.border}; background: var(--surface); color:${G.ink}; font-size:13px; font-weight:600; font-family:'Inter',sans-serif; outline:none; transition:all .15s; }
     .sch-input::placeholder { color:${G.muted2}; font-weight:500; }
@@ -170,14 +170,14 @@ if (!document.getElementById('scheduler-page-style')) {
     .saved-item { display:flex; align-items:center; gap:14px; padding:14px 18px; cursor:pointer; transition:background .15s, border-color .15s; border-bottom:1px solid ${G.borderLight}; background: var(--surface); }
     .saved-item:last-child { border-bottom:none; }
     .saved-item:hover { background:${G.hover}; border-bottom-color:${G.meadowBorder}; }
-    .saved-item:hover .saved-name { color:${G.meadowDeep}; }
-    .saved-item:hover .saved-chevron { color:${G.meadowDeep}; }
+    .saved-item:hover .saved-name { color: var(--meadow-text); }
+    .saved-item:hover .saved-chevron { color: var(--meadow-text); }
     .saved-name-block { flex:1; min-width:0; }
     .saved-name { font-size:13.5px; font-weight:700; color:${G.ink}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; transition:color .15s; }
     .saved-sub { font-size:11.5px; color:${G.muted}; font-weight:500; margin-top:2px; display:block; }
     .saved-actions { display:flex; gap:8px; margin-left:auto; flex-shrink:0; align-items:center; }
-    .saved-load-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:'Inter',sans-serif; transition:all .15s; background:${G.meadowSoft}; color:${G.meadowDeep}; border:1px solid ${G.meadowBorder}; }
-    .saved-load-btn:hover:not(:disabled) { background:${G.meadow}; color:#fff; border-color:${G.meadowDeep}; }
+    .saved-load-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:'Inter',sans-serif; transition:all .15s; background:${G.meadowSoft}; color: var(--meadow-text); border:1px solid ${G.meadowBorder}; }
+    .saved-load-btn:hover:not(:disabled) { background:${G.meadow}; color:#fff; border-color: var(--meadow-text); }
     .saved-load-btn:disabled { opacity:.5; cursor:not-allowed; }
     .saved-del-btn { width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; border-radius:8px; cursor:pointer; font-family:'Inter',sans-serif; transition:all .15s; background:#FEF2F2; color:#DC2626; border:1px solid #FECACA; flex-shrink:0; }
     .saved-del-btn:hover:not(:disabled) { background:#FEE2E2; border-color:#FCA5A5; }
@@ -186,7 +186,7 @@ if (!document.getElementById('scheduler-page-style')) {
     .saved-current-badge { font-size:10px; font-weight:800; padding:2px 8px; border-radius:99px; background:${G.meadow}; color:#fff; letter-spacing:.3px; text-transform:uppercase; flex-shrink:0; }
 
     .r-tab { display:inline-flex; align-items:center; gap:5px; padding:8px 16px; border-radius:8px; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; transition:all .15s; border:1px solid ${G.border}; background: var(--surface); color:${G.muted}; box-shadow:0 1px 2px rgba(0,0,0,0.02); }
-    .r-tab.active { background:${G.meadow}; color:#fff; border-color:${G.meadowDeep}; box-shadow:0 3px 10px rgba(0,0,0,0.25); }
+    .r-tab.active { background:${G.meadow}; color:#fff; border-color: var(--meadow-text); box-shadow:0 3px 10px rgba(0,0,0,0.25); }
     .r-tab:hover:not(.active) { background:${G.hover}; border-color:${G.meadowBorder}; color:${G.ink}; }
 
     .r-stat { flex:1; display:flex; flex-direction:column; align-items:center; padding:10px 8px; border-radius:10px; border:1px solid; transition:transform .15s, box-shadow .15s; background: var(--surface); }
@@ -240,26 +240,26 @@ if (!document.getElementById('scheduler-page-style')) {
     }
     .phase-chip.drop-before::before { left:-2px; }
     .phase-chip.drop-after::after   { right:-2px; }
-    .phase-chip.keyboard-grabbed .phase-chip-dot { border-color:${G.meadow} !important; box-shadow:0 0 0 4px rgba(0,0,0,0.18); }
+    .phase-chip.keyboard-grabbed .phase-chip-dot { border-color: var(--meadow-text-hover) !important; box-shadow:0 0 0 4px rgba(0,0,0,0.18); }
     .phase-chip-dot {
       width:30px; height:30px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center;
-      font-size:11px; font-weight:800; background:${G.meadowSoft}; color:${G.meadowDeep}; border:2px solid ${G.meadowBorder};
+      font-size:11px; font-weight:800; background:${G.meadowSoft}; color: var(--meadow-text); border:2px solid ${G.meadowBorder};
       transition:all .15s; position:relative;
     }
-    .phase-chip:hover .phase-chip-dot { background:${G.meadow}; color:#fff; border-color:${G.meadowDeep}; transform:scale(1.08); }
+    .phase-chip:hover .phase-chip-dot { background:${G.meadow}; color:#fff; border-color: var(--meadow-text); transform:scale(1.08); }
     .phase-chip-order {
       position:absolute; top:-5px; right:-5px; width:15px; height:15px; border-radius:50%; background: var(--surface);
       border:1.5px solid ${G.border}; color:${G.muted2}; font-size:8.5px; font-weight:800;
       display:flex; align-items:center; justify-content:center; transition:all .15s;
     }
-    .phase-chip:hover .phase-chip-order { border-color:${G.meadowDeep}; color:${G.meadowDeep}; }
+    .phase-chip:hover .phase-chip-order { border-color: var(--meadow-text); color: var(--meadow-text); }
     .phase-chip-label { font-size:10.5px; font-weight:700; text-align:center; letter-spacing:0.4px; text-transform:uppercase; color:${G.ink}; line-height:1.3; max-width:100%; }
     .phase-chip-handle { display:flex; align-items:center; justify-content:center; color:${G.muted2}; opacity:0; transition:opacity .15s; margin-top:-2px; }
     .phase-chip:hover .phase-chip-handle, .phase-chip:focus-within .phase-chip-handle { opacity:1; }
     .phase-chip-arrows { display:flex; gap:3px; margin-top:2px; opacity:0; transition:opacity .15s; }
     .phase-chip:hover .phase-chip-arrows, .phase-chip:focus-within .phase-chip-arrows { opacity:1; }
     .phase-chip-arrow { width:18px; height:18px; padding:0; border-radius:5px; border:1px solid ${G.border}; background: var(--surface); display:flex; align-items:center; justify-content:center; cursor:pointer; color:${G.muted2}; transition:all .15s; }
-    .phase-chip-arrow:hover:not(:disabled) { background:${G.meadowSoft}; border-color:${G.meadowBorder}; color:${G.meadowDeep}; }
+    .phase-chip-arrow:hover:not(:disabled) { background:${G.meadowSoft}; border-color:${G.meadowBorder}; color: var(--meadow-text); }
     .phase-chip-arrow:disabled { opacity:0.25; cursor:default; }
     @media (max-width: 720px) {
       .phase-reorder-track { flex-wrap:wrap; row-gap:22px; }
@@ -277,10 +277,10 @@ if (!document.getElementById('scheduler-page-style')) {
     .action-btn.save:hover:not(:disabled) { transform:translateY(-1px); background:${G.ink}; box-shadow:0 6px 16px rgba(0,0,0,0.3); }
     .action-btn.save:disabled { opacity:0.5; cursor:not-allowed; }
     .action-btn.view { background: var(--surface); color:${G.ink}; border:1px solid ${G.border}; box-shadow:0 1px 3px rgba(0,0,0,0.02); }
-    .action-btn.view:hover { background:${G.hover}; border-color:${G.meadowBorder}; color:${G.meadowDeep}; }
+    .action-btn.view:hover { background:${G.hover}; border-color:${G.meadowBorder}; color: var(--meadow-text); }
 
     .status-strip { display:flex; align-items:center; gap:12px; padding:14px 20px; border-radius:10px; font-size:13.5px; font-weight:600; font-family:'Inter', sans-serif; }
-    .status-strip.running  { background:${G.meadowSoft}; color:${G.meadowDeep}; border:1px solid ${G.meadowBorder}; }
+    .status-strip.running  { background:${G.meadowSoft}; color: var(--meadow-text); border:1px solid ${G.meadowBorder}; }
     .status-strip.complete { background:var(--meadow-soft); color:var(--meadow-deep); border:1px solid #A7F3D0; }
     .status-strip.failed   { background:#FEE2E2; color:#B91C1C; border:1px solid #FECACA; }
 
@@ -297,10 +297,10 @@ if (!document.getElementById('scheduler-page-style')) {
     .solve-action-btn.primary:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,0.3); background:${G.meadowDeep}; }
     .solve-action-btn.primary:disabled { opacity:.5; cursor:not-allowed; transform:none; box-shadow:none; }
     .solve-action-btn.ghost { background: var(--surface); color:${G.ink}; border:1px solid ${G.border}; }
-    .solve-action-btn.ghost:hover { background:${G.bg}; border-color:${G.meadowBorder}; color:${G.meadowDeep}; }
+    .solve-action-btn.ghost:hover { background:${G.bg}; border-color:${G.meadowBorder}; color: var(--meadow-text); }
     
     .check-btn { display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:8px; border:1px solid ${G.border}; background: var(--surface); color:${G.ink}; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; transition:all .15s; box-shadow:0 1px 2px rgba(0,0,0,0.02); white-space:nowrap; }
-    .check-btn:hover:not(:disabled) { background:${G.hover}; color:${G.meadowDeep}; border-color:${G.meadowBorder}; }
+    .check-btn:hover:not(:disabled) { background:${G.hover}; color: var(--meadow-text); border-color:${G.meadowBorder}; }
     .check-btn:disabled { opacity:.6; cursor:not-allowed; }
 
     @keyframes pulseGlow { 0% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.95); } 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.05); } }
@@ -315,10 +315,10 @@ if (!document.getElementById('scheduler-page-style')) {
     /* Sub-tabs inside the Check card (Diagnostic / Faculty Pools / Workload) */
     .subtab-row { display:flex; gap:4px; padding:3px; background:${G.hover}; border-radius:9px; border:1px solid ${G.border}; }
     .subtab-btn { flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:7px 12px; border-radius:7px; font-family:'Inter',sans-serif; font-size:12px; font-weight:700; cursor:pointer; transition:all .15s; border:none; background:transparent; color:${G.muted}; }
-    .subtab-btn.active { background: var(--surface); color:${G.meadowDeep}; box-shadow:0 2px 6px rgba(0,0,0,0.08); }
+    .subtab-btn.active { background: var(--surface); color: var(--meadow-text); box-shadow:0 2px 6px rgba(0,0,0,0.08); }
     .subtab-btn:hover:not(.active) { color:${G.ink}; }
     .subtab-count { font-size:10.5px; font-weight:800; padding:1px 7px; border-radius:99; background:${G.borderLight}; color:${G.muted2}; }
-    .subtab-btn.active .subtab-count { background:${G.meadowSoft}; color:${G.meadowDeep}; }
+    .subtab-btn.active .subtab-count { background:${G.meadowSoft}; color: var(--meadow-text); }
 
     .diag-check-row { display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid ${G.borderLight}; }
     .diag-check-row:last-child { border-bottom:none; }
@@ -344,11 +344,11 @@ if (!document.getElementById('scheduler-page-style')) {
     .sch-toast { display:flex; align-items:center; gap:10px; padding:14px 22px; border-radius:12px; font-family:'Inter',sans-serif; font-size:13.5px; font-weight:600; animation:slideUp .25s cubic-bezier(.4,0,.2,1); white-space:nowrap; pointer-events:auto; box-shadow:0 8px 24px rgba(0,0,0,0.15); }
     .sch-toast.success { background:${G.meadow}; color:#fff; border:1px solid ${G.meadowBorder}; }
     .sch-toast.error   { background: var(--surface); color:#DC2626; border:1px solid #FECACA; }
-    .sch-toast.info    { background: var(--surface); color:${G.meadowDeep}; border:1px solid ${G.meadowBorder}; }
+    .sch-toast.info    { background: var(--surface); color: var(--meadow-text); border:1px solid ${G.meadowBorder}; }
 
     /* Search */
     .sch-search { padding:9px 14px 9px 36px; border-radius:8px; border:1px solid ${G.border}; font-family:'Inter',sans-serif; font-size:13px; background: var(--surface); color:${G.ink}; outline:none; transition:all .15s; width:100%; box-sizing:border-box; box-shadow:0 1px 3px rgba(0,0,0,0.02); }
-    .sch-search:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
+    .sch-search:focus { border-color: var(--meadow-text-hover); box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
 
     /* Delete modal */
     .del-modal-backdrop { position:fixed; inset:0; background:rgba(14,42,32,0.6); display:flex; align-items:center; justify-content:center; z-index:500; backdrop-filter:blur(4px); }
@@ -635,7 +635,7 @@ function OverwriteModal({ name, onOverwrite, onRename, onCancel }) {
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G.meadowDeep} strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </div>
                 <div>
-                  <div style={{ fontSize:13.5, fontWeight:700, color:G.meadowDeep }}>Save with a new name</div>
+                  <div style={{ fontSize:13.5, fontWeight:700, color: 'var(--meadow-text)' }}>Save with a new name</div>
                   <div style={{ fontSize:12, color:G.muted, marginTop:1 }}>Keep the existing schedule and save this one separately.</div>
                 </div>
               </button>
@@ -1258,7 +1258,7 @@ function CheckPanel({ semester }) {
             {diagError && !diagLoading && (
               <div>
                 <ErrorBanner error={diagError} onDismiss={() => setDiagError(null)} />
-                <button onClick={runDiagnostic} style={{ marginTop: 10, background: 'none', border: 'none', cursor: 'pointer', color: G.meadowDeep, fontSize: 13, fontWeight: 700, fontFamily: "'Inter',sans-serif", padding: 0 }}>
+                <button onClick={runDiagnostic} style={{ marginTop: 10, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--meadow-text)', fontSize: 13, fontWeight: 700, fontFamily: "'Inter',sans-serif", padding: 0 }}>
                   Retry check →
                 </button>
               </div>
@@ -1399,7 +1399,7 @@ function CheckPanel({ semester }) {
             {poolError && (
               <div style={{ marginBottom: 20 }}>
                 <ErrorBanner error={poolError} onDismiss={() => setPoolError(null)} />
-                <button onClick={runPoolCheck} style={{ marginTop: 10, background: 'none', border: 'none', cursor: 'pointer', color: G.meadowDeep, fontSize: 13, fontWeight: 700, fontFamily: "'Inter',sans-serif", padding: 0 }}>
+                <button onClick={runPoolCheck} style={{ marginTop: 10, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--meadow-text)', fontSize: 13, fontWeight: 700, fontFamily: "'Inter',sans-serif", padding: 0 }}>
                   Retry check →
                 </button>
               </div>
@@ -1706,7 +1706,7 @@ function Step1Configure({ scheduleNamePreset, setScheduleNamePreset, scheduleNam
           ) : termStats ? (
             <div style={{ display:'flex', gap:24, flex:1, flexWrap:'wrap' }}>
               {[
-                { val: termStats.courses, label: 'Courses', color: G.meadowDeep },
+                { val: termStats.courses, label: 'Courses', color: 'var(--meadow-text)' },
                 { val: termStats.sections, label: 'Sections', color: G.inkMid },
                 { val: termStats.faculty, label: 'Faculty', color: '#38BDF8' },
                 { val: termStats.lecRooms, label: 'Lec Rooms', color: '#7C3AED' },
@@ -2428,15 +2428,15 @@ export default function SchedulerPage() {
                                 {/* Summary */}
                                 <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:8, marginBottom:14 }}>
                                   <div style={{ padding:8, borderRadius:6, background: 'var(--surface)', border:'1px solid var(--border)', textAlign:'center' }}>
-                                    <div style={{ fontSize:16, fontWeight:800, color:G.meadowDeep }}>{diagnostic.summary?.filtered_courses || 0}</div>
+                                    <div style={{ fontSize:16, fontWeight:800, color: 'var(--meadow-text)' }}>{diagnostic.summary?.filtered_courses || 0}</div>
                                     <div style={{ fontSize:10, color:G.muted, textTransform:'uppercase', letterSpacing:'0.5px' }}>Courses</div>
                                   </div>
                                   <div style={{ padding:8, borderRadius:6, background: 'var(--surface)', border:'1px solid var(--border)', textAlign:'center' }}>
-                                    <div style={{ fontSize:16, fontWeight:800, color:G.meadowDeep }}>{diagnostic.summary?.total_rooms || 0}</div>
+                                    <div style={{ fontSize:16, fontWeight:800, color: 'var(--meadow-text)' }}>{diagnostic.summary?.total_rooms || 0}</div>
                                     <div style={{ fontSize:10, color:G.muted, textTransform:'uppercase', letterSpacing:'0.5px' }}>Rooms</div>
                                   </div>
                                   <div style={{ padding:8, borderRadius:6, background: 'var(--surface)', border:'1px solid var(--border)', textAlign:'center' }}>
-                                    <div style={{ fontSize:16, fontWeight:800, color:G.meadowDeep }}>{diagnostic.summary?.days_configured || 0}</div>
+                                    <div style={{ fontSize:16, fontWeight:800, color: 'var(--meadow-text)' }}>{diagnostic.summary?.days_configured || 0}</div>
                                     <div style={{ fontSize:10, color:G.muted, textTransform:'uppercase', letterSpacing:'0.5px' }}>Days</div>
                                   </div>
                                 </div>
@@ -2459,7 +2459,7 @@ export default function SchedulerPage() {
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G.meadowDeep} strokeWidth="2.5">
                                       <polyline points="20 6 9 17 4 12"/>
                                     </svg>
-                                    <span style={{ fontSize:12, color:G.meadowDeep, fontWeight:600 }}>No issues detected</span>
+                                    <span style={{ fontSize:12, color: 'var(--meadow-text)', fontWeight:600 }}>No issues detected</span>
                                   </div>
                                 )}
 
@@ -2484,7 +2484,7 @@ export default function SchedulerPage() {
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ fontSize:16, fontWeight:800, color:G.ink, marginBottom:3 }}>Schedule Generated Successfully</div>
                             <div style={{ fontSize:13.5, color:G.muted, fontWeight:500 }}>
-                              <strong style={{ color:G.meadowDeep }}>"{originalName ? originalName.replace(/[()]/g, '').trim() : effectiveScheduleName}"</strong> is ready in memory.
+                              <strong style={{ color: 'var(--meadow-text)' }}>"{originalName ? originalName.replace(/[()]/g, '').trim() : effectiveScheduleName}"</strong> is ready in memory.
                             </div>
                           </div>
                         </div>
@@ -2541,7 +2541,7 @@ export default function SchedulerPage() {
             <div style={{ display:'flex', alignItems:'center', gap:10 }}>
               <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 20px', borderRadius:10, background:G.meadowSoft, border:`1px solid ${G.meadowBorder}` }}>
                 <svg className="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G.meadowDeep} strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                <span style={{ fontSize:13.5, fontWeight:700, color:G.meadowDeep }}>
+                <span style={{ fontSize:13.5, fontWeight:700, color: 'var(--meadow-text)' }}>
                   {stopRequested ? 'Stopping…' : `Solving… ${progress}%`}
                 </span>
               </div>

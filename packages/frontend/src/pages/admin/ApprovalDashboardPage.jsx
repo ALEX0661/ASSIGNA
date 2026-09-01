@@ -61,11 +61,11 @@ if (!document.getElementById('approval-dashboard-style')) {
     .btn-blue:hover:not(:disabled) { background:#1E40AF; transform:translateY(-1px); }
 
     .ap-icon-btn { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; border:1px solid ${G.border}; background: var(--surface); color:${G.muted}; cursor:pointer; transition:all .15s; padding:0; flex-shrink:0; }
-    .ap-icon-btn:hover:not(:disabled) { background:${G.hover}; color:${G.meadowDeep}; border-color:${G.meadowBorder}; }
+    .ap-icon-btn:hover:not(:disabled) { background:${G.hover}; color: var(--meadow-text); border-color:${G.meadowBorder}; }
     .ap-icon-btn:disabled { opacity:.4; cursor:default; }
 
     .cp-inp { padding:8px 12px; border-radius:8px; border:1.5px solid ${G.border}; font-family:'Inter',sans-serif; font-size:12.5px; color:${G.ink}; background: var(--surface); outline:none; transition:all .15s; width:100%; box-sizing:border-box; }
-    .cp-inp:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
+    .cp-inp:focus { border-color: var(--meadow-text-hover); box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
     .cp-inp.sm { padding:5px 8px; font-size:11.5px; border-radius:6px; }
 
     .ap-badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:99px; font-family:'Inter',sans-serif; font-size:10.5px; font-weight:700; border:1px solid transparent; line-height:1.5; white-space:nowrap; }
@@ -77,7 +77,7 @@ if (!document.getElementById('approval-dashboard-style')) {
     .ap-tab:not(.active) .ap-tab-count { background:${G.amberSoft}; color:#92400E; }
 
     .r-tab { display:inline-flex; align-items:center; gap:5px; padding:6px 13px; border-radius:8px; font-family:'Inter',sans-serif; font-size:11.5px; font-weight:600; cursor:pointer; transition:all .15s; border:1px solid ${G.border}; background: var(--surface); color:${G.muted}; }
-    .r-tab.active { background:${G.meadow}; color:#fff; border-color:${G.meadowDeep}; box-shadow:0 3px 10px rgba(0,0,0,0.22); }
+    .r-tab.active { background:${G.meadow}; color:#fff; border-color: var(--meadow-text); box-shadow:0 3px 10px rgba(0,0,0,0.22); }
     .r-tab:hover:not(.active) { background:${G.hover}; border-color:${G.meadowBorder}; color:${G.ink}; }
 
     .ap-tile { flex:1; display:flex; flex-direction:column; align-items:flex-start; gap:2px; padding:11px 15px; border-radius:11px; border:1px solid; background: var(--surface); font-family:'Inter',sans-serif; text-align:left; transition:transform .15s, box-shadow .15s; cursor:pointer; }
@@ -105,7 +105,7 @@ if (!document.getElementById('approval-dashboard-style')) {
     .cp-toast { display:flex; align-items:center; gap:10px; padding:13px 20px; border-radius:11px; font-family:'Inter',sans-serif; font-size:13px; font-weight:600; animation:apFadeUp .22s cubic-bezier(.4,0,.2,1); white-space:nowrap; pointer-events:auto; box-shadow:0 8px 24px rgba(0,0,0,0.15); }
     .cp-toast.success { background:${G.meadow}; color:#fff; border:1px solid ${G.meadowBorder}; }
     .cp-toast.error { background: var(--surface); color:${G.red}; border:1px solid ${G.redBorder}; }
-    .cp-toast.info { background: var(--surface); color:${G.meadowDeep}; border:1px solid ${G.meadowBorder}; }
+    .cp-toast.info { background: var(--surface); color: var(--meadow-text); border:1px solid ${G.meadowBorder}; }
 
     .ap-modal-overlay { position:fixed; inset:0; background:rgba(10,30,20,0.48); z-index:2000; display:flex; align-items:center; justify-content:center; padding:20px; animation:apOverlayIn .15s ease; }
     .ap-modal { background: var(--surface); border-radius:15px; box-shadow:0 24px 60px rgba(0,0,0,0.22); overflow:hidden; }
@@ -148,7 +148,7 @@ function academicYearOptions() {
 
 const STATUS = {
   waiting:    { bg: '#F1F5F9', color: 'var(--muted2)', dot: '#94A3B8', label: 'Waiting'    },
-  active:     { bg: G.meadowSoft, color: G.meadowDeep, dot: G.meadow, label: 'Their turn' },
+  active:     { bg: G.meadowSoft, color: 'var(--meadow-text)', dot: G.meadow, label: 'Their turn' },
   generating: { bg: G.blueSoft, color: G.blue, dot: '#3B82F6', label: 'Generating' },
   submitted:  { bg: G.amberSoft, color: '#92400E', dot: G.amber, label: 'Submitted'  },
   approved:   { bg: G.meadowSoft, color: G.meadowMid, dot: G.meadow, label: 'Approved'   },
@@ -449,7 +449,7 @@ function CreateQueueModal({ onClose, onCreate, programs }) {
 
           <label style={{ fontSize: 11.5, fontWeight: 600, color: G.muted, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <span>Scheduling Order</span>
-            <span style={{ fontWeight: 500, color: G.meadow, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontWeight: 500, color: 'var(--meadow-text-hover)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg>
               drag to reorder
             </span>
@@ -898,7 +898,7 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, 
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                   </div>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: G.meadowDeep }}>Queue Complete!</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--meadow-text)' }}>Queue Complete!</div>
                     <div style={{ fontSize: 12, color: G.meadowMid, marginTop: 2 }}>All coordinators have finished. Head over to the <b>Master Schedule</b> tab to review the final result and generate the combined schedule.</div>
                   </div>
                 </div>
@@ -1295,7 +1295,7 @@ function ActivityTab({ schedules }) {
 
   const KIND_META = {
     submitted: { bg: G.amberSoft, color: '#92400E', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg> },
-    approved: { bg: G.meadowSoft, color: G.meadowDeep, icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> },
+    approved: { bg: G.meadowSoft, color: 'var(--meadow-text)', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> },
   }
 
   return (

@@ -43,13 +43,13 @@ if (!document.getElementById('solver-pill-style')) {
     .solver-pill-ring svg { transform: rotate(-90deg); display: block; }
     .solver-pill-ring-bg { stroke: ${G.bg}; }
     .solver-pill-ring-fg { stroke: ${G.meadow}; transition: stroke-dashoffset .4s ease; }
-    .solver-pill-pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: ${G.meadowDeep}; }
+    .solver-pill-pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: var(--meadow-text); }
 
     .solver-pill-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
     .solver-pill-title { font-size: 12.5px; font-weight: 700; color: ${G.ink}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .solver-pill-sub { font-size: 11px; font-weight: 500; color: ${G.muted}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    .solver-pill-done { background: linear-gradient(135deg, ${G.meadow}, ${G.meadowDeep}); border-color: ${G.meadowDeep}; }
+    .solver-pill-done { background: linear-gradient(135deg, ${G.meadow}, ${G.meadowDeep}); border-color: var(--meadow-text); }
     .solver-pill-done .solver-pill-title,
     .solver-pill-done .solver-pill-sub { color: #fff; }
     .solver-pill-failed { border-color: #FECACA; background: #FEF2F2; }
@@ -78,7 +78,7 @@ if (!document.getElementById('solver-pill-style')) {
       font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 600;
       white-space: nowrap; pointer-events: none;
       box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-      background: var(--surface); color: ${G.meadowDeep}; border: 1px solid ${G.meadowBorder};
+      background: var(--surface); color: var(--meadow-text); border: 1px solid ${G.meadowBorder};
       animation: pillSlideIn .25s cubic-bezier(.4,0,.2,1);
     }
 
@@ -139,7 +139,7 @@ function PillModal({ status, label, onClose, onGoScheduler, onStopConfirm }) {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             </div>
             <div>
-              <div style={{ fontSize:13, fontWeight:700, color:G.meadowDeep }}>Go to Scheduler</div>
+              <div style={{ fontSize:13, fontWeight:700, color: 'var(--meadow-text)' }}>Go to Scheduler</div>
               <div style={{ fontSize:11, color:G.muted }}>
                 {isComplete ? 'View and save the completed schedule' : isRunning ? 'Monitor progress and save when done' : 'Retry generation from the wizard'}
               </div>

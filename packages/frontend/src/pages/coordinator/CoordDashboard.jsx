@@ -72,7 +72,7 @@ if (!document.getElementById(STYLE_TAG_ID)) {
     .d-card-hover:hover { box-shadow:0 4px 12px rgba(0,0,0,0.08); transform:translateY(-1px); }
     
     .cd-refresh-btn { display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:8px; border:1px solid ${G.border}; background: var(--surface); color:${G.muted}; font-size:11.5px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; transition:all .12s; }
-    .cd-refresh-btn:hover { color:${G.meadowDeep}; background:${G.hover}; border-color:${G.meadowBorder}; }
+    .cd-refresh-btn:hover { color: var(--meadow-text); background:${G.hover}; border-color:${G.meadowBorder}; }
     .cd-refresh-btn:disabled { opacity:.55; cursor:default; }
     .cd-refresh-btn.spinning svg { animation:spin-r .8s linear infinite; }
     
@@ -83,7 +83,7 @@ if (!document.getElementById(STYLE_TAG_ID)) {
     
     .cd-icon-btn { width:30px; height:30px; border-radius:8px; border:1px solid ${G.border}; background: var(--surface); display:flex; align-items:center; justify-content:center; cursor:pointer; color:${G.muted} !important; transition:all .12s; flex-shrink:0; }
     .cd-icon-btn svg { fill:none !important; stroke:currentColor !important; display:block; flex-shrink:0; }
-    .cd-icon-btn:hover { background:${G.hover}; color:${G.meadowDeep} !important; border-color:${G.meadowBorder}; }
+    .cd-icon-btn:hover { background:${G.hover}; color: var(--meadow-text) !important; border-color:${G.meadowBorder}; }
     .cd-icon-btn.danger:hover { background:${G.redSoft}; color:${G.redDeep} !important; border-color:${G.redBorder}; }
     .cd-icon-btn:disabled { opacity:.5; cursor:default; }
     
@@ -136,11 +136,11 @@ if (!document.getElementById(STYLE_TAG_ID)) {
     .cd-search-wrap svg { position:absolute; left:12px; pointer-events:none; }
     .cd-search-input { font-family:'Inter',sans-serif; font-size:13px; font-weight:500; padding:8px 12px 8px 34px; border-radius:10px; border:1px solid ${G.border}; background: var(--surface); color:${G.ink}; width:200px; transition:border-color .12s, width .15s, box-shadow .15s; }
     .cd-search-input::placeholder { color:${G.muted2}; }
-    .cd-search-input:focus { outline:none; border-color:${G.meadow}; width:240px; box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
+    .cd-search-input:focus { outline:none; border-color: var(--meadow-text-hover); width:240px; box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
     
     .cd-filter-chip { font-family:'Inter',sans-serif; font-size:11.5px; font-weight:600; padding:5px 12px; border-radius:10px; border:1px solid ${G.border}; background: var(--surface); color:${G.muted}; cursor:pointer; transition:all .12s; white-space:nowrap; }
-    .cd-filter-chip:hover { border-color:${G.meadowBorder}; color:${G.meadowDeep}; background:${G.hover}; }
-    .cd-filter-chip.active { background:${G.meadowSoft}; border-color:${G.meadowBorder}; color:${G.meadowDeep}; }
+    .cd-filter-chip:hover { border-color:${G.meadowBorder}; color: var(--meadow-text); background:${G.hover}; }
+    .cd-filter-chip.active { background:${G.meadowSoft}; border-color:${G.meadowBorder}; color: var(--meadow-text); }
     
     .cd-empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:40px 20px; text-align:center; }
     .cd-rename-input { font-family:'Inter',sans-serif; font-size:14px; font-weight:700; color:${G.ink}; padding:8px 12px; border-radius:8px; border:2px solid ${G.meadow}; outline:none; width:100%; max-width:300px; box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
@@ -292,12 +292,12 @@ function SetupChecklist({ steps, onNavigate, loading }) {
     <div className="d-card" style={{ overflow: 'hidden', marginBottom: 24 }}>
       <div onClick={() => setOpen(o => !o)}
         style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 24px', cursor: 'pointer', background: 'var(--surface)', borderBottom: open ? `1px solid ${G.meadowSoft}` : 'none' }}>
-        <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, background: G.meadowSoft, color: G.meadowDeep, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, fontFamily: "'Sora',sans-serif" }}>
+        <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, background: G.meadowSoft, color: 'var(--meadow-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, fontFamily: "'Sora',sans-serif" }}>
           {doneCount}/{total}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 800, color: G.ink, fontFamily: "'Sora',sans-serif" }}>Setup Checklist</div>
-          <div style={{ fontSize: 12.5, color: G.meadowDeep, fontWeight: 600, marginTop: 2 }}>
+          <div style={{ fontSize: 12.5, color: 'var(--meadow-text)', fontWeight: 600, marginTop: 2 }}>
             {open ? 'Click to collapse' : `Next Action: ${steps[nextIdx]?.title}`}
           </div>
         </div>
@@ -376,10 +376,10 @@ function ToastContainer({ toasts }) {
 
 const STATUS_META = {
   waiting:    { label: 'Waiting',    color: G.muted2 },
-  active:     { label: 'Active',     color: G.meadowDeep },
+  active:     { label: 'Active',     color: 'var(--meadow-text)' },
   generating: { label: 'Generating', color: G.blue },
   submitted:  { label: 'Submitted',  color: G.amber },
-  approved:   { label: 'Approved',   color: G.meadowDeep },
+  approved:   { label: 'Approved',   color: 'var(--meadow-text)' },
   skipped:    { label: 'Skipped',    color: '#C2410C' },
 }
 
@@ -394,7 +394,7 @@ function SCHED_META(status) {
   const map = {
     draft:     { label: 'Draft',     color: G.muted,      bg: G.hover },
     submitted: { label: 'Submitted', color: G.amber,      bg: G.amberSoft },
-    approved:  { label: 'Approved',  color: G.meadowDeep, bg: G.meadowSoft },
+    approved:  { label: 'Approved',  color: 'var(--meadow-text)', bg: G.meadowSoft },
   }
   return map[status] || map.draft
 }
@@ -885,7 +885,7 @@ export default function CoordDashboard() {
       icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
     },
     {
-      label: 'Courses', color: G.meadow, iconBg: G.meadowSoft,
+      label: 'Courses', color: 'var(--meadow-text-hover)', iconBg: G.meadowSoft,
       value: loading ? null : courseCount,
       sub: courseCount > 0 ? `${lecOnlyCount} lecture · ${labCourseCount} lab` : null,
       icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>,
@@ -944,7 +944,7 @@ export default function CoordDashboard() {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
           <div style={{ flex: 1, minWidth: 200, fontSize: 12.5, lineHeight: 1.5 }}>
-            <span style={{ fontWeight: 800, color: G.meadowDeep, textTransform: 'uppercase', letterSpacing: '0.4px', fontSize: 10.5 }}>Next step </span>
+            <span style={{ fontWeight: 800, color: 'var(--meadow-text)', textTransform: 'uppercase', letterSpacing: '0.4px', fontSize: 10.5 }}>Next step </span>
             <span style={{ fontWeight: 700, color: G.ink }}>{topSuggestion.title}</span>
             <span style={{ color: G.muted }}> — {topSuggestion.body}</span>
           </div>
@@ -1035,7 +1035,7 @@ export default function CoordDashboard() {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {isMyTurn ? (
-                    <div style={{ padding: '16px 20px', borderRadius: 12, background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, fontSize: 14, fontWeight: 700, color: G.meadowDeep, display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ padding: '16px 20px', borderRadius: 12, background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, fontSize: 14, fontWeight: 700, color: 'var(--meadow-text)', display: 'flex', alignItems: 'center', gap: 10 }}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                       It's your turn — generate your schedule now.
                     </div>
@@ -1068,7 +1068,7 @@ export default function CoordDashboard() {
                     {(masterInfo?.approvedPrograms || []).map(prog => (
                       <span key={prog} style={{
                         fontSize: 12.5, fontWeight: 700, padding: '6px 14px', borderRadius: 99,
-                        background: G.meadowSoft, color: G.meadowDeep, border: `1px solid ${G.meadowBorder}`,
+                        background: G.meadowSoft, color: 'var(--meadow-text)', border: `1px solid ${G.meadowBorder}`,
                         display: 'flex', alignItems: 'center', gap: 6,
                       }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
@@ -1141,7 +1141,7 @@ export default function CoordDashboard() {
                     onClick={() => navigate('/coordinator/schedules/master')}
                     style={{
                       width: '100%', padding: '12px 20px', borderRadius: 12, border: `1.5px solid ${G.meadowBorder}`,
-                      background: G.meadowSoft, color: G.meadowDeep, fontSize: 13.5, fontWeight: 700,
+                      background: G.meadowSoft, color: 'var(--meadow-text)', fontSize: 13.5, fontWeight: 700,
                       cursor: 'pointer', fontFamily: "'Inter',sans-serif", display: 'flex', alignItems: 'center',
                       justifyContent: 'center', gap: 8, transition: 'all .15s',
                     }}
@@ -1248,7 +1248,7 @@ export default function CoordDashboard() {
                 title="Recent Schedules"
                 sub={`${counts.total} total · ${drafts} draft · ${submitted} submitted · ${approved} approved`}
                 right={
-                  <button onClick={() => navigate('/coordinator/schedules')} style={{ fontSize: 13.5, fontWeight: 700, color: G.meadowDeep, cursor: 'pointer', background: 'none', border: 'none', padding: 0, fontFamily: "'Inter',sans-serif" }}>View all →</button>
+                  <button onClick={() => navigate('/coordinator/schedules')} style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--meadow-text)', cursor: 'pointer', background: 'none', border: 'none', padding: 0, fontFamily: "'Inter',sans-serif" }}>View all →</button>
                 }
               />
 
@@ -1324,7 +1324,7 @@ export default function CoordDashboard() {
                         ) : isRenaming ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }} onClick={e => e.stopPropagation()}>
                             <button className="cd-icon-btn" style={{ width: 'auto', padding: '0 12px', fontSize: 12, fontWeight: 700 }} onClick={() => setRenameId(null)} disabled={isBusy}>Cancel</button>
-                            <button className="cd-icon-btn" style={{ width: 'auto', padding: '0 12px', fontSize: 12, fontWeight: 700, color: G.meadowDeep, borderColor: G.meadowBorder }} onClick={() => handleRename(s.id)} disabled={isBusy}>
+                            <button className="cd-icon-btn" style={{ width: 'auto', padding: '0 12px', fontSize: 12, fontWeight: 700, color: 'var(--meadow-text)', borderColor: G.meadowBorder }} onClick={() => handleRename(s.id)} disabled={isBusy}>
                               {isBusy ? 'Saving…' : 'Save'}
                             </button>
                           </div>
@@ -1364,7 +1364,7 @@ export default function CoordDashboard() {
           {!loading && schedules.length === 0 && courseCount > 0 && (
             <div className="d-card">
               <div className="cd-empty-state">
-                <div style={{ width: 48, height: 48, borderRadius: '50%', background: G.meadowSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', color: G.meadowDeep }}>
+                <div style={{ width: 48, height: 48, borderRadius: '50%', background: G.meadowSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--meadow-text)' }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                 </div>
                 <div style={{ fontSize: 15, fontWeight: 800, color: G.ink }}>No schedules yet</div>
