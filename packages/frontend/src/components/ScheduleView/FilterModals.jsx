@@ -600,7 +600,7 @@ export function RoomFilterModal({ title, options, selectedSet, onToggle, onClose
         <ModalSearch value={q} onChange={setQ} placeholder="Search rooms…" />
 
         {/* ── Type tabs ── */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 12, background: '#F9FAFB', border: `1px solid ${TV.border}`, borderRadius: 9, padding: 3, width: 'fit-content' }}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 12, background: 'var(--surface)', border: `1px solid ${TV.border}`, borderRadius: 9, padding: 3, width: 'fit-content' }}>
           {TABS.map(([val, lbl, count]) => (
             <button key={val} onClick={() => setTypeTab(val)} style={{
               fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 7, cursor: 'pointer',
