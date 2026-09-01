@@ -1,4 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
+
+const isDark = document.documentElement.getAttribute('data-mode') === 'dark';
 import { getDays, saveDays, getTime, saveTime } from '../../services/api'
 
 import iconDays from '../../assets/DAYS.png'
