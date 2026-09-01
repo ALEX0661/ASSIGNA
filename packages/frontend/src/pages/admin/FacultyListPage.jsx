@@ -117,12 +117,12 @@ function ActiveFilterChips({
   onClearCoordinator, onRemoveSpec, onClearRating,
 }) {
   const chips = [
-    ...statusFilter.map(v => ({ label: v === 'full-time' ? 'Full-time' : 'Part-time', onRemove: () => onRemoveStatus(v), color: G.meadow })),
-    ...rankFilter.map(v => ({ label: v, onRemove: () => onRemoveRank(v), color: G.meadow })),
-    ...departmentFilter.map(v => ({ label: v, onRemove: () => onRemoveDept(v), color: G.meadow })),
-    ...educationFilter.map(v => ({ label: v, onRemove: () => onRemoveEducation(v), color: G.meadow })),
-    coordinatorFilter ? { label: coordinatorFilter === 'any' ? 'Coordinators only' : 'Non-coordinators', onRemove: onClearCoordinator, color: G.meadow } : null,
-    ...specializationFilter.map(v => ({ label: v, onRemove: () => onRemoveSpec(v), color: G.meadow })),
+    ...statusFilter.map(v => ({ label: v === 'full-time' ? 'Full-time' : 'Part-time', onRemove: () => onRemoveStatus(v), color: 'var(--meadow-text-hover)' })),
+    ...rankFilter.map(v => ({ label: v, onRemove: () => onRemoveRank(v), color: 'var(--meadow-text-hover)' })),
+    ...departmentFilter.map(v => ({ label: v, onRemove: () => onRemoveDept(v), color: 'var(--meadow-text-hover)' })),
+    ...educationFilter.map(v => ({ label: v, onRemove: () => onRemoveEducation(v), color: 'var(--meadow-text-hover)' })),
+    coordinatorFilter ? { label: coordinatorFilter === 'any' ? 'Coordinators only' : 'Non-coordinators', onRemove: onClearCoordinator, color: 'var(--meadow-text-hover)' } : null,
+    ...specializationFilter.map(v => ({ label: v, onRemove: () => onRemoveSpec(v), color: 'var(--meadow-text-hover)' })),
     specMinRating > 0 ? { label: `★${specMinRating}+ rating`, onRemove: onClearRating, color: '#F59E0B' } : null,
   ].filter(Boolean)
 
@@ -321,7 +321,7 @@ function FacultyCard({ faculty, courseTitleMap, selected, onSelect, onClick, onA
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '0 14px', animation: 'fadeIn 0.13s ease',
         }}>
-          <span style={{ fontSize: 10.5, color: G.meadow, fontWeight: 600 }}>View &amp; edit</span>
+          <span style={{ fontSize: 10.5, color: 'var(--meadow-text-hover)', fontWeight: 600 }}>View &amp; edit</span>
           <div style={{ display: 'flex', gap: 4 }}>
             {viewTab === 'active' && (
               <button onClick={e => { e.stopPropagation(); onArchive() }} title="Archive"
@@ -334,7 +334,7 @@ function FacultyCard({ faculty, courseTitleMap, selected, onSelect, onClick, onA
             {viewTab === 'archived' && (
               <>
                 <button onClick={e => { e.stopPropagation(); onUnarchive() }} title="Restore"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 7, background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, color: G.meadow, cursor: 'pointer', padding: 0, transition: 'all .14s' }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 7, background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, color: 'var(--meadow-text-hover)', cursor: 'pointer', padding: 0, transition: 'all .14s' }}
                   onMouseEnter={e => { e.currentTarget.style.background = G.meadow; e.currentTarget.style.color = '#fff' }}
                   onMouseLeave={e => { e.currentTarget.style.background = G.meadowSoft; e.currentTarget.style.color = G.meadow }}>
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
@@ -459,7 +459,7 @@ function FacultyTable({ faculty, selected, selectionMode, viewTab, onSelect, onS
                     {viewTab === 'archived' && (
                       <>
                         <button onClick={() => onUnarchive(f.id, f.name)} title="Restore"
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 7, background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, color: G.meadow, cursor: 'pointer', padding: 0, transition: 'all .14s' }}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 7, background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, color: 'var(--meadow-text-hover)', cursor: 'pointer', padding: 0, transition: 'all .14s' }}
                           onMouseEnter={e => { e.currentTarget.style.background = G.meadow; e.currentTarget.style.color = '#fff' }}
                           onMouseLeave={e => { e.currentTarget.style.background = G.meadowSoft; e.currentTarget.style.color = G.meadow }}>
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
@@ -491,7 +491,7 @@ function SectionLabel({ label, count, onClear, icon }) {
         {icon && <div style={{ color: G.muted2, display: 'flex' }}>{icon}</div>}
         <span style={{ fontSize: 13, fontWeight: 600, color: G.ink }}>{label}</span>
         {count > 0 && (
-          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6, background: G.meadowSoft, color: G.meadow }}>{count}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6, background: G.meadowSoft, color: 'var(--meadow-text-hover)' }}>{count}</span>
         )}
       </div>
       {count > 0 && (
@@ -824,8 +824,8 @@ export default function FacultyListPage() {
         .fac-toast { display:flex;align-items:center;gap:10px;padding:12px 20px;border-radius:12px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;animation:facToastIn .22s cubic-bezier(.4,0,.2,1);white-space:nowrap;pointer-events:auto; }
         .fac-toast.success { background:linear-gradient(135deg,${G.meadow},${G.meadowDeep});color:#fff;box-shadow:0 8px 24px rgba(0,0,0,0.3);border:1px solid ${G.meadowBorder}; }
         .fac-toast.error   { background: var(--surface);color:#DC2626;border:1.5px solid #FECACA;box-shadow:0 8px 24px rgba(220,38,38,0.15); }
-        .fac-toast.info    { background: var(--surface);color:${G.meadow};border:1.5px solid ${G.meadowBorder};box-shadow:0 8px 24px rgba(0,0,0,0.15); }
-        .fac-search:focus  { border-color:${G.meadow}!important;box-shadow:0 0 0 3px rgba(0,0,0,0.12)!important;background: var(--surface)!important; }
+        .fac-toast.info    { background: var(--surface);color: var(--meadow-text-hover);border:1.5px solid ${G.meadowBorder};box-shadow:0 8px 24px rgba(0,0,0,0.15); }
+        .fac-search:focus  { border-color: var(--meadow-text-hover)!important;box-shadow:0 0 0 3px rgba(0,0,0,0.12)!important;background: var(--surface)!important; }
         .fac-tr-hover:hover td { background:${G.hover}; }
 
         /* ── Segmented Button Styles (Unified with ScheduleView) ── */
@@ -835,9 +835,9 @@ export default function FacultyListPage() {
           font-size:11.5px; font-family:'Inter',sans-serif;
           border:none; cursor:pointer; transition:all .15s; white-space:nowrap;
         }
-        .fac-view-btn.active { background:${G.meadowSoft}; color:${G.meadowDeep}; font-weight:700; }
+        .fac-view-btn.active { background:${G.meadowSoft}; color: var(--meadow-text); font-weight:700; }
         .fac-view-btn:not(.active) { background:transparent; color:${G.muted2}; font-weight:400; }
-        .fac-view-btn:not(.active):hover { background:${G.hover}; color:${G.meadow}; }
+        .fac-view-btn:not(.active):hover { background:${G.hover}; color: var(--meadow-text-hover); }
       `}</style>
 
       {/* ── Header row ── */}
@@ -991,7 +991,7 @@ export default function FacultyListPage() {
           <>
             <div style={{ width: 1, height: 20, background: G.border, flexShrink: 0 }}/>
             <button onClick={resetAllFilters}
-              style={{ fontSize: 11.5, color: G.meadow, background: G.meadowSoft, border: 'none', padding: '4px 11px', borderRadius: 99, cursor: 'pointer', fontWeight: 600, fontFamily: "'Inter',sans-serif", whiteSpace: 'nowrap' }}>
+              style={{ fontSize: 11.5, color: 'var(--meadow-text-hover)', background: G.meadowSoft, border: 'none', padding: '4px 11px', borderRadius: 99, cursor: 'pointer', fontWeight: 600, fontFamily: "'Inter',sans-serif", whiteSpace: 'nowrap' }}>
               Clear all
             </button>
           </>
@@ -1346,7 +1346,7 @@ export default function FacultyListPage() {
       {!loading && filtered.length > 0 && (
         <div style={{ marginTop: 18, fontSize: 12, color: G.muted2, textAlign: 'right' }}>
           Showing {filtered.length} of {tabFaculty.length} {viewTab} faculty
-          {selectedCount > 0 && <span style={{ marginLeft: 8, color: G.meadow, fontWeight: 600 }}>· {selectedCount} selected</span>}
+          {selectedCount > 0 && <span style={{ marginLeft: 8, color: 'var(--meadow-text-hover)', fontWeight: 600 }}>· {selectedCount} selected</span>}
         </div>
       )}
 

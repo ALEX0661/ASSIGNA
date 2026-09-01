@@ -45,9 +45,9 @@ const CO_STYLE = `
   .co-btn-danger { background:${G.redSoft}; color:${G.red}; border:1px solid ${G.redBorder} !important; }
   .co-btn-amber { background:${G.amberSoft}; color:#92400E; border:1px solid ${G.amberBorder} !important; }
   .co-input { width:100%; padding:9px 12px; border-radius:9px; border:1.5px solid ${G.border}; font-size:13px; font-family:'Inter',sans-serif; outline:none; box-sizing:border-box; transition:all .15s; background: var(--surface); }
-  .co-input:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
+  .co-input:focus { border-color: var(--meadow-text-hover); box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
   .co-tab { padding:5px 14px; border-radius:8px; font-size:11.5px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; transition:all .15s; border:1.5px solid ${G.border}; background:${G.bg}; color:#4A5568; }
-  .co-tab.active { border-color:${G.meadow}; background:${G.meadowSoft}; color:${G.meadowMid}; }
+  .co-tab.active { border-color: var(--meadow-text-hover); background:${G.meadowSoft}; color:${G.meadowMid}; }
 
   /* Segmented status filter, matching CourseListPage's tab switcher */
   .co-seg { display:flex; gap:3px; background: var(--surface); border-radius:10px; padding:3px; border:1px solid ${G.border}; flex-shrink:0; }
@@ -57,12 +57,12 @@ const CO_STYLE = `
 
   /* Toolbar icon buttons */
   .co-icon-btn { display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:8px; border:1px solid ${G.border}; background: var(--surface); color:${G.muted}; cursor:pointer; transition:all .15s; padding:0; flex-shrink:0; }
-  .co-icon-btn:hover { background:${G.hover}; color:${G.meadow}; border-color:${G.meadowBorder}; }
-  .co-icon-btn.active { background:${G.meadowSoft}; color:${G.meadowDeep}; border-color:${G.meadowBorder}; }
+  .co-icon-btn:hover { background:${G.hover}; color: var(--meadow-text-hover); border-color:${G.meadowBorder}; }
+  .co-icon-btn.active { background:${G.meadowSoft}; color: var(--meadow-text); border-color:${G.meadowBorder}; }
 
   /* Row action icon buttons (smaller, with color variants) */
   .co-row-icon-btn { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:8px; border:1px solid ${G.border}; background: var(--surface); color:${G.muted}; cursor:pointer; transition:all .15s; padding:0; flex-shrink:0; }
-  .co-row-icon-btn:hover { background:${G.hover}; color:${G.meadowDeep}; border-color:${G.meadowBorder}; }
+  .co-row-icon-btn:hover { background:${G.hover}; color: var(--meadow-text); border-color:${G.meadowBorder}; }
   .co-row-icon-btn:disabled { opacity:.45; cursor:default; }
   .co-row-icon-btn.primary { background:linear-gradient(135deg,${G.meadow},${G.meadowDeep}); color:#fff; border-color:transparent; box-shadow:0 2px 8px rgba(0,0,0,0.22); }
   .co-row-icon-btn.primary:hover { opacity:.88; color:#fff; }
@@ -74,7 +74,7 @@ const CO_STYLE = `
   /* Sort select */
   .co-sel { padding:6px 30px 6px 12px; border-radius:9px; border:1.5px solid ${G.border}; font-size:12px; font-weight:500; font-family:'Inter',sans-serif; color:${G.inkMid}; background: var(--surface); outline:none; cursor:pointer; appearance:none; transition:all .15s;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%236B8C7A' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; }
-  .co-sel:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
+  .co-sel:focus { border-color: var(--meadow-text-hover); box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
 
   /* Session count chip */
   .co-chip { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:${G.muted}; }
@@ -533,7 +533,7 @@ export default function CoordMySchedulePage() {
             <div key={sec.key} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {(termKeys.length > 1 || sec.key === '__no_term__') && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 2px' }}>
-                  <span style={{ fontSize: 11.5, fontWeight: 700, color: G.meadowDeep, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--meadow-text)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
                     {sec.label}
                   </span>
                   <span style={{ flex: 1, height: 1, background: G.border }} />
@@ -633,7 +633,7 @@ export default function CoordMySchedulePage() {
                       <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>{s.name}</span>
                       <Badge status={s.status} />
                       {termLabel(s) && (
-                        <span style={{ fontSize: 10.5, fontWeight: 600, color: G.meadowDeep, background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, padding: '1.5px 8px', borderRadius: 99 }}>
+                        <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--meadow-text)', background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, padding: '1.5px 8px', borderRadius: 99 }}>
                           {termLabel(s)}
                         </span>
                       )}

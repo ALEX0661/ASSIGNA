@@ -76,10 +76,9 @@ if (!document.getElementById('settings-page-style')) {
     }
     .day-btn:hover:not(.active) { border-color: ${G.meadowBorder}; background: ${G.hover}; color: ${G.ink}; }
     .day-btn.active {
-      background: ${G.meadowSoft}; border-color: ${G.meadowBorder}; color: ${isDark ? 'var(--mint)' : G.meadowDeep};
+      background: ${G.meadowSoft}; border-color: ${G.meadowBorder}; color: var(--meadow-text);
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
-    [data-mode="dark"] .day-btn.active { color: var(--mint) !important; }
     .day-btn-title { font-size: 13px; font-weight: 700; }
     .day-btn-sub { font-size: 10.5px; font-weight: 500; opacity: 0.8; }
 
@@ -93,7 +92,7 @@ if (!document.getElementById('settings-page-style')) {
       background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B8C7A' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); 
       background-repeat:no-repeat; background-position:right 12px center; 
     }
-    .cp-sel:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
+    .cp-sel:focus { border-color: var(--meadow-text-hover); box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
 
     /* Buttons */
     .btn-outline { display: inline-flex; align-items: center; gap: 5px; padding: 8px 16px; border-radius: 8px; border: 1px solid ${G.border}; font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 600; cursor: pointer; background: var(--surface); color: ${G.muted}; transition: all 0.13s; }

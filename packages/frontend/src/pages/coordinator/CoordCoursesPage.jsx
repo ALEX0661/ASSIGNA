@@ -77,17 +77,17 @@ function markOnboardingCompleted() {
     .cp-toast { display:flex;align-items:center;gap:10px;padding:12px 20px;border-radius:12px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;animation:cpToastIn .22s cubic-bezier(.4,0,.2,1);white-space:nowrap;pointer-events:auto; }
     .cp-toast.success { background:linear-gradient(135deg,${G.meadow},${G.meadowDeep});color:#fff;box-shadow:0 8px 24px rgba(0,0,0,0.3);border:1px solid ${G.meadowBorder}; }
     .cp-toast.error   { background: var(--surface);color:#DC2626;border:1.5px solid #FECACA;box-shadow:0 8px 24px rgba(220,38,38,0.15); }
-    .cp-toast.info    { background: var(--surface);color:${G.meadow};border:1.5px solid ${G.meadowBorder};box-shadow:0 8px 24px rgba(0,0,0,0.15); }
+    .cp-toast.info    { background: var(--surface);color: var(--meadow-text-hover);border:1.5px solid ${G.meadowBorder};box-shadow:0 8px 24px rgba(0,0,0,0.15); }
 
-    .cp-search:focus  { border-color:${G.meadow}!important;box-shadow:0 0 0 3px rgba(0,0,0,0.12)!important;background: var(--surface)!important; }
+    .cp-search:focus  { border-color: var(--meadow-text-hover)!important;box-shadow:0 0 0 3px rgba(0,0,0,0.12)!important;background: var(--surface)!important; }
     .cp-tr-hover:hover td { background:${G.hover}; }
 
     .cp-inp, .cp-sel { padding: 9px 12px; border-radius: 10px; border: 1px solid ${G.border}; font-family: 'Inter',sans-serif; font-size: 12.5px; color: ${G.ink}; background: var(--surface); outline: none; transition: all 0.15s ease; width: 100%; box-sizing: border-box; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
-    .cp-inp:focus,.cp-sel:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
+    .cp-inp:focus,.cp-sel:focus { border-color: var(--meadow-text-hover); box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
     .cp-sel { appearance:none; cursor:pointer; padding-right:32px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B8C7A' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; }
 
     .cp-th-sort { cursor:pointer; user-select:none; transition: color .15s; }
-    .cp-th-sort:hover { color: ${G.meadowDeep}!important; }
+    .cp-th-sort:hover { color: var(--meadow-text)!important; }
     .cp-th-sort .cp-sort-arrow { display:inline-block; margin-left:4px; opacity:0; transition: opacity .15s; }
     .cp-th-sort.active .cp-sort-arrow { opacity:1; }
     .cp-th-sort:hover .cp-sort-arrow { opacity:0.6; }
@@ -100,14 +100,14 @@ function markOnboardingCompleted() {
 
     .cp-sem-count { margin-left: 2px; font-size: 10.5px; font-weight: 700; }
 
-    .assigned-pill { display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;background:${G.meadowSoft};color:${G.meadowDeep};border:1px solid ${G.meadowBorder}; }
-    .assign-trigger { display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:600;background: var(--surface);color:${G.meadow};border:1px dashed ${G.meadow};cursor:pointer;transition:all .13s; }
+    .assigned-pill { display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;background:${G.meadowSoft};color: var(--meadow-text);border:1px solid ${G.meadowBorder}; }
+    .assign-trigger { display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:600;background: var(--surface);color: var(--meadow-text-hover);border:1px dashed ${G.meadow};cursor:pointer;transition:all .13s; }
     .assign-trigger:hover { background:${G.meadowSoft};border-style:solid; }
 
     /* Modal Selectable Cards */
     .modal-room-card { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--surface); border: 1.5px solid ${G.border}; border-radius: 10px; cursor: pointer; transition: all 0.15s; color: ${G.ink}; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
     .modal-room-card:hover { border-color: ${G.meadowBorder}; background: ${G.surface}; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.08); }
-    .modal-room-card.selected { border-color: ${G.meadow}; background: ${G.meadowSoft}; color: ${G.meadowDeep}; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .modal-room-card.selected { border-color: var(--meadow-text-hover); background: ${G.meadowSoft}; color: var(--meadow-text); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
     .modal-room-card-inner { display: flex; align-items: center; gap: 12px; }
 
     /* Buttons */
@@ -125,7 +125,7 @@ function markOnboardingCompleted() {
     .rm-modal-body { padding: 24px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 24px; background: ${G.bg}; }
     .rm-modal-foot { padding: 16px 24px; border-top: 1px solid ${G.border}; display: flex; justify-content: flex-end; gap: 10px; background: var(--surface); }
 
-    .modal-close-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; border: 1.5px solid ${G.meadowBorder}; cursor: pointer; background: ${G.meadowSoft}; color: ${G.meadowDeep}; transition: all 0.2s; flex-shrink: 0; padding: 0; }
+    .modal-close-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; border: 1.5px solid ${G.meadowBorder}; cursor: pointer; background: ${G.meadowSoft}; color: var(--meadow-text); transition: all 0.2s; flex-shrink: 0; padding: 0; }
     .modal-close-btn:hover { background: #FFE8E8; border-color: #FECACA; color: #DC2626; }
   `
 }
@@ -205,7 +205,7 @@ function SectionLabel({ label, count, onClear, icon }) {
         {icon && <div style={{ color: G.muted2, display: 'flex' }}>{icon}</div>}
         <span style={{ fontSize: 13, fontWeight: 600, color: G.ink }}>{label}</span>
         {count > 0 && (
-          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6, background: G.meadowSoft, color: G.meadow }}>{count}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6, background: G.meadowSoft, color: 'var(--meadow-text-hover)' }}>{count}</span>
         )}
       </div>
       {count > 0 && (
@@ -491,14 +491,14 @@ function StatsBar({ loading, filtered, isFiltered }) {
       label: 'Total Courses',
       value: stats.count,
       icon: <img src={iconCourses} alt="Courses" style={{ width: 26, height: 26, objectFit: 'contain' }} />,
-      color: G.meadow,
+      color: 'var(--meadow-text-hover)',
       bg: G.meadowSoft
     },
     {
       label: 'Active Sections',
       value: stats.totalSections,
       icon: <img src={iconBlocks} alt="Blocks" style={{ width: 26, height: 26, objectFit: 'contain' }} />,
-      color: G.meadow,
+      color: 'var(--meadow-text-hover)',
       bg: G.meadowSoft
     },
     {
@@ -517,7 +517,7 @@ function StatsBar({ loading, filtered, isFiltered }) {
         </span>
       ),
       icon: <img src={iconUnits} alt="Units" style={{ width: 26, height: 26, objectFit: 'contain' }} />,
-      color: G.meadow,
+      color: 'var(--meadow-text-hover)',
       bg: G.meadowSoft,
     },
   ]
@@ -1020,7 +1020,7 @@ export default function CoordCoursesPage() {
         {hasFilter && (
           <>
             <div style={{ width: 1, height: 20, background: G.border, flexShrink: 0 }}/>
-            <button onClick={resetFilters} style={{ fontSize: 11.5, color: G.meadow, background: G.meadowSoft, border: 'none', padding: '4px 11px', borderRadius: 99, cursor: 'pointer', fontWeight: 600, fontFamily: "'Inter',sans-serif", whiteSpace: 'nowrap' }}>
+            <button onClick={resetFilters} style={{ fontSize: 11.5, color: 'var(--meadow-text-hover)', background: G.meadowSoft, border: 'none', padding: '4px 11px', borderRadius: 99, cursor: 'pointer', fontWeight: 600, fontFamily: "'Inter',sans-serif", whiteSpace: 'nowrap' }}>
               Clear all
             </button>
           </>
@@ -1032,8 +1032,8 @@ export default function CoordCoursesPage() {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12, alignItems: 'center' }}>
           <span style={{ fontSize: 10.5, color: G.muted2, fontWeight: 600, marginRight: 2 }}>Active filters:</span>
           {[
-            ...yearFilter.map(y => ({ label: `Year ${y}`, onRemove: () => togYear(y), color: G.meadow })),
-            typeFilter ? { label: typeFilter === 'lab' ? 'Has Laboratory' : 'Lecture Only', onRemove: () => setTypeFilter(''), color: G.meadow } : null,
+            ...yearFilter.map(y => ({ label: `Year ${y}`, onRemove: () => togYear(y), color: 'var(--meadow-text-hover)' })),
+            typeFilter ? { label: typeFilter === 'lab' ? 'Has Laboratory' : 'Lecture Only', onRemove: () => setTypeFilter(''), color: 'var(--meadow-text-hover)' } : null,
             issuesOnly ? { label: 'Needs attention', onRemove: () => setIssuesOnly(false), color: '#F59E0B' } : null,
           ].filter(Boolean).map((chip, i) => (
             <span key={i} style={{
@@ -1171,7 +1171,7 @@ export default function CoordCoursesPage() {
                     <td style={{ padding: '10px 14px', textAlign: 'center' }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ fontWeight: 700, color: G.ink, fontSize: 13 }}>{(c.unitsLecture||0)+(c.unitsLab||0)}</span>
-                        <span style={{ display: 'inline-flex', minWidth: 22, justifyContent: 'center', padding: '2px 5px', borderRadius: 4, fontSize: 10.5, fontWeight: 700, background: G.meadowSoft, color: G.meadowDeep }} title="Lecture units">{c.unitsLecture}</span>
+                        <span style={{ display: 'inline-flex', minWidth: 22, justifyContent: 'center', padding: '2px 5px', borderRadius: 4, fontSize: 10.5, fontWeight: 700, background: G.meadowSoft, color: 'var(--meadow-text)' }} title="Lecture units">{c.unitsLecture}</span>
                         <span style={{ display: 'inline-flex', minWidth: 22, justifyContent: 'center', padding: '2px 5px', borderRadius: 4, fontSize: 10.5, fontWeight: 700, background: 'rgba(59, 130, 246, 0.1)', color: '#38BDF8' }} title="Lab units">{c.unitsLab}</span>
                       </div>
                     </td>
@@ -1185,7 +1185,7 @@ export default function CoordCoursesPage() {
                         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                           {roomsArr.slice(0, 3).map(r => <span key={r} className="assigned-pill">{r}</span>)}
                           {roomsArr.length > 3 && <span style={{ fontSize: 11.5, fontWeight: 800, color: G.muted }}>+{roomsArr.length - 3}</span>}
-                          <button onClick={() => setRoomTarget({ ...c, program: coordinatorProgram })} style={{ border: '1px solid transparent', background: 'transparent', cursor: 'pointer', color: G.meadow, display: 'flex', alignItems: 'center', padding: '5px', marginLeft: '4px', borderRadius: '6px', transition: 'all 0.15s' }} title="Edit Assigned Rooms" onMouseOver={e => {e.currentTarget.style.background = G.meadowSoft; e.currentTarget.style.borderColor = G.meadowBorder}} onMouseOut={e => {e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'}}>
+                          <button onClick={() => setRoomTarget({ ...c, program: coordinatorProgram })} style={{ border: '1px solid transparent', background: 'transparent', cursor: 'pointer', color: 'var(--meadow-text-hover)', display: 'flex', alignItems: 'center', padding: '5px', marginLeft: '4px', borderRadius: '6px', transition: 'all 0.15s' }} title="Edit Assigned Rooms" onMouseOver={e => {e.currentTarget.style.background = G.meadowSoft; e.currentTarget.style.borderColor = G.meadowBorder}} onMouseOut={e => {e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'}}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                           </button>
                         </div>
@@ -1200,7 +1200,7 @@ export default function CoordCoursesPage() {
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                         </button>
                         <button title="Edit course" onClick={() => { setEditTarget({ ...c, yearLevel: String(c.yearLevel), preferredRoom: c.preferredRoom || '' }); setError('') }}
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 7, background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, color: G.meadow, cursor: 'pointer', padding: 0, transition: 'all .14s' }}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 7, background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, color: 'var(--meadow-text-hover)', cursor: 'pointer', padding: 0, transition: 'all .14s' }}
                           onMouseEnter={e => { e.currentTarget.style.background = G.meadow; e.currentTarget.style.color = '#fff' }}
                           onMouseLeave={e => { e.currentTarget.style.background = G.meadowSoft; e.currentTarget.style.color = G.meadow }}>
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>

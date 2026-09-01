@@ -61,7 +61,7 @@ if (!document.getElementById('coord-rooms-style')) {
     .cp-toast { display:flex;align-items:center;gap:8px;padding:12px 20px;border-radius:12px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;animation:cpToastIn .2s cubic-bezier(.4,0,.2,1);white-space:nowrap;pointer-events:auto; box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
     .cp-toast.success { background:${G.meadow};color:#fff;border:1px solid ${G.meadowDeep}; }
     .cp-toast.error   { background: var(--surface);color:#DC2626;border:1px solid #FECACA; }
-    .cp-toast.info    { background: var(--surface);color:${G.meadowDeep};border:1px solid ${G.meadowBorder}; }
+    .cp-toast.info    { background: var(--surface);color: var(--meadow-text);border:1px solid ${G.meadowBorder}; }
 
     /* Compact Layout Cards */
     .room-card { background: var(--surface); border-radius: 12px; border: 1px solid ${G.border}; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.04); display: flex; flex-direction: column; }
@@ -73,12 +73,12 @@ if (!document.getElementById('coord-rooms-style')) {
       display: inline-flex; align-items: center; gap: 6px; 
       padding: 5px 8px 5px 10px; border-radius: 8px; 
       border: 1px solid ${G.meadowBorder}; background: ${G.meadowSoft}; 
-      font-size: 12.5px; font-weight: 700; color: ${G.meadowDeep};
+      font-size: 12.5px; font-weight: 700; color: var(--meadow-text);
       cursor: pointer; transition: all 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-    .room-chip:hover { border-color: ${G.meadow}; box-shadow: 0 3px 8px rgba(0,0,0,0.15); transform: translateY(-1px); }
+    .room-chip:hover { border-color: var(--meadow-text-hover); box-shadow: 0 3px 8px rgba(0,0,0,0.15); transform: translateY(-1px); }
     .room-chip.unselected { background: var(--surface);color:${G.muted};border-color:${G.border};opacity:0.65; box-shadow:none; }
-    .room-chip.unselected:hover { opacity:1;border-color:${G.meadowBorder};color:${G.meadowDeep}; }
+    .room-chip.unselected:hover { opacity:1;border-color:${G.meadowBorder};color: var(--meadow-text); }
     .room-chip-idx { font-size: 10px; font-weight: 800; color: #fff; background: ${G.meadow}; padding: 2px 6px; border-radius: 4px; }
 
     /* Buttons */
@@ -92,7 +92,7 @@ if (!document.getElementById('coord-rooms-style')) {
 
     /* Compact Data Table */
     .cp-search { flex: 1; padding: 8px 14px 8px 36px; border-radius: 8px; border: 1px solid ${G.border}; font-family: 'Inter', sans-serif; font-size: 13px; color: ${G.ink}; background: var(--surface); outline: none; transition: all 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
-    .cp-search:focus { border-color: ${G.meadow}; box-shadow: 0 0 0 2px rgba(0,0,0,0.1); }
+    .cp-search:focus { border-color: var(--meadow-text-hover); box-shadow: 0 0 0 2px rgba(0,0,0,0.1); }
     
     .cp-tr-hover:hover td { background: ${G.hover}; }
 
@@ -112,7 +112,7 @@ if (!document.getElementById('coord-rooms-style')) {
       display: inline-flex; align-items: center; justify-content: center; 
       width: 32px; height: 32px; border-radius: 8px; 
       border: 1.5px solid ${G.meadowBorder}; cursor: pointer; 
-      background: ${G.meadowSoft}; color: ${G.meadowDeep}; transition: all 0.2s; flex-shrink: 0; 
+      background: ${G.meadowSoft}; color: var(--meadow-text); transition: all 0.2s; flex-shrink: 0; 
       padding: 0; 
     }
     .modal-close-btn:hover { background: #FFE8E8; border-color: #FECACA; color: #DC2626; }
@@ -120,14 +120,14 @@ if (!document.getElementById('coord-rooms-style')) {
     /* Modal Selectable Cards */
     .modal-room-card { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--surface); border: 1.5px solid ${G.border}; border-radius: 10px; cursor: pointer; transition: all 0.15s; color: ${G.ink}; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
     .modal-room-card:hover { border-color: ${G.meadowBorder}; background: ${G.surface}; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.08); }
-    .modal-room-card.selected { border-color: ${G.meadow}; background: ${G.meadowSoft}; color: ${G.meadowDeep}; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .modal-room-card.selected { border-color: var(--meadow-text-hover); background: ${G.meadowSoft}; color: var(--meadow-text); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
     .modal-room-card-inner { display: flex; align-items: center; gap: 12px; }
 
     /* Green Room Pills for Table */
-    .assign-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 7px; font-size: 11.5px; font-weight: 600; background: var(--surface); color: ${G.meadowDeep}; border: 1px dashed ${G.meadow}; cursor: pointer; transition: all 0.15s; }
+    .assign-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 7px; font-size: 11.5px; font-weight: 600; background: var(--surface); color: var(--meadow-text); border: 1px dashed ${G.meadow}; cursor: pointer; transition: all 0.15s; }
     .assign-trigger:hover { background: ${G.meadowSoft}; border-style: solid; }
     
-    .assigned-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background: ${G.meadowSoft}; color: ${G.meadowDeep}; border: 1px solid ${G.meadowBorder}; }
+    .assigned-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background: ${G.meadowSoft}; color: var(--meadow-text); border: 1px solid ${G.meadowBorder}; }
   `
   document.head.appendChild(s)
 }
@@ -623,7 +623,7 @@ export default function CoordRoomsPage() {
             <span style={{ fontSize: 13, fontWeight: 600, color: '#fff', flex: 1 }}>{selectedCourses.size} course{selectedCourses.size !== 1 ? 's' : ''} selected</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <button onClick={() => setSelectedCourses(new Set())} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>Deselect</button>
-              <button onClick={openBulkModal} style={{ background: 'var(--surface)', color: G.meadowDeep, border: 'none', fontSize: 12, fontWeight: 700, padding: '6px 14px', borderRadius: 6, cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>Bulk Assign Rooms</button>
+              <button onClick={openBulkModal} style={{ background: 'var(--surface)', color: 'var(--meadow-text)', border: 'none', fontSize: 12, fontWeight: 700, padding: '6px 14px', borderRadius: 6, cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>Bulk Assign Rooms</button>
             </div>
           </div>
         )}
@@ -658,7 +658,7 @@ export default function CoordRoomsPage() {
                 <tr>
                   <td colSpan={4} style={{ padding: '80px 20px', textAlign: 'center' }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: G.muted }}>No courses match your filters</div>
-                    <button onClick={() => { setSearch(''); setStatusFilter('All') }} style={{ fontSize: 12.5, color: G.meadow, background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Inter', sans-serif", padding: 0, marginTop: 8, fontWeight: 600 }}>Clear all filters</button>
+                    <button onClick={() => { setSearch(''); setStatusFilter('All') }} style={{ fontSize: 12.5, color: 'var(--meadow-text-hover)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Inter', sans-serif", padding: 0, marginTop: 8, fontWeight: 600 }}>Clear all filters</button>
                   </td>
                 </tr>
               ) : (
@@ -690,7 +690,7 @@ export default function CoordRoomsPage() {
                       </td>
                       <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
                         <div style={{ display: 'flex', gap: 8 }}>
-                          {course.unitsLecture > 0 && <span style={{ color: G.meadowDeep, fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}><div style={{width:8,height:8,borderRadius:2,background:G.meadowSoft,border:`1px solid ${G.meadowBorder}`}}/> {course.unitsLecture}L</span>}
+                          {course.unitsLecture > 0 && <span style={{ color: 'var(--meadow-text)', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}><div style={{width:8,height:8,borderRadius:2,background:G.meadowSoft,border:`1px solid ${G.meadowBorder}`}}/> {course.unitsLecture}L</span>}
                           {course.unitsLab > 0 && <span style={{ color: '#38BDF8', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}><div style={{width:8,height:8,borderRadius:2,background:'rgba(59, 130, 246, 0.1)',border:`1px solid #BAE6FD`}}/> {course.unitsLab}L</span>}
                         </div>
                       </td>
@@ -704,7 +704,7 @@ export default function CoordRoomsPage() {
                           <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                             {roomsArr.slice(0, 4).map(r => <span key={r} className="assigned-pill">{r}</span>)}
                             {roomsArr.length > 4 && <span style={{ fontSize: 11.5, fontWeight: 800, color: G.muted }}>+{roomsArr.length - 4}</span>}
-                            <button onClick={() => openSingleModal(key, `${course.courseCode} - ${title}`, roomsArr)} style={{ border: '1px solid transparent', background: 'transparent', cursor: 'pointer', color: G.meadow, display: 'flex', alignItems: 'center', padding: '5px', marginLeft: '4px', borderRadius: '6px', transition: 'all 0.15s' }} onMouseOver={e => {e.currentTarget.style.background = G.meadowSoft; e.currentTarget.style.borderColor = G.meadowBorder}} onMouseOut={e => {e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'}} title="Edit Assigned Rooms">
+                            <button onClick={() => openSingleModal(key, `${course.courseCode} - ${title}`, roomsArr)} style={{ border: '1px solid transparent', background: 'transparent', cursor: 'pointer', color: 'var(--meadow-text-hover)', display: 'flex', alignItems: 'center', padding: '5px', marginLeft: '4px', borderRadius: '6px', transition: 'all 0.15s' }} onMouseOver={e => {e.currentTarget.style.background = G.meadowSoft; e.currentTarget.style.borderColor = G.meadowBorder}} onMouseOut={e => {e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'}} title="Edit Assigned Rooms">
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             </button>
                           </div>

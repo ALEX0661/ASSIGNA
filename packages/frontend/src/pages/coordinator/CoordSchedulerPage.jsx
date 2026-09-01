@@ -41,7 +41,7 @@ const PHASE_BY_KEY = Object.fromEntries(PHASES.map(p => [p.key, p]))
 const DEFAULT_PHASE_KEYS = PHASES.map(p => p.key)
 
 const VERDICT_META = {
-  feasible:        { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder, label: 'Feasible',           icon: '✓' },
+  feasible:        { color: 'var(--meadow-text)', bg: G.meadowSoft, border: G.meadowBorder, label: 'Feasible',           icon: '✓' },
   likely_feasible: { color: '#38BDF8',    bg: 'rgba(59, 130, 246, 0.1)',    border: 'rgba(59, 130, 246, 0.25)',      label: 'Likely Feasible',    icon: '~' },
   tight:           { color: '#F59E0B',    bg: 'rgba(245, 158, 11, 0.1)',    border: 'rgba(245, 158, 11, 0.25)',      label: 'Feasible but Tight', icon: '⚠' },
   at_risk:         { color: '#EF4444',    bg: 'rgba(239, 68, 68, 0.1)',    border: 'rgba(220, 38, 38, 0.25)',      label: 'At Risk',            icon: '!' },
@@ -49,7 +49,7 @@ const VERDICT_META = {
 }
 
 const CHECK_META = {
-  pass: { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder, dot: G.meadow,  label: 'Pass' },
+  pass: { color: 'var(--meadow-text)', bg: G.meadowSoft, border: G.meadowBorder, dot: G.meadow,  label: 'Pass' },
   warn: { color: '#F59E0B',    bg: 'rgba(245, 158, 11, 0.05)',    border: 'rgba(245, 158, 11, 0.25)',      dot: '#F59E0B', label: 'Warn' },
   fail: { color: '#EF4444',    bg: 'rgba(239, 68, 68, 0.1)',    border: 'rgba(220, 38, 38, 0.25)',      dot: '#EF4444', label: 'Fail' },
   info: { color: G.blue,       bg: G.blueSoft,   border: G.blueBorder,   dot: G.blue,    label: 'Info' },
@@ -96,22 +96,22 @@ const REC_META = {
   blocker:    { color: '#EF4444',    bg: 'rgba(239, 68, 68, 0.1)',    border: 'rgba(220, 38, 38, 0.25)' },
   warning:    { color: '#F59E0B',    bg: 'rgba(245, 158, 11, 0.05)',    border: 'rgba(245, 158, 11, 0.25)' },
   suggestion: { color: '#38BDF8',    bg: 'rgba(59, 130, 246, 0.1)',    border: 'rgba(59, 130, 246, 0.25)' },
-  success:    { color: G.meadowDeep, bg: G.meadowSoft, border: G.meadowBorder },
+  success:    { color: 'var(--meadow-text)', bg: G.meadowSoft, border: G.meadowBorder },
 }
 
 const Q_META = {
   waiting:    { bg: 'var(--hover)', color: 'var(--muted2)', dot: 'var(--border)', label: 'Waiting' },
-  active:     { bg: G.meadowSoft, color: G.meadowDeep, dot: G.meadow, label: 'Their turn' },
+  active:     { bg: G.meadowSoft, color: 'var(--meadow-text)', dot: G.meadow, label: 'Their turn' },
   generating: { bg: 'rgba(37, 99, 235, 0.1)', color: '#60A5FA', dot: '#3B82F6', label: 'Generating' },
   submitted:  { bg: G.amberSoft, color: '#92400E', dot: G.amber, label: 'Submitted' },
-  approved:   { bg: G.meadowSoft, color: G.meadowDeep, dot: G.meadow, label: 'Approved' },
+  approved:   { bg: G.meadowSoft, color: 'var(--meadow-text)', dot: G.meadow, label: 'Approved' },
   skipped:    { bg: 'rgba(217, 119, 6, 0.05)', color: '#C2410C', dot: '#F97316', label: 'Skipped' },
 }
 
 const STATUS_COLORS = {
   draft:     { bg: G.hover, color: G.muted, border: G.border, label: 'Draft' },
   submitted: { bg: G.amberSoft, color: '#92400E', border: G.amberBorder, label: 'Submitted' },
-  approved:  { bg: G.meadowSoft, color: G.meadowDeep, border: G.meadowBorder, label: 'Approved' },
+  approved:  { bg: G.meadowSoft, color: 'var(--meadow-text)', border: G.meadowBorder, label: 'Approved' },
   rejected:  { bg: 'rgba(239, 68, 68, 0.1)', color: '#FCA5A5', border: 'rgba(220, 38, 38, 0.25)', label: 'Rejected' },
 }
 
@@ -144,7 +144,7 @@ if (!document.getElementById('coord-scheduler-style')) {
     .wiz-step-circle.active { background:${G.meadow}; color:#fff; border-color:${G.meadowBorder}; box-shadow:0 0 0 3px rgba(0,0,0,0.15); }
     .wiz-step-circle.todo   { background:${G.hover}; color:${G.muted2}; border-color:${G.border}; }
     .wiz-step-label { font-size:11.5px; font-weight:700; transition:color .2s; white-space:nowrap; }
-    .wiz-step-label.active { color:${G.meadowDeep}; }
+    .wiz-step-label.active { color: var(--meadow-text); }
     .wiz-step-label.done   { color:${G.ink}; }
     .wiz-step-label.todo   { color:${G.muted}; }
     .wiz-step-div { width:16px; height:2px; background:${G.border}; border-radius:99px; flex-shrink:0; }
@@ -216,7 +216,7 @@ if (!document.getElementById('coord-scheduler-style')) {
     .wiz-nav-btn.next:disabled { opacity:.5; cursor:not-allowed; transform:none; box-shadow:none; }
 
     .cp-inp, .cp-sel { padding:9px 12px; border-radius:10px; border:1px solid ${G.border}; font-family:'Inter',sans-serif; font-size:12.5px; color:${G.ink}; background: var(--surface); outline:none; transition:all .15s; width:100%; box-sizing:border-box; }
-    .cp-inp:focus, .cp-sel:focus { border-color:${G.meadow}; box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
+    .cp-inp:focus, .cp-sel:focus { border-color: var(--meadow-text-hover); box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
     
     .btn-outline { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; border:1px solid ${G.border}; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; background: var(--surface); color:${G.muted}; transition:all .13s; }
     .btn-outline:hover:not(:disabled) { background:${G.hover}; color:${G.ink}; border-color:${G.meadowBorder}; }
@@ -229,7 +229,7 @@ if (!document.getElementById('coord-scheduler-style')) {
     
     .csh-room-chip { display:inline-flex; align-items:center; justify-content:center; gap:4px; padding:3px 9px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid ${G.border}; background: var(--surface); color:${G.muted}; transition:all .13s; user-select:none; min-width: 40px; }
     .csh-room-chip:hover { border-color:${G.meadowBorder}; background:${G.hover}; }
-    .csh-room-chip.picked { background:var(--meadow-soft); border-color:${G.meadow}; color:${G.meadowDeep}; }
+    .csh-room-chip.picked { background:var(--meadow-soft); border-color: var(--meadow-text-hover); color: var(--meadow-text); }
     
     .saved-item { display:flex; align-items:flex-start; gap:12px; padding:16px 20px; border-bottom:1px solid ${G.borderLight}; background: var(--surface); transition:background .15s; }
     .saved-item:last-child { border-bottom:none; }
@@ -238,14 +238,14 @@ if (!document.getElementById('coord-scheduler-style')) {
     .saved-sub { font-size:11.5px; color:${G.muted}; font-weight:500; margin-top:3px; display:block; }
 
     .check-btn { display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:8px; border:1px solid ${G.border}; background: var(--surface); color:${G.ink}; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; transition:all .15s; box-shadow:0 1px 2px rgba(0,0,0,0.02); white-space:nowrap; }
-    .check-btn:hover:not(:disabled) { background:${G.hover}; color:${G.meadowDeep}; border-color:${G.meadowBorder}; }
+    .check-btn:hover:not(:disabled) { background:${G.hover}; color: var(--meadow-text); border-color:${G.meadowBorder}; }
     
     .diag-check-row { display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid ${G.borderLight}; }
     .diag-check-row:last-child { border-bottom:none; }
     .diag-rec { padding:12px 16px; border-radius:10px; display:flex; gap:12px; align-items:flex-start; border:1px solid transparent; transition:transform .15s; margin-bottom:12px; }
     
     .r-tab { display:inline-flex; align-items:center; gap:5px; padding:8px 16px; border-radius:8px; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; transition:all .15s; border:1px solid ${G.border}; background: var(--surface); color:${G.muted}; box-shadow:0 1px 2px rgba(0,0,0,0.02); }
-    .r-tab.active { background:${G.meadow}; color:#fff; border-color:${G.meadowDeep}; box-shadow:0 3px 10px rgba(0,0,0,0.25); }
+    .r-tab.active { background:${G.meadow}; color:#fff; border-color: var(--meadow-text); box-shadow:0 3px 10px rgba(0,0,0,0.25); }
     .r-tab:hover:not(.active) { background:${G.hover}; border-color:${G.meadowBorder}; color:${G.ink}; }
 
     .phase-track { display:flex; align-items:flex-start; gap:0; margin-top:12px; width: 100%; }
@@ -273,26 +273,26 @@ if (!document.getElementById('coord-scheduler-style')) {
     }
     .phase-chip.drop-before::before { left:-2px; }
     .phase-chip.drop-after::after   { right:-2px; }
-    .phase-chip.keyboard-grabbed .phase-chip-dot { border-color:${G.meadow} !important; box-shadow:0 0 0 4px rgba(0,0,0,0.18); }
+    .phase-chip.keyboard-grabbed .phase-chip-dot { border-color: var(--meadow-text-hover) !important; box-shadow:0 0 0 4px rgba(0,0,0,0.18); }
     .phase-chip-dot {
       width:30px; height:30px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center;
-      font-size:11px; font-weight:800; background:${G.meadowSoft}; color:${G.meadowDeep}; border:2px solid ${G.meadowBorder};
+      font-size:11px; font-weight:800; background:${G.meadowSoft}; color: var(--meadow-text); border:2px solid ${G.meadowBorder};
       transition:all .15s; position:relative;
     }
-    .phase-chip:hover .phase-chip-dot { background:${G.meadow}; color:#fff; border-color:${G.meadowDeep}; transform:scale(1.08); }
+    .phase-chip:hover .phase-chip-dot { background:${G.meadow}; color:#fff; border-color: var(--meadow-text); transform:scale(1.08); }
     .phase-chip-order {
       position:absolute; top:-5px; right:-5px; width:15px; height:15px; border-radius:50%; background: var(--surface);
       border:1.5px solid ${G.border}; color:${G.muted2}; font-size:8.5px; font-weight:800;
       display:flex; align-items:center; justify-content:center; transition:all .15s;
     }
-    .phase-chip:hover .phase-chip-order { border-color:${G.meadowDeep}; color:${G.meadowDeep}; }
+    .phase-chip:hover .phase-chip-order { border-color: var(--meadow-text); color: var(--meadow-text); }
     .phase-chip-label { font-size:10.5px; font-weight:700; text-align:center; letter-spacing:0.4px; text-transform:uppercase; color:${G.ink}; line-height:1.3; max-width:100%; }
     .phase-chip-handle { display:flex; align-items:center; justify-content:center; color:${G.muted2}; opacity:0; transition:opacity .15s; margin-top:-2px; }
     .phase-chip:hover .phase-chip-handle, .phase-chip:focus-within .phase-chip-handle { opacity:1; }
     .phase-chip-arrows { display:flex; gap:3px; margin-top:2px; opacity:0; transition:opacity .15s; }
     .phase-chip:hover .phase-chip-arrows, .phase-chip:focus-within .phase-chip-arrows { opacity:1; }
     .phase-chip-arrow { width:18px; height:18px; padding:0; border-radius:5px; border:1px solid ${G.border}; background: var(--surface); display:flex; align-items:center; justify-content:center; cursor:pointer; color:${G.muted2}; transition:all .15s; }
-    .phase-chip-arrow:hover:not(:disabled) { background:${G.meadowSoft}; border-color:${G.meadowBorder}; color:${G.meadowDeep}; }
+    .phase-chip-arrow:hover:not(:disabled) { background:${G.meadowSoft}; border-color:${G.meadowBorder}; color: var(--meadow-text); }
     .phase-chip-arrow:disabled { opacity:0.25; cursor:default; }
     @media (max-width: 720px) {
       .phase-reorder-track { flex-wrap:wrap; row-gap:22px; }
@@ -314,7 +314,7 @@ if (!document.getElementById('coord-scheduler-style')) {
     .cp-toast { display:flex; align-items:center; gap:10px; padding:14px 22px; border-radius:12px; font-family:'Inter',sans-serif; font-size:13.5px; font-weight:600; animation:cpToastIn .25s cubic-bezier(.4,0,.2,1); white-space:nowrap; pointer-events:auto; box-shadow:0 8px 24px rgba(0,0,0,0.15); }
     .cp-toast.success { background:${G.meadow}; color:#fff; border:1px solid ${G.meadowBorder}; }
     .cp-toast.error { background: var(--surface); color:#DC2626; border:1px solid #FECACA; }
-    .cp-toast.info { background: var(--surface); color:${G.meadowDeep}; border:1px solid ${G.meadowBorder}; }
+    .cp-toast.info { background: var(--surface); color: var(--meadow-text); border:1px solid ${G.meadowBorder}; }
     
     .cp-tr-hover:nth-child(even) { background: #FAFDFB; }
     .cp-tr-hover:hover { background: ${G.meadowSoft} !important; }
@@ -336,7 +336,7 @@ if (!document.getElementById('coord-scheduler-style')) {
     .solve-action-btn.primary:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,0.3); background:${G.meadowDeep}; }
     .solve-action-btn.primary:disabled { opacity:.5; cursor:not-allowed; transform:none; box-shadow:none; }
     .solve-action-btn.ghost { background: var(--surface); color:${G.ink}; border:1px solid ${G.border}; }
-    .solve-action-btn.ghost:hover { background:${G.bg}; border-color:${G.meadowBorder}; color:${G.meadowDeep}; }
+    .solve-action-btn.ghost:hover { background:${G.bg}; border-color:${G.meadowBorder}; color: var(--meadow-text); }
   `
   document.head.appendChild(s)
 }
@@ -472,11 +472,11 @@ function RoomGroup({ title, all, selected, onToggle, onSelectAll, onClear, compa
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 13, fontWeight: 800, color: G.ink }}>{title}</span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: G.meadowDeep, background: G.meadowSoft, padding: '1.5px 8px', borderRadius: 99 }}>{selected.length}/{all.length}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--meadow-text)', background: G.meadowSoft, padding: '1.5px 8px', borderRadius: 99 }}>{selected.length}/{all.length}</span>
         </div>
         <button
           onClick={() => (allPicked ? onClear() : onSelectAll())}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11.5, fontWeight: 700, color: G.meadow, fontFamily: "'Inter',sans-serif", padding: 0 }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11.5, fontWeight: 700, color: 'var(--meadow-text-hover)', fontFamily: "'Inter',sans-serif", padding: 0 }}
         >
           {allPicked ? 'Clear' : 'Select all'}
         </button>
@@ -486,7 +486,7 @@ function RoomGroup({ title, all, selected, onToggle, onSelectAll, onClear, compa
           const picked = selected.includes(room)
           const u = usage?.[room]
           const badge = u && u.hours > 0.05
-            ? (u.pct >= 85 ? { bg: 'rgba(239, 68, 68, 0.1)', color: '#EF4444' } : u.pct >= 50 ? { bg: 'rgba(245, 158, 11, 0.1)', color: '#92400E' } : { bg: G.meadowSoft, color: G.meadowDeep })
+            ? (u.pct >= 85 ? { bg: 'rgba(239, 68, 68, 0.1)', color: '#EF4444' } : u.pct >= 50 ? { bg: 'rgba(245, 158, 11, 0.1)', color: '#92400E' } : { bg: G.meadowSoft, color: 'var(--meadow-text)' })
             : null
           return (
             <span key={room} className={`csh-room-chip${picked ? ' picked' : ''}`} onClick={() => onToggle(room)}
@@ -961,7 +961,7 @@ function CoordinatorCheckPanel({ semester, masterEvents }) {
                 <div style={{ fontSize: 12.5, color: '#EF4444', lineHeight: 1.5 }}>{diagError.message}</div>
               </div>
             </div>
-            <button onClick={runDiagnostic} style={{ marginTop: 10, background: 'none', border: 'none', cursor: 'pointer', color: G.meadowDeep, fontSize: 13, fontWeight: 700, fontFamily: "'Inter',sans-serif", padding: 0 }}>Retry check →</button>
+            <button onClick={runDiagnostic} style={{ marginTop: 10, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--meadow-text)', fontSize: 13, fontWeight: 700, fontFamily: "'Inter',sans-serif", padding: 0 }}>Retry check →</button>
           </div>
         )}
 
@@ -1697,7 +1697,7 @@ export default function CoordSchedulerPage() {
                       <div className="qt-empty-note" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                         <span>{doneStatus === 'approved' ? 'You can review your approved schedule any time.' : 'You can still edit or withdraw it while it waits.'}</span>
                         <button onClick={() => navigate('/coordinator/schedules')}
-                          style={{ background: 'none', border: 'none', fontSize: 11.5, fontWeight: 700, color: G.meadow, cursor: 'pointer', fontFamily: 'Inter,sans-serif', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', padding: 0, flexShrink: 0 }}>
+                          style={{ background: 'none', border: 'none', fontSize: 11.5, fontWeight: 700, color: 'var(--meadow-text-hover)', cursor: 'pointer', fontFamily: 'Inter,sans-serif', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', padding: 0, flexShrink: 0 }}>
                           View schedule →
                         </button>
                       </div>
@@ -1798,9 +1798,9 @@ export default function CoordSchedulerPage() {
                   <div className="sch-card-header" style={{ padding: '16px 20px', flexShrink: 0, justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <h2 className="sch-card-title" style={{ fontSize: 14 }}>My Schedules</h2>
-                      {!loadingInit && <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10.5, fontWeight: 700, background: G.meadowSoft, color: G.meadowDeep }}>{schedules.length}</span>}
+                      {!loadingInit && <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10.5, fontWeight: 700, background: G.meadowSoft, color: 'var(--meadow-text)' }}>{schedules.length}</span>}
                     </div>
-                    <button onClick={() => navigate('/coordinator/schedules')} style={{ background: 'none', border: 'none', fontSize: 12, fontWeight: 700, color: G.meadow, cursor: 'pointer', fontFamily: 'Inter,sans-serif', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                    <button onClick={() => navigate('/coordinator/schedules')} style={{ background: 'none', border: 'none', fontSize: 12, fontWeight: 700, color: 'var(--meadow-text-hover)', cursor: 'pointer', fontFamily: 'Inter,sans-serif', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
                       View All
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
@@ -2072,7 +2072,7 @@ export default function CoordSchedulerPage() {
                         { val: resultStats.days, label: 'Days Used' },
                       ].map(s => (
                         <div key={s.label} style={{ background: 'var(--surface)', border: `1px solid ${G.border}`, borderRadius: 10, padding: '12px 14px', boxShadow: '0 1px 6px rgba(0,0,0,0.03)' }}>
-                          <div style={{ fontSize: 20, fontWeight: 800, color: G.meadowDeep, lineHeight: 1 }}>{s.val}</div>
+                          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--meadow-text)', lineHeight: 1 }}>{s.val}</div>
                           <div style={{ fontSize: 10.5, color: G.muted, fontWeight: 700, marginTop: 5, textTransform: 'uppercase', letterSpacing: '.4px' }}>{s.label}</div>
                         </div>
                       ))}
@@ -2083,7 +2083,7 @@ export default function CoordSchedulerPage() {
                     <div className="sch-card-header" style={{ flexWrap: 'wrap', gap: 12 }}>
                       <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, minWidth: 200 }}>
                         <h2 className="sch-card-title">Generated Result</h2>
-                        <span style={{ padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: G.meadowSoft, color: G.meadowDeep }}>{filteredEvents.length} of {events.length} shown</span>
+                        <span style={{ padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: G.meadowSoft, color: 'var(--meadow-text)' }}>{filteredEvents.length} of {events.length} shown</span>
                       </div>
                       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                         <div style={{ display: 'flex', background: G.hover, borderRadius: 8, padding: 4 }}>
@@ -2205,8 +2205,8 @@ export default function CoordSchedulerPage() {
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                       </div>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 15, fontWeight: 800, color: G.meadowDeep, marginBottom: 2 }}>Saved as a draft</div>
-                        <div style={{ fontSize: 13, color: G.meadowDeep, opacity: 0.8, fontWeight: 500 }}>Your schedule is safe. You can find it in your My Schedules list to submit for approval when you're ready.</div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--meadow-text)', marginBottom: 2 }}>Saved as a draft</div>
+                        <div style={{ fontSize: 13, color: 'var(--meadow-text)', opacity: 0.8, fontWeight: 500 }}>Your schedule is safe. You can find it in your My Schedules list to submit for approval when you're ready.</div>
                       </div>
                       <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
                         {savedScheduleId && (
@@ -2278,7 +2278,7 @@ export default function CoordSchedulerPage() {
             <div style={{ display:'flex', alignItems:'center', gap:10 }}>
               <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 20px', borderRadius:10, background:G.meadowSoft, border:`1px solid ${G.meadowBorder}` }}>
                 <svg className="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G.meadowDeep} strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                <span style={{ fontSize:13.5, fontWeight:700, color:G.meadowDeep }}>
+                <span style={{ fontSize:13.5, fontWeight:700, color: 'var(--meadow-text)' }}>
                   {stopRequested ? 'Stopping…' : `Solving… ${progress}%`}
                 </span>
               </div>
