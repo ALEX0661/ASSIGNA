@@ -40,7 +40,7 @@ if (!document.getElementById('sm-style')) {
     .sm-select {
       padding:8px 32px 8px 11px; font-size:12.5px; width:100%;
       border-radius:9px; border:1px solid var(--border); background: var(--surface);
-      font-family:'Inter',sans-serif; color:#0E2A20; outline:none;
+      font-family:'Inter',sans-serif; color:var(--ink); outline:none;
       appearance:none; -webkit-appearance:none; cursor:pointer;
       transition:border-color .15s, box-shadow .15s;
       background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%234B7060' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
@@ -75,7 +75,7 @@ if (!document.getElementById('sm-style')) {
       padding:9px 20px; font-size:13px; font-weight:600;
       border-radius:9px; cursor:pointer;
       font-family:'Inter',sans-serif; transition:all .15s;
-      background: var(--surface); color:#0E2A20; border:1px solid var(--border);
+      background: var(--surface); color:var(--ink); border:1px solid var(--border);
     }
     .sm-cancel-btn:hover { background:var(--hover); border-color:var(--meadow-border); }
 
@@ -256,6 +256,7 @@ export function OverrideConfirmDialog({ event, newDay, newPeriod, newRoom, newFa
    Main component
    ════════════════════════════════════════════════════════════════════════════ */
 export default function SessionModal({ event, allEvents, onClose, onSaved, masterRooms, masterFacultyList, readOnly = false, overrideFn = overrideSession }) {
+  const isDark = document.documentElement.getAttribute('data-mode') === 'dark'
   const originalRange = parsePeriodRange(event.period)
   const duration      = originalRange?.duration ?? 60
   const evId          = getEventId(event)
