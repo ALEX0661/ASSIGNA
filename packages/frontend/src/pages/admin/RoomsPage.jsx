@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+
+const isDark = document.documentElement.getAttribute('data-mode') === 'dark';
 import { getRooms, saveRooms, getCourses, bulkSetPreferredRooms } from '../../services/api'
 import { useTour } from '../../hooks/useTour.jsx'
 
