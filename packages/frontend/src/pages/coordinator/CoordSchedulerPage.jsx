@@ -1784,7 +1784,7 @@ export default function CoordSchedulerPage() {
                       )}
                     </div>
                     
-                    <div style={{ padding: '10px 16px', borderTop: `1px solid ${G.border}`, display: 'flex', justifyContent: 'flex-end', background: '#F9FAFB', flexShrink: 0 }}>
+                    <div style={{ padding: '10px 16px', borderTop: `1px solid ${G.border}`, display: 'flex', justifyContent: 'flex-end', background: 'var(--surface)', flexShrink: 0 }}>
                        <button className="btn-primary" onClick={handleSaveRooms} disabled={roomsSaving || !roomsDirty} style={{ padding: '8px 20px', fontSize: 12.5 }}>
                           {roomsSaving ? <svg className="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> : null}
                           {roomsDirty ? 'Save Room Selection' : 'Room Selection Saved'}
@@ -1804,7 +1804,7 @@ export default function CoordSchedulerPage() {
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
                   </div>
-                  <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, background: '#FDFDFD' }}>
+                  <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, background: 'var(--surface)' }}>
                     {loadingInit ? (
                       <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                         {[1, 2, 3].map(i => <Skel key={i} h={56} r={8} />)}
@@ -1903,7 +1903,7 @@ export default function CoordSchedulerPage() {
 
               {statusState === 'running' && (
                 <div className="fadein sch-card" style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:14, padding:'16px 28px', position:'relative', overflow:'hidden', minHeight:0 }}>
-                  <div style={{ position:'absolute', inset:0, background:`linear-gradient(160deg, ${G.meadowSoft} 0%, #fff 55%, ${G.bg} 100%)`, pointerEvents:'none' }} />
+                  <div style={{ position:'absolute', inset:0, background:`linear-gradient(160deg, ${G.meadowSoft} 0%, var(--surface) 55%, ${G.bg} 100%)`, pointerEvents:'none' }} />
 
                   <div style={{ position:'relative', zIndex:1, flexShrink:0 }}>
                     <ScheduleGeneratorLoader message="" progress={progress} showProgress={false} isOverlay={false} />
