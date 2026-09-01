@@ -184,7 +184,7 @@ function Steps({ current }) {
                 width:30, height:30, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center',
                 fontSize:12, fontWeight:700, flexShrink:0, transition:'all .2s',
                 background: done ? 'var(--meadow-deep)' : active ? 'var(--meadow)' : 'var(--meadow-soft)',
-                color: (done || active) ? 'var(--surface)' : 'var(--meadow)',
+                color: (done || active) ? '#fff' : 'var(--meadow)',
                 boxShadow: active ? '0 3px 12px var(--meadow-border)' : 'none',
               }}>
                 {done
@@ -263,8 +263,8 @@ function UploadStep({ onUploaded }) {
           </div>
         ) : (
           <>
-            <div style={{ width:54, height:54, margin:'0 auto 14px', borderRadius:14, display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s', background:dragging?'linear-gradient(135deg,var(--meadow),var(--meadow-deep))':'linear-gradient(135deg,var(--meadow-soft),#E0D9F7)', boxShadow:dragging?'0 6px 20px rgba(0,0,0,0.35)':'none' }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={dragging? 'var(--surface)':'var(--meadow)'} strokeWidth="2">
+            <div style={{ width:54, height:54, margin:'0 auto 14px', borderRadius:14, display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s', background:dragging?'linear-gradient(135deg,var(--meadow),var(--meadow-deep))':'linear-gradient(135deg,var(--meadow-soft),var(--meadow-border))', boxShadow:dragging?'0 6px 20px rgba(0,0,0,0.35)':'none' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={dragging ? '#fff':'var(--meadow)'} strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
@@ -320,7 +320,7 @@ const SEM_DETECT_MAP = [
 ]
 const SEM_BADGE = {
   '1st Semester': { bg:'var(--meadow-soft)', color:'var(--meadow)', border:'var(--meadow-border)', short:'1st Sem' },
-  '2nd Semester': { bg:'#E6FAF3', color:'var(--meadow)', border:'#A7F3D0', short:'2nd Sem' },
+  '2nd Semester': { bg:'#E6FAF3', color:'var(--meadow)', border:'var(--meadow-border)', short:'2nd Sem' },
   'Midyear':      { bg:'rgba(217, 119, 6, 0.1)', color:'#F59E0B', border:'rgba(245, 158, 11, 0.35)', short:'Midyear' },
 }
 function detectSemester(sheetName) {
@@ -539,14 +539,14 @@ function BlockConfigStep({ courses, onBack, onSubmit }) {
                   border:'none', fontFamily:'Poppins,sans-serif', fontSize:12, fontWeight:600, cursor:'pointer',
                   transition:'all 0.15s',
                   background: activeSem === sem ? 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))' : 'transparent',
-                  color: activeSem === sem ? 'var(--surface)' : 'var(--muted)',
+                  color: activeSem === sem ? '#fff' : 'var(--muted)',
                   boxShadow: activeSem === sem ? '0 2px 8px rgba(0,0,0,0.25)' : 'none',
                 }}>
                 {badge.short}
                 <span style={{
                   fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:99,
                   background: activeSem === sem ? 'rgba(255,255,255,0.2)' : 'var(--meadow-border)',
-                  color: activeSem === sem ? 'var(--surface)' : 'var(--muted)',
+                  color: activeSem === sem ? '#fff' : 'var(--muted)',
                 }}>{count}</span>
               </button>
             )
@@ -783,14 +783,14 @@ function ReviewStep({ courses, lockedProgram, onBack, onCommit, onRemove, onEdit
                   border:'none', fontFamily:'Poppins,sans-serif', fontSize:12, fontWeight:600, cursor:'pointer',
                   transition:'all 0.15s',
                   background: activeSem === sem ? 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))' : 'transparent',
-                  color: activeSem === sem ? 'var(--surface)' : 'var(--muted)',
+                  color: activeSem === sem ? '#fff' : 'var(--muted)',
                   boxShadow: activeSem === sem ? '0 2px 8px rgba(0,0,0,0.25)' : 'none',
                 }}>
                 {(semBadge[sem] || { short: sem }).short}
                 <span style={{
                   fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:99,
                   background: activeSem === sem ? 'rgba(255,255,255,0.2)' : 'var(--meadow-border)',
-                  color: activeSem === sem ? 'var(--surface)' : 'var(--muted)',
+                  color: activeSem === sem ? '#fff' : 'var(--muted)',
                 }}>{count}</span>
               </button>
             )

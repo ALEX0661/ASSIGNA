@@ -268,7 +268,7 @@ export function FacultyFilterModal({
                 fontSize: 9.5, fontWeight: 700, padding: '2px 8px', borderRadius: 5, cursor: 'pointer',
                 border:     `1px solid ${sortBy === val ? TV.deep : TV.border}`,
                 background: sortBy === val ? TV.deep : 'var(--surface)',
-                color:      sortBy === val ? 'var(--surface)'  : TV.muted,
+                color: sortBy === val ? '#fff'  : TV.muted,
                 textTransform: 'capitalize', transition: 'all .15s', fontFamily: 'Inter, sans-serif',
               }}>
                 {lbl}

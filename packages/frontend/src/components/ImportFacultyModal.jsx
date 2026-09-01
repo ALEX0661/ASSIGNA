@@ -233,9 +233,9 @@ const HintBox = ({ children }) => (
 const StatusBadge = ({ status }) => (
   <span style={{
     fontSize:10, fontWeight:700, padding:'2px 9px', borderRadius:99, flexShrink:0,
-    background: status === 'full-time' ? '#EEF9F0' : 'rgba(217, 119, 6, 0.05)',
+    background: status === 'full-time' ? 'var(--meadow-soft)' : 'rgba(217, 119, 6, 0.05)',
     color:      status === 'full-time' ? 'var(--meadow)' : '#F59E0B',
-    border:     `1px solid ${status === 'full-time' ? '#A7F3D0' : 'rgba(245, 158, 11, 0.25)'}`,
+    border:     `1px solid ${status === 'full-time' ? 'var(--meadow-border)' : 'rgba(245, 158, 11, 0.25)'}`,
   }}>
     {status === 'full-time' ? 'Full-time' : 'Part-time'}
   </span>
@@ -256,7 +256,7 @@ function Steps({ current }) {
                 width:30, height:30, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center',
                 fontSize:12, fontWeight:700, flexShrink:0, transition:'all .2s',
                 background: done ? 'var(--meadow-deep)' : active ? 'var(--meadow)' : 'var(--meadow-soft)',
-                color: (done || active) ? 'var(--surface)' : 'var(--meadow)',
+                color: (done || active) ? '#fff' : 'var(--meadow)',
                 boxShadow: active ? '0 3px 12px var(--meadow-border)' : 'none',
               }}>
                 {done
@@ -344,8 +344,8 @@ function UploadStep({ onUploaded, courses }) {
           </div>
         ) : (
           <>
-            <div style={{ width:54, height:54, margin:'0 auto 14px', borderRadius:14, display:'flex', alignItems:'center', justifyContent:'center', background: dragging ? 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))' : 'linear-gradient(135deg,var(--meadow-soft),#D7F2E0)', boxShadow: dragging ? '0 6px 20px rgba(0,0,0,.35)' : 'none', transition:'all .15s' }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={dragging? 'var(--surface)':'var(--meadow)'} strokeWidth="2">
+            <div style={{ width:54, height:54, margin:'0 auto 14px', borderRadius:14, display:'flex', alignItems:'center', justifyContent:'center', background: dragging ? 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))' : 'linear-gradient(135deg,var(--meadow-soft),var(--meadow-border))', boxShadow: dragging ? '0 6px 20px rgba(0,0,0,.35)' : 'none', transition:'all .15s' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={dragging ? '#fff':'var(--meadow)'} strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
@@ -513,7 +513,7 @@ function SheetStep({ sheets, fileData, rawFile, onParsed, onBack }) {
                 </svg>
               </div>
               <span style={{ flex:1 }}>{name}</span>
-              <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:99, background: isPartTime?'rgba(217, 119, 6, 0.05)':'#EEF9F0', color: isPartTime?'#F59E0B':'var(--meadow)', border:`1px solid ${isPartTime?'rgba(245, 158, 11, 0.25)':'#A7F3D0'}` }}>
+              <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:99, background: isPartTime?'rgba(217, 119, 6, 0.05)':'var(--meadow-soft)', color: isPartTime?'#F59E0B':'var(--meadow)', border:`1px solid ${isPartTime?'rgba(245, 158, 11, 0.25)':'var(--meadow-border)'}` }}>
                 {isPartTime ? 'Part-time' : 'Full-time'}
               </span>
               {loading && isSelected && <Spin />}
@@ -800,7 +800,7 @@ function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
         <span style={{ fontSize:13, color:'var(--muted)' }}>
           <strong style={{ color:'var(--ink)' }}>{faculty.length}</strong> faculty ready to import
         </span>
-        <span style={{ fontSize:10.5, padding:'2px 9px', borderRadius:99, background:'#EEF9F0', color:'var(--meadow)', border:'1px solid #A7F3D0', fontWeight:600 }}>{fullTime} full-time</span>
+        <span style={{ fontSize:10.5, padding:'2px 9px', borderRadius:99, background:'var(--meadow-soft)', color:'var(--meadow)', border:'1px solid #A7F3D0', fontWeight:600 }}>{fullTime} full-time</span>
         <span style={{ fontSize:10.5, padding:'2px 9px', borderRadius:99, background:'rgba(217, 119, 6, 0.05)', color:'#F59E0B', border:'1px solid #FDE68A', fontWeight:600 }}>{partTime} part-time</span>
         <span style={{ fontSize:11, color:'var(--muted)', marginLeft:'auto' }}>Click a card to edit</span>
       </div>

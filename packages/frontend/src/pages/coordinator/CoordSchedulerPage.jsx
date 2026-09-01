@@ -2145,7 +2145,7 @@ export default function CoordSchedulerPage() {
                                     padding: '6px 13px', borderRadius: 20, fontSize: 12, fontWeight: 500,
                                     cursor: 'pointer', border: '1px solid var(--border)',
                                     background: activeDay === d ? `linear-gradient(135deg, ${G.meadow}, ${G.meadowDeep})` : 'var(--surface)',
-                                    color: activeDay === d ? 'var(--surface)' : G.muted,
+                                    color: activeDay === d ? '#fff' : G.muted,
                                     transition: 'all .15s', whiteSpace: 'nowrap',
                                     boxShadow: activeDay === d ? '0 2px 8px rgba(0,0,0,.3)' : 'none'
                                   }}>
