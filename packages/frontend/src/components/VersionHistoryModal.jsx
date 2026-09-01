@@ -411,62 +411,62 @@ const VersionHistoryModal = ({
           z-index: 1000; animation: svFadeIn 0.18s ease;
         }
         .sv-version-content.enhanced {
-          background: white; border-radius: 12px; width: 92%;
+          background: var(--surface); border-radius: 12px; width: 92%;
           max-width: 480px; max-height: 78vh; display: flex;
           flex-direction: column; box-shadow: 0 16px 40px rgba(0,0,0,0.18);
           animation: svSlideIn 0.22s ease;
         }
         .sv-version-header {
           display: flex; align-items: flex-start; justify-content: space-between;
-          padding: 18px 22px 14px; border-bottom: 1px solid #e5e7eb;
+          padding: 18px 22px 14px; border-bottom: 1px solid var(--border);
         }
         .sv-version-header h3 { margin: 0; font-size: 16px; font-weight: 700; color: var(--ink); }
         .sv-version-close {
           background: none; border: none; font-size: 22px; cursor: pointer;
-          color: #9ca3af; padding: 2px 5px; line-height: 1; border-radius: 5px;
+          color: var(--muted2); padding: 2px 5px; line-height: 1; border-radius: 5px;
         }
-        .sv-version-close:hover { color: var(--ink); background: #f3f4f6; }
+        .sv-version-close:hover { color: var(--ink); background: var(--hover); }
         .sv-version-list { overflow-y: auto; flex: 1; padding: 10px 22px 14px; }
         .sv-version-item {
           display: flex; align-items: center; gap: 12px;
-          padding: 12px 0; border-bottom: 1px solid #f3f4f6;
+          padding: 12px 0; border-bottom: 1px solid var(--border);
         }
         .sv-version-item-wrap:last-child .sv-version-item { border-bottom: none; }
         .sv-version-item-wrap:last-child:not(:has(.sv-changelog-panel)) { margin-bottom: 0; }
         .sv-version-item.current {
-          background: rgba(34,197,94,0.06); margin: 0 -22px 6px;
+          background: var(--meadow-soft); margin: 0 -22px 6px;
           padding: 12px 22px; border-radius: 8px; border-bottom: 1px solid var(--meadow-border);
         }
         .sv-version-item.current.preview {
-          background: rgba(245,158,11,0.08); border-bottom: 1px solid #fde68a;
+          background: rgba(245,158,11,0.15); border-bottom: 1px solid rgba(245,158,11,0.25);
         }
         .sv-version-badge {
-          background: #f3f4f6; color: #6b7280; padding: 4px 8px;
+          background: var(--hover); color: var(--muted); padding: 4px 8px;
           border-radius: 6px; font-size: 10.5px; font-weight: 700;
           font-family: 'SF Mono', Consolas, monospace; flex-shrink: 0; min-width: 38px; text-align: center;
         }
         .sv-version-badge.current { background: var(--meadow); color: white; }
-        .sv-version-badge.current.preview { background: #f59e0b; }
+        .sv-version-badge.current.preview { background: #D97706; }
         .sv-version-details { flex: 1; min-width: 0; }
         .sv-version-label { font-size: 13px; font-weight: 600; color: var(--ink); }
-        .sv-version-meta { font-size: 11px; color: #6b7280; margin-top: 1px; }
+        .sv-version-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
         .sv-version-actions { flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
         .sv-restore-btn {
           display: inline-flex; align-items: center; gap: 5px;
-          padding: 6px 11px; border: 1px solid #d1d5db; background: white;
+          padding: 6px 11px; border: 1px solid var(--border); background: var(--surface);
           color: var(--muted); font-size: 11.5px; font-weight: 600; border-radius: 6px;
           cursor: pointer; transition: all 0.14s; font-family: 'Inter', sans-serif;
         }
-        .sv-restore-btn:hover:not(:disabled) { background: #f3f4f6; border-color: #9ca3af; }
+        .sv-restore-btn:hover:not(:disabled) { background: var(--hover); border-color: var(--muted2); }
         .sv-restore-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .sv-status-badge {
           padding: 3px 8px; border-radius: 6px; font-size: 10.5px;
           font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; flex-shrink: 0;
         }
         .sv-status-badge.current { background: var(--meadow-soft); color: var(--meadow-mid); border: 1px solid var(--meadow-border); }
-        .sv-status-badge.preview { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+        .sv-status-badge.preview { background: rgba(245,158,11,0.1); color: #D97706; border: 1px solid rgba(245,158,11,0.25); }
         .sv-version-footer {
-          padding: 12px 22px; border-top: 1px solid #e5e7eb;
+          padding: 12px 22px; border-top: 1px solid var(--border);
           background: var(--surface); border-radius: 0 0 12px 12px;
           display: flex; align-items: center; justify-content: center;
         }
@@ -475,48 +475,48 @@ const VersionHistoryModal = ({
         .sv-changelog-toggle {
           display: inline-flex; align-items: center; gap: 4px;
           padding: 6px 9px; border: 1px solid transparent; background: transparent;
-          color: #6b7280; font-size: 11.5px; font-weight: 600; border-radius: 6px;
+          color: var(--muted); font-size: 11.5px; font-weight: 600; border-radius: 6px;
           cursor: pointer; transition: all 0.14s; font-family: 'Inter', sans-serif;
         }
-        .sv-changelog-toggle:hover { background: #f3f4f6; color: var(--muted); }
-        .sv-changelog-toggle.open { background: #eef2ff; color: #4338ca; }
+        .sv-changelog-toggle:hover { background: var(--hover); color: var(--muted); }
+        .sv-changelog-toggle.open { background: rgba(59,130,246,0.1); color: #60A5FA; }
 
         .sv-changelog-panel {
-          margin: 0 0 10px; padding: 12px 14px; background: #fafafa;
-          border: 1px solid #eef0f2; border-radius: 8px; animation: svFadeIn 0.15s ease;
+          margin: 0 0 10px; padding: 12px 14px; background: var(--bg);
+          border: 1px solid var(--border); border-radius: 8px; animation: svFadeIn 0.15s ease;
         }
         .sv-changelog-loading, .sv-changelog-error {
           display: flex; align-items: center; gap: 7px;
-          font-size: 12px; color: #6b7280;
+          font-size: 12px; color: var(--muted);
         }
-        .sv-changelog-error { color: #b91c1c; }
-        .sv-changelog-note { font-size: 12px; color: #6b7280; font-style: italic; }
+        .sv-changelog-error { color: #EF4444; }
+        .sv-changelog-note { font-size: 12px; color: var(--muted); font-style: italic; }
         .sv-changelog-summary { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
         .sv-changelog-pill {
           font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 99px;
         }
         .sv-pill-added    { background: var(--meadow-soft); color: var(--meadow-mid); }
-        .sv-pill-removed  { background: #fee2e2; color: #b91c1c; }
-        .sv-pill-modified { background: #fef3c7; color: #92400e; }
+        .sv-pill-removed  { background: rgba(239,68,68,0.1); color: #EF4444; }
+        .sv-pill-modified { background: rgba(245,158,11,0.1); color: #D97706; }
 
-        .sv-changelog-section + .sv-changelog-section { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #e5e7eb; }
+        .sv-changelog-section + .sv-changelog-section { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); }
         .sv-changelog-row { display: flex; gap: 8px; padding: 5px 0; }
         .sv-changelog-marker {
           flex-shrink: 0; width: 16px; text-align: center; font-weight: 800; font-size: 12px;
           font-family: 'SF Mono', Consolas, monospace; line-height: 1.4;
         }
         .sv-changelog-row-added   .sv-changelog-marker { color: var(--meadow); }
-        .sv-changelog-row-removed .sv-changelog-marker { color: #dc2626; }
-        .sv-changelog-row-modified .sv-changelog-marker { color: #d97706; }
+        .sv-changelog-row-removed .sv-changelog-marker { color: #EF4444; }
+        .sv-changelog-row-modified .sv-changelog-marker { color: #F59E0B; }
         .sv-changelog-row-body { flex: 1; min-width: 0; }
         .sv-changelog-row-title { font-size: 12.5px; font-weight: 600; color: var(--ink); }
-        .sv-changelog-field-count { font-size: 11px; font-weight: 500; color: #9ca3af; }
-        .sv-changelog-row-meta { font-size: 11px; color: #6b7280; margin-top: 1px; }
+        .sv-changelog-field-count { font-size: 11px; font-weight: 500; color: var(--muted2); }
+        .sv-changelog-row-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
         .sv-changelog-field-list { margin-top: 3px; display: flex; flex-direction: column; gap: 2px; }
         .sv-changelog-field { font-size: 11px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
-        .sv-changelog-field-label { color: #6b7280; font-weight: 600; }
-        .sv-changelog-field-from { color: #b91c1c; text-decoration: line-through; opacity: 0.75; }
-        .sv-changelog-field-arrow { color: #9ca3af; }
+        .sv-changelog-field-label { color: var(--muted); font-weight: 600; }
+        .sv-changelog-field-from { color: #EF4444; text-decoration: line-through; opacity: 0.75; }
+        .sv-changelog-field-arrow { color: var(--muted2); }
         .sv-changelog-field-to { color: var(--meadow-mid); font-weight: 600; }
 
         @keyframes svFadeIn { from{opacity:0} to{opacity:1} }

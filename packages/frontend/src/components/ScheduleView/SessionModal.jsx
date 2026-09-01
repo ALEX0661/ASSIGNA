@@ -1206,7 +1206,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                         <span style={{ width:14, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>
                           {(!batchFaculty || batchFaculty === 'TBA')
                             ? <Ic.Check size={11} color={TV.deep} />
-                            : <span style={{ width:7, height:7, borderRadius:'50%', background:'#d1d5db', display:'inline-block' }} />
+                            : <span style={{ width:7, height:7, borderRadius:'50%', background:'var(--border)', display:'inline-block' }} />
                           }
                         </span>
                         <span style={{ fontStyle:'italic' }}>Unassigned (TBA)</span>
@@ -1246,11 +1246,11 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                         // Colour scheme — cleaner, fewer colours
                         let bg, color, bl, dotColor
                         if      (isSelected && isClean && !wouldExceed)      { bg='var(--meadow-soft)'; color=TV.deep;    bl=`3px solid ${TV.deep}`; dotColor=TV.deep }
-                        else if (isSelected && (isPartial || wouldExceed))   { bg='#FFF3E0'; color='#F59E0B';  bl='3px solid #f59e0b';    dotColor='#f59e0b' }
-                        else if (isSelected)                                  { bg='#FFF0F0'; color='#FCA5A5';  bl='3px solid #f87171';    dotColor='#ef4444' }
-                        else if (isClean && !wouldExceed)                    { bg='#fff';    color=TV.text;    bl='3px solid transparent'; dotColor='var(--meadow)' }
-                        else if (isPartial || wouldExceed)                   { bg='#fff';    color=TV.text;    bl='3px solid #fbbf24';    dotColor='#f59e0b' }
-                        else                                                  { bg='#fff';    color=TV.text;    bl='3px solid #fca5a5';    dotColor='#ef4444' }
+                        else if (isSelected && (isPartial || wouldExceed))   { bg='rgba(245, 158, 11, 0.1)'; color='#F59E0B';  bl='3px solid #f59e0b';    dotColor='#f59e0b' }
+                        else if (isSelected)                                  { bg='rgba(239, 68, 68, 0.1)'; color='#FCA5A5';  bl='3px solid #f87171';    dotColor='#ef4444' }
+                        else if (isClean && !wouldExceed)                    { bg='var(--surface)';    color=TV.text;    bl='3px solid transparent'; dotColor='var(--meadow)' }
+                        else if (isPartial || wouldExceed)                   { bg='var(--surface)';    color=TV.text;    bl='3px solid #fbbf24';    dotColor='#f59e0b' }
+                        else                                                  { bg='var(--surface)';    color=TV.text;    bl='3px solid #fca5a5';    dotColor='#ef4444' }
 
                         // Unit bar — show projected only when this row is selected
                         const displayUnits   = isSelected ? unitInfo.projectedUnits : unitInfo.usedUnits
@@ -1262,7 +1262,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                           <div key={fac}>
                             {/* ── Tier divider: "conflicts/unit issues below" ── */}
                             {idx === dividerAt && (
-                              <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 12px', background:'#fafafa', borderTop:`1px solid ${TV.border}`, borderBottom:`1px solid ${TV.border}` }}>
+                              <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 12px', background:'var(--bg)', borderTop:`1px solid ${TV.border}`, borderBottom:`1px solid ${TV.border}` }}>
                                 <span style={{ fontSize:9, fontWeight:600, color:TV.muted, textTransform:'uppercase', letterSpacing:'.7px' }}>
                                   Conflicts or unit issues below
                                 </span>
@@ -1524,7 +1524,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                     const hasChoice  = batchFaculty !== '' && batchFaculty != null
                     const btnEnabled = hasChoice && !batchSaving && !readOnly
                     const bg = !hasChoice || readOnly
-                      ? '#f3f4f6'
+                      ? 'var(--hover)'
                       : isTBA
                         ? 'linear-gradient(135deg,#6b7280,#4b5563)'
                         : batchConflictCount > 0
@@ -1612,7 +1612,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                         disabled={!hasChanges || saving || readOnly}
                         style={{
                           background: !hasChanges || readOnly
-                            ? '#f3f4f6'
+                            ? 'var(--hover)'
                             : hasRealConflicts
                               ? '#EF4444'
                               : 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))',
