@@ -467,7 +467,7 @@ const VersionHistoryModal = ({
         .sv-status-badge.preview { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
         .sv-version-footer {
           padding: 12px 22px; border-top: 1px solid #e5e7eb;
-          background: #f9fafb; border-radius: 0 0 12px 12px;
+          background: var(--surface); border-radius: 0 0 12px 12px;
           display: flex; align-items: center; justify-content: center;
         }
 

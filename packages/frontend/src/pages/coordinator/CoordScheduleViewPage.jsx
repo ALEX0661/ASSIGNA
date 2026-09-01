@@ -170,7 +170,7 @@ function markOnboardingCompleted() {
     .sv-save-status-saved { background:#ecfdf5; border-color:var(--mint); }
     .sv-save-status-saving { background:#fffbeb; border-color:#fde68a; }
     .sv-save-status-unsaved { background:#fef2f2; border-color:#fecaca; }
-    .sv-save-status-ready { background:#f9fafb; border-color:#d1d5db; }
+    .sv-save-status-ready { background:var(--surface); border-color:var(--border); }
     
     /* Smart save button styles */
     .sv-smart-save-btn {
