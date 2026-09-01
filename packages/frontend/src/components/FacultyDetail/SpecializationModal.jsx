@@ -154,7 +154,6 @@ function SemesterTab({ label, active, count, onClick }) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function SpecializationModal({ specializations, onSave, onClose, isSaving }) {
-  const isDark = document.documentElement.getAttribute('data-mode') === 'dark'
 
   const [specs,       setSpecs]       = useState(() => dedupeSpecs(specializations))
   const [tab,         setTab]         = useState('current')
