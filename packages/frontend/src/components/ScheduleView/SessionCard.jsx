@@ -35,7 +35,7 @@ export default function SessionCard({
 
   if (isStackTarget) {
     accentColor = 'var(--meadow)'
-    bgGradient  = 'linear-gradient(160deg,var(--meadow-soft) 0%,#ecfdf5 100%)'
+    bgGradient  = 'linear-gradient(160deg,var(--meadow-soft) 0%,var(--hover) 100%)'
     borderColor = 'var(--mint)'
     badgeBg     = 'rgba(5,150,105,.12)'
     textColor   = 'var(--meadow-deep)'

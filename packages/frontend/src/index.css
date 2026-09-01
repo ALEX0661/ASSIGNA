@@ -45,8 +45,8 @@ img { filter: var(--logo-filter, none); }
 
 /* ── Dynamic Colors ── */
 :root {
-  --meadow-soft:   color-mix(in srgb, var(--meadow) 12%, transparent);
-  --meadow-border: color-mix(in srgb, var(--meadow) 25%, transparent);
+  --meadow-soft:   color-mix(in srgb, var(--meadow) 12%, var(--surface));
+  --meadow-border: color-mix(in srgb, var(--meadow) 25%, var(--surface));
   --logo-filter: none;
 }
 
