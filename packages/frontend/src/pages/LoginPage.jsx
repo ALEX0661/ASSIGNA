@@ -23,7 +23,7 @@ import icon1Img from '../assets/ASSIGNAV1.png'
     button::-moz-focus-inner { border: 0; padding: 0; }
     /* index.css defines a global button:hover { background: var(--hover) } which otherwise
        wins on the background property alone for any hover rule below that doesn't redeclare it */
-    .login-root button:hover { background: none; }
+    .login-root button:not(.login-btn):hover { background: none; }
 
     .login-root {
       color-scheme: light !important;
@@ -249,7 +249,7 @@ import icon1Img from '../assets/ASSIGNAV1.png'
       transform: translateY(-1px); box-shadow: 0 6px 20px rgba(15,92,44,0.40);
     }
     .login-btn:active:not(:disabled) { transform: translateY(0); }
-    .login-btn:disabled { opacity: .6; cursor: default; box-shadow: none; }
+    .login-root .login-btn:disabled { background: linear-gradient(135deg, var(--meadow) 0%, var(--meadow-deep) 100%); opacity: .6; cursor: default; box-shadow: none; color: #fff; }
 
     .login-error {
       display: flex; align-items: center; gap: 9px;
