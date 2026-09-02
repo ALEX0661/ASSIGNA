@@ -357,7 +357,7 @@ function SetupChecklist({ steps, onNavigate, loading }) {
         {/* Title + subtitle */}
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ fontSize:13, fontWeight:800, color: 'var(--ink)', fontFamily:"'Sora',sans-serif" }}>Setup Checklist</div>
-          <div style={{ fontSize:11, color: 'var(--meadow)', fontWeight:600, marginTop:1 }}>
+          <div style={{ fontSize:11, color: 'var(--meadow-text)', fontWeight:600, marginTop:1 }}>
             {open ? 'Click to collapse' : `Next: ${steps[nextIdx]?.label}`}
           </div>
         </div>
@@ -560,7 +560,7 @@ export default function DashboardPage() {
   const donutSegs = [
     { label:'Over cap',  value: overList.length, color:'#EF4444' },
     { label:'Near cap',  value: atRisk.length,   color:'#F59E0B' },
-    { label:'Healthy',   value: ok.length,        color:'var(--meadow)' },
+    { label:'Healthy',   value: ok.length,        color: 'var(--meadow-text)' },
   ]
 
   const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat']
@@ -609,7 +609,7 @@ export default function DashboardPage() {
   const STAT_CARDS = [
     {
       label: 'Total Faculty',
-      color: 'var(--meadow)',
+      color: 'var(--meadow-text)',
       bg: 'var(--meadow-soft)',
       icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
       value: statsLoading ? null : (fac.total ?? '—'),
@@ -750,7 +750,7 @@ export default function DashboardPage() {
           <div style={{ display:'flex', alignItems:'center', gap:14, padding:'12px 14px', borderRadius:10, background:'var(--hover)', border:'1px solid var(--border)' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted2)" strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             <span style={{ fontSize:12, color:'var(--muted2)' }}>
-              Go to the <button onClick={() => navigate('/dashboard/scheduler')} style={{ background:'none', border:'none', color:'var(--meadow)', fontWeight:700, cursor:'pointer', fontSize:12, padding:0, fontFamily:'Inter,sans-serif' }}>Scheduler</button> to generate a timetable, then load it here to see health metrics.
+              Go to the <button onClick={() => navigate('/dashboard/scheduler')} style={{ background:'none', border:'none', color: 'var(--meadow-text)', fontWeight:700, cursor:'pointer', fontSize:12, padding:0, fontFamily:'Inter,sans-serif' }}>Scheduler</button> to generate a timetable, then load it here to see health metrics.
             </span>
           </div>
         ) : (
@@ -814,7 +814,7 @@ export default function DashboardPage() {
                   {isActive && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
                   {sName}
                   {sFinalized && (
-                    <span style={{ display:'inline-flex', alignItems:'center', gap:2, padding:'0px 5px', borderRadius:99, fontSize:9, fontWeight:700, background:'var(--meadow-soft)', color: 'var(--meadow)', border:'1px solid var(--meadow-border)', marginLeft:2 }}>
+                    <span style={{ display:'inline-flex', alignItems:'center', gap:2, padding:'0px 5px', borderRadius:99, fontSize:9, fontWeight:700, background:'var(--meadow-soft)', color: 'var(--meadow-text)', border:'1px solid var(--meadow-border)', marginLeft:2 }}>
                       <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                       Final
                     </span>
@@ -840,7 +840,7 @@ export default function DashboardPage() {
             sub={
               <span>
                 Based on loaded schedule:&nbsp;
-                <span style={{ fontWeight:700, color:'var(--meadow)', background:'var(--meadow-soft)', padding:'1px 8px', borderRadius:99, fontSize:10.5 }}>
+                <span style={{ fontWeight:700, color: 'var(--meadow-text)', background:'var(--meadow-soft)', padding:'1px 8px', borderRadius:99, fontSize:10.5 }}>
                   {scheduleName}
                 </span>
               </span>
@@ -890,7 +890,7 @@ export default function DashboardPage() {
           ) : (
             <>
               {[
-                { key:'1st Semester', color: 'var(--meadow)' },
+                { key:'1st Semester', color: 'var(--meadow-text)' },
                 { key:'2nd Semester', color:'#60A5FA' },
                 { key:'Midyear',      color:'#F59E0B' },
               ].filter(x => bySem[x.key] > 0).map(x => (
@@ -904,7 +904,7 @@ export default function DashboardPage() {
                 <div style={{ width:1, background:'var(--border)' }}/>
                 <div style={{ flex:1, textAlign:'center' }}>
                   <div style={{ fontSize:11, color:'var(--muted2)', marginBottom:2 }}>Lecture Only</div>
-                  <div style={{ fontSize:18, fontWeight:800, color: 'var(--meadow)', fontFamily:"'Sora',sans-serif" }}>{crs.coursesLectureOnly||0}</div>
+                  <div style={{ fontSize:18, fontWeight:800, color: 'var(--meadow-text)', fontFamily:"'Sora',sans-serif" }}>{crs.coursesLectureOnly||0}</div>
                 </div>
                 <div style={{ width:1, background:'var(--border)' }}/>
                 <div style={{ flex:1, textAlign:'center' }}>
@@ -1006,7 +1006,7 @@ export default function DashboardPage() {
                 <DonutChart
                   segments={[
                     { label:'Full-time', value: fac.fullTime || 0, color:'#60A5FA' },
-                    { label:'Part-time', value: fac.partTime || 0, color: 'var(--meadow)' },
+                    { label:'Part-time', value: fac.partTime || 0, color: 'var(--meadow-text)' },
                   ]}
                   size={120} stroke={20} label={fac.total || 0} sublabel="faculty"
                 />
@@ -1021,7 +1021,7 @@ export default function DashboardPage() {
                     label: 'Part-time',
                     val: fac.partTime || 0,
                     total: fac.total || 1,
-                    color: 'var(--meadow)', bg: 'var(--meadow-soft)',
+                    color: 'var(--meadow-text)', bg: 'var(--meadow-soft)',
                   },
                 ].map(row => {
                   const pct = Math.round(row.val / row.total * 100)

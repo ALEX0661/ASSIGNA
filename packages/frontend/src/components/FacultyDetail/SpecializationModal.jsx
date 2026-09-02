@@ -11,7 +11,7 @@ const LEVELS = [
   { rating: 2, label: 'Developing', short: 'DEV',  color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.05)', border: 'rgba(245, 158, 11, 0.25)', dot: '#F59E0B', hoverBg: 'rgba(245, 158, 11, 0.1)' },
   { rating: 3, label: 'Competent',  short: 'COMP', color: '#A78BFA', bg: 'rgba(124, 58, 237, 0.1)', border: 'color-mix(in srgb, #6D28D9 30%, transparent)', dot: '#7C3AED', hoverBg: 'color-mix(in srgb, #6D28D9 15%, transparent)' },
   { rating: 4, label: 'Proficient', short: 'PROF', color: '#60A5FA', bg: 'rgba(37, 99, 235, 0.1)', border: '#BFDBFE', dot: '#3B82F6', hoverBg: 'rgba(59, 130, 246, 0.1)' },
-  { rating: 5, label: 'Expert',     short: 'EXP',  color: isDark ? 'var(--mint)' : 'var(--meadow)', bg: 'var(--meadow-soft)', border: 'var(--meadow-border)', dot: '#10B981', hoverBg: 'var(--meadow-soft)' },
+  { rating: 5, label: 'Expert',     short: 'EXP',  color: 'var(--meadow-text-hover)', bg: 'var(--meadow-soft)', border: 'var(--meadow-border)', dot: '#10B981', hoverBg: 'var(--meadow-soft)' },
 ]
 const getLvl = r => LEVELS.find(l => l.rating === (r || 3)) || LEVELS[2]
 
@@ -106,7 +106,7 @@ function NavBtn({ active, onClick, icon, label, badge }) {
         width: '100%', display: 'flex', alignItems: 'center', gap: 9,
         padding: '8px 11px', borderRadius: 8, border: 'none',
         background: active ? 'var(--meadow-soft)' : 'transparent',
-        color: active ? (isDark ? 'var(--mint)' : 'var(--meadow)') : 'var(--muted)',
+        color: active ? ('var(--meadow-text-hover)') : 'var(--muted)',
         cursor: 'pointer', fontFamily: "'Inter', sans-serif",
         fontSize: 13, fontWeight: active ? 600 : 400,
         textAlign: 'left', transition: 'all 0.12s',
@@ -135,7 +135,7 @@ function SemesterTab({ label, active, count, onClick }) {
         padding: '6px 14px', borderRadius: 8,
         border: active ? '1.5px solid var(--meadow-border)' : '1.5px solid transparent',
         background: active ? 'var(--meadow-soft)' : 'transparent',
-        color: active ? (isDark ? 'var(--mint)' : 'var(--meadow)') : 'var(--muted2)',
+        color: active ? ('var(--meadow-text-hover)') : 'var(--muted2)',
         fontSize: 12, fontWeight: active ? 700 : 500,
         cursor: 'pointer', fontFamily: "'Inter', sans-serif",
         display: 'flex', alignItems: 'center', gap: 6,
@@ -147,7 +147,7 @@ function SemesterTab({ label, active, count, onClick }) {
           fontSize: 10, fontWeight: 700, minWidth: 17, height: 17,
           borderRadius: 99, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           background: active ? 'var(--meadow-border)' : 'var(--hover)',
-          color: active ? (isDark ? 'var(--mint)' : 'var(--meadow)') : 'var(--muted)', padding: '0 4px',
+          color: active ? ('var(--meadow-text-hover)') : 'var(--muted)', padding: '0 4px',
         }}>{count}</span>
       )}
     </button>
@@ -392,7 +392,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
           </div>
           {specCount > 0 && (
             <div style={{ padding: '3px 11px', borderRadius: 99, background: 'var(--meadow-soft)', border: '1px solid var(--meadow-border)' }}>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: isDark ? 'var(--mint)' : 'var(--meadow)' }}>{specCount} assigned</span>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--meadow-text-hover)' }}>{specCount} assigned</span>
             </div>
           )}
           <button type="button" onClick={() => startTour()} title="Take the tour"
@@ -457,7 +457,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                     <span style={{ fontSize: 11, color: 'var(--muted2)', fontWeight: 600, marginRight: 4 }}>Sort</span>
                     {[{ key: 'rating-desc', label: 'Best' }, { key: 'code-asc', label: 'A–Z' }, { key: 'rating-asc', label: 'Lowest' }].map(o => (
                       <button key={o.key} type="button" onClick={() => setSortBy(o.key)}
-                        style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11.5, fontWeight: sortBy === o.key ? 700 : 500, background: sortBy === o.key ? 'var(--meadow-soft)' : 'transparent', color: sortBy === o.key ? (isDark ? 'var(--mint)' : 'var(--meadow)') : 'var(--muted)', border: sortBy === o.key ? '1px solid var(--meadow-border)' : '1px solid transparent', cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}>
+                        style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11.5, fontWeight: sortBy === o.key ? 700 : 500, background: sortBy === o.key ? 'var(--meadow-soft)' : 'transparent', color: sortBy === o.key ? ('var(--meadow-text-hover)') : 'var(--muted)', border: sortBy === o.key ? '1px solid var(--meadow-border)' : '1px solid transparent', cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}>
                         {o.label}
                       </button>
                     ))}
@@ -507,7 +507,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                                 <LevelBadge rating={rating} />
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontFamily: 'monospace', fontSize: 10.5, fontWeight: 600, color: isDark ? 'var(--mint)' : 'var(--meadow)', background: 'var(--meadow-soft)', padding: '1px 7px', borderRadius: 5, border: '1px solid var(--meadow-border)', flexShrink: 0 }}>{spec.courseCode}</span>
+                                <span style={{ fontFamily: 'monospace', fontSize: 10.5, fontWeight: 600, color: 'var(--meadow-text-hover)', background: 'var(--meadow-soft)', padding: '1px 7px', borderRadius: 5, border: '1px solid var(--meadow-border)', flexShrink: 0 }}>{spec.courseCode}</span>
                               </div>
                             </div>
                             {/* Rating pips */}
@@ -671,7 +671,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                   }}>
                     {/* Staged preview chips */}
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minWidth: 0 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: isDark ? 'var(--mint)' : 'var(--meadow)', flexShrink: 0 }}>Staged:</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--meadow-text-hover)', flexShrink: 0 }}>Staged:</span>
                       {pendingList.slice(0, 5).map(p => {
                         const lvl   = getLvl(p.rating)
                         const label = p.title || courseTitleMap[p.code.toLowerCase()] || p.code
@@ -695,7 +695,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                     </div>
                     <div style={{ display: 'flex', gap: 7, flexShrink: 0 }}>
                       <button type="button" onClick={() => setPending({})}
-                        style={{ padding: '7px 14px', borderRadius: 8, border: '1.5px solid var(--meadow-border)', background: 'transparent', color: isDark ? 'var(--mint)' : 'var(--meadow)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}>
+                        style={{ padding: '7px 14px', borderRadius: 8, border: '1.5px solid var(--meadow-border)', background: 'transparent', color: 'var(--meadow-text-hover)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}>
                         Clear
                       </button>
                       <button type="button" onClick={commitPending}
@@ -713,7 +713,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
             {tab === 'manual' && (
               <div style={{ flex: 1, overflowY: 'auto', padding: '22px 24px' }} className="spec-scroll">
                 <div style={{ maxWidth: 480 }}>
-                  <div style={{ padding: '12px 16px', borderRadius: 11, background: isDark ? 'rgba(124, 58, 237, 0.05)' : '#FAFAFF', border: '1px solid color-mix(in srgb, #6D28D9 15%, transparent)', marginBottom: 22, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <div style={{ padding: '12px 16px', borderRadius: 11, background: 'var(--hover)', border: '1px solid color-mix(in srgb, #6D28D9 15%, transparent)', marginBottom: 22, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                     <div style={{ fontSize: 12.5, color: '#4C1D95', lineHeight: 1.6 }}>
                       Use this for courses not in the catalog. Enter the code directly — e.g. <strong>CS101</strong>, <strong>MATH201</strong>. Saved as uppercase.
@@ -830,7 +830,7 @@ function BrowseCourseRow({ course, already, staged, onRate }) {
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '10px 14px', borderRadius: 10,
         border: `1.5px solid ${staged ? lvl.border : already ? 'color-mix(in srgb, #6D28D9 15%, transparent)' : hovered ? 'var(--meadow-border)' : 'var(--border)'}`,
-        background: staged ? lvl.bg : already ? (isDark ? 'rgba(124, 58, 237, 0.05)' : 'var(--hover)') : hovered ? 'var(--hover)' : 'var(--surface)',
+        background: staged ? lvl.bg : already ? 'color-mix(in srgb, #6D28D9 10%, var(--surface))' : hovered ? 'var(--hover)' : 'var(--surface)',
         transition: 'all 0.12s',
         animation: 'fadeUp 0.12s ease',
         opacity: already ? 0.7 : 1,
@@ -844,7 +844,7 @@ function BrowseCourseRow({ course, already, staged, onRate }) {
             <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)', letterSpacing: '0.2px' }}>{code}</span>
           )}
           {already && (
-            <span style={{ fontSize: 9.5, fontWeight: 700, color: isDark ? 'var(--mint)' : 'var(--meadow)', background: 'var(--meadow-soft)', padding: '1px 7px', borderRadius: 99, border: '1px solid var(--meadow-border)', flexShrink: 0 }}>Assigned</span>
+            <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--meadow-text-hover)', background: 'var(--meadow-soft)', padding: '1px 7px', borderRadius: 99, border: '1px solid var(--meadow-border)', flexShrink: 0 }}>Assigned</span>
           )}
           {staged && !already && (
             <span style={{ fontSize: 9.5, fontWeight: 700, color: lvl.color, background: lvl.bg, padding: '1px 7px', borderRadius: 99, border: `1px solid ${lvl.border}`, flexShrink: 0 }}>Staged · {lvl.label}</span>

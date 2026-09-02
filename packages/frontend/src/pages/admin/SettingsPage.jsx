@@ -482,7 +482,7 @@ export default function SettingsPage() {
         <div id="tour-stg-theme" className="stg-card">
           <div className="stg-card-head">
             <div className="stg-icon-box" style={{ background: G.meadowSoft, border: `1px solid ${G.meadowBorder}` }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={isDark ? 'var(--mint)' : G.meadow} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={'var(--meadow-text-hover)'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
             </div>
             <div style={{ flex: 1, minWidth: '200px' }}>
               <div style={{ fontSize: 16, fontWeight: 800, color: G.ink }}>Color Theme</div>
@@ -504,7 +504,7 @@ export default function SettingsPage() {
                   }}
                 >
                   <div style={{ width: 18, height: 18, borderRadius: '50%', background: t.color, border: '2px solid var(--surface)', boxShadow: '0 0 0 1px rgba(0,0,0,0.1)' }} />
-                  <span style={{ fontSize: 13, fontWeight: activeTheme === t.id ? 700 : 500, color: activeTheme === t.id ? (isDark ? 'var(--mint)' : G.meadow) : G.muted }}>
+                  <span style={{ fontSize: 13, fontWeight: activeTheme === t.id ? 700 : 500, color: activeTheme === t.id ? ('var(--meadow-text-hover)') : G.muted }}>
                     {t.name}
                   </span>
                 </button>
@@ -514,9 +514,9 @@ export default function SettingsPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ width: 36, height: 36, borderRadius: '50%', background: G.meadowSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {isDarkMode ? (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={isDark ? 'var(--mint)' : G.meadow} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={'var(--meadow-text-hover)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
                   ) : (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={isDark ? 'var(--mint)' : G.meadow} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={'var(--meadow-text-hover)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
                   )}
                 </div>
                 <div>

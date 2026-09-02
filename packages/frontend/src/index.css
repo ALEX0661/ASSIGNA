@@ -118,7 +118,7 @@ img:not(.no-theme-filter) { filter: var(--logo-filter, none); }
 }
 
 /* ── Dark Mode ── */
-[data-mode="dark"] {
+:root[data-mode="dark"] {
   --meadow-text: var(--mint);
   --meadow-text-hover: var(--mint);
   --bg: #121212;
@@ -388,6 +388,6 @@ aside:hover .sidebar-toggle {
 [data-mode="dark"] ::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
 }
-[data-mode="dark"] {
+:root[data-mode="dark"] {
   color-scheme: dark;
 }

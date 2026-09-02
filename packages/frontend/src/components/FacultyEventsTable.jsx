@@ -6,7 +6,7 @@ const DAY_ORDER = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'
 const DAY_SHORT = { Monday:'Mon', Tuesday:'Tue', Wednesday:'Wed', Thursday:'Thu', Friday:'Fri', Saturday:'Sat', Sunday:'Sun' }
 
 const DAY_COLORS = {
-  Monday:    { bg:'var(--meadow-soft)', color: 'var(--meadow)', border:'var(--meadow-border)' },
+  Monday:    { bg:'var(--meadow-soft)', color: 'var(--meadow-text)', border:'var(--meadow-border)' },
   Tuesday:   { bg:'rgba(59, 130, 246, 0.1)', color:'#60A5FA', border:'rgba(59, 130, 246, 0.25)' },
   Wednesday: { bg:'rgba(217, 119, 6, 0.1)', color:'#F59E0B', border:'rgba(245, 158, 11, 0.25)' },
   Thursday:  { bg:'rgba(219, 39, 119, 0.1)', color:'#F472B6', border:'rgba(219, 39, 119, 0.25)' },
@@ -281,7 +281,7 @@ export default function FacultyEventsTable({ events, computeUnits, fetchError })
                 <span style={{ fontSize:10, fontWeight:700, color: 'var(--muted2)', textTransform:'uppercase', letterSpacing:'.6px', flexShrink:0 }}>Room</span>
                 {opts.roomTypes.map(r => (
                   <Pill key={r} value={r} label={r} selectedSet={roomTypes} onToggle={v => setRoomTypes(s => toggleSet(s,v))}
-                    color={r==='Lab'?'#A78BFA':r==='TBA'?'#F59E0B':(isDark ? 'var(--mint)' : 'var(--meadow)')} />
+                    color={r==='Lab'?'#A78BFA':r==='TBA'?'#F59E0B':('var(--meadow-text-hover)')} />
                 ))}
               </div>
             )}
@@ -295,7 +295,7 @@ export default function FacultyEventsTable({ events, computeUnits, fetchError })
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--border)" strokeWidth="1.5" style={{ display:'block', margin:'0 auto 8px' }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <div style={{ fontSize:13, fontWeight:600, color: 'var(--ink2)' }}>No matching classes</div>
           <div style={{ fontSize:12, color: 'var(--muted2)', marginTop:4 }}>Try adjusting your filters</div>
-          <button type="button" onClick={clearAll} style={{ marginTop:12, padding:'6px 16px', borderRadius:99, fontSize:12, fontWeight:600, background:'var(--meadow-soft)', color: 'var(--meadow)', border:'1px solid var(--meadow-border)', cursor:'pointer' }}>
+          <button type="button" onClick={clearAll} style={{ marginTop:12, padding:'6px 16px', borderRadius:99, fontSize:12, fontWeight:600, background:'var(--meadow-soft)', color: 'var(--meadow-text)', border:'1px solid var(--meadow-border)', cursor:'pointer' }}>
             Clear filters
           </button>
         </div>
@@ -313,7 +313,7 @@ export default function FacultyEventsTable({ events, computeUnits, fetchError })
                   { key:'units',   label:'Units'          },
                 ].map(col => (
                   <th key={col.key} onClick={() => toggleSort(col.key)}
-                    style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:700, color: sortKey===col.key? (isDark ? 'var(--mint)' : 'var(--meadow)') : 'var(--muted)', textTransform:'uppercase', letterSpacing:'0.6px', whiteSpace:'nowrap', cursor:'pointer', userSelect:'none', transition:'color .15s' }}>
+                    style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:700, color: sortKey===col.key? ('var(--meadow-text-hover)') : 'var(--muted)', textTransform:'uppercase', letterSpacing:'0.6px', whiteSpace:'nowrap', cursor:'pointer', userSelect:'none', transition:'color .15s' }}>
                     <span style={{ display:'inline-flex', alignItems:'center', gap:4 }}>
                       {col.label}
                       <SortIcon active={sortKey===col.key} dir={sortDir} />
@@ -345,7 +345,7 @@ export default function FacultyEventsTable({ events, computeUnits, fetchError })
                     </td>
                     <td style={{ padding:'11px 14px' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:7, flexWrap:'wrap' }}>
-                        <span style={{ fontFamily:'monospace', fontSize:11, fontWeight:700, color: isDark ? 'var(--mint)' : 'var(--meadow)', background:'var(--meadow-soft)', padding:'2px 7px', borderRadius:5, border:'1px solid var(--meadow-border)', whiteSpace:'nowrap' }}>
+                        <span style={{ fontFamily:'monospace', fontSize:11, fontWeight:700, color: 'var(--meadow-text-hover)', background:'var(--meadow-soft)', padding:'2px 7px', borderRadius:5, border:'1px solid var(--meadow-border)', whiteSpace:'nowrap' }}>
                           {code}
                         </span>
                         {title && <span style={{ fontSize:12.5, fontWeight:600, color: 'var(--ink)' }}>{title}</span>}
@@ -359,7 +359,7 @@ export default function FacultyEventsTable({ events, computeUnits, fetchError })
                     </td>
                     <td style={{ padding:'11px 14px', textAlign:'center' }}>
                       {units != null && units !== '—' && units !== 0 ? (
-                        <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:28, height:22, padding:'0 8px', borderRadius:99, background:'var(--meadow-soft)', color: isDark ? 'var(--mint)' : 'var(--meadow)', fontSize:11.5, fontWeight:700, border:'1px solid var(--meadow-border)' }}>
+                        <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:28, height:22, padding:'0 8px', borderRadius:99, background:'var(--meadow-soft)', color: 'var(--meadow-text-hover)', fontSize:11.5, fontWeight:700, border:'1px solid var(--meadow-border)' }}>
                           {units}
                         </span>
                       ) : <span style={{ color:'var(--border)', fontSize:12 }}>—</span>}

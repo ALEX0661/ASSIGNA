@@ -354,7 +354,7 @@ function UploadStep({ onUploaded, courses }) {
               {dragging ? 'Drop it here!' : 'Drop your Faculty Matrix Excel file'}
             </p>
             <p style={{ fontSize:12, color:'var(--muted)', margin:0 }}>
-              or <span style={{ color:'var(--meadow)', fontWeight:600 }}>click to browse</span> · .xlsx or .xls
+              or <span style={{ color: 'var(--meadow-text)', fontWeight:600 }}>click to browse</span> · .xlsx or .xls
             </p>
           </>
         )}
@@ -546,7 +546,7 @@ function FacultyCard({ faculty, onRemove, onEdit, animDelay }) {
   return (
     <div className="ifm-card" style={{ flexDirection:'column', alignItems:'stretch', animationDelay:`${animDelay}ms`, cursor:'pointer' }} onClick={onEdit}>
       <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-        <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,var(--meadow-soft),var(--meadow-border))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:13, fontWeight:700, color:'var(--meadow)' }}>
+        <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,var(--meadow-soft),var(--meadow-border))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:13, fontWeight:700, color: 'var(--meadow-text)' }}>
           {faculty.name.split(',')[0].charAt(0)}
         </div>
 
@@ -556,7 +556,7 @@ function FacultyCard({ faculty, onRemove, onEdit, animDelay }) {
             <StatusBadge status={faculty.status} />
           </div>
           <div style={{ fontSize:11.5, color:'var(--muted)', marginTop:2 }}>
-            <strong style={{ color:'var(--meadow)' }}>{totalGood}</strong> rated courses · <strong style={{ color:'var(--ink)' }}>{specs.length}</strong> total
+            <strong style={{ color: 'var(--meadow-text)' }}>{totalGood}</strong> rated courses · <strong style={{ color:'var(--ink)' }}>{specs.length}</strong> total
           </div>
         </div>
 
@@ -572,7 +572,7 @@ function FacultyCard({ faculty, onRemove, onEdit, animDelay }) {
           {topSpecs.map(s => (
             <span 
               key={`${s.courseTitle || s.title || 'untitled'}-${s.courseCode}`} 
-              style={{ fontSize:10.5, fontWeight:600, padding:'2px 8px', borderRadius:99, background:'var(--meadow-soft)', color:'var(--meadow)', border:'1px solid var(--meadow-border)' }}
+              style={{ fontSize:10.5, fontWeight:600, padding:'2px 8px', borderRadius:99, background:'var(--meadow-soft)', color: 'var(--meadow-text)', border:'1px solid var(--meadow-border)' }}
             >
               {s.courseTitle || s.title || s.courseCode}
               <span style={{ marginLeft:4, color: ratingColor(s.rating), fontWeight:700 }}>{s.rating}</span>
@@ -682,7 +682,7 @@ function EditPreviewStep({ initialFaculty, onSave, onBack }) {
 
         <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
           <label style={{ fontSize:11.5, fontWeight:600, color:'var(--muted)' }}>Specializations</label>
-          <button className="ifm-ghost" onClick={() => setShowSpec(true)} style={{ justifyContent:'center', background: 'var(--surface)', color:'var(--meadow)' }}>
+          <button className="ifm-ghost" onClick={() => setShowSpec(true)} style={{ justifyContent:'center', background: 'var(--surface)', color: 'var(--meadow-text)' }}>
             Manage {form.specializations?.length || 0} specializations...
           </button>
         </div>
@@ -800,7 +800,7 @@ function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
         <span style={{ fontSize:13, color:'var(--muted)' }}>
           <strong style={{ color:'var(--ink)' }}>{faculty.length}</strong> faculty ready to import
         </span>
-        <span style={{ fontSize:10.5, padding:'2px 9px', borderRadius:99, background:'var(--meadow-soft)', color:'var(--meadow)', border:'1px solid #A7F3D0', fontWeight:600 }}>{fullTime} full-time</span>
+        <span style={{ fontSize:10.5, padding:'2px 9px', borderRadius:99, background:'var(--meadow-soft)', color: 'var(--meadow-text)', border:'1px solid #A7F3D0', fontWeight:600 }}>{fullTime} full-time</span>
         <span style={{ fontSize:10.5, padding:'2px 9px', borderRadius:99, background:'rgba(217, 119, 6, 0.05)', color:'#F59E0B', border:'1px solid #FDE68A', fontWeight:600 }}>{partTime} part-time</span>
         <span style={{ fontSize:11, color:'var(--muted)', marginLeft:'auto' }}>Click a card to edit</span>
       </div>
@@ -833,7 +833,7 @@ function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
       <ErrBox msg={error} />
 
       <HintBox>
-        <strong style={{ color:'var(--meadow)' }}>Note:</strong> Specialization ratings come from the matrix sheet(s) you selected. Basic info, login email, and preferred schedule come from the "Faculty Info" sheet if you filled it in — otherwise add them per profile after importing.
+        <strong style={{ color: 'var(--meadow-text)' }}>Note:</strong> Specialization ratings come from the matrix sheet(s) you selected. Basic info, login email, and preferred schedule come from the "Faculty Info" sheet if you filled it in — otherwise add them per profile after importing.
       </HintBox>
 
       <div style={{ display:'flex', gap:8, alignItems:'center' }}>

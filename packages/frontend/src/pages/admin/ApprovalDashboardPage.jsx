@@ -151,13 +151,13 @@ const STATUS = {
   active:     { bg: G.meadowSoft, color: 'var(--meadow-text)', dot: G.meadow, label: 'Their turn' },
   generating: { bg: G.blueSoft, color: G.blue, dot: '#3B82F6', label: 'Generating' },
   submitted:  { bg: G.amberSoft, color: '#92400E', dot: G.amber, label: 'Submitted'  },
-  approved:   { bg: G.meadowSoft, color: G.meadowMid, dot: G.meadow, label: 'Approved'   },
+  approved:   { bg: G.meadowSoft, color: 'var(--meadow-text-hover)', dot: G.meadow, label: 'Approved'   },
   skipped:    { bg: 'rgba(217, 119, 6, 0.05)', color: '#9A3412', dot: '#FB923C', label: 'Skipped'    },
 }
 const SCHED_STATUS = {
   draft:     { bg: G.hover, color: G.muted, border: G.border, label: 'Draft'     },
   submitted: { bg: G.amberSoft, color: '#92400E', border: G.amberBorder, label: 'Submitted' },
-  approved:  { bg: G.meadowSoft, color: G.meadowMid, border: G.meadowBorder, label: 'Approved'  },
+  approved:  { bg: G.meadowSoft, color: 'var(--meadow-text-hover)', border: G.meadowBorder, label: 'Approved'  },
 }
 
 const PROG_COLORS = { 'BSIT': G.meadow, 'BSCS': '#60A5FA', 'BSEMC-GD': '#7C3AED', 'BSEMC-DAT': '#F59E0B' }
@@ -367,7 +367,7 @@ function AdminQueueRail({ programs, statuses, turnIndex }) {
                             : <span style={{ width: 7, height: 7, borderRadius: '50%', background: stm.dot }} />}
                 </div>
                 <div style={{ marginTop: 7, textAlign: 'center' }}>
-                  <div style={{ fontSize: 11.5, fontWeight: isCurrent ? 800 : 700, color: isCurrent ? G.meadowDeep : G.ink, whiteSpace: 'nowrap' }}>{prog}</div>
+                  <div style={{ fontSize: 11.5, fontWeight: isCurrent ? 800 : 700, color: isCurrent ? 'var(--meadow-text)' : G.ink, whiteSpace: 'nowrap' }}>{prog}</div>
                   <div style={{ fontSize: 9, fontWeight: 800, color: stm.color, letterSpacing: '.4px', textTransform: 'uppercase', whiteSpace: 'nowrap', marginTop: 2 }}>{stm.label}</div>
                 </div>
               </div>
@@ -899,7 +899,7 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, 
                   </div>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--meadow-text)' }}>Queue Complete!</div>
-                    <div style={{ fontSize: 12, color: G.meadowMid, marginTop: 2 }}>All coordinators have finished. Head over to the <b>Master Schedule</b> tab to review the final result and generate the combined schedule.</div>
+                    <div style={{ fontSize: 12, color: 'var(--meadow-text-hover)', marginTop: 2 }}>All coordinators have finished. Head over to the <b>Master Schedule</b> tab to review the final result and generate the combined schedule.</div>
                   </div>
                 </div>
               )}

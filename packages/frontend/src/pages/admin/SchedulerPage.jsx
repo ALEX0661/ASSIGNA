@@ -632,7 +632,7 @@ function OverwriteModal({ name, onOverwrite, onRename, onCancel }) {
                 onMouseLeave={e => { e.currentTarget.style.borderColor=G.meadowBorder; e.currentTarget.style.background=G.meadowSoft }}
               >
                 <div style={{ width:36, height:36, borderRadius:9, background:'var(--meadow-border)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G.meadowDeep} strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--meadow-text)" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </div>
                 <div>
                   <div style={{ fontSize:13.5, fontWeight:700, color: 'var(--meadow-text)' }}>Save with a new name</div>
@@ -891,11 +891,11 @@ function PhaseTimeline({ currentPhaseIdx, status, progress, order, defaultOrder,
               type="button"
               onClick={onReset}
               disabled={isDefaultOrder}
-              style={{ background:'none', border:'none', padding:0, fontSize:11.5, fontWeight:700, color: isDefaultOrder ? G.muted2 : G.meadowDeep, cursor: isDefaultOrder ? 'default' : 'pointer', opacity: isDefaultOrder ? 0.5 : 1 }}>
+              style={{ background:'none', border:'none', padding:0, fontSize:11.5, fontWeight:700, color: isDefaultOrder ? G.muted2 : 'var(--meadow-text)', cursor: isDefaultOrder ? 'default' : 'pointer', opacity: isDefaultOrder ? 0.5 : 1 }}>
               Reset to Default
             </button>
           )}
-          <span style={{ fontSize:14, fontWeight:800, color: idle ? G.muted2 : done ? G.meadow : G.meadowDeep }}>{idle ? '—' : `${progress}%`}</span>
+          <span style={{ fontSize:14, fontWeight:800, color: idle ? G.muted2 : done ? 'var(--meadow-text-hover)' : 'var(--meadow-text)' }}>{idle ? '—' : `${progress}%`}</span>
         </div>
       </div>
       <div className="prog-bar-wrap">
@@ -913,9 +913,9 @@ function PhaseTimeline({ currentPhaseIdx, status, progress, order, defaultOrder,
                 {i < phases.length - 1 && <div className="phase-connector" style={{ background: (phaseDone && !idle) ? G.meadow : G.border }} />}
                 <div className="phase-dot" style={{ background: idle ? G.hover : phaseDone ? G.meadow : phaseActive ? 'var(--surface)' : G.bg, border: idle ? `2px solid ${G.border}` : phaseActive ? `2.5px solid ${G.meadowDeep}` : phaseDone ? 'none' : `2px solid ${G.border}`, boxShadow: phaseActive ? `0 0 0 4px rgba(0,0,0,0.15)` : 'none' }}>
                   {phaseDone && !idle ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-                    : phaseActive ? <div style={{ width:10, height:10, borderRadius:'50%', background:G.meadowDeep }} /> : null}
+                    : phaseActive ? <div style={{ width:10, height:10, borderRadius:'50%', background:"var(--meadow-text)" }} /> : null}
                 </div>
-                <span className="phase-label" style={{ color: idle ? G.muted2 : phaseDone ? G.meadow : phaseActive ? G.ink : G.muted2 }}>{ph.short}</span>
+                <span className="phase-label" style={{ color: idle ? G.muted2 : phaseDone ? 'var(--meadow-text-hover)' : phaseActive ? G.ink : G.muted2 }}>{ph.short}</span>
               </div>
             )
           })}
@@ -1063,7 +1063,7 @@ function SavedItem({ name, academicYear, semester, finalized, onLoad, onDelete, 
           <span className="saved-name">{name}</span>
           {isCurrent && <span className="saved-current-badge">Active</span>}
           {finalized && (
-            <span style={{ display:'inline-flex', alignItems:'center', gap:3, padding:'1px 7px', borderRadius:99, fontSize:9.5, fontWeight:700, background:'var(--meadow-soft)', color: 'var(--meadow)', border:'1px solid var(--meadow-border)', flexShrink:0 }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:3, padding:'1px 7px', borderRadius:99, fontSize:9.5, fontWeight:700, background:'var(--meadow-soft)', color: 'var(--meadow-text)', border:'1px solid var(--meadow-border)', flexShrink:0 }}>
               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
               Finalized
             </span>
@@ -1087,7 +1087,7 @@ function SavedItem({ name, academicYear, semester, finalized, onLoad, onDelete, 
           </svg>
         </button>
         {loading
-          ? <svg className="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G.meadow} strokeWidth="2.5" style={{ marginLeft: 4, flexShrink:0 }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          ? <svg className="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--meadow-text)" strokeWidth="2.5" style={{ marginLeft: 4, flexShrink:0 }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
           : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G.muted2} strokeWidth="2.5" style={{ marginLeft: 4, flexShrink:0 }}><polyline points="9 18 15 12 9 6"/></svg>
         }
       </div>
@@ -1683,11 +1683,11 @@ function Step1Configure({ scheduleNamePreset, setScheduleNamePreset, scheduleNam
               <div style={{ width:38, height:38, borderRadius:10, background:`linear-gradient(135deg,${sc.from},${sc.to})`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color: '#fff', boxShadow:`0 3px 10px ${sc.from}40` }}><CalendarIcon size={16} /></div>
               <div style={{ flex:1 }}>
                 <div style={{ fontSize:15, fontWeight:800, color:G.ink, letterSpacing:'-0.2px' }}>{effectiveScheduleName.trim()}</div>
-                <div style={{ fontSize:12.5, color:G.muted, fontWeight:500, marginTop:2 }}>Will load <strong style={{ color:sc.from }}>{targetSemester}</strong> course list</div>
+                <div style={{ fontSize:12.5, color:G.muted, fontWeight:500, marginTop:2 }}>Will load <strong style={{ color:'var(--meadow-text)' }}>{targetSemester}</strong> course list</div>
               </div>
               <div style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 14px', borderRadius:99, background:'var(--surface)', border:`1px solid ${sc.from}30` }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={sc.from} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                <span style={{ fontSize:12, fontWeight:700, color:sc.from }}>Ready</span>
+                <span style={{ fontSize:12, fontWeight:700, color:'var(--meadow-text)' }}>Ready</span>
               </div>
             </div>
           )}
@@ -2412,7 +2412,7 @@ export default function SchedulerPage() {
                         {diagnostic && (
                           <div className="fadein" style={{ marginTop:16, padding:16, borderRadius:10, border:'1px solid var(--border)', background:'var(--bg)' }}>
                             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={G.meadowDeep} strokeWidth="2.5">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--meadow-text)" strokeWidth="2.5">
                                 <path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/>
                               </svg>
                               <span style={{ fontSize:14, fontWeight:700, color:G.ink }}>Diagnostic Results</span>
@@ -2456,7 +2456,7 @@ export default function SchedulerPage() {
                                   </div>
                                 ) : (
                                   <div style={{ display:'flex', alignItems:'center', gap:8, padding:8, borderRadius:6, background:G.meadowSoft, border:`1px solid ${G.meadowBorder}`, marginBottom:12 }}>
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G.meadowDeep} strokeWidth="2.5">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--meadow-text)" strokeWidth="2.5">
                                       <polyline points="20 6 9 17 4 12"/>
                                     </svg>
                                     <span style={{ fontSize:12, color: 'var(--meadow-text)', fontWeight:600 }}>No issues detected</span>
@@ -2540,7 +2540,7 @@ export default function SchedulerPage() {
           {wizStep === 3 && status === 'running' && (
             <div style={{ display:'flex', alignItems:'center', gap:10 }}>
               <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 20px', borderRadius:10, background:G.meadowSoft, border:`1px solid ${G.meadowBorder}` }}>
-                <svg className="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G.meadowDeep} strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                <svg className="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--meadow-text)" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
                 <span style={{ fontSize:13.5, fontWeight:700, color: 'var(--meadow-text)' }}>
                   {stopRequested ? 'Stopping…' : `Solving… ${progress}%`}
                 </span>

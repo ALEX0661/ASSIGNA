@@ -235,7 +235,7 @@ export default function FacultyDetailPage() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
             <div>
-              <div style={{ fontSize:15, fontWeight:700, color: 'var(--meadow)' }}>Account activated</div>
+              <div style={{ fontSize:15, fontWeight:700, color: 'var(--meadow-text)' }}>Account activated</div>
               <div style={{ fontSize:12, color: 'var(--muted)', marginTop:2 }}>Firebase Auth account created and profile migrated.</div>
             </div>
           </div>
@@ -279,7 +279,7 @@ export default function FacultyDetailPage() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
             <div>
-              <div style={{ fontSize:15, fontWeight:700, color: 'var(--meadow)' }}>Account created</div>
+              <div style={{ fontSize:15, fontWeight:700, color: 'var(--meadow-text)' }}>Account created</div>
               <div style={{ fontSize:12, color: 'var(--muted)', marginTop:2 }}>Share the password with {form.name || form.email}.</div>
             </div>
           </div>
@@ -324,7 +324,7 @@ export default function FacultyDetailPage() {
         {!isNew && (
           <div id="tour-fac-actions" style={{ display:'flex', alignItems:'center', gap:6 }}>
             {form.archived ? (
-              <button type="button" onClick={handleUnarchive} disabled={archiving} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', background:'var(--meadow-soft)', color: 'var(--meadow)', fontSize:12, fontWeight:600, cursor: archiving ? 'default' : 'pointer', fontFamily:"'Inter',sans-serif", opacity: archiving ? 0.7 : 1 }}>
+              <button type="button" onClick={handleUnarchive} disabled={archiving} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', background:'var(--meadow-soft)', color: 'var(--meadow-text)', fontSize:12, fontWeight:600, cursor: archiving ? 'default' : 'pointer', fontFamily:"'Inter',sans-serif", opacity: archiving ? 0.7 : 1 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
                 {archiving ? 'Restoring…' : 'Restore'}
               </button>

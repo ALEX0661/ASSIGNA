@@ -223,7 +223,7 @@ export function OverrideConfirmDialog({ event, newDay, newPeriod, newRoom, newFa
             <p style={{ margin:'2px 0 0', fontSize:11.5, color:TV.muted }}>Room: {event.room || '—'} · {event.faculty || 'TBA'}</p>
           </div>
           <div style={{ padding:14, background:'var(--hover)', border:'1px solid var(--meadow-border)', borderRadius:10 }}>
-            <p style={{ fontSize:9.5, fontWeight:700, color: 'var(--meadow)', textTransform:'uppercase', letterSpacing:'.8px', margin:'0 0 8px' }}>New</p>
+            <p style={{ fontSize:9.5, fontWeight:700, color: 'var(--meadow-text)', textTransform:'uppercase', letterSpacing:'.8px', margin:'0 0 8px' }}>New</p>
             <p style={{ margin:'0 0 3px', fontWeight:700, fontSize:13, color:TV.text }}>{event.courseCode}</p>
             <p style={{ margin:0, fontSize:11.5, color:TV.muted }}>{newDay} · {newPeriod}</p>
             <p style={{ margin:'2px 0 0', fontSize:11.5, color:TV.muted }}>Room: {newRoom} · {newFaculty || 'TBA'}</p>
@@ -1295,7 +1295,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
 
                                 {/* Single status pill */}
                                 {!isSelected && isClean && !wouldExceed && (
-                                  <span style={{ fontSize:9, fontWeight:600, color: 'var(--meadow)', flexShrink:0 }}>Free · all {totalSessions}</span>
+                                  <span style={{ fontSize:9, fontWeight:600, color: 'var(--meadow-text)', flexShrink:0 }}>Free · all {totalSessions}</span>
                                 )}
                                 {!isSelected && isPartial && (
                                   <span style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:9, fontWeight:700, color:'#F59E0B', flexShrink:0 }}>
@@ -1385,7 +1385,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                     {batchFaculty && batchConflictCount === 0 && siblingEvents.length > 0 && !batchResults && (
                       <div style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 11px', background:'var(--hover)', border:'1px solid var(--meadow-border)', borderRadius:8, fontSize:11.5 }}>
                         <Ic.CheckCircle size={12} color="var(--meadow)" />
-                        <span style={{ fontWeight:700, color: 'var(--meadow)' }}>No overlaps.</span>
+                        <span style={{ fontWeight:700, color: 'var(--meadow-text)' }}>No overlaps.</span>
                         <span style={{ color:'var(--meadow-mid)' }}>All {siblingEvents.length} sessions safe to assign.</span>
                       </div>
                     )}

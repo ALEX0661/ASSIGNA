@@ -176,7 +176,7 @@ export function FormField({ label, required, hint, children, span }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:5, gridColumn:span ? `span ${span}` : undefined }}>
       <label style={{ fontSize:11, fontWeight:700, color: 'var(--muted)', textTransform:'uppercase', letterSpacing:'.6px', display:'flex', alignItems:'center', gap:4 }}>
-        {label}{required && <span style={{ color: 'var(--meadow)' }}>*</span>}
+        {label}{required && <span style={{ color: 'var(--meadow-text)' }}>*</span>}
       </label>
       {children}
       {hint && <div style={{ fontSize:10.5, color: 'var(--muted2)', marginTop:1 }}>{hint}</div>}

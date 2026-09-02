@@ -47,7 +47,7 @@ const CO_STYLE = `
   .co-input { width:100%; padding:9px 12px; border-radius:9px; border:1.5px solid ${G.border}; font-size:13px; font-family:'Inter',sans-serif; outline:none; box-sizing:border-box; transition:all .15s; background: var(--surface); }
   .co-input:focus { border-color: var(--meadow-text-hover); box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
   .co-tab { padding:5px 14px; border-radius:8px; font-size:11.5px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; transition:all .15s; border:1.5px solid ${G.border}; background:${G.bg}; color:#4A5568; }
-  .co-tab.active { border-color: var(--meadow-text-hover); background:${G.meadowSoft}; color:${G.meadowMid}; }
+  .co-tab.active { border-color: var(--meadow-text-hover); background:${G.meadowSoft}; color:${'var(--meadow-text-hover)'}; }
 
   /* Segmented status filter, matching CourseListPage's tab switcher */
   .co-seg { display:flex; gap:3px; background: var(--surface); border-radius:10px; padding:3px; border:1px solid ${G.border}; flex-shrink:0; }
@@ -97,7 +97,7 @@ const CO_STYLE = `
 const STATUS_MAP = {
   draft:     { bg: G.hover,      color: G.muted,     label: 'Draft'     },
   submitted: { bg: G.amberSoft,  color: '#92400E',   label: 'Submitted' },
-  approved:  { bg: G.meadowSoft, color: G.meadowMid, label: 'Approved'  },
+  approved:  { bg: G.meadowSoft, color: 'var(--meadow-text-hover)', label: 'Approved'  },
 }
 
 function Badge({ status }) {

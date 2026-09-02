@@ -240,7 +240,7 @@ export default function FacultyLayout() {
           <div style={{ flex: 1 }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginLeft: 16 }}>
             <div className="topbar-time" style={{ display: 'flex', flexDirection: 'column', gap: 1, textAlign: 'right' }}>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--meadow)', fontVariantNumeric: 'tabular-nums' }}>{timeStr}</span>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--meadow-text)', fontVariantNumeric: 'tabular-nums' }}>{timeStr}</span>
               <span style={{ fontSize: 10.5, fontWeight: 500, color: 'var(--muted2)' }}>{dateStr}</span>
             </div>
             {collapsed && (

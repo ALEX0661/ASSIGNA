@@ -135,9 +135,9 @@ function ActiveFilterChips({
         <span key={i} style={{
           display: 'inline-flex', alignItems: 'center', gap: 5,
           padding: '3px 6px 3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 600,
-          background: chip.color === G.meadow ? G.meadowSoft : chip.color + '18', 
+          background: chip.color === 'var(--meadow-text-hover)' ? G.meadowSoft : chip.color + '18', 
           color: chip.color, 
-          border: `1px solid ${chip.color === G.meadow ? G.meadowBorder : chip.color + '33'}`,
+          border: `1px solid ${chip.color === 'var(--meadow-text-hover)' ? G.meadowBorder : chip.color + '33'}`,
         }}>
           {chip.label}
           <button onClick={chip.onRemove} style={{
@@ -336,7 +336,7 @@ function FacultyCard({ faculty, courseTitleMap, selected, onSelect, onClick, onA
                 <button onClick={e => { e.stopPropagation(); onUnarchive() }} title="Restore"
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 7, background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, color: 'var(--meadow-text-hover)', cursor: 'pointer', padding: 0, transition: 'all .14s' }}
                   onMouseEnter={e => { e.currentTarget.style.background = G.meadow; e.currentTarget.style.color = '#fff' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = G.meadowSoft; e.currentTarget.style.color = G.meadow }}>
+                  onMouseLeave={e => { e.currentTarget.style.background = G.meadowSoft; e.currentTarget.style.color = 'var(--meadow-text-hover)' }}>
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
                 </button>
                 <button onClick={e => { e.stopPropagation(); onDelete() }} title="Delete permanently"
@@ -429,7 +429,7 @@ function FacultyTable({ faculty, selected, selectionMode, viewTab, onSelect, onS
                   <span style={{
                     padding: '3px 9px', borderRadius: 99, fontSize: 10.5, fontWeight: 600,
                     background: f.status === 'full-time' ? G.meadowSoft : G.hover,
-                    color: f.status === 'full-time' ? G.meadow : G.muted,
+                    color: f.status === 'full-time' ? 'var(--meadow-text-hover)' : G.muted,
                   }}>
                     {f.status === 'full-time' ? 'Full-time' : 'Part-time'}
                   </span>
@@ -461,7 +461,7 @@ function FacultyTable({ faculty, selected, selectionMode, viewTab, onSelect, onS
                         <button onClick={() => onUnarchive(f.id, f.name)} title="Restore"
                           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 7, background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, color: 'var(--meadow-text-hover)', cursor: 'pointer', padding: 0, transition: 'all .14s' }}
                           onMouseEnter={e => { e.currentTarget.style.background = G.meadow; e.currentTarget.style.color = '#fff' }}
-                          onMouseLeave={e => { e.currentTarget.style.background = G.meadowSoft; e.currentTarget.style.color = G.meadow }}>
+                          onMouseLeave={e => { e.currentTarget.style.background = G.meadowSoft; e.currentTarget.style.color = 'var(--meadow-text-hover)' }}>
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
                         </button>
                         <button onClick={() => onDelete(f.id, f.name)} title="Delete permanently"
@@ -496,7 +496,7 @@ function SectionLabel({ label, count, onClear, icon }) {
       </div>
       {count > 0 && (
         <button onClick={onClear} style={{ fontSize: 11.5, color: G.muted2, background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Inter',sans-serif", fontWeight: 500, transition: 'color .15s' }}
-          onMouseEnter={e => e.currentTarget.style.color = G.meadow}
+          onMouseEnter={e => e.currentTarget.style.color = 'var(--meadow-text-hover)'}
           onMouseLeave={e => e.currentTarget.style.color = G.muted2}>
           Clear
         </button>
@@ -512,13 +512,13 @@ function FilterPill({ label, count, active, onClick, icon }) {
       padding: '6px 14px', borderRadius: 10, fontSize: 12,
       fontFamily: "'Inter',sans-serif", fontWeight: active ? 600 : 500,
       background: active ? 'var(--meadow-soft)' : 'var(--surface)',
-      color: active ? G.meadowDeep : G.muted,
+      color: active ? 'var(--meadow-text)' : G.muted,
       border: `1px solid ${active ? G.meadowBorder : G.border}`,
       cursor: 'pointer', transition: 'all .15s',
       display: 'flex', alignItems: 'center', gap: 6,
       boxShadow: active ? '0 2px 8px rgba(0,0,0,0.08)' : '0 1px 2px rgba(0,0,0,0.02)'
     }}
-    onMouseEnter={e => { if(!active) { e.currentTarget.style.borderColor = G.meadowBorder; e.currentTarget.style.color = G.meadow } }}
+    onMouseEnter={e => { if(!active) { e.currentTarget.style.borderColor = G.meadowBorder; e.currentTarget.style.color = 'var(--meadow-text-hover)' } }}
     onMouseLeave={e => { if(!active) { e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted } }}
     >
       {active && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
@@ -892,7 +892,7 @@ export default function FacultyListPage() {
             {/* Export */}
             <button onClick={handleExport} disabled={!filtered.length} title="Export specialization matrix to Excel"
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: `1px solid ${G.border}`, background: 'var(--surface)', color: G.muted2, fontSize: 11.5, fontWeight: 500, cursor: filtered.length ? 'pointer' : 'not-allowed', opacity: filtered.length ? 1 : 0.45, transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
-              onMouseEnter={e => { if (filtered.length) { e.currentTarget.style.background = G.hover; e.currentTarget.style.color = G.meadow }}}
+              onMouseEnter={e => { if (filtered.length) { e.currentTarget.style.background = G.hover; e.currentTarget.style.color = 'var(--meadow-text-hover)' }}}
               onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.color = G.muted2 }}>
              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -905,7 +905,7 @@ export default function FacultyListPage() {
             {/* Upload Faculty List */}
             <button onClick={() => setShowImport(true)}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 16px', borderRadius: 10, border: `1px solid ${G.border}`, fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: 'var(--surface)', color: G.muted }}
-              onMouseEnter={e => { e.currentTarget.style.background = G.hover; e.currentTarget.style.borderColor = G.meadowBorder; e.currentTarget.style.color = G.meadow }}
+              onMouseEnter={e => { e.currentTarget.style.background = G.hover; e.currentTarget.style.borderColor = G.meadowBorder; e.currentTarget.style.color = 'var(--meadow-text-hover)' }}
               onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -1143,7 +1143,7 @@ export default function FacultyListPage() {
                     <span style={{ fontSize: 10.5, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', letterSpacing: '.6px' }}>Min Rating:</span>
                     <select 
                       value={specMinRating} onChange={e => setSpecMinRating(Number(e.target.value))} 
-                      style={{ fontSize: 11.5, fontWeight: 600, color: specMinRating > 0 ? G.meadowDeep : G.ink, background: specMinRating > 0 ? G.meadowSoft : 'var(--surface)', border: `1.5px solid ${specMinRating > 0 ? G.meadowBorder : G.border}`, borderRadius: 8, padding: '4px 8px', fontFamily: "'Inter',sans-serif", cursor: 'pointer', outline: 'none', transition: 'all .15s' }}
+                      style={{ fontSize: 11.5, fontWeight: 600, color: specMinRating > 0 ? 'var(--meadow-text)' : G.ink, background: specMinRating > 0 ? G.meadowSoft : 'var(--surface)', border: `1.5px solid ${specMinRating > 0 ? G.meadowBorder : G.border}`, borderRadius: 8, padding: '4px 8px', fontFamily: "'Inter',sans-serif", cursor: 'pointer', outline: 'none', transition: 'all .15s' }}
                     >
                       <option value={0}>Any</option>
                       <option value={1}>★ 1+</option>
@@ -1180,12 +1180,12 @@ export default function FacultyListPage() {
                         <button key={s.key} onClick={() => toggleSpec(s.key)} style={{
                           padding: '6px 12px', borderRadius: 10, fontSize: 11.5, fontFamily: "'Inter',sans-serif",
                           fontWeight: active ? 600 : 500,
-                          background: active ? G.meadowSoft : 'var(--surface)', color: active ? G.meadowDeep : G.ink,
+                          background: active ? G.meadowSoft : 'var(--surface)', color: active ? 'var(--meadow-text)' : G.ink,
                           border: `1px solid ${active ? G.meadowBorder : G.border}`,
                           cursor: 'pointer', transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 6,
                           boxShadow: active ? '0 2px 8px rgba(0,0,0,0.08)' : '0 1px 2px rgba(0,0,0,0.02)'
                         }}
-                        onMouseEnter={e => { if(!active) { e.currentTarget.style.borderColor = G.meadowBorder; e.currentTarget.style.color = G.meadow } }}
+                        onMouseEnter={e => { if(!active) { e.currentTarget.style.borderColor = G.meadowBorder; e.currentTarget.style.color = 'var(--meadow-text-hover)' } }}
                         onMouseLeave={e => { if(!active) { e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.ink } }}
                         >
                           {active && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}

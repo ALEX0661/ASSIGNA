@@ -146,13 +146,13 @@ export default function ScheduleSection({ facultyName, onUnitsLoaded, onAssignme
           {!loading && !fetchError && selectedSchedule && allEvents.length > 0 && (
             <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:2 }}>
               <span style={{ fontSize:11, color: 'var(--muted)', fontWeight:500 }}>
-                <strong style={{ color: 'var(--meadow)' }}>{physicalClassCount}</strong> {physicalClassCount === 1 ? 'class' : 'classes'}
+                <strong style={{ color: 'var(--meadow-text)' }}>{physicalClassCount}</strong> {physicalClassCount === 1 ? 'class' : 'classes'}
               </span>
               {totalUnits > 0 && (
                 <>
                   <span style={{ width:3, height:3, borderRadius:'50%', background:'var(--meadow-border)', display:'inline-block' }}/>
                   <span style={{ fontSize:11, color: 'var(--muted)', fontWeight:500 }}>
-                    <strong style={{ color: 'var(--meadow)' }}>{totalUnits}</strong> units
+                    <strong style={{ color: 'var(--meadow-text)' }}>{totalUnits}</strong> units
                   </span>
                 </>
               )}
@@ -185,7 +185,7 @@ export default function ScheduleSection({ facultyName, onUnitsLoaded, onAssignme
               <option value="__current__">{scheduleName ? `Current · ${scheduleName}` : 'Current Schedule'}</option>
               {scheduleNames.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
-            <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--meadow)' }}>
+            <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--meadow-text)' }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </div>
           </div>
