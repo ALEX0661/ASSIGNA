@@ -320,7 +320,7 @@ function SetupChecklist({ steps, onNavigate, loading }) {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 12, fontWeight: 800, fontFamily: "'Sora',sans-serif",
                 background: step.done ? G.meadow : i === nextIdx ? G.meadowSoft : G.hover,
-                color: step.done ? '#fff' : i === nextIdx ? G.meadowDeep : G.muted2,
+                color: step.done ? '#fff' : i === nextIdx ? 'var(--meadow-text)' : G.muted2,
                 border: i === nextIdx && !step.done ? `2px solid ${G.meadow}` : '2px solid transparent',
               }}>
                 {step.done
@@ -416,8 +416,8 @@ function QueueLedger({ queue }) {
         const meta = STATUS_META[status] || STATUS_META.waiting
         return (
           <div key={`${prog}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', borderRadius: 10, background: status === 'active' ? G.meadowSoft : 'transparent', border: status === 'active' ? `1px solid ${G.meadowBorder}` : '1px solid transparent' }}>
-            <span style={{ width: 24, fontSize: 12, fontWeight: 800, color: status === 'active' ? G.meadowDeep : G.muted2, textAlign: 'right' }}>{i + 1}</span>
-            <span style={{ flex: 1, fontSize: 13.5, fontWeight: status === 'active' ? 800 : 600, color: status === 'active' ? G.meadowDeep : G.ink }}>{prog}</span>
+            <span style={{ width: 24, fontSize: 12, fontWeight: 800, color: status === 'active' ? 'var(--meadow-text)' : G.muted2, textAlign: 'right' }}>{i + 1}</span>
+            <span style={{ flex: 1, fontSize: 13.5, fontWeight: status === 'active' ? 800 : 600, color: status === 'active' ? 'var(--meadow-text)' : G.ink }}>{prog}</span>
             <span style={{ fontSize: 12.5, fontWeight: 700, color: meta.color }}>{meta.label}</span>
           </div>
         )
@@ -879,7 +879,7 @@ export default function CoordDashboard() {
   // action-relevant number on the page — everything else is supporting context.
   const STAT_CARDS = [
     {
-      label: 'Queue Position', color: isMyTurn ? G.meadow : G.amber, iconBg: isMyTurn ? G.meadowSoft : G.amberSoft,
+      label: 'Queue Position', color: isMyTurn ? 'var(--meadow-text-hover)' : G.amber, iconBg: isMyTurn ? G.meadowSoft : G.amberSoft,
       value: loading ? null : (!hasQueue ? '—' : (isMyTurn ? 'Now' : (myPos ?? '—'))),
       sub: !hasQueue ? 'No active queue' : isMyTurn ? 'Your turn is open' : `of ${qLen} programs`,
       icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
@@ -1011,7 +1011,7 @@ export default function CoordDashboard() {
                     <Badge label={activeTermLabel} color={G.ink} bg={G.hover} />
                   )}
                   {hasQueue && totalInQueue > 0 && (
-                    <Badge label={`${approvedInQueue}/${totalInQueue} approved`} color={G.meadowDeep} bg={G.meadowSoft} />
+                    <Badge label={`${approvedInQueue}/${totalInQueue} approved`} color={'var(--meadow-text)'} bg={G.meadowSoft} />
                   )}
                   {!loading && (
                     <button className={`cd-refresh-btn${refreshing ? ' spinning' : ''}`} disabled={refreshing} onClick={() => load(true)} title="Refresh queue status">
@@ -1060,7 +1060,7 @@ export default function CoordDashboard() {
                 <div style={{ marginTop: 24, paddingTop: 24, borderTop: `1px solid ${G.border}` }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                     <div style={{ fontSize: 15, fontWeight: 800, color: G.ink }}>Combined Progress</div>
-                    <Badge label="Live" color={G.meadowDeep} bg={G.meadowSoft} />
+                    <Badge label="Live" color={'var(--meadow-text)'} bg={G.meadowSoft} />
                   </div>
                   
                   {/* Approved program chips */}
@@ -1146,7 +1146,7 @@ export default function CoordDashboard() {
                       justifyContent: 'center', gap: 8, transition: 'all .15s',
                     }}
                     onMouseEnter={e => { e.currentTarget.style.background = G.meadow; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = G.meadowDeep }}
-                    onMouseLeave={e => { e.currentTarget.style.background = G.meadowSoft; e.currentTarget.style.color = G.meadowDeep; e.currentTarget.style.borderColor = G.meadowBorder }}
+                    onMouseLeave={e => { e.currentTarget.style.background = G.meadowSoft; e.currentTarget.style.color = 'var(--meadow-text)'; e.currentTarget.style.borderColor = G.meadowBorder }}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
                     View Combined Schedule →
@@ -1223,7 +1223,7 @@ export default function CoordDashboard() {
                   <div style={{ width: 24, height: 24, borderRadius: 6, background: pinnedSchedule.status === 'approved' ? G.meadow : G.amber, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
                   </div>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: pinnedSchedule.status === 'approved' ? G.meadowDeep : '#92400E', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: pinnedSchedule.status === 'approved' ? 'var(--meadow-text)' : '#92400E', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                     Active Submission
                   </span>
                </div>

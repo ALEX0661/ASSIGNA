@@ -587,7 +587,7 @@ export function RoomFilterModal({ title, options, selectedSet, onToggle, onClose
                 marginLeft: 'auto',
                 fontSize: 10.5, fontWeight: 600, padding: '4px 11px', borderRadius: 20,
                 cursor: availableRooms.size === 0 ? 'default' : 'pointer',
-                border: '1px solid var(--mint)', background: 'var(--meadow-soft)', color: 'var(--meadow)',
+                border: '1px solid var(--mint)', background: 'var(--meadow-soft)', color: 'var(--meadow-text)',
                 opacity: availableRooms.size === 0 ? 0.5 : 1,
                 fontFamily: 'Inter, sans-serif', transition: 'all .15s', flexShrink: 0,
               }}
@@ -873,7 +873,7 @@ export function StackConfirmModal({ pendingStack, onConfirm, onCancel }) {
           borderRadius: 10, padding: '12px 16px', marginBottom: 14,
           display: 'flex', flexDirection: 'column', gap: 6,
         }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--meadow-deep)', textTransform: 'uppercase', letterSpacing: '.7px' }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--meadow-text)', textTransform: 'uppercase', letterSpacing: '.7px' }}>
             After stacking
           </span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>

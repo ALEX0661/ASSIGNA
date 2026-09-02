@@ -608,7 +608,7 @@ export default function CoordRoomsPage() {
               <div style={{ display: 'flex', gap: 4, background: G.hover, padding: 4, borderRadius: 9, border: `1px solid ${G.border}` }}>
                 {['All', 'Assigned', 'Unassigned'].map(status => (
                   <button key={status} onClick={() => { setStatusFilter(status); setSelectedCourses(new Set()) }} 
-                    style={{ padding: '6px 14px', borderRadius: 7, fontSize: 12, fontWeight: statusFilter === status ? 700 : 600, background: statusFilter === status ? 'var(--surface)' : 'transparent', color: statusFilter === status ? G.meadowDeep : G.muted, border: 'none', cursor: 'pointer', boxShadow: statusFilter === status ? '0 1px 3px rgba(0,0,0,0.04)' : 'none', transition: 'all .15s', fontFamily: "'Inter', sans-serif" }}>
+                    style={{ padding: '6px 14px', borderRadius: 7, fontSize: 12, fontWeight: statusFilter === status ? 700 : 600, background: statusFilter === status ? 'var(--surface)' : 'transparent', color: statusFilter === status ? 'var(--meadow-text)' : G.muted, border: 'none', cursor: 'pointer', boxShadow: statusFilter === status ? '0 1px 3px rgba(0,0,0,0.04)' : 'none', transition: 'all .15s', fontFamily: "'Inter', sans-serif" }}>
                     {status}
                   </button>
                 ))}

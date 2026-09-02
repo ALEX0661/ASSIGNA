@@ -1282,7 +1282,7 @@ export default function CoordScheduleViewPage() {
                 </button>
               </div>
             ) : status === 'approved' ? (
-              <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'var(--meadow-soft)', color: 'var(--meadow)', border:'1px solid var(--meadow-border)', flexShrink:0, whiteSpace:'nowrap' }}>
+              <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'var(--meadow-soft)', color: 'var(--meadow-text)', border:'1px solid var(--meadow-border)', flexShrink:0, whiteSpace:'nowrap' }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                 Approved
               </span>
@@ -2164,7 +2164,7 @@ function ListView({ dayEvents, conflictMap, hasFilters, clearFilters, onCardClic
                         Merge
                       </span>
                     )}
-                    {isExtManaged && <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:9.5, fontWeight:600, background:'var(--meadow-soft)', color: 'var(--meadow)', border:'1px solid var(--meadow-border)', borderRadius:4, padding:'2px 6px' }}>Ext. managed</span>}
+                    {isExtManaged && <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:9.5, fontWeight:600, background:'var(--meadow-soft)', color: 'var(--meadow-text)', border:'1px solid var(--meadow-border)', borderRadius:4, padding:'2px 6px' }}>Ext. managed</span>}
                     {noFaculty && !isExtManaged && <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:9.5, fontWeight:700, background:'rgba(245, 158, 11, 0.05)', color:'#92400e', border:'1px solid #fcd34d', borderRadius:4, padding:'2px 6px' }}>Unassigned</span>}
                     {!conf && !merged && !noFaculty && <span style={{ fontSize:9.5, color:'var(--muted2)' }}>—</span>}
                     {/* Edge case: merged but also has a real non-room conflict */}

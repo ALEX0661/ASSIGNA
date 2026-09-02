@@ -946,7 +946,7 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
         {success && (
           <div style={{ padding:'10px 14px', borderRadius:'8px', background:'#E6FAF3', border:'1px solid #A7F3D0', display:'flex', gap:8, alignItems:'flex-start' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2" style={{ flexShrink:0, marginTop:2 }}><polyline points="20 6 9 17 4 12"/></svg>
-            <span style={{ fontSize:12, color:'var(--meadow)', fontWeight:500, lineHeight:1.5 }}>{success}</span>
+            <span style={{ fontSize:12, color: 'var(--meadow-text)', fontWeight:500, lineHeight:1.5 }}>{success}</span>
           </div>
         )}
 

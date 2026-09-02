@@ -620,7 +620,7 @@ export default function FacultyProfilePage() {
             sub={form.email ? undefined : 'No account activated yet'}
             right={
               form.email
-                ? <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, background: 'rgba(134,239,172,0.25)', color: 'var(--meadow)', border: '1px solid rgba(134,239,172,0.5)' }}>Active</span>
+                ? <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, background: 'rgba(134,239,172,0.25)', color: 'var(--meadow-text)', border: '1px solid rgba(134,239,172,0.5)' }}>Active</span>
                 : <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, background: 'rgba(239,68,68,0.15)', color: T.danger, border: '1px solid rgba(239,68,68,0.3)' }}>Not Activated</span>
             }
           />

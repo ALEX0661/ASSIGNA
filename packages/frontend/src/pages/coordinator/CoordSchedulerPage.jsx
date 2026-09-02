@@ -439,8 +439,8 @@ function QueueRail({ queue, myProgram, currentProgram }) {
                 }
               </div>
               <div style={{ marginTop: 6, textAlign: 'center' }}>
-                <div style={{ fontSize: 11, fontWeight: isMine ? 800 : 700, color: isMine ? G.meadowDeep : G.ink, whiteSpace: 'nowrap' }}>{prog}</div>
-                <div style={{ fontSize: 8.5, fontWeight: 800, color: isMine ? G.meadow : meta.color, letterSpacing: '.4px', textTransform: 'uppercase', whiteSpace: 'nowrap', marginTop: 2 }}>
+                <div style={{ fontSize: 11, fontWeight: isMine ? 800 : 700, color: isMine ? 'var(--meadow-text)' : G.ink, whiteSpace: 'nowrap' }}>{prog}</div>
+                <div style={{ fontSize: 8.5, fontWeight: 800, color: isMine ? 'var(--meadow-text-hover)' : meta.color, letterSpacing: '.4px', textTransform: 'uppercase', whiteSpace: 'nowrap', marginTop: 2 }}>
                   {isMine ? 'You' : meta.label}
                 </div>
               </div>
@@ -577,11 +577,11 @@ function PhaseTimeline({ currentPhaseIdx, status, progress, order, defaultOrder,
               type="button"
               onClick={onReset}
               disabled={isDefaultOrder}
-              style={{ background:'none', border:'none', padding:0, fontSize:11.5, fontWeight:700, color: isDefaultOrder ? G.muted2 : G.meadowDeep, cursor: isDefaultOrder ? 'default' : 'pointer', opacity: isDefaultOrder ? 0.5 : 1 }}>
+              style={{ background:'none', border:'none', padding:0, fontSize:11.5, fontWeight:700, color: isDefaultOrder ? G.muted2 : 'var(--meadow-text)', cursor: isDefaultOrder ? 'default' : 'pointer', opacity: isDefaultOrder ? 0.5 : 1 }}>
               Reset to Default
             </button>
           )}
-          <span style={{ fontSize:14, fontWeight:800, color: idle ? G.muted2 : done ? G.meadow : G.meadowDeep }}>{idle ? '—' : `${progress}%`}</span>
+          <span style={{ fontSize:14, fontWeight:800, color: idle ? G.muted2 : done ? 'var(--meadow-text-hover)' : 'var(--meadow-text)' }}>{idle ? '—' : `${progress}%`}</span>
         </div>
       </div>
       <div className="prog-bar-wrap">
@@ -601,7 +601,7 @@ function PhaseTimeline({ currentPhaseIdx, status, progress, order, defaultOrder,
                   {phaseDone && !idle ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                     : phaseActive ? <div style={{ width:10, height:10, borderRadius:'50%', background:G.meadowDeep }} /> : null}
                 </div>
-                <span className="phase-label" style={{ color: idle ? G.muted2 : phaseDone ? G.meadow : phaseActive ? G.ink : G.muted2 }}>{ph.short}</span>
+                <span className="phase-label" style={{ color: idle ? G.muted2 : phaseDone ? 'var(--meadow-text-hover)' : phaseActive ? G.ink : G.muted2 }}>{ph.short}</span>
               </div>
             )
           })}

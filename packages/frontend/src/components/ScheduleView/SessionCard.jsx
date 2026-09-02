@@ -321,7 +321,7 @@ export default function SessionCard({
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           <span style={{
-            fontSize: 8, fontWeight: 800, color: 'var(--meadow)',
+            fontSize: 8, fontWeight: 800, color: 'var(--meadow-text)',
             background: 'var(--surface)', padding: '2px 8px', borderRadius: 4,
             boxShadow: '0 2px 6px rgba(0,0,0,.08)',
           }}>

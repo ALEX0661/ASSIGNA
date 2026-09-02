@@ -273,7 +273,7 @@ function UploadStep({ onUploaded }) {
               {dragging ? 'Drop it here!' : 'Drop your Course List Excel file'}
             </p>
             <p style={{ fontSize:12, color:'var(--muted)', margin:0 }}>
-              or <span style={{ color:'var(--meadow)', fontWeight:600 }}>click to browse</span> · .xlsx or .xls
+              or <span style={{ color: 'var(--meadow-text)', fontWeight:600 }}>click to browse</span> · .xlsx or .xls
             </p>
           </>
         )}
@@ -319,8 +319,8 @@ const SEM_DETECT_MAP = [
   { patterns: ['midyear', 'mid year', 'mid-year', 'summer'], value: 'Midyear' },
 ]
 const SEM_BADGE = {
-  '1st Semester': { bg:'var(--meadow-soft)', color:'var(--meadow)', border:'var(--meadow-border)', short:'1st Sem' },
-  '2nd Semester': { bg:'#E6FAF3', color:'var(--meadow)', border:'var(--meadow-border)', short:'2nd Sem' },
+  '1st Semester': { bg:'var(--meadow-soft)', color: 'var(--meadow-text)', border:'var(--meadow-border)', short:'1st Sem' },
+  '2nd Semester': { bg:'#E6FAF3', color: 'var(--meadow-text)', border:'var(--meadow-border)', short:'2nd Sem' },
   'Midyear':      { bg:'rgba(217, 119, 6, 0.1)', color:'#F59E0B', border:'rgba(245, 158, 11, 0.35)', short:'Midyear' },
 }
 function detectSemester(sheetName) {
@@ -454,12 +454,12 @@ function SheetSelectionStep({ sheets, fileData, lockedProgram, onParsed, onBack 
 
 /* ─── Block config helpers ──────────────────────────────────────────────── */
 const ICM_PROG_META = {
-  'BSCS':      { color: 'var(--meadow)', bg: 'var(--meadow-soft)' },
-  'BSIT':      { color: 'var(--meadow)', bg: '#E6FAF3' },
+  'BSCS':      { color: 'var(--meadow-text)', bg: 'var(--meadow-soft)' },
+  'BSIT':      { color: 'var(--meadow-text)', bg: '#E6FAF3' },
   'BSEMC-GD':  { color: '#F59E0B', bg: 'rgba(217, 119, 6, 0.1)' },
   'BSEMC-DAT': { color: '#EF4444', bg: 'rgba(220, 38, 38, 0.05)' },
 }
-const ICM_PROG_META_DEFAULT = { color: 'var(--meadow)', bg: 'var(--meadow-soft)' }
+const ICM_PROG_META_DEFAULT = { color: 'var(--meadow-text)', bg: 'var(--meadow-soft)' }
 
 function BlockStepper({ value, onChange }) {
   const num = value === '' ? '' : Number(value)
@@ -516,8 +516,8 @@ function BlockConfigStep({ courses, onBack, onSubmit }) {
   }
 
   const semBadge = {
-    '1st Semester': { bg:'var(--meadow-soft)', color:'var(--meadow)', short:'1st Sem' },
-    '2nd Semester': { bg:'#E6FAF3', color:'var(--meadow)', short:'2nd Sem' },
+    '1st Semester': { bg:'var(--meadow-soft)', color: 'var(--meadow-text)', short:'1st Sem' },
+    '2nd Semester': { bg:'#E6FAF3', color: 'var(--meadow-text)', short:'2nd Sem' },
     'Midyear':      { bg:'rgba(217, 119, 6, 0.1)', color:'#F59E0B', short:'Midyear' },
   }
 
@@ -629,7 +629,7 @@ function EditableRow({ course, invalid, lockedProgram, onEdit, onRemove }) {
       <td style={{ padding:'6px 8px' }}>{cellInp('title',{wide:true})}</td>
       <td style={{ padding:'6px 8px' }}>
         {lockedProgram ? (
-          <span style={{ display:'inline-block', padding:'3px 8px', background:'var(--meadow-border)', color:'var(--meadow-deep)', borderRadius:6, fontSize:11.5, fontWeight:700 }} title="Locked to your program">
+          <span style={{ display:'inline-block', padding:'3px 8px', background:'var(--meadow-border)', color: 'var(--meadow-text)', borderRadius:6, fontSize:11.5, fontWeight:700 }} title="Locked to your program">
             {draft.program}
           </span>
         ) : (
@@ -661,14 +661,14 @@ function EditableRow({ course, invalid, lockedProgram, onEdit, onRemove }) {
       </td>
       <td style={{ padding:'8px 8px', fontWeight:500, color:'var(--ink)', fontSize:12.5 }}>{course.title||<span style={{color:'rgba(220, 38, 38, 0.25)'}}>—</span>}</td>
       <td style={{ padding:'8px 8px' }}>
-        <span style={{ display:'inline-block', padding:'2px 8px', background:'var(--meadow-border)', color:'var(--meadow-deep)', borderRadius:99, fontSize:11, fontWeight:600 }}>{course.program||'—'}</span>
+        <span style={{ display:'inline-block', padding:'2px 8px', background:'var(--meadow-border)', color: 'var(--meadow-text)', borderRadius:99, fontSize:11, fontWeight:600 }}>{course.program||'—'}</span>
       </td>
       <td style={{ textAlign:'center', fontSize:12, color:'var(--muted)', padding:'8px 8px' }}>{course.yearLevel}</td>
       <td style={{ textAlign:'center', fontSize:12, color:'var(--muted)', padding:'8px 8px' }}>{course.unitsLecture}</td>
       <td style={{ textAlign:'center', fontSize:12, color:'var(--muted)', padding:'8px 8px' }}>{course.unitsLab}</td>
       <td style={{ textAlign:'center', padding:'8px 8px' }}>
         {Number(course.blocks)>=1
-          ? <span style={{ fontSize:12, fontWeight:700, color:'var(--meadow)' }}>{course.blocks}</span>
+          ? <span style={{ fontSize:12, fontWeight:700, color: 'var(--meadow-text)' }}>{course.blocks}</span>
           : <span style={{ color:'#EF4444', fontWeight:700, fontSize:12 }}>!</span>}
       </td>
       <td style={{ padding:'8px 10px' }}>
@@ -737,7 +737,7 @@ function ReviewStep({ courses, lockedProgram, onBack, onCommit, onRemove, onEdit
                 <tbody>
                   {results.failed.map((f,i) => (
                     <tr key={i} style={{ borderTop:'1px solid var(--meadow-border)' }}>
-                      <td style={{ padding:'8px' }}><span style={{ display:'inline-block', padding:'2px 8px', background:'var(--meadow-soft)', color:'var(--meadow)', borderRadius:99, fontSize:11, fontWeight:700 }}>{f.course.courseCode}</span></td>
+                      <td style={{ padding:'8px' }}><span style={{ display:'inline-block', padding:'2px 8px', background:'var(--meadow-soft)', color: 'var(--meadow-text)', borderRadius:99, fontSize:11, fontWeight:700 }}>{f.course.courseCode}</span></td>
                       <td style={{ padding:'8px', fontWeight:500, fontSize:12 }}>{f.course.title}</td>
                       <td style={{ padding:'8px', fontSize:12 }}>{f.course.program}</td>
                       <td style={{ padding:'8px', color:'#EF4444', fontSize:12 }}>{f.reason}</td>
@@ -920,7 +920,7 @@ export default function ImportCoursesModal({ onClose, onImported, lockedProgram 
             </div>
             <p style={{ fontSize:11.5, color:'var(--muted)', margin:0, marginLeft:44 }}>
               Step {step} of 4 · Upload → Sheet → Sections → Review
-              {lockedProgram && <span style={{ marginLeft:8, display:'inline-block', padding:'1px 8px', background:'var(--meadow-soft)', color:'var(--meadow)', borderRadius:99, fontSize:10.5, fontWeight:700 }}>Scoped to {lockedProgram}</span>}
+              {lockedProgram && <span style={{ marginLeft:8, display:'inline-block', padding:'1px 8px', background:'var(--meadow-soft)', color: 'var(--meadow-text)', borderRadius:99, fontSize:10.5, fontWeight:700 }}>Scoped to {lockedProgram}</span>}
             </p>
           </div>
           <button className="im-close" onClick={onClose} aria-label="Close">

@@ -181,13 +181,13 @@ function FilterPill({ label, count, active, onClick, icon }) {
       padding: '6px 14px', borderRadius: 10, fontSize: 11.5,
       fontFamily: "'Inter',sans-serif", fontWeight: active ? 600 : 500,
       background: active ? 'var(--meadow-soft)' : 'var(--surface)',
-      color: active ? G.meadowDeep : G.muted,
+      color: active ? 'var(--meadow-text)' : G.muted,
       border: `1px solid ${active ? G.meadowBorder : G.border}`,
       cursor: 'pointer', transition: 'all .15s',
       display: 'flex', alignItems: 'center', gap: 6,
       boxShadow: active ? '0 2px 8px rgba(0,0,0,0.08)' : '0 1px 2px rgba(0,0,0,0.02)'
     }}
-    onMouseEnter={e => { if(!active) { e.currentTarget.style.borderColor = G.meadowBorder; e.currentTarget.style.color = G.meadow } }}
+    onMouseEnter={e => { if(!active) { e.currentTarget.style.borderColor = G.meadowBorder; e.currentTarget.style.color = 'var(--meadow-text-hover)' } }}
     onMouseLeave={e => { if(!active) { e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted } }}
     >
       {active && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
@@ -210,7 +210,7 @@ function SectionLabel({ label, count, onClear, icon }) {
       </div>
       {count > 0 && (
         <button onClick={onClear} style={{ fontSize: 11.5, color: G.muted2, background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Inter',sans-serif", fontWeight: 500, transition: 'color .15s' }}
-          onMouseEnter={e => e.currentTarget.style.color = G.meadow}
+          onMouseEnter={e => e.currentTarget.style.color = 'var(--meadow-text-hover)'}
           onMouseLeave={e => { e.currentTarget.style.color = G.muted2 }}>
           Clear
         </button>
@@ -926,14 +926,14 @@ export default function CoordCoursesPage() {
         <div id="tour-header-actions" style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
           <button className="tour-btn-config-blocks" onClick={() => setShowBlockCfg(true)} title="Configure blocks per year level"
             style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 8, border: `1px solid ${G.border}`, background: 'var(--surface)', color: G.muted, cursor: 'pointer', transition: 'all .15s', padding: 0 }}
-            onMouseEnter={e => { e.currentTarget.style.background = G.hover; e.currentTarget.style.color = G.meadow }}
+            onMouseEnter={e => { e.currentTarget.style.background = G.hover; e.currentTarget.style.color = 'var(--meadow-text-hover)' }}
             onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.color = G.muted }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
           </button>
 
           <button className="tour-btn-export" onClick={handleExport} disabled={!filtered.length} title="Export filtered courses to Excel"
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: `1px solid ${G.border}`, background: 'var(--surface)', color: G.muted2, fontSize: 11.5, fontWeight: 500, cursor: filtered.length ? 'pointer' : 'not-allowed', opacity: filtered.length ? 1 : 0.45, transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
-            onMouseEnter={e => { if (filtered.length) { e.currentTarget.style.background = G.hover; e.currentTarget.style.color = G.meadow }}}
+            onMouseEnter={e => { if (filtered.length) { e.currentTarget.style.background = G.hover; e.currentTarget.style.color = 'var(--meadow-text-hover)' }}}
             onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.color = G.muted2 }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -945,7 +945,7 @@ export default function CoordCoursesPage() {
 
           <button className="tour-btn-import" onClick={() => setShowImport(true)}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 16px', borderRadius: 10, border: `1px solid ${G.border}`, fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: 'var(--surface)', color: G.muted }}
-            onMouseEnter={e => { e.currentTarget.style.background = G.hover; e.currentTarget.style.borderColor = G.meadowBorder; e.currentTarget.style.color = G.meadow }}
+            onMouseEnter={e => { e.currentTarget.style.background = G.hover; e.currentTarget.style.borderColor = G.meadowBorder; e.currentTarget.style.color = 'var(--meadow-text-hover)' }}
             onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -1039,9 +1039,9 @@ export default function CoordCoursesPage() {
             <span key={i} style={{
               display: 'inline-flex', alignItems: 'center', gap: 5,
               padding: '3px 6px 3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 600,
-              background: chip.color === G.meadow ? G.meadowSoft : chip.color + '18',
+              background: chip.color === 'var(--meadow-text-hover)' ? G.meadowSoft : chip.color + '18',
               color: chip.color,
-              border: `1px solid ${chip.color === G.meadow ? G.meadowBorder : chip.color + '33'}`,
+              border: `1px solid ${chip.color === 'var(--meadow-text-hover)' ? G.meadowBorder : chip.color + '33'}`,
             }}>
               {chip.label}
               <button onClick={chip.onRemove} style={{
@@ -1202,7 +1202,7 @@ export default function CoordCoursesPage() {
                         <button title="Edit course" onClick={() => { setEditTarget({ ...c, yearLevel: String(c.yearLevel), preferredRoom: c.preferredRoom || '' }); setError('') }}
                           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 7, background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, color: 'var(--meadow-text-hover)', cursor: 'pointer', padding: 0, transition: 'all .14s' }}
                           onMouseEnter={e => { e.currentTarget.style.background = G.meadow; e.currentTarget.style.color = '#fff' }}
-                          onMouseLeave={e => { e.currentTarget.style.background = G.meadowSoft; e.currentTarget.style.color = G.meadow }}>
+                          onMouseLeave={e => { e.currentTarget.style.background = G.meadowSoft; e.currentTarget.style.color = 'var(--meadow-text-hover)' }}>
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         </button>
                         <button title="Delete course" onClick={() => handleDelete(c.courseCode)}

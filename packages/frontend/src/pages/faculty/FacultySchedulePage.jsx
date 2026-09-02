@@ -240,7 +240,7 @@ function Badge({ children, type = 'default', size = 'sm' }) {
     lec:     { bg:'rgba(37, 99, 235, 0.1)', color:'#60A5FA', border:'#BFDBFE' },
     lab:     { bg:'rgba(217, 119, 6, 0.05)', color:'#F59E0B', border:'rgba(245, 158, 11, 0.25)' },
     room:    { bg: T.greenSoft, color: T.greenDeep, border: T.greenBorder },
-    merged:  { bg:'var(--meadow-soft)', color:'var(--meadow)', border:'var(--meadow-border)' },
+    merged:  { bg:'var(--meadow-soft)', color: 'var(--meadow-text)', border:'var(--meadow-border)' },
     conflict:{ bg:'rgba(239, 68, 68, 0.05)', color:'#EF4444', border:'rgba(220, 38, 38, 0.25)' },
     default: { bg: T.bgAlt, color: T.textMid, border: T.border },
   }
@@ -320,7 +320,7 @@ function SessionModal({ event, onClose }) {
               {isMerged && (
                 <span style={{
                   fontFamily: "'Inter',sans-serif", fontSize: 10, fontWeight: 700, padding: '4px 10px', borderRadius: 6,
-                  background: 'var(--meadow-soft)', color: 'var(--meadow)', border: '1px solid #A7F3D0', display: 'flex', alignItems: 'center', gap: 4
+                  background: 'var(--meadow-soft)', color: 'var(--meadow-text)', border: '1px solid #A7F3D0', display: 'flex', alignItems: 'center', gap: 4
                 }}>
                   <img src={iconMerged} alt="Merged" style={{ width:10, height:10 }}/> Merged
                 </span>
@@ -962,7 +962,7 @@ export default function FacultySchedulePage() {
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
                   padding: '2px 9px', borderRadius: 99, fontSize: 10, fontWeight: 700,
-                  background: 'var(--meadow-soft)', color: 'var(--meadow)', border: '1px solid var(--meadow-border)',
+                  background: 'var(--meadow-soft)', color: 'var(--meadow-text)', border: '1px solid var(--meadow-border)',
                   whiteSpace: 'nowrap'
                 }}>
                   <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>

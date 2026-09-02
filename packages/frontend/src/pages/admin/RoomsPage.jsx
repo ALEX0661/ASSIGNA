@@ -80,7 +80,7 @@ if (!document.getElementById('rooms-page-style')) {
     
     .room-chip-idx { font-size: 10px; font-weight: 800; color: #fff; background: ${G.meadow}; padding: 2px 6px; border-radius: 4px; }
     
-    .chip-del { display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 5px; color: ${isDark ? 'var(--mint)' : G.meadow}; cursor: pointer; transition: all 0.1s; }
+    .chip-del { display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 5px; color: ${'var(--meadow-text-hover)'}; cursor: pointer; transition: all 0.1s; }
     .chip-del:hover { background: var(--surface); color: #DC2626; }
 
     /* Inline Add Input */
@@ -138,7 +138,7 @@ if (!document.getElementById('rooms-page-style')) {
     .modal-room-card-inner { display: flex; align-items: center; gap: 12px; }
 
     /* Green Room Pills for Table */
-    .assign-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 7px; font-size: 11.5px; font-weight: 600; background: var(--surface); color: var(--meadow-text); border: 1px dashed ${isDark ? 'var(--mint)' : G.meadow}; cursor: pointer; transition: all 0.15s; }
+    .assign-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 7px; font-size: 11.5px; font-weight: 600; background: var(--surface); color: var(--meadow-text); border: 1px dashed ${'var(--meadow-text-hover)'}; cursor: pointer; transition: all 0.15s; }
     .assign-trigger:hover { background: ${G.meadowSoft}; border-style: solid; }
     
     .assigned-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background: ${G.meadowSoft}; color: var(--meadow-text); border: 1px solid ${G.meadowBorder}; }
@@ -687,7 +687,7 @@ export default function RoomsPage() {
               <div style={{ display: 'flex', gap: 4, background: G.hover, padding: 4, borderRadius: 9, border: `1px solid ${G.border}` }}>
                 {['All', 'Assigned', 'Unassigned'].map(status => (
                   <button key={status} onClick={() => { setStatusFilter(status); setSelected(new Set()) }} 
-                    style={{ padding: '6px 14px', borderRadius: 7, fontSize: 12, fontWeight: statusFilter === status ? 700 : 600, background: statusFilter === status ? 'var(--surface)' : 'transparent', color: statusFilter === status ? (isDark ? 'var(--mint)' : G.meadowDeep) : G.muted, border: 'none', cursor: 'pointer', boxShadow: statusFilter === status ? '0 1px 3px rgba(0,0,0,0.04)' : 'none', transition: 'all .15s', fontFamily: "'Inter', sans-serif" }}>
+                    style={{ padding: '6px 14px', borderRadius: 7, fontSize: 12, fontWeight: statusFilter === status ? 700 : 600, background: statusFilter === status ? 'var(--surface)' : 'transparent', color: statusFilter === status ? (isDark ? 'var(--mint)' : 'var(--meadow-text)') : G.muted, border: 'none', cursor: 'pointer', boxShadow: statusFilter === status ? '0 1px 3px rgba(0,0,0,0.04)' : 'none', transition: 'all .15s', fontFamily: "'Inter', sans-serif" }}>
                     {status}
                   </button>
                 ))}
@@ -701,7 +701,7 @@ export default function RoomsPage() {
               {programs.map(p => (
                 <button key={p} 
                   onClick={() => { setProgFilter(p); setSelected(new Set()) }}
-                  style={{ padding: '5px 12px', borderRadius: 99, fontSize: 11.5, fontWeight: progFilter === p ? 700 : 600, background: progFilter === p ? G.meadowSoft : 'var(--surface)', color: progFilter === p ? (isDark ? 'var(--mint)' : G.meadowDeep) : G.muted, border: `1px solid ${progFilter === p ? G.meadowBorder : G.border}`, cursor: 'pointer', transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
+                  style={{ padding: '5px 12px', borderRadius: 99, fontSize: 11.5, fontWeight: progFilter === p ? 700 : 600, background: progFilter === p ? G.meadowSoft : 'var(--surface)', color: progFilter === p ? (isDark ? 'var(--mint)' : 'var(--meadow-text)') : G.muted, border: `1px solid ${progFilter === p ? G.meadowBorder : G.border}`, cursor: 'pointer', transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
                 >
                   {p}
                 </button>
