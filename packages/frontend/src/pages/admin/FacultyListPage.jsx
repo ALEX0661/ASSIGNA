@@ -316,7 +316,7 @@ function FacultyCard({ faculty, courseTitleMap, selected, onSelect, onClick, onA
       {hovered && !selectionMode && (
         <div style={{
           position: 'absolute', bottom: 0, left: 0, right: 0,
-          background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(6px)',
+          background: 'var(--surface)',
           borderTop: `1px solid ${G.borderLight}`, height: 36,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '0 14px', animation: 'fadeIn 0.13s ease',
