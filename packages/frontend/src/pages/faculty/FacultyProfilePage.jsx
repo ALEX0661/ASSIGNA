@@ -2,36 +2,38 @@ import { useEffect, useState, useMemo } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { getFaculty, updateFaculty, updatePreferences, getCourses, updateCredentials } from '../../services/api'
 import SpecializationModal from '../../components/FacultyDetail/SpecializationModal'
+import { PANEL_COLOR_PRESETS } from '../../components/FacultyDetail/fdShared'
+import { useTour } from '../../hooks/useTour'
 
 // ─── Theme — matches FacultyCards/FacultyDetailPage exactly ──────────────────
 const T = {
-  green: 'var(--meadow, var(--meadow))',
+  green:        'var(--meadow)',
   greenDeep:    'var(--meadow-deep)',
   greenMid:     'var(--meadow-mid)',
   greenSoft:    'var(--meadow-soft)',
   greenBorder:  'var(--meadow-border)',
   textMain:     'var(--ink)',
-  textMid:      '#1C3D2A',
-  textMuted: 'var(--muted, #4B7060)',
-  textLight: 'var(--muted2, #6B8C7A)',
+  textMid:      'var(--ink2, var(--ink))',
+  textMuted:    'var(--muted)',
+  textLight:    'var(--muted2)',
   border:       'var(--border)',
   borderLight:  'var(--hover)',
-  bg: 'var(--surface, #FFFFFF)',
-  bgAlt: 'var(--bg, #F2F7F4)',
-  bgPage:       '#F2F7F4',
+  bg:           'var(--surface)',
+  bgAlt:        'var(--bg)',
+  bgPage:       'var(--bg)',
   danger:       '#EF4444',
-  dangerSoft:   'rgba(239, 68, 68, 0.05)',
+  dangerSoft:   'rgba(239, 68, 68, 0.1)',
   headerBg:     'var(--meadow-soft)',
   headerBorder: 'var(--meadow-border)',
-  // Specialization accent
-  specGreen:    'var(--meadow, var(--meadow))',
+  specGreen:    'var(--meadow)',
   specGreenDeep:'var(--meadow-deep)',
   specGreenSoft:'var(--meadow-soft)',
   specGreenBorder:'var(--meadow-border)',
-  // Orange (part-time notice)
+  greenText:    'var(--meadow-text)',
+  greenTextHover: 'var(--meadow-text-hover)',
   orange:       '#F59E0B',
-  orangeDeep:   '#92400E',
-  orangeSoft:   'rgba(245, 158, 11, 0.05)',
+  orangeDeep:   '#D97706',
+  orangeSoft:   'rgba(245, 158, 11, 0.1)',
   orangeBorder: 'rgba(245, 158, 11, 0.25)',
 }
 
@@ -56,8 +58,8 @@ function getInitials(name = '') {
 function getAvatarColor(name = '') {
   const palette = [
     { bg: 'var(--meadow-soft)', fg: 'var(--meadow)' }, { bg: 'rgba(59, 130, 246, 0.1)', fg: '#60A5FA' },
-    { bg: '#FCE7F3', fg: '#DB2777' }, { bg: 'color-mix(in srgb, #6D28D9 15%, transparent)', fg: '#7C3AED' },
-    { bg: 'rgba(245, 158, 11, 0.1)', fg: '#F59E0B' }, { bg: '#FFE4E6', fg: '#E11D48' },
+    { bg: 'rgba(219, 39, 119, 0.1)', fg: '#DB2777' }, { bg: 'color-mix(in srgb, #6D28D9 15%, transparent)', fg: '#7C3AED' },
+    { bg: 'rgba(245, 158, 11, 0.1)', fg: '#F59E0B' }, { bg: 'rgba(225, 29, 72, 0.1)', fg: '#E11D48' },
   ]
   const code = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
   return palette[code % palette.length]
@@ -68,7 +70,7 @@ function Skel({ w = '100%', h = 14, r = 8 }) {
   return (
     <div style={{
       width: w, height: h, borderRadius: r, flexShrink: 0,
-      background: `linear-gradient(90deg,${T.headerBg} 25%,${T.bgAlt} 50%,${T.headerBg} 75%)`,
+      background: `linear-gradient(90deg,${T.borderLight} 25%,${T.border} 50%,${T.borderLight} 75%)`,
       backgroundSize: '200% 100%', animation: 'fp-shimmer 1.4s infinite',
     }} />
   )
@@ -102,7 +104,7 @@ function SaveBtn({ saving, saved, dirty, onClick }) {
         display: 'inline-flex', alignItems: 'center', gap: 6,
         padding: '6px 14px', borderRadius: 8, border: 'none',
         background: saved ? T.greenSoft : `linear-gradient(135deg,${T.green},${T.greenDeep})`,
-        color: saved ? T.greenDeep : 'var(--surface)',
+        color: saved ? T.greenText : 'var(--surface)',
         fontSize: 12, fontWeight: 600, cursor: saving ? 'default' : 'pointer',
         fontFamily: "'Inter',sans-serif",
         boxShadow: saved ? 'none' : `0 3px 10px rgba(0,0,0,0.28)`,
@@ -113,7 +115,7 @@ function SaveBtn({ saving, saved, dirty, onClick }) {
         <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
           style={{ animation: 'fp-spin .8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Saving…</>
       ) : saved ? (
-        <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.greenDeep} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>Saved</>
+        <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.greenText} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>Saved</>
       ) : (
         <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save</>
       )}
@@ -156,7 +158,7 @@ function SpecTag({ spec, courseMap = {} }) {
       <div style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, background: T.green, opacity: 0.7 }} />
       <span style={{ fontSize: 12.5, fontWeight: 600, color: T.textMain, fontFamily: "'Inter',sans-serif" }}>{title}</span>
       <span style={{
-        fontSize: 10, fontWeight: 700, color: T.greenDeep,
+        fontSize: 10, fontWeight: 700, color: T.greenText,
         background: 'var(--surface)', padding: '2px 9px', borderRadius: 99,
         border: `1.5px solid ${T.greenBorder}`, letterSpacing: '.3px', flexShrink: 0,
       }}>{spec.courseCode}</span>
@@ -171,6 +173,20 @@ export default function FacultyProfilePage() {
   const [facultyId,  setFacultyId]  = useState(null)
   const [loading,    setLoading]    = useState(true)
   const [error,      setError]      = useState('')
+  const [isDarkMode, setIsDarkMode] = useState(() => document.documentElement.getAttribute('data-mode') === 'dark')
+
+  function handleModeChange() {
+    const root = document.documentElement
+    const nextDark = !isDarkMode
+    setIsDarkMode(nextDark)
+    if (nextDark) {
+      root.setAttribute('data-mode', 'dark')
+      localStorage.setItem('agy-mode', 'dark')
+    } else {
+      root.removeAttribute('data-mode')
+      localStorage.setItem('agy-mode', 'light')
+    }
+  }
 
   // Form state
   const [form,         setForm]         = useState({ firstName:'', lastName:'', name:'', AcademicRank:'', Department:'', Educational_attainment:'', SexAtBirth:'', email:'', status:'full-time' })
@@ -194,6 +210,12 @@ export default function FacultyProfilePage() {
   const [prefSaving,   setPrefSaving]   = useState(false)
   const [prefSaved,    setPrefSaved]    = useState(false)
   const [prefError,    setPrefError]    = useState('')
+
+  // Panel color state
+  const [panelColor,         setPanelColor]         = useState(null)
+  const [originalPanelColor, setOriginalPanelColor] = useState(null)
+  const [colorSaving,        setColorSaving]        = useState(false)
+  const [colorSaved,         setColorSaved]         = useState(false)
 
   const timeOptions = Array.from({ length: 31 }, (_, i) => 6 + i * 0.5)
 
@@ -219,6 +241,12 @@ export default function FacultyProfilePage() {
         setSpecs(Array.isArray(me.specializations) ? me.specializations : [])
         const prefs = { days: me.preferredDays?.length > 0 ? me.preferredDays : ['Monday','Tuesday','Wednesday','Thursday','Friday'], start: me.preferredTimeStart ?? 7, end: me.preferredTimeEnd ?? 17 }
         setPrefDays(prefs.days); setPrefStart(prefs.start); setPrefEnd(prefs.end); setOriginalPrefs(prefs)
+        setPanelColor(me.panelColor || null); setOriginalPanelColor(me.panelColor || null)
+        
+        // Sync to layout
+        if (me.panelColor) localStorage.setItem('facultyPanelColor', me.panelColor)
+        else localStorage.removeItem('facultyPanelColor')
+        window.dispatchEvent(new Event('facultyColorChanged'))
         setLoading(false)
         getCourses().then(courses => {
           if (!Array.isArray(courses)) return
@@ -236,6 +264,57 @@ export default function FacultyProfilePage() {
 
   const isInfoChanged  = useMemo(() => originalForm && JSON.stringify(form) !== JSON.stringify(originalForm), [form, originalForm])
   const isPrefsChanged = useMemo(() => originalPrefs && (JSON.stringify([...prefDays].sort()) !== JSON.stringify([...originalPrefs.days].sort()) || prefStart !== originalPrefs.start || prefEnd !== originalPrefs.end), [prefDays, prefStart, prefEnd, originalPrefs])
+  const isColorChanged = useMemo(() => panelColor !== originalPanelColor, [panelColor, originalPanelColor])
+
+  // Tour setup
+  const tourSteps = useMemo(() => {
+    if (loading) return []
+    const steps = [
+      { target: '#tour-fp-profile', title: 'Profile Information', content: "Update your personal details, academic rank, and employment status here. Ensuring this is accurate helps the department manage records properly.", placement: 'top' },
+      { target: '#tour-fp-specs', title: 'Manage Specializations', content: "Click here to declare which courses you specialize in teaching. The automated scheduler will prioritize assigning you these courses.", placement: 'right' }
+    ]
+    if (isPartTime) {
+      steps.push({ target: '#tour-fp-prefs', title: 'Schedule Preferences', content: "Set your preferred teaching days and time window. The smart scheduler considers these preferences when building the timetable.", placement: 'top' })
+    }
+    steps.push({ target: '#tour-fp-login', title: 'Login Credentials', content: "Manage your login email and password here. You can also generate a secure password automatically.", placement: 'top' })
+    steps.push({ target: '#tour-fp-panel', title: 'Panel Customization', content: "Make it yours! Pick an accent color for your portal and easily toggle between Light and Dark mode.", placement: 'right' })
+    return steps
+  }, [loading, isPartTime])
+
+  const { TourElement, startTour } = useTour('facultyProfile', tourSteps, !loading)
+
+  useEffect(() => {
+    if (loading || tourSteps.length === 0) return
+    startTour()
+  }, [loading, tourSteps, startTour])
+
+  async function handlePanelColorChange(newColor) {
+    if (!facultyId || newColor === panelColor) return
+    const oldColor = panelColor
+    setPanelColor(newColor)
+    setColorSaving(true)
+    
+    // Optimistic UI update - apply color instantly
+    if (newColor) localStorage.setItem('facultyPanelColor', newColor)
+    else localStorage.removeItem('facultyPanelColor')
+    window.dispatchEvent(new Event('facultyColorChanged'))
+    
+    try {
+      await updateFaculty(facultyId, { panelColor: newColor })
+      setOriginalPanelColor(newColor)
+      setColorSaved(true)
+      setTimeout(() => setColorSaved(false), 2500)
+    } catch {
+      // Rollback on failure
+      setPanelColor(oldColor)
+      if (oldColor) localStorage.setItem('facultyPanelColor', oldColor)
+      else localStorage.removeItem('facultyPanelColor')
+      window.dispatchEvent(new Event('facultyColorChanged'))
+      alert('Failed to save panel color.')
+    } finally {
+      setColorSaving(false)
+    }
+  }
 
   async function handleSaveInfo() {
     if (!facultyId) return
@@ -296,6 +375,7 @@ export default function FacultyProfilePage() {
 
   return (
     <div className="fp-page-wrap" style={{ fontFamily: "'Inter',sans-serif", color: T.textMain, background: T.bgPage, padding: '20px 20px 48px', minHeight: '100vh' }}>
+      {TourElement}
       <style>{`
         @keyframes fp-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
         @keyframes fp-fadeUp  { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
@@ -342,7 +422,7 @@ export default function FacultyProfilePage() {
 
       {/* ── Hero banner ── */}
       <div className="fp-hero-wrap" style={{
-        background: `linear-gradient(135deg, #3D7A58 0%, #2E6145 60%, #265242 100%)`,
+        background: 'linear-gradient(135deg, var(--meadow) 0%, var(--meadow-deep) 100%)',
         borderRadius: 20, padding: '24px 28px', marginBottom: 20,
         position: 'relative', overflow: 'hidden',
         boxShadow: '0 6px 28px rgba(46,122,82,0.22)',
@@ -390,7 +470,7 @@ export default function FacultyProfilePage() {
           {/* Profile card — dark green gradient header, matches FacultyCards ProfileCard */}
           <div style={{ background: T.bg, borderRadius: 16, border: `1px solid ${T.border}`, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
             {/* Avatar header */}
-            <div className="fp-sidebar-card-top" style={{ background: `linear-gradient(160deg,var(--meadow-mid) 0%,${T.greenDeep} 100%)`, padding: '28px 24px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, position: 'relative', overflow: 'hidden' }}>
+            <div className="fp-sidebar-card-top" style={{ background: 'linear-gradient(160deg, var(--meadow-mid) 0%, var(--meadow-deep) 100%)', padding: '28px 24px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: -30, right: -30, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
               <div style={{ position: 'absolute', bottom: -20, left: -14, width: 72, height: 72, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', pointerEvents: 'none' }} />
               {loading ? (
@@ -421,10 +501,10 @@ export default function FacultyProfilePage() {
             </div>
 
             {/* Manage Specializations button */}
-            <div style={{ padding: '16px 20px' }}>
+            <div id="tour-fp-specs" style={{ padding: '16px 20px' }}>
               {loading ? <Skel h={40} r={10} /> : (
                 <button type="button" onClick={() => setShowSpecModal(true)}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '10px 14px', borderRadius: 10, background: T.bgAlt, color: T.greenDeep, border: `1.5px solid ${T.border}`, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", transition: 'all 0.2s' }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '10px 14px', borderRadius: 10, background: T.bgAlt, color: T.greenText, border: `1.5px solid ${T.border}`, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", transition: 'all 0.2s' }}
                   onMouseEnter={e => { e.currentTarget.style.background = T.greenSoft; e.currentTarget.style.borderColor = T.greenBorder }}
                   onMouseLeave={e => { e.currentTarget.style.background = T.bgAlt; e.currentTarget.style.borderColor = T.border }}
                 >
@@ -433,12 +513,60 @@ export default function FacultyProfilePage() {
                     Manage Specializations
                   </span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {specs.length > 0 && <span style={{ padding: '2px 8px', borderRadius: 99, background: T.greenSoft, color: T.greenDeep, fontSize: 10.5, fontWeight: 700, border: `1px solid ${T.greenBorder}` }}>{specs.length}</span>}
+                    {specs.length > 0 && <span style={{ padding: '2px 8px', borderRadius: 99, background: T.greenSoft, color: T.greenText, fontSize: 10.5, fontWeight: 700, border: `1px solid ${T.greenBorder}` }}>{specs.length}</span>}
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                   </span>
                 </button>
               )}
             </div>
+            
+            {/* Panel Color Picker */}
+            {!loading && (
+              <div id="tour-fp-panel" style={{ padding: '0 20px 20px', borderTop: `1px solid ${T.borderLight}`, paddingTop: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.6px' }}>Panel Color</div>
+                  <button
+                    onClick={handleModeChange}
+                    title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      width: 28, height: 28, borderRadius: 8, border: `1.5px solid ${T.borderLight}`,
+                      background: T.bgAlt, color: T.textMain, cursor: 'pointer', transition: 'all .15s',
+                      flexShrink: 0, padding: 0
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = T.borderLight }}
+                    onMouseLeave={e => { e.currentTarget.style.background = T.bgAlt }}
+                  >
+                    {isDarkMode ? (
+                      <span style={{ fontSize: 14, lineHeight: 1, filter: 'grayscale(100%) brightness(2)' }}>☀️</span>
+                    ) : (
+                      <span style={{ fontSize: 14, lineHeight: 1, filter: 'grayscale(100%) contrast(2)' }}>🌙</span>
+                    )}
+                  </button>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {PANEL_COLOR_PRESETS.map(preset => {
+                    const isSelected = preset.id === panelColor || (panelColor === null && preset.id === 'default')
+                    return (
+                      <button
+                        key={preset.id}
+                        onClick={() => handlePanelColorChange(preset.id === 'default' ? null : preset.id)}
+                        title={preset.label}
+                        style={{
+                          width: 28, height: 28, minWidth: 28, minHeight: 28, borderRadius: '50%', cursor: 'pointer', flexShrink: 0, boxSizing: 'border-box',
+                          background: preset.value ? preset.value : `linear-gradient(135deg, ${T.green}, ${T.greenDeep})`,
+                          border: isSelected ? '2px solid var(--surface)' : '2px solid transparent',
+                          boxShadow: isSelected ? '0 0 0 2px var(--ink)' : '0 1px 3px rgba(0,0,0,0.1)',
+                          transition: 'transform 0.1s',
+                          transform: isSelected ? 'scale(1.1)' : 'scale(1)',
+                          padding: 0
+                        }}
+                      />
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Part-time notice */}
@@ -460,10 +588,12 @@ export default function FacultyProfilePage() {
 
           {/* ── Basic Information Card ── */}
           <div style={{ background: T.bg, borderRadius: 16, border: `1px solid ${T.border}`, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', animation: 'fp-fadeUp 0.3s ease 0.05s both' }}>
-            <CardHeader
-              title="Basic Information"
-              right={<SaveBtn dirty={isInfoChanged} saving={infoSaving} saved={infoSaved} onClick={handleSaveInfo} />}
-            />
+            <div id="tour-fp-profile">
+              <CardHeader
+                title="Basic Information"
+                right={<SaveBtn dirty={isInfoChanged} saving={infoSaving} saved={infoSaved} onClick={handleSaveInfo} />}
+              />
+            </div>
             <div className="fp-grid-2 fp-card-body" style={{ padding: '24px 20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 24px' }}>
               {infoError && (
                 <div style={{ gridColumn: '1/-1', background: T.dangerSoft, border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', fontSize: 12.5, color: '#EF4444', display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -537,7 +667,7 @@ export default function FacultyProfilePage() {
 
       {/* ── Schedule Preferences Card — full width, part-time only ── */}
       {(loading || isPartTime) && (
-        <div style={{ background: T.bg, borderRadius: 16, border: `1px solid ${T.border}`, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', animation: 'fp-fadeUp 0.3s ease 0.15s both', marginTop: 16 }}>
+        <div id="tour-fp-prefs" style={{ background: T.bg, borderRadius: 16, border: `1px solid ${T.border}`, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', animation: 'fp-fadeUp 0.3s ease 0.15s both', marginTop: 16 }}>
           <CardHeader
             title="Schedule Preferences"
             sub="Preferred teaching days and time window"
@@ -615,15 +745,17 @@ export default function FacultyProfilePage() {
       {/* ── Login Credentials Card — full width ── */}
       {!loading && (
         <div style={{ background: T.bg, borderRadius: 16, border: `1px solid ${T.border}`, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', animation: 'fp-fadeUp 0.3s ease 0.2s both', marginTop: 16 }}>
-          <CardHeader
-            title="Login Credentials"
-            sub={form.email ? undefined : 'No account activated yet'}
+          <div id="tour-fp-login">
+            <CardHeader
+              title="Login Credentials"
+              sub={form.email ? undefined : 'No account activated yet'}
             right={
               form.email
                 ? <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, background: 'rgba(134,239,172,0.25)', color: 'var(--meadow-text)', border: '1px solid rgba(134,239,172,0.5)' }}>Active</span>
                 : <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, background: 'rgba(239,68,68,0.15)', color: T.danger, border: '1px solid rgba(239,68,68,0.3)' }}>Not Activated</span>
             }
           />
+          </div>
           {!form.email && (
              <div style={{ margin: '20px 20px 0', padding: '12px 16px', borderRadius: 8, background: 'rgba(245, 158, 11, 0.05)', border: '1px solid #FEF3C7', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2" style={{ flexShrink: 0, marginTop: 2 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -646,7 +778,7 @@ export default function FacultyProfilePage() {
               <div className="fp-pass-row" style={{ display: 'flex', gap: 8 }}>
                 <input type={showCredPwd ? 'text' : 'password'} value={credPassword} onChange={e => setCredPassword(e.target.value)} autoComplete="new-password" placeholder={form.email ? 'Leave blank to keep' : 'Auto-generated if blank'} style={{ ...inputStyle, minWidth: 0, flex: 1 }} />
                 <button type="button" onClick={() => setShowCredPwd(v => !v)} style={{ padding: '10px 12px', borderRadius: 8, border: `1px solid ${T.border}`, background: T.bgAlt, color: T.textMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", flexShrink: 0 }}>{showCredPwd ? 'Hide' : 'Show'}</button>
-                <button type="button" onClick={() => { const ln = (form.name||'').trim().split(/\s+/).pop()||'faculty'; setCredPassword(ln+'GC2026'); setCredConfirm(ln+'GC2026'); setShowCredPwd(true) }} style={{ padding: '10px 12px', borderRadius: 8, border: `1.5px solid ${T.greenBorder}`, background: T.greenSoft, color: T.greenDeep, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", flexShrink: 0, whiteSpace: 'nowrap' }}>Generate</button>
+                <button type="button" onClick={() => { const ln = (form.name||'').trim().split(/\s+/).pop()||'faculty'; setCredPassword(ln+'GC2026'); setCredConfirm(ln+'GC2026'); setShowCredPwd(true) }} style={{ padding: '10px 12px', borderRadius: 8, border: `1.5px solid ${T.greenBorder}`, background: T.greenSoft, color: T.greenText, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", flexShrink: 0, whiteSpace: 'nowrap' }}>Generate</button>
               </div>
             </FormField>
 

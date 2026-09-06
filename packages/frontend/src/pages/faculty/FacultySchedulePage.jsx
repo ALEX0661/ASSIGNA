@@ -4,6 +4,7 @@ import { listSaved, loadSaved, getFaculty, getActiveSchedule } from '../../servi
 import { buildConflictMap, isMergedEvent } from '../../components/ScheduleView/svHelpers'
 import { exportScheduleToExcel } from '../../utils/exportScheduleToExcel'
 import { exportScheduleToICS } from '../../utils/exportScheduleToICS'
+import { useTour } from '../../hooks/useTour'
 
 // ─── PNG Icon Imports (stat strip) ────────────────────────────────────────────
 import iconClasses  from '../../assets/CLASSES.png'
@@ -52,13 +53,13 @@ if (!document.getElementById('fsp-style')) {
     .fsp-select {
       appearance: none; border: 1px solid var(--border); box-sizing: border-box;
       border-radius: 10px; padding: 8px 34px 8px 14px;
-      font-size: 12.5px; font-weight: 600; color: #0E2A1C;
-      background: #fafafa; cursor: pointer; outline: none;
+      font-size: 12.5px; font-weight: 600; color: var(--ink);
+      background: var(--bg); cursor: pointer; outline: none;
       font-family: 'Inter', sans-serif;
       transition: all 0.15s;
     }
-    .fsp-select:hover { background: var(--surface); border-color: #B8D9C6; }
-    .fsp-select:focus { background: var(--surface); border-color: #1E7A4A; box-shadow: 0 0 0 3px rgba(110,231,183,0.25); }
+    .fsp-select:hover { background: var(--hover); border-color: var(--meadow-border); }
+    .fsp-select:focus { background: var(--surface); border-color: var(--meadow); box-shadow: 0 0 0 3px var(--mint-dim); }
 
     .fsp-search-wrapper {
       position: relative;
@@ -71,20 +72,20 @@ if (!document.getElementById('fsp-style')) {
       width: 100%; box-sizing: border-box;
       appearance: none; border: 1px solid var(--border);
       border-radius: 10px; padding: 8px 30px 8px 34px;
-      font-size: 12.5px; font-weight: 500; color: #0E2A1C;
-      background: #fafafa; outline: none;
+      font-size: 12.5px; font-weight: 500; color: var(--ink);
+      background: var(--bg); outline: none;
       font-family: 'Inter', sans-serif;
       transition: all 0.2s ease;
     }
-    .fsp-search-input::placeholder { color: #6B8C7A; }
-    .fsp-search-input:focus { border-color: #1E7A4A; background: var(--surface); box-shadow: 0 0 0 3px rgba(110,231,183,0.25); }
+    .fsp-search-input::placeholder { color: var(--muted2); }
+    .fsp-search-input:focus { border-color: var(--meadow); background: var(--surface); box-shadow: 0 0 0 3px var(--mint-dim); }
 
     .fsp-search-clear {
       position: absolute; right: 8px; background: none; border: none;
-      cursor: pointer; color: #6B8C7A; font-size: 16px; padding: 4px;
+      cursor: pointer; color: var(--muted2); font-size: 16px; padding: 4px;
       display: flex; align-items: center; justify-content: center; line-height: 1;
     }
-    .fsp-search-clear:hover { color: #0E2A1C; }
+    .fsp-search-clear:hover { color: var(--ink); }
 
     .fsp-view-btn {
       padding: 7px 12px; border-radius: 7px; border: none; cursor: pointer;
@@ -93,14 +94,14 @@ if (!document.getElementById('fsp-style')) {
 
     .fsp-export-btn {
       padding: 8px 16px; border-radius: 10px; border: 1px solid var(--border);
-      background: var(--surface); color: #155C36; font-size: 12.5px; font-weight: 600;
+      background: var(--surface); color: var(--meadow-text); font-size: 12.5px; font-weight: 600;
       cursor: pointer; display: flex; align-items: center; gap: 8px;
       transition: all 0.15s; font-family: 'Inter', sans-serif;
       box-shadow: 0 1px 4px rgba(14,42,28,0.04);
       flex-shrink: 0; box-sizing: border-box;
     }
     .fsp-export-btn:hover:not(:disabled) {
-      background: #E8F5EE; border-color: #1E7A4A; color: #1E7A4A;
+      background: var(--hover); border-color: var(--meadow); color: var(--meadow-text-hover);
     }
     .fsp-export-btn:disabled { opacity: 0.6; cursor: default; }
 
@@ -170,21 +171,23 @@ if (!document.getElementById('fsp-style')) {
 const T = {
   forest:      '#3D7A58',
   forestDeep:  '#2E6145',
-  green:       '#2E7D52',
-  greenDeep:   '#236040',
-  greenSoft:   '#E8F5EE',
+  green:       'var(--meadow)',
+  greenDeep:   'var(--meadow-deep)',
+  greenSoft:   'var(--meadow-soft)',
   greenBorder: 'var(--meadow-border)',
   mint:        'var(--mint)',
-  meadow:      '#4A9B6F',
-  textMain:    '#0E2A1C',
-  textMid:     '#3A5448',
-  textMuted:   'var(--muted2, #6B8C7A)',
-  textLight:   '#A0BCAD',
+  meadow:      'var(--meadow)',
+  textMain:    'var(--ink)',
+  textMid:     'var(--ink2, var(--ink))',
+  textMuted:   'var(--muted)',
+  textLight:   'var(--muted2)',
   border:      'var(--border)',
-  borderLight: '#EFF6F2',
-  bg: 'var(--surface, #FFFFFF)',
-  bgAlt:       '#F6FAF8',
-  bgPage:      '#F2F7F4',
+  borderLight: 'var(--hover)',
+  bg:          'var(--surface)',
+  bgAlt:       'var(--bg)',
+  bgPage:      'var(--bg)',
+  greenText:   'var(--meadow-text)',
+  greenTextHover: 'var(--meadow-text-hover)',
 }
 
 const DAYS      = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
@@ -221,8 +224,8 @@ function formatPeriodCompact(period = '') {
 function getAvatarColor(name = '') {
   const palette = [
     { bg:'var(--meadow-soft)', fg:'var(--meadow)' }, { bg:'rgba(59, 130, 246, 0.1)', fg:'#60A5FA' },
-    { bg:'#FCE7F3', fg:'#DB2777' }, { bg:'color-mix(in srgb, #6D28D9 15%, transparent)', fg:'#7C3AED' },
-    { bg:'rgba(245, 158, 11, 0.1)', fg:'#F59E0B' }, { bg:'#FFE4E6', fg:'#E11D48' },
+    { bg:'rgba(219, 39, 119, 0.1)', fg:'#DB2777' }, { bg:'color-mix(in srgb, #6D28D9 15%, transparent)', fg:'#7C3AED' },
+    { bg:'rgba(245, 158, 11, 0.1)', fg:'#F59E0B' }, { bg:'rgba(225, 29, 72, 0.1)', fg:'#E11D48' },
   ]
   const code = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
   return palette[code % palette.length]
@@ -239,7 +242,7 @@ function Badge({ children, type = 'default', size = 'sm' }) {
   const styles = {
     lec:     { bg:'rgba(37, 99, 235, 0.1)', color:'#60A5FA', border:'#BFDBFE' },
     lab:     { bg:'rgba(217, 119, 6, 0.05)', color:'#F59E0B', border:'rgba(245, 158, 11, 0.25)' },
-    room:    { bg: T.greenSoft, color: T.greenDeep, border: T.greenBorder },
+    room:    { bg: T.greenSoft, color: T.greenText, border: T.greenBorder },
     merged:  { bg:'var(--meadow-soft)', color: 'var(--meadow-text)', border:'var(--meadow-border)' },
     conflict:{ bg:'rgba(239, 68, 68, 0.05)', color:'#EF4444', border:'rgba(220, 38, 38, 0.25)' },
     default: { bg: T.bgAlt, color: T.textMid, border: T.border },
@@ -262,7 +265,7 @@ function Skel({ w = '100%', h = 14, r = 8 }) {
   return (
     <div style={{
       width:w, height:h, borderRadius:r,
-      background:'linear-gradient(90deg,#DCF0E6 25%,#EEF6F1 50%,#DCF0E6 75%)',
+      background:`linear-gradient(90deg,${T.borderLight} 25%,${T.border} 50%,${T.borderLight} 75%)`,
       backgroundSize:'200% 100%', animation:'fsp-shimmer 1.4s infinite', flexShrink:0
     }}/>
   )
@@ -306,7 +309,7 @@ function SessionModal({ event, onClose }) {
               <span style={{
                 fontFamily: "'Inter',sans-serif", fontSize: 10, fontWeight: 700,
                 padding: '4px 10px', borderRadius: 6, textTransform: 'uppercase', letterSpacing: '0.5px',
-                background: T.greenSoft, color: T.greenDeep, border: `1px solid ${T.greenBorder}`,
+                background: T.greenSoft, color: T.greenText, border: `1px solid ${T.greenBorder}`,
               }}>
                 {isLab ? 'Laboratory' : 'Lecture'}
               </span>
@@ -433,7 +436,7 @@ function ListCard({ event, index, conflictMap, onClick }) {
       <div style={{ flex:1, minWidth:0, display:'flex', alignItems:'center', gap:12, padding:'13px 18px' }}>
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ display:'flex', alignItems:'baseline', gap:8, marginBottom:6 }}>
-            <span style={{ fontFamily:"'Sora',sans-serif", fontSize:14.5, fontWeight:800, color:T.greenDeep, flexShrink:0 }}>
+            <span style={{ fontFamily:"'Sora',sans-serif", fontSize:14.5, fontWeight:800, color:T.greenText, flexShrink:0 }}>
               {event.courseCode}
             </span>
             <span style={{ fontFamily:"'Inter',sans-serif", fontSize:12.5, fontWeight:500, color:T.textMid, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
@@ -460,7 +463,7 @@ function ListCard({ event, index, conflictMap, onClick }) {
           {event.units != null && (
             <>
               <div style={{
-                fontSize:17, fontWeight:800, color:T.green, lineHeight:1,
+                fontSize:17, fontWeight:800, color:T.greenText, lineHeight:1,
                 background:T.greenSoft, borderRadius:10, padding:'7px 11px',
                 border:`1px solid ${T.greenBorder}`, minWidth:36, textAlign:'center',
                 fontFamily:"'Sora',sans-serif"
@@ -735,9 +738,14 @@ export default function FacultySchedulePage() {
         try {
           const list = await getFaculty()
           if (list.length > 0) {
-            const me = list[0]
+            const me = list.find(f => f.email === user.email || f.id === user.uid) || list[0]
             if (me.name) resolvedName = me.name
-            setFacultyMeta({ rank:me.AcademicRank||'', department:me.Department||'', status:me.status||'full-time' })
+            setFacultyMeta({ rank:me.AcademicRank||'', department:me.Department||'', status:me.status||'full-time', panelColor:me.panelColor||null })
+            
+            // Sync to layout
+            if (me.panelColor) localStorage.setItem('facultyPanelColor', me.panelColor)
+            else localStorage.removeItem('facultyPanelColor')
+            window.dispatchEvent(new Event('facultyColorChanged'))
           }
         } catch {}
         setFacultyName(resolvedName)
@@ -844,9 +852,31 @@ export default function FacultySchedulePage() {
     }
   }
 
+  // Tour setup
+  const tourSteps = useMemo(() => {
+    if (loading) return []
+    const steps = [
+      { target: '#tour-fsp-views', title: 'Schedule Views', content: "Toggle between List, Grid, or Timetable views to see your schedule exactly how you want it.", placement: 'bottom' }
+    ]
+    if (scheduleNames.length > 0) {
+      steps.push({ target: '#tour-fsp-schedule', title: 'Published Schedules', content: "If you teach in multiple programs (like CCS and CAST), you can switch between your published schedules here.", placement: 'bottom' })
+    }
+    steps.push({ target: '#tour-fsp-export', title: 'Export & Sync', content: "Print your schedule, export it to Excel, or sync it with your phone using Apple/Google Calendar.", placement: 'left' })
+    return steps
+  }, [loading, scheduleNames.length])
+
+  const { TourElement, startTour } = useTour('facultySchedule', tourSteps, !loading)
+
+  useEffect(() => {
+    if (loading || tourSteps.length === 0) return
+    startTour()
+  }, [loading, tourSteps, startTour])
+
+
   return (
     <div className="fsp-page-wrap" style={{ fontFamily:"'Inter',sans-serif", color:T.textMain, minHeight:'100vh', background:T.bgPage, padding:'28px 28px 48px' }}>
-
+      {TourElement}
+      
       {/* ══ MODAL ══ */}
       {selectedEvent && (
         <SessionModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
@@ -854,7 +884,7 @@ export default function FacultySchedulePage() {
 
       {/* ══ HERO HEADER ══ */}
       <div className="fsp-hero-wrap" style={{
-        background: `linear-gradient(135deg, ${T.forest} 0%, ${T.forestDeep} 60%, #265242 100%)`,
+        background: 'linear-gradient(135deg, var(--meadow) 0%, var(--meadow-deep) 100%)',
         borderRadius:20, padding:'24px 28px',
         marginBottom:20, position:'relative', overflow:'hidden',
         boxShadow:'0 6px 28px rgba(46,122,82,0.22)',
@@ -910,7 +940,7 @@ export default function FacultySchedulePage() {
 
           {/* Controls - View Toggle Only */}
           <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
-            <div style={{
+            <div id="tour-fsp-views" style={{
               display:'flex', background:'rgba(255,255,255,0.12)',
               border:'1.5px solid rgba(255,255,255,0.20)', borderRadius:10, padding:3, gap:2
             }}>
@@ -955,7 +985,7 @@ export default function FacultySchedulePage() {
             
             {/* Schedule Selector — shows only finalized schedules */}
             {scheduleNames.length > 0 && (
-              <div className="fsp-filter-group" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div id="tour-fsp-schedule" className="fsp-filter-group" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.5px' }}>
                   Schedule
                 </span>
@@ -999,7 +1029,7 @@ export default function FacultySchedulePage() {
           </div>
 
           {/* Right Side: Search & Export */}
-          <div className="fsp-right-controls" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', flex: '1 1 auto', justifyContent: 'flex-end' }}>
+          <div id="tour-fsp-export" className="fsp-right-controls" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', flex: '1 1 auto', justifyContent: 'flex-end' }}>
             
             {/* Search Input */}
             <div className="fsp-search-wrapper" style={{ position: 'relative' }}>
@@ -1103,14 +1133,14 @@ export default function FacultySchedulePage() {
                 style={{
                   background: activeDay === 'All' ? T.greenSoft : 'transparent',
                   borderColor: activeDay === 'All' ? T.greenBorder : T.border,
-                  color: activeDay === 'All' ? T.greenDeep : T.textMuted,
+                  color: activeDay === 'All' ? T.greenText : T.textMuted,
                 }}
               >
                 All Days
                 <span style={{
                   fontSize:10, fontWeight:800, padding:'1px 8px', borderRadius:99,
                   background: activeDay === 'All' ? T.bg : T.bgAlt,
-                  color: activeDay === 'All' ? T.green : T.textMuted,
+                  color: activeDay === 'All' ? T.greenText : T.textMuted,
                   border:`1px solid ${activeDay === 'All' ? T.greenBorder : T.border}`
                 }}>{myEvents.length}</span>
               </button>

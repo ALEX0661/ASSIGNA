@@ -32,6 +32,14 @@ export function useTour(tourId, steps, isReady = true, { isPrimary = true } = {}
     if (markSeen) localStorage.setItem(storageKey, 'true')
   }, [tourId, storageKey])
 
+  useEffect(() => {
+    return () => {
+      if (activeTourId === tourId) {
+        activeTourId = null
+      }
+    }
+  }, [tourId])
+
   // Auto-start if not seen
   useEffect(() => {
     if (!isReady) return
@@ -176,10 +184,10 @@ export function useTour(tourId, steps, isReady = true, { isPrimary = true } = {}
       onEvent={handleTourEvent}
       locale={{ back: 'Back', close: 'Close', last: 'Done', next: 'Next', skip: 'Skip' }}
       options={{
-        arrowColor: '#FFFFFF',
+        arrowColor: 'var(--surface)',
         backgroundColor: 'var(--surface)',
         overlayColor: 'rgba(14, 42, 32, 0.55)',
-        primarycolor: 'var(--meadow)',
+        primaryColor: 'var(--meadow)',
         textColor: 'var(--ink)',
         width: 340,
         zIndex: 10000,
@@ -219,7 +227,7 @@ export function useTour(tourId, steps, isReady = true, { isPrimary = true } = {}
           alignItems: 'center',
         },
         buttonPrimary: {
-          backgroundcolor: 'var(--meadow)',
+          backgroundColor: 'var(--meadow)',
           backgroundImage: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))',
           borderRadius: '8px',
           fontFamily: "'Inter', sans-serif",
@@ -247,11 +255,11 @@ export function useTour(tourId, steps, isReady = true, { isPrimary = true } = {}
           padding: 14,
         },
         beaconInner: {
-          backgroundcolor: 'var(--meadow)',
+          backgroundColor: 'var(--meadow)',
         },
         beaconOuter: {
           backgroundColor: 'rgba(0,0,0,0.35)',
-          bordercolor: 'var(--meadow)',
+          borderColor: 'var(--meadow)',
         },
       }}
     />
