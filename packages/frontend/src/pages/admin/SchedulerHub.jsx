@@ -9,7 +9,7 @@ import manageQueueImage from '../../assets/MANAGECOORQUE1.png'
 /* ── Design tokens (matches SchedulerPage / ApprovalDashboardPage) ── */
 const G = {
   meadow: 'var(--meadow, var(--meadow))', meadowDeep: 'var(--meadow-deep)', meadowMid: 'var(--meadow-mid)', meadowSoft: 'var(--meadow-soft)', meadowBorder: 'var(--meadow-border)',
-  ink: 'var(--ink, #0E2A20)', inkMid: '#1C3D2A', muted: 'var(--muted, #4B7060)', muted2: 'var(--muted2, #6B8C7A)',
+  ink: 'var(--ink, #0E2A20)', inkMid: 'var(--ink, #1C3D2A)', muted: 'var(--muted, #4B7060)', muted2: 'var(--muted2, #6B8C7A)',
   border: 'var(--border)', borderLight: 'var(--hover)', bg: 'var(--bg, #F2F7F4)', hover: 'var(--hover)',
   amber: '#F59E0B', amberSoft: 'rgba(245, 158, 11, 0.1)', amberBorder: 'rgba(245, 158, 11, 0.25)',
 }

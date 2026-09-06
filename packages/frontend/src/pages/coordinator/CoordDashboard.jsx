@@ -314,7 +314,7 @@ function SetupChecklist({ steps, onNavigate, loading }) {
         <div style={{ background: 'var(--surface)' }}>
           {steps.map((step, i) => (
             <div key={step.title} className="setup-row"
-              style={{ borderTop: i > 0 ? `1px solid ${G.borderLight}` : 'none', background: step.done ? '#F8FBF9' : i === nextIdx ? 'var(--meadow-soft)' : 'var(--surface)' }}>
+              style={{ borderTop: i > 0 ? `1px solid ${G.borderLight}` : 'none', background: step.done ? 'var(--bg)' : i === nextIdx ? 'var(--meadow-soft)' : 'var(--surface)' }}>
               <div style={{
                 width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',

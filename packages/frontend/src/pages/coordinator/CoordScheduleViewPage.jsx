@@ -23,6 +23,8 @@ import SessionModal from '../../components/ScheduleView/SessionModal'
 import VersionHistoryModal from '../../components/VersionHistoryModal'
 import { computeRoomAvailability } from '../../utils/roomAvailability'
 import { exportScheduleToExcel } from '../../utils/exportScheduleToExcel'
+import { exportAvailableRoomsToExcel } from '../../utils/exportAvailableRoomsToExcel'
+import { exportScheduleToPDF } from '../../utils/exportScheduleToPDF'
 import { useTour } from '../../hooks/useTour.jsx'
 import scheduleImage from '../../assets/SCHEDULE.png'
 
@@ -579,7 +581,7 @@ function formatTimeAgo(dateInput) {
 }
 
 /* ── Export menu button — one button, choice of what to export ─────────────── */
-function ExportMenuButton({ onExportSchedule, onExportRooms, disabled }) {
+function ExportMenuButton({ onExportSchedule, onExportRooms, onExportSchedulePdf, disabled }) {
   const [open, setOpen] = useState(false)
   const itemStyle = {
     display: 'flex', alignItems: 'center', gap: 8, width: '100%',
@@ -625,6 +627,18 @@ function ExportMenuButton({ onExportSchedule, onExportRooms, disabled }) {
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
               </svg>
               Schedule (.xlsx)
+            </button>
+            <button
+              onClick={() => { setOpen(false); onExportSchedulePdf() }}
+              style={{ ...itemStyle, borderBottom: '1px solid #EEF3F0' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--meadow-soft)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                <line x1="9" y1="15" x2="15" y2="15"/><line x1="9" y1="11" x2="15" y2="11"/>
+              </svg>
+              Schedule (.pdf)
             </button>
             <button
               onClick={() => { setOpen(false); onExportRooms() }}
@@ -1023,18 +1037,18 @@ export default function CoordScheduleViewPage() {
 
     // Build filter suffix for the file name
     const filterParts = []
-    if (q)                  filterParts.push(q)
-    if (filterPrograms.size > 0) filterParts.push([...filterPrograms].join('-'))
-    if (filterYears.size    > 0) filterParts.push([...filterYears].map(y => `Y${y}`).join('-'))
-    if (filterBlocks.size   > 0) filterParts.push([...filterBlocks].join('-'))
-    if (filterFac.size      > 0) filterParts.push([...filterFac].map(f => f.split(' ').pop()).join('-'))
-    if (filterRooms.size    > 0) filterParts.push([...filterRooms].join('-'))
-    if (filterSessions.size > 0) filterParts.push([...filterSessions].join('-'))
-    if (filterLec && !filterLab) filterParts.push('LEC')
-    if (filterLab && !filterLec) filterParts.push('LAB')
-    if (filterMerged)       filterParts.push('Merged')
-    if (filterConflicts)    filterParts.push('Conflicts')
-    if (filterUnassigned)   filterParts.push('Unassigned')
+    if (q)                  filterParts.push(`Search-${q}`)
+    if (filterPrograms.size > 0) filterParts.push(`Program-${[...filterPrograms].join('-')}`)
+    if (filterYears.size    > 0) filterParts.push(`Year-${[...filterYears].map(y => `Y${y}`).join('-')}`)
+    if (filterBlocks.size   > 0) filterParts.push(`Block-${[...filterBlocks].join('-')}`)
+    if (filterFac.size      > 0) filterParts.push(`Faculty-${[...filterFac].map(f => f.split(' ').pop()).join('-')}`)
+    if (filterRooms.size    > 0) filterParts.push(`Room-${[...filterRooms].join('-')}`)
+    if (filterSessions.size > 0) filterParts.push(`Session-${[...filterSessions].join('-')}`)
+    if (filterLec && !filterLab) filterParts.push('LEC-only')
+    if (filterLab && !filterLec) filterParts.push('LAB-only')
+    if (filterMerged)       filterParts.push('Merged-only')
+    if (filterConflicts)    filterParts.push('Conflicts-only')
+    if (filterUnassigned)   filterParts.push('Unassigned-only')
 
     const safePart = filterParts.join('_').replace(/[\\/:*?"<>|]+/g, '').trim()
     const exportName = safePart ? `${activeName}_${safePart}` : activeName
@@ -1055,6 +1069,14 @@ export default function CoordScheduleViewPage() {
   async function handleExportAvailableRooms() {
     if (!allEvents.length) return
     await exportAvailableRoomsToExcel(allEvents, masterRooms, activeName)
+  }
+
+  // Schedule list as PDF — same filtered rows/merge rules as the Excel export.
+  async function handleExportSchedulePdf() {
+    if (!allEvents.length) return
+    const { exportEvents, exportName } = getFilteredExportEvents()
+    if (!exportEvents.length) return
+    await exportScheduleToPDF(exportEvents, exportName, { academicYear: schedAY, semester: schedSem })
   }
 
   /* ── Undo / Redo ────────────────────────────────────────────────────────── */
@@ -1330,7 +1352,7 @@ export default function CoordScheduleViewPage() {
             </button>
           )}
           {allEvents.length > 0 && (
-            <ExportMenuButton onExportSchedule={handleExport} onExportRooms={handleExportAvailableRooms} />
+            <ExportMenuButton onExportSchedule={handleExport} onExportRooms={handleExportAvailableRooms} onExportSchedulePdf={handleExportSchedulePdf} />
           )}
         </div>
       </div>

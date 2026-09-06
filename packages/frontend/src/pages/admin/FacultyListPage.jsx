@@ -1,9 +1,12 @@
-import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ImportFacultyModal from '../../components/ImportFacultyModal'
 import AddFacultyModal from '../../components/AddFacultyModal'
 import { generateExportWorkbook, downloadWorkbook } from '../../components/facultyExcelTemplate'
-import { getFaculty, getArchivedFaculty, deleteFaculty, archiveFaculty, unarchiveFaculty, getCourses } from '../../services/api'
+import { getFaculty, getArchivedFaculty, deleteFaculty, archiveFaculty, unarchiveFaculty, getCourses, listSaved, loadSaved } from '../../services/api'
+import { useScheduleStore } from '../../store/scheduleStore'
+import { exportScheduleToExcel } from '../../utils/exportScheduleToExcel'
+import { exportFacultyLoadToPDF } from '../../utils/exportFacultyLoadToPDF'
 
 /* ── Design tokens ── */
 const G = {
@@ -543,6 +546,239 @@ function markOnboardingCompleted() {
 /* ═══════════════════════════════════════════════════════════════
    MAIN PAGE
 ═══════════════════════════════════════════════════════════════ */
+/* ── Themed dropdown (replaces native <select>, which renders with the OS's
+   light popup and can look disconnected/clipped inside dark modals) ── */
+function Dropdown({ value, onChange, options, disabled }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    function handler(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const current = options.find(o => o.value === value)
+
+  return (
+    <div ref={ref} style={{ position: 'relative', flex: 1 }}>
+      <button type="button" disabled={disabled} onClick={() => setOpen(o => !o)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+          padding: '8px 10px', borderRadius: 8, border: `1.5px solid ${open ? G.meadow : G.border}`,
+          background: 'var(--surface)', color: G.ink, fontSize: 12.5, fontWeight: 500,
+          fontFamily: "'Inter',sans-serif", cursor: disabled ? 'default' : 'pointer',
+          opacity: disabled ? 0.6 : 1, transition: 'border-color .15s',
+        }}>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{current?.label ?? ''}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+          style={{ flexShrink: 0, color: G.muted2, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}>
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 1300,
+          background: 'var(--surface)', border: `1.5px solid ${G.border}`, borderRadius: 10,
+          boxShadow: '0 12px 32px rgba(0,0,0,0.45)', maxHeight: 220, overflowY: 'auto', padding: 4,
+        }}>
+          {options.map(o => {
+            const active = o.value === value
+            return (
+              <div key={o.value} onClick={() => { onChange(o.value); setOpen(false) }}
+                style={{
+                  padding: '8px 10px', borderRadius: 7, fontSize: 12.5, fontFamily: "'Inter',sans-serif",
+                  cursor: 'pointer', color: active ? '#fff' : G.ink,
+                  background: active ? G.meadow : 'transparent', fontWeight: active ? 600 : 500,
+                }}
+                onMouseEnter={e => { if (!active) e.currentTarget.style.background = G.hover }}
+                onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
+                {o.label}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── Batch Schedule Export Modal ──
+   Lets the user pick a saved schedule, an export format, and which of the
+   passed-in faculty to include, then exports one file per faculty
+   sequentially (reusing the same per-faculty export utilities used on
+   FacultyDetailPage's ScheduleSection). */
+function BatchScheduleExportModal({ facultyList, preselectedIds, wasManuallySelected, totalCount, activeFilterLabels = [], onClose, toast }) {
+  const storeEvents       = useScheduleStore(s => s.events)
+  const scheduleName      = useScheduleStore(s => s.scheduleName)
+  const storeAcademicYear = useScheduleStore(s => s.academicYear)
+  const storeSemester     = useScheduleStore(s => s.semester)
+
+  const [scheduleNames,   setScheduleNames]   = useState([])
+  const [selectedSchedule, setSelectedSchedule] = useState('__current__')
+  const [format,          setFormat]          = useState('pdf') // 'pdf' | 'excel'
+  const [checked,         setChecked]         = useState(() => new Set(preselectedIds))
+  const [listLoading,     setListLoading]     = useState(true)
+  const [exporting,       setExporting]       = useState(false)
+  const [progress,        setProgress]        = useState({ done: 0, total: 0, label: '' })
+  const [result,          setResult]          = useState(null) // { exported, skipped }
+
+  useEffect(() => {
+    listSaved()
+      .then(res => {
+        const list = Array.isArray(res) ? res : []
+        setScheduleNames(list.map(item => (typeof item === 'string' ? item : item?.name)).filter(Boolean))
+      })
+      .catch(() => {})
+      .finally(() => setListLoading(false))
+  }, [])
+
+  function computeUnits(ev) {
+    if (ev.units != null) return ev.units
+    if (ev.period) {
+      const m = ev.period.match(/(\d+):(\d+)\s*-\s*(\d+):(\d+)/)
+      if (m) return Math.round((parseInt(m[3]) * 60 + parseInt(m[4]) - parseInt(m[1]) * 60 - parseInt(m[2])) / 60)
+    }
+    return 0
+  }
+
+  function toggle(id) { setChecked(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n }) }
+  function toggleAll() { setChecked(prev => prev.size === facultyList.length ? new Set() : new Set(facultyList.map(f => f.id))) }
+
+  async function handleRun() {
+    if (!checked.size || exporting) return
+    setExporting(true); setResult(null)
+    try {
+      let events, meta
+      if (selectedSchedule === '__current__') {
+        events = storeEvents || []
+        meta = { name: scheduleName || 'current', academicYear: storeAcademicYear || '', semester: storeSemester || '' }
+      } else {
+        const data = await loadSaved(selectedSchedule)
+        events = Array.isArray(data.schedule) ? data.schedule : (Array.isArray(data.events) ? data.events : [])
+        meta = { name: selectedSchedule, academicYear: data.academicYear || data.academic_year || '', semester: data.semester || '' }
+      }
+
+      const targets = facultyList.filter(f => checked.has(f.id))
+      let exported = 0
+      const skipped = []
+
+      for (let i = 0; i < targets.length; i++) {
+        const f = targets[i]
+        setProgress({ done: i, total: targets.length, label: f.name })
+        const fEvents = events.filter(e => (e.faculty || '').toLowerCase() === (f.name || '').toLowerCase())
+        if (!fEvents.length) { skipped.push(f.name); continue }
+        const safeName = (f.name || 'Faculty').replace(/[^a-zA-Z0-9\s-]/g, '').trim()
+        if (format === 'pdf') {
+          await exportFacultyLoadToPDF(fEvents, f, meta, computeUnits)
+        } else {
+          await exportScheduleToExcel(fEvents, `${safeName} - ${meta.name}`)
+        }
+        exported++
+        // small gap so the browser doesn't choke on many simultaneous downloads
+        await new Promise(res => setTimeout(res, 350))
+      }
+
+      setProgress({ done: targets.length, total: targets.length, label: '' })
+      setResult({ exported, skipped })
+      if (exported > 0) toast(`Exported ${exported} schedule${exported !== 1 ? 's' : ''}`, 'success')
+      if (skipped.length) toast(`${skipped.length} faculty had no classes in that schedule`, 'info')
+    } catch {
+      toast('Batch export failed', 'error')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(10,30,18,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 18, padding: '24px 26px', maxWidth: 460, width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(10,30,18,0.22)' }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: G.ink, marginBottom: 4 }}>Batch Export Schedules</div>
+        <div style={{ fontSize: 12.5, color: G.muted2, marginBottom: 10 }}>Choose a schedule, a format, and which faculty to include.</div>
+
+        {/* Filter / selection context banner */}
+        {wasManuallySelected ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--meadow-text-hover)', background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, borderRadius: 8, padding: '6px 10px', marginBottom: 14, fontWeight: 600 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}><polyline points="20 6 9 17 4 12"/></svg>
+            Using your {preselectedIds.length} manually selected faculty
+          </div>
+        ) : activeFilterLabels.length > 0 ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 5, fontSize: 11.5, color: 'var(--meadow-text-hover)', background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, borderRadius: 8, padding: '6px 10px', marginBottom: 14, fontWeight: 600 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+              <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
+            </svg>
+            <span>Filtered — {facultyList.length} of {totalCount}:</span>
+            {activeFilterLabels.map((label, i) => (
+              <span key={i} style={{ background: 'var(--surface)', border: `1px solid ${G.meadowBorder}`, borderRadius: 99, padding: '1px 8px', fontWeight: 600 }}>{label}</span>
+            ))}
+          </div>
+        ) : null}
+
+        {/* Schedule + format row */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+          <Dropdown
+            value={selectedSchedule}
+            onChange={setSelectedSchedule}
+            disabled={listLoading || exporting}
+            options={[{ value: '__current__', label: 'Current schedule' }, ...scheduleNames.map(n => ({ value: n, label: n }))]}
+          />
+          <Dropdown
+            value={format}
+            onChange={setFormat}
+            disabled={exporting}
+            options={[{ value: 'pdf', label: 'PDF (Load & Schedule)' }, { value: 'excel', label: 'Excel' }]}
+          />
+        </div>
+
+        {/* Faculty checklist */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <span style={{ fontSize: 11.5, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', letterSpacing: '.6px' }}>
+            Faculty ({checked.size}/{facultyList.length})
+          </span>
+          <button onClick={toggleAll} disabled={exporting} style={{ fontSize: 11.5, color: 'var(--meadow-text-hover)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, fontFamily: "'Inter',sans-serif" }}>
+            {checked.size === facultyList.length ? 'Deselect all' : 'Select all'}
+          </button>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', border: `1px solid ${G.borderLight}`, borderRadius: 10, marginBottom: 16, minHeight: 120, maxHeight: 240 }}>
+          {facultyList.map(f => (
+            <div key={f.id} onClick={() => !exporting && toggle(f.id)}
+              style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 12px', cursor: exporting ? 'default' : 'pointer', borderBottom: `1px solid ${G.borderLight}` }}>
+              <Checkbox checked={checked.has(f.id)}/>
+              <span style={{ fontSize: 12.5, color: G.ink, fontWeight: 500 }}>{f.name}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Progress / result */}
+        {exporting && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 11.5, color: G.muted2, marginBottom: 6 }}>
+              Exporting {Math.min(progress.done + 1, progress.total)} of {progress.total} — {progress.label}…
+            </div>
+            <div style={{ height: 6, borderRadius: 99, background: G.hover, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%`, background: G.meadow, transition: 'width .2s' }}/>
+            </div>
+          </div>
+        )}
+        {result && !exporting && (
+          <div style={{ fontSize: 12, color: G.muted2, marginBottom: 14 }}>
+            Done — {result.exported} exported{result.skipped.length ? `, ${result.skipped.length} skipped (no classes in that schedule)` : ''}.
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onClose} disabled={exporting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: 'var(--surface)', fontSize: 13, fontWeight: 600, color: G.muted, cursor: exporting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
+            {result ? 'Close' : 'Cancel'}
+          </button>
+          <button onClick={handleRun} disabled={exporting || !checked.size} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, fontSize: 13, fontWeight: 700, color: '#fff', cursor: exporting || !checked.size ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: exporting || !checked.size ? 0.6 : 1 }}>
+            {exporting ? 'Exporting…' : `Export ${checked.size || ''}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function FacultyListPage() {
   const { toasts, toast } = useToast()
 
@@ -596,6 +832,7 @@ export default function FacultyListPage() {
   const [selected,          setSelected]          = useState(new Set())
   const [busy,              setBusy]              = useState(false)
   const [showImport,        setShowImport]        = useState(false)
+  const [showBatchExport,   setShowBatchExport]   = useState(false)
   const [pendingAction,     setPendingAction]     = useState(null)
   const [filterModalOpen,   setFilterModalOpen]   = useState(false)
   const [specQuery,         setSpecQuery]         = useState('')
@@ -777,6 +1014,19 @@ export default function FacultyListPage() {
 
   const hasAnyFilter = search || statusFilter.length > 0 || activeModalFilterCount > 0
 
+  /* ── Human-readable summary of active filters (used by the batch export modal) ── */
+  const activeFilterLabels = [
+    viewTab === 'archived' ? 'Archived' : null,
+    search ? `Search: "${search}"` : null,
+    ...statusFilter.map(v => v === 'full-time' ? 'Full-time' : 'Part-time'),
+    ...rankFilter,
+    ...departmentFilter,
+    ...educationFilter,
+    coordinatorFilter === 'any' ? 'Coordinators only' : coordinatorFilter === 'none' ? 'Non-coordinators' : null,
+    ...specializationFilter,
+    specMinRating > 0 ? `★${specMinRating}+ rating` : null,
+  ].filter(Boolean)
+
   /* ── Export ── */
   async function handleExport() {
     if (!filtered.length) return
@@ -902,6 +1152,17 @@ export default function FacultyListPage() {
                 <line x1="12" y1="15" x2="12" y2="3"/>
               </svg>
               Export
+            </button>
+
+            {/* Batch export schedules */}
+            <button onClick={() => setShowBatchExport(true)} disabled={!filtered.length} title="Batch export faculty schedules (PDF or Excel)"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: `1px solid ${G.border}`, background: 'var(--surface)', color: G.muted2, fontSize: 11.5, fontWeight: 500, cursor: filtered.length ? 'pointer' : 'not-allowed', opacity: filtered.length ? 1 : 0.45, transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
+              onMouseEnter={e => { if (filtered.length) { e.currentTarget.style.background = G.hover; e.currentTarget.style.color = 'var(--meadow-text-hover)' }}}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.color = G.muted2 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              Export Schedules{selectionMode ? ` (${selectedCount})` : ''}
             </button>
 
             {/* Upload Faculty List */}
@@ -1239,6 +1500,10 @@ export default function FacultyListPage() {
           </div>
           <span style={{ fontSize: 13, fontWeight: 600, color: '#fff', flex: 1 }}>{selectedCount} faculty member{selectedCount !== 1 ? 's' : ''} selected</span>
           <button onClick={() => setSelected(new Set())} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.85)', fontSize: 12, padding: '5px 14px', borderRadius: 8, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>Deselect all</button>
+          <button onClick={() => setShowBatchExport(true)} style={{ background: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.24)', color: '#fff', fontSize: 12, fontWeight: 600, padding: '5px 14px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Export Schedules
+          </button>
           {viewTab === 'active' && (
             <button onClick={handleBulkArchive} disabled={busy} style={{ background: 'linear-gradient(135deg,#D97706,#B45309)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, padding: '5px 15px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontFamily: "'Inter',sans-serif", opacity: busy ? 0.7 : 1 }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 8v13H3V8"/><path d="M23 3H1v5h22z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
@@ -1355,6 +1620,17 @@ export default function FacultyListPage() {
       {showAddModal && <AddFacultyModal onClose={() => setShowAddModal(false)} onSuccess={() => { load(); setShowAddModal(false); toast('Faculty created successfully', 'success') }} />}
       {showImport && <ImportFacultyModal onClose={() => setShowImport(false)} onImported={() => { load(); setShowImport(false); toast('Faculty imported', 'success') }} courses={Object.entries(courseTitleMap).filter(([k]) => !k.includes(" ")).map(([k, v]) => ({ courseCode: k, title: v }))} />}
       {pendingAction && <ActionModal mode={pendingAction.mode} name={pendingAction.name} count={pendingAction.bulk ? pendingAction.count : 1} busy={busy} onConfirm={handleConfirm} onCancel={() => { if (!busy) setPendingAction(null) }}/>}
+      {showBatchExport && (
+        <BatchScheduleExportModal
+          facultyList={filtered}
+          preselectedIds={selectionMode ? [...selected].filter(id => filteredIds.includes(id)) : filtered.map(f => f.id)}
+          wasManuallySelected={selectionMode}
+          totalCount={tabFaculty.length}
+          activeFilterLabels={activeFilterLabels}
+          onClose={() => setShowBatchExport(false)}
+          toast={toast}
+        />
+      )}
       <ToastContainer toasts={toasts}/>
     </div>
   )

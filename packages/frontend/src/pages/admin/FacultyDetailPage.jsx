@@ -350,6 +350,7 @@ export default function FacultyDetailPage() {
       <div style={{ marginTop:16 }}>
         <ScheduleSection
           facultyName={form.name}
+          faculty={form}
           onUnitsLoaded={setScheduleUnits}
           onAssignmentsLoaded={setScheduleAssignments}
         />

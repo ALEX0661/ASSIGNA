@@ -2,7 +2,7 @@ import axios from 'axios'
 import { auth } from './firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 
-const BASE = 'http://localhost:8000'
+const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 async function getToken() {
   if (auth.currentUser) {

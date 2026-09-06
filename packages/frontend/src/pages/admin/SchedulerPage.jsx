@@ -282,16 +282,16 @@ if (!document.getElementById('scheduler-page-style')) {
     .status-strip { display:flex; align-items:center; gap:12px; padding:14px 20px; border-radius:10px; font-size:13.5px; font-weight:600; font-family:'Inter', sans-serif; }
     .status-strip.running  { background:${G.meadowSoft}; color: var(--meadow-text); border:1px solid ${G.meadowBorder}; }
     .status-strip.complete { background:var(--meadow-soft); color:var(--meadow-deep); border:1px solid #A7F3D0; }
-    .status-strip.failed   { background:#FEE2E2; color:#B91C1C; border:1px solid #FECACA; }
+    .status-strip.failed   { background:rgba(239, 68, 68, 0.1); color:#EF4444; border:1px solid rgba(239, 68, 68, 0.3); }
 
     /* Step 3 result block */
     .solve-result { border-radius:12px; overflow:hidden; border:1px solid; margin-top:14px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
     .solve-result.complete { border-color:${G.meadowBorder}; }
-    .solve-result.failed   { border-color:#FECACA; }
+    .solve-result.failed   { border-color:rgba(239, 68, 68, 0.3); }
     .solve-result-body { display:flex; align-items:center; gap:16px; padding:24px 28px; }
     .solve-result-actions { display:flex; flex-wrap:wrap; gap:10px; padding:16px 28px; border-top:1px solid; background: var(--surface); justify-content:flex-end; }
     .solve-result.complete .solve-result-actions { border-color:${G.meadowBorder}; background:var(--bg); }
-    .solve-result.failed   .solve-result-actions { border-color:#FECACA; background:#FEF2F2; }
+    .solve-result.failed   .solve-result-actions { border-color:rgba(239, 68, 68, 0.3); background:rgba(239, 68, 68, 0.05); }
     .solve-action-btn { display:inline-flex; align-items:center; gap:8px; padding:10px 20px; border-radius:9px; font-family:'Inter',sans-serif; font-size:13px; font-weight:700; cursor:pointer; transition:all .2s; }
     .solve-action-btn.primary { background:${G.meadow}; color:#fff; border:none; box-shadow:0 4px 12px rgba(0,0,0,0.2); }
     .solve-action-btn.primary:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,0.3); background:${G.meadowDeep}; }
@@ -2318,7 +2318,7 @@ export default function SchedulerPage() {
                 <div className="fadein sch-card" style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:14, padding:'16px 28px', position:'relative', overflow:'hidden', minHeight:0 }}>
                   
                   {/* Subtle bg gradient */}
-                  <div style={{ position:'absolute', inset:0, background:`linear-gradient(160deg, ${G.meadowSoft} 0%, #fff 55%, ${G.bg} 100%)`, pointerEvents:'none' }} />
+                  <div style={{ position:'absolute', inset:0, background:`linear-gradient(160deg, ${G.meadowSoft} 0%, var(--surface) 55%, ${G.bg} 100%)`, pointerEvents:'none' }} />
 
                   {/* Calendar widget — no message, no inner progress bar */}
                   <div style={{ position:'relative', zIndex:1, flexShrink:0 }}>

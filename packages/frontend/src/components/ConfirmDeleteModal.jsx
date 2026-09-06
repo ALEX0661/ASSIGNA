@@ -5,7 +5,7 @@ export default function ConfirmDeleteModal({ scheduleName, onConfirm, onCancel }
     <div style={{ position:'fixed', inset:0, background:'rgba(14,42,32,0.4)', backdropFilter:'blur(2px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999, animation:'fadeIn .15s ease' }} onClick={onCancel}>
       <div style={{ background:'var(--surface, #fff)', width: 400, borderRadius: 16, padding: '24px 28px', boxShadow: '0 20px 40px rgba(0,0,0,0.15), 0 0 0 1px var(--border)', animation:'slideIn .2s ease' }} onClick={e => e.stopPropagation()}>
         <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:20 }}>
-          <div style={{ width:42, height:42, borderRadius:12, background:'#FFF0F0', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+          <div style={{ width:42, height:42, borderRadius:12, background:'rgba(239, 68, 68, 0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke='#EF4444' strokeWidth="2.5">
               <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/>
             </svg>

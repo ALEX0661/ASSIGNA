@@ -64,6 +64,19 @@ if (!document.getElementById('solver-pill-style')) {
     }
     .solver-pill-stop:hover { background: #FEE2E2 !important; border-color: #FECACA !important; color: #DC2626 !important; }
 
+    .solver-pill-close {
+      width: 26px !important; height: 26px !important; border-radius: 7px !important; flex-shrink: 0;
+      display: flex !important; align-items: center; justify-content: center;
+      background: transparent; border: none; color: ${G.muted};
+      cursor: pointer; transition: all .15s; padding: 0 !important;
+      margin-left: -2px;
+    }
+    .solver-pill-close:hover { background: var(--hover); color: ${G.ink}; }
+    .solver-pill-done .solver-pill-close { color: rgba(255,255,255,0.7); }
+    .solver-pill-done .solver-pill-close:hover { background: rgba(255,255,255,0.15); color: #fff; }
+    .solver-pill-failed .solver-pill-close { color: rgba(153,27,27,0.7); }
+    .solver-pill-failed .solver-pill-close:hover { background: rgba(239,68,68,0.15); color: #991B1B; }
+
     /* Cancelled toast — centered within main content area, not full viewport */
     .solver-cancelled-toast {
       position: fixed; 
@@ -197,17 +210,19 @@ export default function SolverStatusWidget() {
     if (status === 'idle') { setPos(null); setShowModal(false) }
   }, [status])
 
-  // Reset dismissed flag when starting new generation
+  // Show notification again when status changes (e.g., from running to complete)
+  const prevStatusRef = useRef(status)
   useEffect(() => {
-    if (status === 'running' && dismissed) {
+    if (status !== prevStatusRef.current) {
       setDismissed(false)
+      prevStatusRef.current = status
     }
-  }, [status, dismissed, setDismissed])
+  }, [status, setDismissed])
 
   const onMouseDown = useCallback((e) => {
     if (e.button !== 0) return
-    // Don't start drag if clicking the stop button
-    if (e.target.closest('.solver-pill-stop')) return
+    // Don't start drag if clicking the stop or close buttons
+    if (e.target.closest('.solver-pill-stop') || e.target.closest('.solver-pill-close')) return
     e.preventDefault()
     didDragRef.current = false
     const rect = pillRef.current.getBoundingClientRect()
@@ -268,10 +283,10 @@ export default function SolverStatusWidget() {
   // Hide the pill when:
   // 1. User is on scheduler page (they have full wizard UI)
   // 2. Status is idle 
-  // 3. Status is complete but user has dismissed it
+  // 3. User has dismissed it
   const hidePill = location.pathname.startsWith('/dashboard/scheduler') 
     || status === 'idle' 
-    || (status === 'complete' && dismissed)
+    || dismissed
   const phaseIdx      = Math.min(Math.floor((progress / 100) * 7), 6)
   const radius        = 15
   const circumference = 2 * Math.PI * radius
@@ -344,6 +359,18 @@ export default function SolverStatusWidget() {
               </svg>
             </button>
           )}
+
+          {/* Close button */}
+          <button
+            className="solver-pill-close"
+            title="Dismiss notification"
+            onClick={e => { e.stopPropagation(); setDismissed(true) }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
         </div>
       )}
 

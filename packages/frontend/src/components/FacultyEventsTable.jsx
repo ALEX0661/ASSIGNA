@@ -46,7 +46,7 @@ function ProgramBadge({ program, year, block }) {
   )
 }
 
-function RoomBadge({ room }) {
+function RoomBadge({ room, session }) {
   if (!room || room === '—') return <span style={{ color:'var(--border)', fontSize:12 }}>—</span>
   const isTBA = room.trim().toUpperCase() === 'TBA'
   if (isTBA) return (
@@ -55,7 +55,7 @@ function RoomBadge({ room }) {
       TBA
     </span>
   )
-  const isLab = /lab/i.test(room)
+  const isLab = session?.toUpperCase().includes('LAB')
   return (
     <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:6, background: isLab ? 'color-mix(in srgb, #6D28D9 15%, transparent)' : 'var(--bg)', color: isLab ? '#A78BFA' : 'var(--ink2)', fontSize:11.5, fontWeight:500, border: isLab ? '1px solid color-mix(in srgb, #6D28D9 30%, transparent)' : '1px solid var(--border)' }}>
       {room}
@@ -113,9 +113,10 @@ export default function FacultyEventsTable({ events, computeUnits, fetchError })
       if (e.program) p.add(e.program)
       if (e.year)    y.add(String(e.year))
       const r = (e.room||'').trim()
+      const isLab = e.session?.toUpperCase().includes('LAB')
       if (!r || r.toUpperCase()==='TBA') hasTBA = true
-      else if (/lab/i.test(r))          hasLab  = true
-      else                               hasLec  = true
+      else if (isLab)                    hasLab = true
+      else                               hasLec = true
     })
     return {
       days:      DAY_ORDER.filter(dd => d.has(dd)),
@@ -143,9 +144,10 @@ export default function FacultyEventsTable({ events, computeUnits, fetchError })
     if (years.size)     list = list.filter(e => years.has(String(e.year||'')))
     if (roomTypes.size) list = list.filter(e => {
       const r = (e.room||'').trim()
+      const isLab = e.session?.toUpperCase().includes('LAB')
       if (roomTypes.has('TBA')     && r.toUpperCase()==='TBA')      return true
-      if (roomTypes.has('Lab')     && /lab/i.test(r) && r.toUpperCase()!=='TBA') return true
-      if (roomTypes.has('Lecture') && r && !/lab/i.test(r) && r.toUpperCase()!=='TBA') return true
+      if (roomTypes.has('Lab')     && isLab && r.toUpperCase()!=='TBA') return true
+      if (roomTypes.has('Lecture') && !isLab && r.toUpperCase()!=='TBA') return true
       return false
     })
 
@@ -349,13 +351,21 @@ export default function FacultyEventsTable({ events, computeUnits, fetchError })
                           {code}
                         </span>
                         {title && <span style={{ fontSize:12.5, fontWeight:600, color: 'var(--ink)' }}>{title}</span>}
+                        {(() => {
+                          const isLab = ev.session?.toUpperCase().includes('LAB')
+                          return (
+                            <span style={{ fontSize:11, fontWeight:700, color: isLab ? '#A78BFA' : 'var(--muted)', background: isLab ? 'color-mix(in srgb, #6D28D9 15%, transparent)' : 'var(--hover)', padding: '2px 6px', borderRadius: 4, border: `1px solid ${isLab ? 'color-mix(in srgb, #6D28D9 30%, transparent)' : 'var(--border)'}`, whiteSpace: 'nowrap' }}>
+                              {isLab ? '(LAB)' : '(LEC)'}
+                            </span>
+                          )
+                        })()}
                       </div>
                     </td>
                     <td style={{ padding:'11px 14px', whiteSpace:'nowrap' }}>
                       <ProgramBadge program={ev.program} year={ev.year} block={ev.block} />
                     </td>
                     <td style={{ padding:'11px 14px' }}>
-                      <RoomBadge room={room} />
+                      <RoomBadge room={room} session={ev.session} />
                     </td>
                     <td style={{ padding:'11px 14px', textAlign:'center' }}>
                       {units != null && units !== '—' && units !== 0 ? (

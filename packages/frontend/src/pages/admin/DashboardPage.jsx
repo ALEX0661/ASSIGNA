@@ -53,6 +53,7 @@ const DASH_STYLE = `
     display: flex;
     flex-direction: column;
     gap: 10px;
+    min-width: 0;
   }
   .stat-card:hover {
     box-shadow: 0 4px 18px rgba(0,0,0,0.1);
@@ -86,14 +87,14 @@ const DASH_STYLE = `
   /* ── Responsive grid ── */
   .stat-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 12px;
   }
-  @media (max-width: 1024px) {
-    .stat-grid { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 1280px) {
+    .stat-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
   }
   @media (max-width: 640px) {
-    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .stat-grid { grid-template-columns: repeat(1, minmax(0, 1fr)); }
   }
 `
 

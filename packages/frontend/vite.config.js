@@ -21,7 +21,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4 MiB — our bundle is ~3.3 MiB
+        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024, // 8 MiB — our bundle has grown > 4 MiB
         runtimeCaching: [{
           urlPattern: /^https:\/\/firestore\.googleapis\.com/,
           handler: 'NetworkFirst',

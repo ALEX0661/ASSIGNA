@@ -17,7 +17,7 @@ const T = {
   greenSoft:    'var(--meadow-soft)',
   greenBorder:  'var(--meadow-border)',
   textMain:     'var(--ink)',
-  textMid:      '#1C3D2A',
+  textMid:      'var(--ink2, #1C3D2A)',
   textMuted: 'var(--muted, #4B7060)',
   textLight: 'var(--muted2, #6B8C7A)',
   border:       'var(--border)',

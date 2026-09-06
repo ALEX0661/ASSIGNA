@@ -185,7 +185,7 @@ function Toast({ msg, onClose }) {
     <div style={{
       position: 'fixed', bottom: 28, right: 28, zIndex: 9999,
       padding: '12px 20px', borderRadius: 11, fontSize: 13, fontWeight: 600,
-      background: isErr ? '#FFF0F0' : 'var(--meadow-soft)', color: isErr ? '#EF4444' : 'var(--meadow)',
+      background: isErr ? 'rgba(239, 68, 68, 0.1)' : 'var(--meadow-soft)', color: isErr ? '#EF4444' : 'var(--meadow)',
       boxShadow: '0 8px 28px rgba(0,0,0,0.14)', border: `1px solid ${isErr ? 'rgba(220, 38, 38, 0.25)' : 'var(--meadow-border)'}`,
       display: 'flex', alignItems: 'center', gap: 9, animation: 'fadeUp .2s ease',
     }}>

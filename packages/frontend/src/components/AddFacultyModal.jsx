@@ -1,23 +1,37 @@
 import { useState } from 'react'
 import { ACADEMIC_RANKS, DEPARTMENTS } from './FacultyDetail/fdShared'
 import { addFaculty } from '../services/api'
+import SpecializationModal from './FacultyDetail/SpecializationModal'
+import { dedupeSpecs } from './FacultyDetail/fdShared'
+
+const ALL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const TIME_OPTIONS = Array.from({length: 15}, (_, i) => i + 7).map(h => ({
+  value: h,
+  label: `${h > 12 ? h - 12 : h}:00 ${h >= 12 ? 'PM' : 'AM'}`
+}))
 
 export default function AddFacultyModal({ onClose, onSuccess }) {
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
     email: '',
+    initial_password: '',
     AcademicRank: '',
     Department: '',
     status: 'full-time',
     Educational_attainment: '',
     SexAtBirth: '',
+    specializations: [],
+    preferredDays: [],
+    preferredTimeStart: 7,
+    preferredTimeEnd: 18,
   })
   
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [successData, setSuccessData] = useState(null)
   const [pwCopied, setPwCopied] = useState(false)
+  const [showSpecModal, setShowSpecModal] = useState(false)
 
   const isDark = document.documentElement.getAttribute('data-mode') === 'dark'
   const T = {
@@ -38,8 +52,10 @@ export default function AddFacultyModal({ onClose, onSuccess }) {
     setSaving(true)
     setError('')
     try {
+      const finalEmail = form.email.includes('@') ? form.email.trim() : form.email.trim() + '@gordoncollege.edu.ph'
       const payload = {
         ...form,
+        email: finalEmail,
         name: `${form.lastName.trim().toUpperCase()}, ${form.firstName.trim().toUpperCase()}`
       }
       const res = await addFaculty(payload)
@@ -125,8 +141,17 @@ export default function AddFacultyModal({ onClose, onSuccess }) {
             
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={labelStyle}>Email Address <span style={{color: '#EF4444'}}>*</span></label>
-              <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} required style={inputStyle} placeholder="name@school.edu.ph" />
-              <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 6 }}>This will be used for their Firebase login credentials.</div>
+              <div style={{ position: 'relative' }}>
+                <input type="text" value={form.email} onChange={e => setForm({...form, email: e.target.value})}
+                  required style={{...inputStyle, paddingRight: !form.email.includes('@') && form.email.length > 0 ? 170 : 14}}
+                  placeholder="juan.delacruz" autoComplete="email" />
+                {!form.email.includes('@') && form.email.length > 0 && (
+                  <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: T.textMuted, fontSize: 13, pointerEvents: 'none' }}>
+                    @gordoncollege.edu.ph
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 6 }}>This will be used for their Firebase login credentials. Just the username defaults to @gordoncollege.edu.ph.</div>
             </div>
 
             <div>
@@ -163,6 +188,63 @@ export default function AddFacultyModal({ onClose, onSuccess }) {
               </select>
             </div>
 
+            <div>
+              <label style={labelStyle}>Educational Attainment</label>
+              <input value={form.Educational_attainment} onChange={e => setForm({...form, Educational_attainment: e.target.value})} style={inputStyle} placeholder="e.g. Master's in CS" />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Specializations ({form.specializations?.length || 0})</label>
+              <button type="button" onClick={() => setShowSpecModal(true)} style={{...inputStyle, background: T.surface, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: T.textMain}}>
+                <span>Manage Specializations</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Initial Password (Optional)</label>
+              <input type="text" value={form.initial_password} onChange={e => setForm({...form, initial_password: e.target.value})} style={inputStyle} placeholder="Leave blank to auto-generate" />
+              <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 6 }}>If left blank, a temporary password will be generated automatically.</div>
+            </div>
+
+            {form.status === 'part-time' && (
+              <div style={{ gridColumn: '1 / -1', padding: '16px', background: T.bg, borderRadius: '12px', border: `1px solid ${T.borderLight}` }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: T.textMain, marginBottom: 12 }}>Part-Time Schedule Preferences</div>
+                
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', marginBottom: 8 }}>Preferred Days</div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {ALL_DAYS.map(day => {
+                      const active = form.preferredDays?.includes(day)
+                      return (
+                        <button key={day} type="button" onClick={() => {
+                          const nextDays = active ? form.preferredDays.filter(d => d !== day) : [...(form.preferredDays || []), day]
+                          setForm({...form, preferredDays: nextDays})
+                        }} style={{ padding: '6px 12px', borderRadius: '99px', fontSize: 11.5, fontFamily: "'Inter',sans-serif", background: active ? T.meadow : T.surface, color: active ? '#fff' : T.textMuted, border: active ? '1.5px solid transparent' : `1.5px solid ${T.border}`, cursor: 'pointer', fontWeight: active ? 700 : 500 }}>
+                          {day.slice(0,3)}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 16 }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Start Time</label>
+                    <select value={form.preferredTimeStart} onChange={e => setForm({...form, preferredTimeStart: Number(e.target.value)})} style={{...inputStyle, padding: '7px 10px', height: 'auto'}}>
+                      {TIME_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>End Time</label>
+                    <select value={form.preferredTimeEnd} onChange={e => setForm({...form, preferredTimeEnd: Number(e.target.value)})} style={{...inputStyle, padding: '7px 10px', height: 'auto'}}>
+                      {TIME_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </form>
 
           {error && (
@@ -184,6 +266,18 @@ export default function AddFacultyModal({ onClose, onSuccess }) {
         </div>
 
       </div>
+
+      {showSpecModal && (
+        <SpecializationModal
+          specializations={form.specializations || []}
+          onSave={specs => {
+            setForm({ ...form, specializations: dedupeSpecs(specs) })
+            setShowSpecModal(false)
+          }}
+          isSaving={false}
+          onClose={() => setShowSpecModal(false)}
+        />
+      )}
     </div>
   )
 }

@@ -28,7 +28,7 @@
 
 .calendar-header {
   height: 15%;
-  background: linear-gradient(135deg, var(--meadow), #0F5C2C);
+  background: linear-gradient(135deg, var(--meadow), var(--meadow-deep, #0F5C2C));
   display: flex;
   justify-content: center;
   align-items: center;
@@ -77,12 +77,12 @@
   width: 12px;
   height: 25px;
   border-radius: 6px;
-  background-color: #0F5C2C;
+  background-color: var(--meadow-deep, #0F5C2C);
   box-shadow: inset 0 -2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .generating-text {
-  color: #0E2A20;
+  color: var(--ink, #0E2A20);
   font-family: 'Inter', Arial, sans-serif;
   font-weight: 700;
   font-size: 1.05rem;
@@ -93,7 +93,7 @@
 .progress-container {
   width: 260px;
   height: 10px;
-  background-color: #EBF4EF;
+  background-color: var(--meadow-soft, #EBF4EF);
   border-radius: 99px;
   overflow: hidden;
   margin-bottom: 10px;
@@ -102,13 +102,13 @@
 
 .progress-bar {
   height: 100%;
-  background: linear-gradient(to right, var(--meadow), #0F5C2C);
+  background: linear-gradient(to right, var(--meadow), var(--meadow-deep, #0F5C2C));
   border-radius: 99px;
   transition: width 0.4s ease;
 }
 
 .progress-text {
-  color: #4B7060;
+  color: var(--muted, #4B7060);
   font-size: 0.85rem;
   font-weight: 600;
   font-family: 'Inter', Arial, sans-serif;
@@ -141,7 +141,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(242, 247, 244, 0.92);
+  background-color: var(--bg, rgba(242, 247, 244, 0.92));
   display: flex;
   flex-direction: column;
   justify-content: center;

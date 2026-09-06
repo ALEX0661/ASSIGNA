@@ -234,8 +234,8 @@ button.primary {
   box-shadow: 0 3px 12px rgba(15,92,44,0.28);
 }
 button.primary:hover { background: linear-gradient(135deg, var(--meadow-mid), var(--meadow-deep)); }
-button.danger { background: #FFF0F0; color: #C0392B; border-color: #FECACA; }
-button.danger:hover { background: #FFE0E0; }
+button.danger { background: rgba(239, 68, 68, 0.1); color: #C0392B; border-color: rgba(239, 68, 68, 0.25); }
+button.danger:hover { background: rgba(239, 68, 68, 0.2); }
 .error-msg { color: #C0392B; font-size: 12px; }
 
 /* ── Logout modal ── */
