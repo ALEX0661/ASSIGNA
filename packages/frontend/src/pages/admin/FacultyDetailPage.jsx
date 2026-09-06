@@ -25,7 +25,7 @@ const FACULTY_STYLE = ``;
 
 export default function FacultyDetailPage() {
   const { id }   = useParams()
-  const isNew    = id === 'new'
+  const isNew    = false
   const navigate = useNavigate()
 
   const { toasts, toast } = useToast()
@@ -225,82 +225,9 @@ export default function FacultyDetailPage() {
   // ── Early-exit screens ────────────────────────────────────────────────────────
   if (pageLoading) return <PageSkeleton />
 
-  if (credActivated) {
-    const copyBg = pwCopied ? 'var(--meadow-soft)' : 'var(--surface)', copyCl = pwCopied ? 'var(--meadow)' : 'var(--meadow-deep)'
-    return (
-      <div style={{ padding:'28px 32px', fontFamily:"'Inter',sans-serif", maxWidth:560 }}>
-        <div style={{ background: 'var(--surface)', borderRadius:18, border:'1px solid var(--border)', overflow:'hidden', boxShadow:'0 4px 20px rgba(0,0,0,0.08)' }}>
-          <div style={{ padding:'24px 28px', borderBottom:'1px solid var(--hover)', display:'flex', gap:14, alignItems:'center' }}>
-            <div style={{ width:44, height:44, borderRadius:'50%', background:'var(--meadow-soft)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            </div>
-            <div>
-              <div style={{ fontSize:15, fontWeight:700, color: 'var(--meadow-text)' }}>Account activated</div>
-              <div style={{ fontSize:12, color: 'var(--muted)', marginTop:2 }}>Firebase Auth account created and profile migrated.</div>
-            </div>
-          </div>
-          <div style={{ padding:'24px 28px' }}>
-            {credActivated.tempPassword ? (
-              <>
-                <div style={{ fontSize:11, fontWeight:700, color: 'var(--muted)', textTransform:'uppercase', letterSpacing:'.6px', marginBottom:10 }}>Auto-generated Password</div>
-                <div style={{ display:'flex', gap:10, marginBottom:14 }}>
-                  <code style={{ flex:1, padding:'12px 16px', background: 'var(--bg)', borderRadius:10, border:'1.5px solid var(--border)', fontSize:15, fontFamily:'monospace', letterSpacing:2, color: 'var(--ink)' }}>{credActivated.tempPassword}</code>
-                  <button type="button" onClick={() => { navigator.clipboard.writeText(credActivated.tempPassword); setPwCopied(true); setTimeout(() => setPwCopied(false), 2000) }} style={{ padding:'12px 16px', borderRadius:10, border:'1.5px solid var(--border)', background:copyBg, color:copyCl, fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif", whiteSpace:'nowrap' }}>
-                    {pwCopied ? 'Copied!' : 'Copy'}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div style={{ marginBottom:14, fontSize:12.5, color: 'var(--ink2)' }}>Credentials saved. The faculty member can now log in with the password you set.</div>
-            )}
-            <div style={{ fontSize:11.5, color: 'var(--muted)', background: 'var(--bg)', borderRadius:8, padding:'10px 14px', border:'1px solid var(--border)', marginBottom:22 }}>The faculty member must log out and back in for their role to take effect.</div>
-            <button type="button" onClick={() => { const dest = credActivated.newId || id; setCredActivated(null); navigate(`/dashboard/faculty/${dest}`) }} style={{ padding:'9px 18px', borderRadius:9, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>
-              Continue to Profile
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
-  if (createdPassword) {
-    const cpBg = passwordCopied ? 'var(--meadow-soft)' : 'var(--surface)', cpCl = passwordCopied ? 'var(--meadow)' : 'var(--meadow-deep)'
-    return (
-      <div style={{ padding:'28px 32px', fontFamily:"'Inter',sans-serif", maxWidth:560 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:22 }}>
-          <button onClick={() => navigate('/dashboard/faculty')} style={{ background:'none', border:'none', color: 'var(--muted)', cursor:'pointer', display:'flex', alignItems:'center', gap:5, fontSize:12.5, fontFamily:"'Inter',sans-serif", padding:0 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>Faculty
-          </button>
-          <span style={{ fontSize:12.5, color: 'var(--ink)', fontWeight:600 }}>Account Created</span>
-        </div>
-        <div style={{ background: 'var(--surface)', borderRadius:18, border:'1px solid var(--border)', overflow:'hidden', boxShadow:'0 4px 20px rgba(0,0,0,0.08)' }}>
-          <div style={{ padding:'24px 28px', borderBottom:'1px solid var(--hover)', display:'flex', gap:14, alignItems:'center' }}>
-            <div style={{ width:44, height:44, borderRadius:'50%', background:'var(--meadow-soft)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            </div>
-            <div>
-              <div style={{ fontSize:15, fontWeight:700, color: 'var(--meadow-text)' }}>Account created</div>
-              <div style={{ fontSize:12, color: 'var(--muted)', marginTop:2 }}>Share the password with {form.name || form.email}.</div>
-            </div>
-          </div>
-          <div style={{ padding:'24px 28px' }}>
-            <div style={{ fontSize:11, fontWeight:700, color: 'var(--muted)', textTransform:'uppercase', letterSpacing:'.6px', marginBottom:10 }}>Temporary Password</div>
-            <div style={{ display:'flex', gap:10, marginBottom:16 }}>
-              <code style={{ flex:1, padding:'12px 16px', background: 'var(--bg)', borderRadius:10, border:'1.5px solid var(--border)', fontSize:15, fontFamily:'monospace', letterSpacing:2, color: 'var(--ink)' }}>{createdPassword}</code>
-              <button onClick={() => { navigator.clipboard.writeText(createdPassword); setPasswordCopied(true); setTimeout(() => setPasswordCopied(false), 2000) }} style={{ padding:'12px 16px', borderRadius:10, border:'1.5px solid var(--border)', background:cpBg, color:cpCl, fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif", whiteSpace:'nowrap' }}>
-                {passwordCopied ? 'Copied!' : 'Copy'}
-              </button>
-            </div>
-            <div style={{ fontSize:11.5, color: 'var(--muted)', background: 'var(--bg)', borderRadius:8, padding:'10px 14px', border:'1px solid var(--border)', marginBottom:22 }}>The faculty member must log out and back in to pick up their new role.</div>
-            <div style={{ display:'flex', gap:10 }}>
-              <button onClick={() => navigate('/dashboard/faculty')} style={{ padding:'9px 18px', borderRadius:9, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>Back to Faculty List</button>
-              <button onClick={() => { setCreatedPassword(''); setPassword('') }} style={{ padding:'9px 16px', borderRadius:9, border:'1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--muted)', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>Add Another</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
+
+
 
   // ── Main render ───────────────────────────────────────────────────────────────
   return (
@@ -315,38 +242,30 @@ export default function FacultyDetailPage() {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>Faculty
           </button>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--border)" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          <span style={{ fontSize:12.5, color: 'var(--ink)', fontWeight:600 }}>{isNew ? 'New Faculty' : (form.name || 'Edit Faculty')}</span>
-          {!isNew && form.status   && <span style={{ padding:'1px 8px', borderRadius:99, fontSize:10.5, fontWeight:700, background:statusBg, color:statusCl }}>{form.status}</span>}
-          {!isNew && form.archived && <span style={{ padding:'1px 8px', borderRadius:99, fontSize:10.5, fontWeight:700, background:'rgba(217, 119, 6, 0.1)', color:'#F59E0B' }}>Archived</span>}
-          {!isNew && isOverloaded  && <span style={{ padding:'1px 8px', borderRadius:99, fontSize:10.5, fontWeight:700, background:'rgba(220, 38, 38, 0.1)', color:'#EF4444' }}>Overloaded</span>}
+          <span style={{ fontSize:12.5, color: 'var(--ink)', fontWeight:600 }}>{form.name || 'Edit Faculty'}</span>
+          {form.status   && <span style={{ padding:'1px 8px', borderRadius:99, fontSize:10.5, fontWeight:700, background:statusBg, color:statusCl }}>{form.status}</span>}
+          {form.archived && <span style={{ padding:'1px 8px', borderRadius:99, fontSize:10.5, fontWeight:700, background:'rgba(217, 119, 6, 0.1)', color:'#F59E0B' }}>Archived</span>}
+          {isOverloaded  && <span style={{ padding:'1px 8px', borderRadius:99, fontSize:10.5, fontWeight:700, background:'rgba(220, 38, 38, 0.1)', color:'#EF4444' }}>Overloaded</span>}
         </div>
 
-        {!isNew && (
-          <div id="tour-fac-actions" style={{ display:'flex', alignItems:'center', gap:6 }}>
-            {form.archived ? (
-              <button type="button" onClick={handleUnarchive} disabled={archiving} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', background:'var(--meadow-soft)', color: 'var(--meadow-text)', fontSize:12, fontWeight:600, cursor: archiving ? 'default' : 'pointer', fontFamily:"'Inter',sans-serif", opacity: archiving ? 0.7 : 1 }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
-                {archiving ? 'Restoring…' : 'Restore'}
-              </button>
-            ) : (
-              <button type="button" onClick={() => setShowArchiveModal(true)} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, border:'1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--muted)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 8v13H3V8"/><path d="M23 3H1v5h22z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>Archive
-              </button>
-            )}
-            <button type="button" onClick={() => setShowDeleteModal(true)} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, border:'1.5px solid #FFD0D0', background:'rgba(220, 38, 38, 0.05)', color:'#EF4444', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>Delete
+        <div id="tour-fac-actions" style={{ display:'flex', alignItems:'center', gap:6 }}>
+          {form.archived ? (
+            <button type="button" onClick={handleUnarchive} disabled={archiving} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, border:'1.5px solid var(--meadow-border)', background:'var(--meadow-soft)', color: 'var(--meadow-text)', fontSize:12, fontWeight:600, cursor: archiving ? 'default' : 'pointer', fontFamily:"'Inter',sans-serif", opacity: archiving ? 0.7 : 1 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+              {archiving ? 'Restoring…' : 'Restore'}
             </button>
-          </div>
-        )}
+          ) : (
+            <button type="button" onClick={() => setShowArchiveModal(true)} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, border:'1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--muted)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 8v13H3V8"/><path d="M23 3H1v5h22z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>Archive
+            </button>
+          )}
+          <button type="button" onClick={() => setShowDeleteModal(true)} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, border:'1.5px solid #FFD0D0', background:'rgba(220, 38, 38, 0.05)', color:'#EF4444', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>Delete
+          </button>
+        </div>
       </div>
 
       {/* Banners */}
-      {isNew && (
-        <div style={{ background:'var(--meadow-soft)', border:'1px solid var(--meadow-border)', borderRadius:12, padding:'12px 16px', marginBottom:20, display:'flex', gap:10, alignItems:'flex-start' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2" style={{ flexShrink:0, marginTop:1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <span style={{ fontSize:12.5, color:'var(--meadow-mid)', lineHeight:1.5 }}>Adding a faculty member automatically creates their Firebase login account and assigns the faculty role.</span>
-        </div>
-      )}
       {!isNew && form.archived && (
         <div style={{ background:'rgba(217, 119, 6, 0.1)', border:'1px solid #FDE68A', borderRadius:12, padding:'12px 16px', marginBottom:20, display:'flex', gap:10, alignItems:'center' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2" style={{ flexShrink:0 }}><path d="M21 8v13H3V8"/><path d="M23 3H1v5h22z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
@@ -395,22 +314,7 @@ export default function FacultyDetailPage() {
                   facultyId={id}
                 />
               </div>
-              {isNew && (
-                <div>
-                  {createError && (
-                    <div style={{ background:'rgba(220, 38, 38, 0.05)', border:'1px solid #FECACA', borderRadius:10, padding:'10px 14px', display:'flex', gap:8, alignItems:'center', marginBottom:12 }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke='#EF4444' strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
-                      <span style={{ fontSize:12.5, color:'#EF4444', fontWeight:500 }}>{createError}</span>
-                    </div>
-                  )}
-                  <div style={{ display:'flex', gap:10 }}>
-                    <button type="submit" disabled={createSaving} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 18px', borderRadius:10, border:'none', fontFamily:"'Inter',sans-serif", fontSize:12.5, fontWeight:600, cursor: createSaving ? 'default' : 'pointer', background:`linear-gradient(135deg,var(--meadow),var(--meadow-deep))`, color: '#fff', boxShadow:'0 3px 12px rgba(0,0,0,0.32)', opacity: createSaving ? 0.65 : 1 }}>
-                      {createSaving ? 'Creating...' : 'Create Faculty'}
-                    </button>
-                    <button type="button" onClick={() => navigate('/dashboard/faculty')} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 16px', borderRadius:10, border:'1.5px solid var(--border)', fontFamily:"'Inter',sans-serif", fontSize:12.5, fontWeight:600, cursor:'pointer', background: 'var(--surface)', color: 'var(--muted)' }}>Cancel</button>
-                  </div>
-                </div>
-              )}
+
             </div>
           </div>
 
@@ -443,15 +347,13 @@ export default function FacultyDetailPage() {
       </form>
 
       {/* Schedule Section — outside form to prevent accidental form submission */}
-      {!isNew && (
-        <div style={{ marginTop:16 }}>
-          <ScheduleSection
-            facultyName={form.name}
-            onUnitsLoaded={setScheduleUnits}
-            onAssignmentsLoaded={setScheduleAssignments}
-          />
-        </div>
-      )}
+      <div style={{ marginTop:16 }}>
+        <ScheduleSection
+          facultyName={form.name}
+          onUnitsLoaded={setScheduleUnits}
+          onAssignmentsLoaded={setScheduleAssignments}
+        />
+      </div>
 
       {/* Modals */}
       {showSpecModal && (
@@ -488,6 +390,43 @@ export default function FacultyDetailPage() {
 
       {showDeleteModal && (
         <DeleteConfirmModal name={form.name} deleting={deleting} onConfirm={handleDelete} onCancel={() => setShowDeleteModal(false)} />
+      )}
+
+      {credActivated && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', padding: 20 }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 18, border: '1px solid var(--border)', overflow: 'hidden', boxShadow: '0 10px 40px rgba(0,0,0,0.2)', width: '100%', maxWidth: 460, animation: 'fadeIn 0.2s ease-out' }}>
+            <div style={{ padding: '24px 28px', borderBottom: '1px solid var(--hover)', display: 'flex', gap: 14, alignItems: 'center' }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--meadow-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--meadow-text)' }}>Account activated</div>
+                <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 2 }}>Firebase Auth account created and profile migrated.</div>
+              </div>
+            </div>
+            <div style={{ padding: '24px 28px' }}>
+              {credActivated.tempPassword ? (
+                <>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 10 }}>Auto-generated Password</div>
+                  <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+                    <code style={{ flex: 1, padding: '12px 16px', background: 'var(--bg)', borderRadius: 10, border: '1.5px solid var(--border)', fontSize: 15, fontFamily: 'monospace', letterSpacing: 2, color: 'var(--ink)' }}>{credActivated.tempPassword}</code>
+                    <button type="button" onClick={() => { navigator.clipboard.writeText(credActivated.tempPassword); setPwCopied(true); setTimeout(() => setPwCopied(false), 2000) }} style={{ padding: '12px 16px', borderRadius: 10, border: '1.5px solid var(--border)', background: pwCopied ? 'var(--meadow-soft)' : 'var(--surface)', color: pwCopied ? 'var(--meadow)' : 'var(--meadow-deep)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", whiteSpace: 'nowrap' }}>
+                      {pwCopied ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div style={{ marginBottom: 14, fontSize: 12.5, color: 'var(--ink2)' }}>Credentials saved. The faculty member can now log in with the password you set.</div>
+              )}
+              <div style={{ fontSize: 11.5, color: 'var(--muted)', background: 'var(--bg)', borderRadius: 8, padding: '10px 14px', border: '1px solid var(--border)', marginBottom: 22 }}>The faculty member must log out and back in for their role to take effect.</div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="button" onClick={() => setCredActivated(null)} style={{ padding: '9px 18px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       <ToastContainer toasts={toasts} />
