@@ -12,3 +12,5 @@ packages/backend/.env
 firebase.json
 .firebaserc
 venv/
+# Ignore temporary scripts in root
+/*.py
