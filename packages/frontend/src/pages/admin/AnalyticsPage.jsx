@@ -362,11 +362,11 @@ function SchedulePill({ savedList, scheduleSource, scheduleName, onChange, loadi
             maxWidth: 140, fontFamily: "inherit", padding: 0,
           }}
         >
-          <option value="__current__">
+          <option value="__current__" style={{ background: 'var(--surface)', color: 'var(--ink)' }}>
             {scheduleName ? `Current (${scheduleName})` : "Current (in memory)"}
           </option>
           {savedList.map(name => (
-            <option key={name} value={name}>{name}</option>
+            <option key={name} value={name} style={{ background: 'var(--surface)', color: 'var(--ink)' }}>{name}</option>
           ))}
         </select>
       ) : (
