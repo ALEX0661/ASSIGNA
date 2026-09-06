@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ImportFacultyModal from '../../components/ImportFacultyModal'
+import AddFacultyModal from '../../components/AddFacultyModal'
 import { generateExportWorkbook, downloadWorkbook } from '../../components/facultyExcelTemplate'
 import { getFaculty, getArchivedFaculty, deleteFaculty, archiveFaculty, unarchiveFaculty, getCourses } from '../../services/api'
 
@@ -555,6 +556,7 @@ export default function FacultyListPage() {
   const [viewTab,           setViewTab]           = useState('active')
   const [viewMode,          setViewMode]          = useState('grid')   // 'grid' | 'list'
   const [loading,           setLoading]           = useState(true)
+  const [showAddModal,      setShowAddModal]      = useState(false)
 
   const { TourElement, startTour } = useTour('adminFaculty', [
     {
@@ -916,7 +918,7 @@ export default function FacultyListPage() {
             </button>
           </div>
 
-          <button id="tour-add-faculty-btn" onClick={() => navigate('/dashboard/faculty/new')}
+          <button id="tour-add-faculty-btn" onClick={() => setShowAddModal(true)}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 18px', borderRadius: 10, border: 'none', fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: '#fff', boxShadow: '0 3px 12px rgba(0,0,0,0.32)' }}
             onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 5px 18px rgba(0,0,0,0.42)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
             onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 3px 12px rgba(0,0,0,0.32)'; e.currentTarget.style.transform = 'none' }}>
@@ -1350,6 +1352,7 @@ export default function FacultyListPage() {
         </div>
       )}
 
+      {showAddModal && <AddFacultyModal onClose={() => setShowAddModal(false)} onSuccess={() => { load(); setShowAddModal(false); toast('Faculty created successfully', 'success') }} />}
       {showImport && <ImportFacultyModal onClose={() => setShowImport(false)} onImported={() => { load(); setShowImport(false); toast('Faculty imported', 'success') }} courses={Object.entries(courseTitleMap).filter(([k]) => !k.includes(" ")).map(([k, v]) => ({ courseCode: k, title: v }))} />}
       {pendingAction && <ActionModal mode={pendingAction.mode} name={pendingAction.name} count={pendingAction.bulk ? pendingAction.count : 1} busy={busy} onConfirm={handleConfirm} onCancel={() => { if (!busy) setPendingAction(null) }}/>}
       <ToastContainer toasts={toasts}/>
