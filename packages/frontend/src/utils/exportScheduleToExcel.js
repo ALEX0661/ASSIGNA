@@ -38,7 +38,7 @@ const ALT_ROW_FILL = 'FFF2CC'   // very light amber for alternating rows
 const WHITE        = 'FFFFFFFF'
 
 // ── Day metadata (abbreviation + sort order) ──────────────────────────────────
-const DAY_META = {
+export const DAY_META = {
   Monday:    { abbr: 'M',  order: 0 },
   Tuesday:   { abbr: 'T',  order: 1 },
   Wednesday: { abbr: 'W',  order: 2 },
@@ -50,7 +50,7 @@ const DAY_META = {
 
 // ── Time utilities ────────────────────────────────────────────────────────────
 /** "7:00 AM" | "12:30PM" → minutes since midnight, or null on failure */
-function parseTime(str) {
+export function parseTime(str) {
   const m = (str || '').trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
   if (!m) return null
   let h = parseInt(m[1], 10)
@@ -62,7 +62,7 @@ function parseTime(str) {
 }
 
 /** minutes since midnight → "7:00 AM" */
-function formatTime(mins) {
+export function formatTime(mins) {
   const h   = Math.floor(mins / 60)
   const m   = mins % 60
   const ap  = h >= 12 ? 'PM' : 'AM'
@@ -161,11 +161,16 @@ function applyDataStyle(cell, rowIndex) {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 /**
- * @param {object[]} events  – raw schedule events from the Zustand store
- * @param {string}   name    – schedule name used for the downloaded file name
+ * Shared pipeline: raw schedule events → final merged/sorted row objects.
+ * Used by both the Excel exporter (below) and the PDF exporter, so both
+ * outputs apply the exact same consecutive-time / day / lec-lab-suffix
+ * merge rules described at the top of this file.
+ *
+ * @param {object[]} events – raw schedule events from the Zustand store
+ * @returns {object[]} merged row objects: { classcode, courseCode, description, day, startMin, endMin, room, faculty, ... }
  */
-export async function exportScheduleToExcel(events, name = 'schedule') {
-  if (!events?.length) return
+export function computeScheduleRows(events) {
+  if (!events?.length) return []
 
   // ── A. Which sections have BOTH lecture and lab? ───────────────────────────
   const sectionTypes = {}
@@ -216,6 +221,18 @@ export async function exportScheduleToExcel(events, name = 'schedule') {
     if (do_ !== 0) return do_
     return (a.startMin ?? 0) - (b.startMin ?? 0)
   })
+
+  return afterDayMerge
+}
+
+/**
+ * @param {object[]} events  – raw schedule events from the Zustand store
+ * @param {string}   name    – schedule name used for the downloaded file name
+ */
+export async function exportScheduleToExcel(events, name = 'schedule') {
+  if (!events?.length) return
+
+  const afterDayMerge = computeScheduleRows(events)
 
   // ── E. Convert to plain row arrays for ExcelJS ────────────────────────────
   const rows = afterDayMerge.map(ev => [

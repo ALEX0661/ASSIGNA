@@ -316,7 +316,7 @@ if (!document.getElementById('coord-scheduler-style')) {
     .cp-toast.error { background: var(--surface); color:#DC2626; border:1px solid #FECACA; }
     .cp-toast.info { background: var(--surface); color: var(--meadow-text); border:1px solid ${G.meadowBorder}; }
     
-    .cp-tr-hover:nth-child(even) { background: #FAFDFB; }
+    .cp-tr-hover:nth-child(even) { background: ${G.bg}; }
     .cp-tr-hover:hover { background: ${G.meadowSoft} !important; }
 
     .csh-table-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -326,11 +326,13 @@ if (!document.getElementById('coord-scheduler-style')) {
 
     /* Failure Result UI */
     .solve-result { border-radius:12px; border:1px solid ${G.border}; overflow:hidden; }
-    .solve-result.failed { border-color:#FECACA; }
+    .solve-result.failed { border-color:${G.redBorder}; }
     .solve-result-body { display:flex; align-items:flex-start; gap:14px; padding:18px 20px; }
     .solve-result-body > div:last-child { flex:1; min-width:0; }
     .solve-result-body p, .solve-result-body div { overflow-wrap:break-word; word-break:break-word; }
-    .solve-result-actions { display:flex; flex-wrap:wrap; gap:10px; padding:16px 28px; border-top:1px solid #FECACA; background:#FEF2F2; justify-content:flex-end; }
+    .solve-result-actions { display:flex; flex-wrap:wrap; gap:10px; padding:16px 28px; border-top:1px solid ${G.border}; background:var(--surface); justify-content:flex-end; }
+    .solve-result.failed   .solve-result-actions { border-color:${G.redBorder}; background:${G.redSoft}; }
+    .solve-result.complete .solve-result-actions { border-color:${G.meadowBorder}; background:var(--bg); }
     .solve-action-btn { display:inline-flex; align-items:center; gap:8px; padding:10px 20px; border-radius:9px; font-family:'Inter',sans-serif; font-size:13px; font-weight:700; cursor:pointer; transition:all .2s; }
     .solve-action-btn.primary { background:${G.meadow}; color:#fff; border:none; box-shadow:0 4px 12px rgba(0,0,0,0.2); }
     .solve-action-btn.primary:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,0.3); background:${G.meadowDeep}; }

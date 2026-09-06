@@ -831,7 +831,20 @@ export default function FacultySchedulePage() {
     try {
       const schedLabel = selectedSchedule || 'Schedule'
       const safeName   = (facultyName || 'Faculty').replace(/[^a-zA-Z0-9\s-]/g, '').trim()
-      await exportScheduleToExcel(displayedEvents, `${safeName} - ${schedLabel} (Filtered)`)
+
+      // Describe whatever filters are actually active instead of a generic
+      // "(Filtered)" tag — e.g. "Monday", "Lab", "Search-calculus".
+      const filterParts = []
+      if (activeDay !== 'All')     filterParts.push(activeDay)
+      if (sessionFilter !== 'All') filterParts.push(sessionFilter)
+      if (searchQuery.trim())      filterParts.push(`Search-${searchQuery.trim()}`)
+      const safeFilterPart = filterParts.join('_').replace(/[\\/:*?"<>|]+/g, '').trim()
+
+      const exportName = safeFilterPart
+        ? `${safeName} - ${schedLabel} - ${safeFilterPart}`
+        : `${safeName} - ${schedLabel}`
+
+      await exportScheduleToExcel(displayedEvents, exportName)
     } finally {
       setExporting(false)
     }
@@ -865,12 +878,7 @@ export default function FacultySchedulePage() {
     return steps
   }, [loading, scheduleNames.length])
 
-  const { TourElement, startTour } = useTour('facultySchedule', tourSteps, !loading)
-
-  useEffect(() => {
-    if (loading || tourSteps.length === 0) return
-    startTour()
-  }, [loading, tourSteps, startTour])
+  const { TourElement } = useTour('facultySchedule', tourSteps, !loading)
 
 
   return (
@@ -1207,7 +1215,7 @@ export default function FacultySchedulePage() {
 
       {/* ══ ERROR ══ */}
       {error && (
-        <div style={{ background:'#FFF0F0', border:'1px solid #FECACA', borderRadius:12, padding:'14px 18px', fontSize:13, color:'#EF4444', marginTop:16, display:'flex', gap:10, alignItems:'center', fontFamily:"'Inter',sans-serif" }}>
+        <div style={{ background:'rgba(239, 68, 68, 0.1)', border:'1px solid rgba(239, 68, 68, 0.25)', borderRadius:12, padding:'14px 18px', fontSize:13, color:'#EF4444', marginTop:16, display:'flex', gap:10, alignItems:'center', fontFamily:"'Inter',sans-serif" }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
           {error}
         </div>

@@ -764,7 +764,7 @@ function ReviewStep({ courses, lockedProgram, onBack, onCommit, onRemove, onEdit
             <strong style={{ color:'var(--ink)' }}>{courses.length}</strong> course{courses.length!==1?'s':''} ready
           </span>
           {invalidCount > 0 && (
-            <span style={{ background:'#FFF0F0', color:'#EF4444', fontSize:11, fontWeight:700, padding:'2px 9px', borderRadius:99, border:'1px solid #FECACA' }}>
+            <span style={{ background:'rgba(239, 68, 68, 0.1)', color:'#EF4444', fontSize:11, fontWeight:700, padding:'2px 9px', borderRadius:99, border:'1px solid rgba(239, 68, 68, 0.25)' }}>
               ⚠ {invalidCount} invalid
             </span>
           )}

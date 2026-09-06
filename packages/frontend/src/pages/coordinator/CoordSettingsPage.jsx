@@ -7,6 +7,7 @@ export default function CoordSettingsPage() {
       target: '#tour-stg-theme',
       title: 'Color Theme & Dark Mode',
       content: 'Personalize your experience by selecting a custom accent color and toggling between light and dark modes. Your preference is saved locally.',
+      placement: 'bottom',
     }
   ])
 
@@ -67,8 +68,8 @@ export default function CoordSettingsPage() {
       </div>
 
       <div style={{ maxWidth: 800, display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <div id="tour-stg-theme" className="stg-card" style={{ background: 'var(--surface)', borderRadius: 16, border: '1px solid var(--border)', padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-          <div className="stg-card-head" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+        <div className="stg-card" style={{ background: 'var(--surface)', borderRadius: 16, border: '1px solid var(--border)', padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+          <div id="tour-stg-theme" className="stg-card-head" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
             <div className="stg-icon-box" style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--meadow-soft)', border: '1px solid var(--meadow-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
             </div>
