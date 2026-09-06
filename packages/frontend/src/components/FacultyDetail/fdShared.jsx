@@ -41,8 +41,21 @@ export const EMPTY_FACULTY = {
   name:'', firstName:'', lastName:'', email:'', status:'full-time', AcademicRank:'',
   Department:'CCS', Educational_attainment:'', SexAtBirth:'', units:0,
   specializations:[], preferredDays:['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'],
-  preferredTimeStart:7, preferredTimeEnd:21,
+  preferredTimeStart:7, preferredTimeEnd:21, panelColor: null,
 }
+
+// ─── Panel Color Presets ──────────────────────────────────────────────────────
+export const PANEL_COLOR_PRESETS = [
+  { id: 'default', label: 'Default Green', value: '#15803D' },
+  { id: 'blue',    label: 'Ocean Blue',    value: '#2563EB' },
+  { id: 'purple',  label: 'Royal Purple',  value: '#9333EA' },
+  { id: 'rose',    label: 'Rose',          value: '#E11D48' },
+  { id: 'amber',   label: 'Amber',         value: '#F59E0B' },
+  { id: 'teal',    label: 'Teal',          value: '#0D9488' },
+  { id: 'indigo',  label: 'Indigo',        value: '#4F46E5' },
+  { id: 'crimson', label: 'Crimson',       value: '#EF4444' },
+  { id: 'slate',   label: 'Slate',         value: '#475569' },
+]
 
 const AVATAR_COLORS = [
   ['var(--meadow)','var(--meadow-soft)'],['#60A5FA','rgba(59, 130, 246, 0.1)'],['#7C3AED','color-mix(in srgb, #6D28D9 15%, transparent)'],

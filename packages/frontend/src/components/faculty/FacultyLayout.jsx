@@ -88,6 +88,34 @@ export default function FacultyLayout() {
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
   const [collapsed, setCollapsed] = useState(() => window.innerWidth < 768)
+  const [panelColor, setPanelColor] = useState(() => localStorage.getItem('facultyPanelColor'))
+
+  useEffect(() => {
+    const applyTheme = (themeId) => {
+      if (themeId && themeId !== 'default') {
+        document.documentElement.setAttribute('data-theme', themeId)
+      } else {
+        document.documentElement.removeAttribute('data-theme')
+      }
+    }
+
+    // Apply immediately on mount
+    applyTheme(panelColor)
+
+    const handleStorage = () => {
+      const updatedColor = localStorage.getItem('facultyPanelColor')
+      setPanelColor(updatedColor)
+      applyTheme(updatedColor)
+    }
+    
+    window.addEventListener('storage', handleStorage)
+    window.addEventListener('facultyColorChanged', handleStorage)
+    return () => {
+      window.removeEventListener('storage', handleStorage)
+      window.removeEventListener('facultyColorChanged', handleStorage)
+      // Cleanup theme on unmount if needed (though it's fine to leave since they are logged in)
+    }
+  }, [panelColor])
 
   useEffect(() => {
     const handleResize = () => {
@@ -239,6 +267,7 @@ export default function FacultyLayout() {
           </div>
           <div style={{ flex: 1 }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginLeft: 16 }}>
+
             <div className="topbar-time" style={{ display: 'flex', flexDirection: 'column', gap: 1, textAlign: 'right' }}>
               <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--meadow-text)', fontVariantNumeric: 'tabular-nums' }}>{timeStr}</span>
               <span style={{ fontSize: 10.5, fontWeight: 500, color: 'var(--muted2)' }}>{dateStr}</span>

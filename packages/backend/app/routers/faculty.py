@@ -292,7 +292,7 @@ def update_faculty(faculty_id: str, data: FacultyUpdate, user=Depends(any_authen
     if not doc.exists:
         raise HTTPException(404, "Faculty not found")
 
-    update_data = {k: v for k, v in data.dict().items() if v is not None}
+    update_data = data.dict(exclude_unset=True)
 
     
 

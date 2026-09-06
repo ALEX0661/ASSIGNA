@@ -357,7 +357,12 @@ class HierarchicalScheduler:
         self.add_room_consistency(model, phase_sessions)
         
         solver.parameters.max_time_in_seconds = float(timeout)
-        solver.parameters.num_search_workers = 8
+        
+        # Auto-detect CPU cores. Cap at 4 to prevent cloud providers (like Railway) 
+        # from heavily throttling the container for using too much shared CPU/RAM.
+        import os
+        available_cores = os.cpu_count() or 2
+        solver.parameters.num_search_workers = min(available_cores, 4)
         
         status = solver.Solve(model)
         

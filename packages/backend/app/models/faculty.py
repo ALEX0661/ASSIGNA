@@ -28,6 +28,7 @@ class Faculty(BaseModel):
     maxConsecutiveHours: float = 4.0
     archived: bool = False
     coordinatorProgram: Optional[str] = None  # e.g. "BSCS", "BSIT", "BSEMC"
+    panelColor: Optional[str] = None  # hex color for faculty panel customization, e.g. "#7C3AED"
 
 
 class FacultyUpdate(BaseModel):
@@ -61,3 +62,6 @@ class FacultyUpdate(BaseModel):
     
     # Coordinator assignment
     coordinatorProgram: Optional[str] = None
+
+    # Panel color customization
+    panelColor: Optional[str] = None
