@@ -34,7 +34,7 @@ app.add_middleware(
         "http://localhost:5173",
         "http://localhost:4173",
         "https://gcassigna.web.app",        
-        "https://logos-backend.up.railway.app",
+        "https://assigna.up.railway.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
