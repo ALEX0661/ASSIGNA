@@ -820,7 +820,11 @@ def get_selected_rooms(user: dict = Depends(coordinator_only)):
 def get_coordinator_courses(user: dict = Depends(coordinator_only)):
     program = user.get("coordinatorProgram")
     all_courses = get_courses()
-    return [c for c in all_courses if c.get('program') == program]
+    filtered = [c for c in all_courses if c.get('program') == program]
+    # DEBUG: print it to the terminal too
+    print(f"DEBUG: program={program}, all_courses_len={len(all_courses)}, filtered_len={len(filtered)}")
+    # We must return a list because the frontend expects an array.
+    return filtered
 
 @router.get("/queue/my-turn")
 def check_queue_turn(user: dict = Depends(coordinator_only)):
