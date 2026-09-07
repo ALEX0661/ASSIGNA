@@ -421,7 +421,13 @@ export default function FacultyDetailPage() {
               )}
               <div style={{ fontSize: 11.5, color: 'var(--muted)', background: 'var(--bg)', borderRadius: 8, padding: '10px 14px', border: '1px solid var(--border)', marginBottom: 22 }}>The faculty member must log out and back in for their role to take effect.</div>
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button type="button" onClick={() => setCredActivated(null)} style={{ padding: '9px 18px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>
+                <button type="button" onClick={() => {
+                  const newId = credActivated.newId;
+                  setCredActivated(null);
+                  if (newId && newId !== id) {
+                    navigate(`/dashboard/faculty/${newId}`, { replace: true });
+                  }
+                }} style={{ padding: '9px 18px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>
                   Close
                 </button>
               </div>

@@ -204,10 +204,22 @@ def get_days():
 
 
 def load_all_caches():
-  # Skip streaming entire Firestore collections if local snapshots exist
   global _courses_cache, _faculty_cache
-  _courses_cache = _load_snapshot("courses", _courses_cache)
-  _faculty_cache = _load_snapshot("faculty", _faculty_cache)
+  
+  # Courses cache
+  loaded_courses = _load_snapshot("courses", None)
+  if loaded_courses is not None:
+      _courses_cache = loaded_courses
+  else:
+      refresh_courses_cache()
+      
+  # Faculty cache
+  loaded_faculty = _load_snapshot("faculty", None)
+  if loaded_faculty is not None:
+      _faculty_cache = loaded_faculty
+  else:
+      refresh_faculty_cache()
+      
   refresh_rooms_cache()
   refresh_time_cache()
   refresh_days_cache()
