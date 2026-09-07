@@ -6,6 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from firebase_admin import auth as firebase_auth
+from app.core.firebase import db, refresh_faculty_cache
 from app.core.auth import admin_only
 
 router = APIRouter(prefix="/faculty/role", tags=["role-management"])
@@ -48,8 +49,18 @@ async def set_faculty_role(faculty_id: str, update: RoleUpdate, _=admin_only):
             claims["isCoordinator"] = True
             claims["coordinatorProgram"] = update.coordinatorProgram
         
-        # Set custom claims in Firebase
+        # Set custom claims in Firebase Auth
         firebase_auth.set_custom_user_claims(faculty_id, claims)
+        
+        # Also update the Firestore document so it reflects in the UI lists
+        doc_ref = db.collection("faculty").document(faculty_id)
+        if doc_ref.get().exists:
+            doc_ref.update({
+                "role": update.role,
+                "isCoordinator": update.isCoordinator,
+                "coordinatorProgram": update.coordinatorProgram if update.isCoordinator else None
+            })
+            refresh_faculty_cache()
         
         return {
             "success": True,
