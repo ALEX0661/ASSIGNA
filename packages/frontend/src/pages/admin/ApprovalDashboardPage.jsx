@@ -91,29 +91,26 @@ export default function ApprovalDashboardPage() {
       // yet". Log the real failure so it's visible in devtools, and
       // surface a toast specifically for the submissions fetch since
       // that's the one that was reported as "not showing".
-      const [q, s, c] = await Promise.all([
+      const [q, s] = await Promise.all([
         listQueues().catch(e => { console.error('listQueues failed:', e); return [] }),
         getSubmittedSchedules().catch(e => {
           console.error('getSubmittedSchedules failed:', e)
-          toast(e?.response?.status ? `Couldn't load submitted schedules (${e.response.status})` : "Couldn't load submitted schedules — check your connection", 'error')
+          toast(e?.response?.status ? `Couldn't load submitted schedules (${e.response.status})` : "Couldn't load submitted schedules - check your connection", 'error')
           return []
-        }),
-        getCourses().catch(e => { console.error('getCourses failed:', e); return [] }),
+        })
       ])
       const qArr = Array.isArray(q) ? q : (q?.queues ?? [])
       // Defensive: the backend has changed the wrapper key on other list
       // endpoints before (see `getSchedules` in api.js handling both
       // shapes). If /approval/submitted ever comes back wrapped under a
-      // key other than `schedules` — `submitted`, `items`, `results` —
+      // key other than `schedules` - `submitted`, `items`, `results` -
       // this used to silently resolve to [] with nothing in the console.
       const sArr = Array.isArray(s) ? s : (s?.schedules ?? s?.submitted ?? s?.items ?? s?.results ?? [])
       if (!Array.isArray(s) && s && typeof s === 'object' && sArr.length === 0 && Object.keys(s).length > 0) {
         console.warn('getSubmittedSchedules: unrecognized response shape, defaulted to empty list. Raw response:', s)
       }
-      const cArr = Array.isArray(c) ? c : (c?.courses ?? [])
       setQueues(qArr)
       setSubmitted(sArr)
-      setCourses(cArr)
       setActiveQueueId(prev => {
         if (prev) return prev
         const active = qArr.find(qq => qq.status === 'active') || qArr[0]
@@ -125,6 +122,16 @@ export default function ApprovalDashboardPage() {
   }, [toast])
 
   useEffect(() => { loadAll() }, [loadAll])
+
+  // Fetch courses exactly once on mount, solely to compute the list of active programs
+  useEffect(() => {
+    getCourses()
+      .then(c => {
+        const cArr = Array.isArray(c) ? c : (c?.courses ?? [])
+        setCourses(cArr)
+      })
+      .catch(e => console.error('getCourses failed:', e))
+  }, [])
 
   // Paused while a modal is open, and now also paused whenever the tab is
   // hidden — an admin who leaves this dashboard open in the background all
