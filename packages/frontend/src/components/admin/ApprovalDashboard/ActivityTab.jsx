@@ -36,8 +36,8 @@ function ActivityTab({ schedules }) {
             return (
               <div key={i} className="ap-row">
                 <div style={{ width: 30, height: 30, borderRadius: 8, background: m.bg, color: m.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{m.icon}</div>
-                <div style={{ flex: 1, fontSize: 12.5, color: G.inkMid, fontWeight: 500 }}>{it.text}</div>
-                <div style={{ fontSize: 11, color: G.muted2, flexShrink: 0, fontFamily: "'IBM Plex Mono',monospace" }}>{timeAgo(it.t)}</div>
+                <div style={{ flex: 1, fontSize: 12.5, color: G.ink, fontWeight: 500 }}>{it.text}</div>
+                <div style={{ fontSize: 11, color: G.muted, flexShrink: 0, fontFamily: "'IBM Plex Mono',monospace" }}>{timeAgo(it.t)}</div>
               </div>
             )
           })}

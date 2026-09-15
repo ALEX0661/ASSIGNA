@@ -404,7 +404,8 @@ def finalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
     master_data = master_doc.to_dict()
 
     now = datetime.utcnow().isoformat()
-    db.collection("master_schedules").document(master_id).update({
+    master_ref = master_doc.reference
+    master_ref.update({
         "status": "finalized",
         "finalizedAt": now,
         "updatedAt": now

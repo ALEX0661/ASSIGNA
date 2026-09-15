@@ -128,10 +128,10 @@ function MasterTab({ queueId, onFinalize, programs, onMasterSaved }) {
                           <tr key={i} className="ap-row">
                             <td style={{ padding: '8px 14px' }}><span style={{ padding: '2px 8px', borderRadius: 6, background: `${c}14`, color: c, fontSize: 11, fontWeight: 700 }}>{ev.program}</span></td>
                             <td style={{ padding: '8px 14px', fontWeight: 600, color: G.ink }}>{ev.courseCode}</td>
-                            <td style={{ padding: '8px 14px', color: G.inkMid }}>{ev.program}-{ev.year}{ev.block}</td>
-                            <td style={{ padding: '8px 14px', color: G.inkMid }}>{ev.day}</td>
-                            <td style={{ padding: '8px 14px', color: G.inkMid, whiteSpace: 'nowrap' }}>{ev.period}</td>
-                            <td style={{ padding: '8px 14px', color: G.inkMid }}>{ev.room}</td>
+                            <td style={{ padding: '8px 14px', color: G.ink }}>{ev.program}-{ev.year}{ev.block}</td>
+                            <td style={{ padding: '8px 14px', color: G.ink }}>{ev.day}</td>
+                            <td style={{ padding: '8px 14px', color: G.ink, whiteSpace: 'nowrap' }}>{ev.period}</td>
+                            <td style={{ padding: '8px 14px', color: G.ink }}>{ev.room}</td>
                             <td style={{ padding: '8px 14px', color: G.muted }}>{ev.assigned_faculty || ev.faculty || 'TBA'}</td>
                           </tr>
                         )
@@ -181,9 +181,9 @@ function MasterTab({ queueId, onFinalize, programs, onMasterSaved }) {
             <div style={{ width: 52, height: 52, borderRadius: '50%', background: G.blueSoft, margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={G.blue} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             </div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: G.ink, marginBottom: 8, fontFamily: 'Inter,sans-serif' }}>Finalize Master Schedule?</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: G.ink, marginBottom: 8, fontFamily: 'Inter,sans-serif' }}>Finalize and Publish?</div>
             <div style={{ fontSize: 13, color: G.muted2, marginBottom: 24, lineHeight: 1.5, fontFamily: 'Inter,sans-serif' }}>
-              Finalize and publish this schedule to faculty. This cannot be undone.
+              Finalizing and publishing this schedule will also mark the current scheduling queue as complete. This cannot be undone.
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setShowFinalizeConfirm(false)} disabled={acting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: 'var(--surface)', fontSize: 13, fontWeight: 600, color: G.muted, cursor: acting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
