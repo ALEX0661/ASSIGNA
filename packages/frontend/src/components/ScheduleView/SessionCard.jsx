@@ -69,13 +69,6 @@ export default function SessionCard({
     badgeBg     = isDark ? `color-mix(in srgb, #EF4444 20%, var(--surface))` : 'rgba(239,68,68,.10)'
     textColor   = isDark ? '#FCA5A5' : '#EF4444'
     glowColor   = 'rgba(239,68,68,.30)'
-  } else if (merged) {
-    accentColor = TV.deep
-    bgGradient = isDark ? `linear-gradient(160deg,color-mix(in srgb, var(--meadow) 12%, var(--surface)) 0%,color-mix(in srgb, var(--meadow) 4%, var(--surface)) 100%)` : `linear-gradient(160deg,var(--meadow-border) 0%,var(--meadow-soft) 100%)`
-    borderColor = isDark ? `color-mix(in srgb, var(--meadow) 30%, var(--surface))` : TV.mid
-    badgeBg    = isDark ? `color-mix(in srgb, var(--meadow) 20%, var(--surface))` : `rgba(0,0,0,.12)`
-    textColor = isDark ? 'var(--meadow)' : 'var(--meadow-deep)'
-    glowColor   = 'rgba(0,0,0,.35)'
   } else {
     // Normal state - solid saturated program tint, adapt to dark mode
     accentColor = stripeColor
@@ -386,7 +379,7 @@ export default function SessionCard({
             {isUnassigned && <UnassignedDot />}
 
             {merged && (
-              <span title="Merged Block" style={{ color: TV.deep, display: 'flex' }}>
+              <span title="Merged Block" style={{ color: accentColor, display: 'flex' }}>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
                   <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />

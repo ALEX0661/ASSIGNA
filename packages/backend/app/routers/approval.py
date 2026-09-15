@@ -438,7 +438,7 @@ def finalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
 
     # Read events before writing metadata so eventCount is accurate --
     # list_saved()/getSchedules() rely on this field.
-    events = [d.to_dict() for d in master_doc.reference.collection("events").stream()]
+    events = [(d.id, d.to_dict()) for d in master_doc.reference.collection("events").stream()]
 
     final_ref.set({
         "schedule_name": final_name,
@@ -460,9 +460,8 @@ def finalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
     _delete_subcollection(events_ref)
     batch = db.batch()
     count = 0
-    for ev in events:
-        ev_id = str(ev.get("schedule_id") or uuid.uuid4())
-        batch.set(events_ref.document(ev_id), ev)
+    for original_id, ev in events:
+        batch.set(events_ref.document(original_id), ev)
         count += 1
         if count >= 450:
             batch.commit()

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import G from './tokens'
 import { getMasterSchedule, adminEditMasterSchedule } from '../../../services/api'
@@ -6,6 +6,7 @@ import ScheduleViewPage from '../../../pages/admin/ScheduleViewPage'
 import TimeGrid from '../../ScheduleView/TimeGrid'
 import { getProgColor } from './utils'
 import { Badge, Skel, EmptyState, ICONS } from './primitives'
+import { getMergedIds } from '../../ScheduleView/svHelpers'
 
 function MasterTab({ queueId, onFinalize, programs, onMasterSaved }) {
   const [master, setMaster] = useState(null)
@@ -36,6 +37,7 @@ function MasterTab({ queueId, onFinalize, programs, onMasterSaved }) {
   const isFinalized = master?.status === 'finalized'
   const progList = ['All', ...new Set(events.map(e => e.program).filter(Boolean))]
   const visible = filter === 'All' ? events : events.filter(e => e.program === filter)
+  const mergedIds = useMemo(() => getMergedIds(visible), [visible])
 
   return (
     <div className="ap-card ap-fadein">
@@ -164,7 +166,7 @@ function MasterTab({ queueId, onFinalize, programs, onMasterSaved }) {
                         gridSize="normal" fullscreen={false}
                         ambientConflictIds={new Set()} ambientMergeIds={new Set()}
                         conflictingDragIds={new Set()} dragConflictBands={[]}
-                        mergedIds={new Set()} allEvents={visible} availabilityMap={new Map()}
+                        mergedIds={mergedIds} allEvents={visible} availabilityMap={new Map()}
                       />
                     </div>
                   </div>
