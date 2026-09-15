@@ -567,6 +567,7 @@ def unfinalize_schedule(name: str, user=Depends(admin_only)):
                 "approvedAt": None,
                 "approvedBy": None,
                 "submittedAt": None,
+                "unfinalizedNote": "The master schedule was unpublished.",
                 "updatedAt": now
             })
             count += 1
@@ -574,6 +575,24 @@ def unfinalize_schedule(name: str, user=Depends(admin_only)):
                 batch.commit()
                 batch = db.batch()
                 count = 0
+                
+        # Re-open the queue if one exists for this term
+        queues = db.collection("coordinator_queues") \
+            .where("academicYear", "==", ay) \
+            .where("semester", "==", sem) \
+            .where("status", "==", "completed") \
+            .stream()
+        for q in queues:
+            batch.update(q.reference, {
+                "status": "active",
+                "updatedAt": now
+            })
+            count += 1
+            if count >= 450:
+                batch.commit()
+                batch = db.batch()
+                count = 0
+                
         if count:
             batch.commit()
             

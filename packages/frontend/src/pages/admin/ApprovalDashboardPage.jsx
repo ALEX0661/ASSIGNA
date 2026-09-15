@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import {
   listQueues, createQueue, skipProgram, advanceQueue, finishQueue, deleteQueue, reorderQueue,
   getSubmittedSchedules, getSubmittedSchedule, approveSchedule, rejectSchedule, unapproveSchedule,
-  getMasterSchedule, finalizeMasterSchedule, getCourses, adminEditSchedule, adminEditMasterSchedule
+  getMasterSchedule, finalizeMasterSchedule, unfinalizeMasterSchedule, getCourses, adminEditSchedule, adminEditMasterSchedule
 } from '../../services/api'
 import ScheduleViewPage from './ScheduleViewPage'
 import { ProgramLegend } from '../../components/ScheduleView/svPrimitives'
@@ -252,6 +252,14 @@ export default function ApprovalDashboardPage() {
     }
     catch (e) { toast(e?.response?.data?.detail || 'Finalize failed', 'error') }
   }
+  async function handleUnpublish(qId) {
+    try {
+      await unfinalizeMasterSchedule(qId)
+      toast('Master schedule unpublished. Queue reopened.', 'info')
+      loadAll()
+      refreshMaster(qId)
+    } catch (e) { toast(e?.response?.data?.detail || 'Unpublish failed', 'error') }
+  }
   function navigateReview(delta) {
     const idx = pendingList.findIndex(s => (s.id || s.scheduleId) === reviewId)
     const next = pendingList[idx + delta]
@@ -364,7 +372,7 @@ export default function ApprovalDashboardPage() {
             />
           )}
           {tab === 'master' && (
-            <MasterTab queueId={activeQueueId} onFinalize={handleFinalize} programs={programs} onMasterSaved={() => refreshMaster(activeQueueId)} />
+            <MasterTab queueId={activeQueueId} onFinalize={handleFinalize} onUnpublish={handleUnpublish} programs={programs} onMasterSaved={() => refreshMaster(activeQueueId)} />
           )}
           {tab === 'activity' && <ActivityTab schedules={submitted} />}
         </>

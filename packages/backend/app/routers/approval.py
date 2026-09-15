@@ -477,6 +477,68 @@ def finalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
 
     return {"message": "Master schedule finalized"}
 
+@router.post("/master/{queue_id}/unfinalize")
+def unfinalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
+    docs = db.collection("master_schedules").where("queueId", "==", queue_id).get()
+    if not docs:
+        raise HTTPException(status_code=404, detail="Master schedule not found")
+    master_doc = docs[0]
+    master_data = master_doc.to_dict()
+    
+    semester = master_data.get("semester")
+    academic_year = master_data.get("academicYear")
+    
+    if not semester or not academic_year:
+        raise HTTPException(status_code=400, detail="Missing semester/academicYear")
+
+    now = datetime.utcnow().isoformat()
+    
+    # 1. Mark final schedule as not finalized (if it exists)
+    final_name = f"{semester} {academic_year} - Final".strip()
+    final_ref = db.collection("final_schedules").document(final_name)
+    if final_ref.get().exists:
+        final_ref.update({"finalized": False})
+    
+    # 2. Re-open the queue
+    db.collection("coordinator_queues").document(queue_id).update({
+        "status": "active",
+        "updatedAt": now
+    })
+    
+    # 3. Mark master_schedules as draft
+    master_doc.reference.update({
+        "status": "draft",
+        "updatedAt": now
+    })
+    
+    # 4. Unapprove coordinator schedules and add note
+    schedules = db.collection("coordinator_schedules") \
+        .where("academicYear", "==", academic_year) \
+        .where("semester", "==", semester) \
+        .where("status", "in", ["submitted", "approved"]) \
+        .stream()
+    
+    batch = db.batch()
+    count = 0
+    for s in schedules:
+        batch.update(s.reference, {
+            "status": "draft",
+            "approvedAt": None,
+            "approvedBy": None,
+            "submittedAt": None,
+            "unfinalizedNote": "The master schedule was unpublished. You may need to review and resubmit.",
+            "updatedAt": now
+        })
+        count += 1
+        if count >= 450:
+            batch.commit()
+            batch = db.batch()
+            count = 0
+    if count:
+        batch.commit()
+        
+    return {"message": "Master schedule unpublished"}
+
 @router.put("/schedule/{schedule_id}/edit")
 def edit_schedule(schedule_id: str, req: EditScheduleRequest, user: dict = Depends(admin_only)):
     schedule_data = _get_schedule_or_404(schedule_id)

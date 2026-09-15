@@ -8,7 +8,7 @@ import { getProgColor } from './utils'
 import { Badge, Skel, EmptyState, ICONS } from './primitives'
 import { getMergedIds } from '../../ScheduleView/svHelpers'
 
-function MasterTab({ queueId, onFinalize, programs, onMasterSaved }) {
+function MasterTab({ queueId, onFinalize, onUnpublish, programs, onMasterSaved }) {
   const [master, setMaster] = useState(null)
   const [loading, setLoading] = useState(false)
   const [expanded, setExpanded] = useState(true)
@@ -29,6 +29,11 @@ function MasterTab({ queueId, onFinalize, programs, onMasterSaved }) {
     setActing(true)
     try { await onFinalize(queueId) } finally { setActing(false); setShowFinalizeConfirm(false) }
   }
+  async function handleUnpublish() {
+    if (!window.confirm("Are you sure you want to unpublish the master schedule? This will reopen the queue and revert coordinator schedules back to drafts.")) return
+    setActing(true)
+    try { await onUnpublish(queueId) } finally { setActing(false) }
+  }
 
   if (!queueId) return <div className="ap-card ap-fadein"><EmptyState icon={ICONS.calendar} text="Create a coordinator queue first — the master schedule builds up as programs get approved." /></div>
 
@@ -48,7 +53,14 @@ function MasterTab({ queueId, onFinalize, programs, onMasterSaved }) {
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {isFinalized
-            ? <Badge label="Published to Faculty" bg="rgba(255,255,255,0.18)" color="#fff" border="rgba(255,255,255,0.4)" />
+            ? (
+              <>
+                <Badge label="Published to Faculty" bg="rgba(255,255,255,0.18)" color="#fff" border="rgba(255,255,255,0.4)" />
+                <button onClick={handleUnpublish} disabled={acting} className="btn-secondary" style={{ padding: '6px 12px', fontSize: 11, background: 'var(--surface-sunken)', color: 'var(--ink)' }}>
+                  {acting ? 'Unpublishing...' : 'Unpublish'}
+                </button>
+              </>
+            )
             : approved.length > 0 && (
               <button onClick={() => setShowFinalizeConfirm(true)} disabled={acting} className="btn-blue">
                 {acting
