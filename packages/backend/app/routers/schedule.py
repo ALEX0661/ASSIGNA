@@ -556,7 +556,6 @@ def unfinalize_schedule(name: str, user=Depends(admin_only)):
         schedules = db.collection("coordinator_schedules") \
             .where("academicYear", "==", ay) \
             .where("semester", "==", sem) \
-            .where("status", "in", ["submitted", "approved"]) \
             .stream()
         batch = db.batch()
         count = 0
@@ -774,7 +773,6 @@ def delete_saved(name: str, user=Depends(admin_only)):
             schedules = db.collection("coordinator_schedules") \
                 .where("academicYear", "==", ay) \
                 .where("semester", "==", sem) \
-                .where("status", "in", ["submitted", "approved"]) \
                 .stream()
             batch = db.batch()
             count = 0

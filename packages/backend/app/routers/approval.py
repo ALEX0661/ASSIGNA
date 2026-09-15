@@ -515,7 +515,6 @@ def unfinalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
     schedules = db.collection("coordinator_schedules") \
         .where("academicYear", "==", academic_year) \
         .where("semester", "==", semester) \
-        .where("status", "in", ["submitted", "approved"]) \
         .stream()
     
     batch = db.batch()
