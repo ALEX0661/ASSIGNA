@@ -18,8 +18,9 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, 
   const statuses = active?.programStatus || {}
   const turnIndex = active?.currentTurnIndex ?? 0
   const isComplete = active?.status === 'completed' || turnIndex >= order.length
+  const effectiveTurnIndex = isComplete ? order.length : turnIndex
   const currentProgram = !isComplete ? order[turnIndex] : null
-  const head = queueHeadCopy(order, statuses, turnIndex)
+  const head = queueHeadCopy(order, statuses, effectiveTurnIndex)
 
   async function runBusy(fn) {
     setBusy(true)
@@ -88,7 +89,7 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, 
           </div>
 
           <div style={{ padding: '22px 20px' }}>
-            <AdminQueueRail programs={order} statuses={statuses} turnIndex={turnIndex} />
+            <AdminQueueRail programs={order} statuses={statuses} turnIndex={effectiveTurnIndex} />
           </div>
 
           <div style={{ padding: '4px 20px 20px' }}>

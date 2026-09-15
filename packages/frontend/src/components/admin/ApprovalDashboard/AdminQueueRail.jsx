@@ -63,7 +63,7 @@ function AdminQueueRail({ programs, statuses, turnIndex }) {
 // "Waiting in line" head, but written from the admin's vantage point.
 function queueHeadCopy(programs, statuses, turnIndex) {
   if (!programs.length) return { title: 'No queue', subtitle: '' }
-  if (turnIndex >= programs.length) return { title: 'Queue complete', subtitle: 'Every program has had their turn.' }
+  if (turnIndex >= programs.length) return { title: 'Queue complete', subtitle: 'This queue is closed.' }
   const prog = programs[turnIndex]
   const s = statuses[prog] || 'waiting'
   if (s === 'generating') return { title: `${prog} is generating`, subtitle: 'Their schedule is being solved right now.' }
