@@ -2,7 +2,7 @@ import axios from 'axios'
 import { auth } from './firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 
-const BASE = 'https://assigna.up.railway.app'
+const BASE = window.location.hostname === 'localhost' ? 'http://localhost:8000' : 'https://assigna.up.railway.app'
 
 async function getToken() {
   if (auth.currentUser) {
@@ -247,13 +247,27 @@ export const getQueue        = async (id)      => axios.get(`${BASE}/queue/${id}
 export const reorderQueue    = async (id, d)   => axios.patch(`${BASE}/queue/${id}/reorder`, d,   { headers: await authHeaders() }).then(r => r.data)
 export const skipProgram     = async (id, prog)=> axios.post(`${BASE}/queue/${id}/skip/${prog}`,{},{ headers: await authHeaders() }).then(r => r.data)
 export const advanceQueue    = async (id)      => axios.post(`${BASE}/queue/${id}/advance`, {},    { headers: await authHeaders() }).then(r => r.data)
+export const finishQueue     = async (id)      => axios.post(`${BASE}/queue/${id}/finish`, {},     { headers: await authHeaders() }).then(r => r.data)
 export const deleteQueue     = async (id)      => axios.delete(`${BASE}/queue/${id}`,              { headers: await authHeaders() }).then(r => r.data)
 
 // ── Approval (Admin) ─────────────────────────────────────────────────────────
 export const getSubmittedSchedules  = async ()     => axios.get(`${BASE}/approval/submitted`,                   { headers: await authHeaders() }).then(r => r.data)
 export const getSubmittedSchedule   = async (id)   => axios.get(`${BASE}/approval/schedule/${id}`,              { headers: await authHeaders() }).then(r => r.data)
 export const approveSchedule        = async (id)   => axios.post(`${BASE}/approval/schedule/${id}/approve`, {}, { headers: await authHeaders() }).then(r => r.data)
+export const unapproveSchedule      = async (id)   => axios.post(`${BASE}/approval/schedule/${id}/unapprove`, {}, { headers: await authHeaders() }).then(r => r.data)
 export const rejectSchedule         = async (id,d) => axios.post(`${BASE}/approval/schedule/${id}/reject`, d,   { headers: await authHeaders() }).then(r => r.data)
 export const getMasterSchedule      = async (qid)  => axios.get(`${BASE}/approval/master/${qid}`,               { headers: await authHeaders() }).then(r => r.data)
+export const unfinalizeMasterSchedule = async (qid)  => axios.post(`${BASE}/approval/master/${qid}/unfinalize`, {}, { headers: await authHeaders() }).then(r => r.data)
 export const finalizeMasterSchedule = async (qid)  => axios.post(`${BASE}/approval/master/${qid}/finalize`, {}, { headers: await authHeaders() }).then(r => r.data)
+export const adminEditMasterSchedule = async (qid,d) => axios.put(`${BASE}/approval/master/${qid}/edit`, d, { headers: await authHeaders() }).then(r => r.data)
 export const adminEditSchedule      = async (id,d) => axios.put(`${BASE}/approval/schedule/${id}/edit`, d,      { headers: await authHeaders() }).then(r => r.data)
+
+// --- Queue Chat/Notes ---
+export const getQueueMessages = async (queueId) => {
+  const headers = await authHeaders()
+  return axios.get(`${BASE}/queue/${queueId}/messages`, { headers }).then(r => r.data)
+}
+export const postQueueMessage = async (queueId, message, sender) => {
+  const headers = await authHeaders()
+  return axios.post(`${BASE}/queue/${queueId}/messages`, { message, sender }, { headers }).then(r => r.data)
+}

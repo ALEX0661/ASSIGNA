@@ -236,8 +236,9 @@ def list_schedules(
             "programCode": data.get("programCode"),
             "createdAt": data.get("createdAt"),
             "eventCount": len(data.get("schedule", [])),
-            "academicYear": data.get("academicYear"), # Add this line
-            "semester": data.get("semester")          # Add this line
+            "academicYear": data.get("academicYear"),
+            "semester": data.get("semester"),
+            "rejectionFeedback": data.get("rejectionFeedback")
         })
     return schedules
 
@@ -772,7 +773,8 @@ def submit_schedule(schedule_id: str, user: dict = Depends(coordinator_only)):
     doc_ref.update({
         "status": "submitted",
         "submittedAt": datetime.utcnow().isoformat(),
-        "updatedAt": datetime.utcnow().isoformat()
+        "updatedAt": datetime.utcnow().isoformat(),
+        "rejectionFeedback": firestore.DELETE_FIELD
     })
     _set_program_status(data.get("queueId"), program, "submitted")
     return {"message": "Schedule submitted successfully"}

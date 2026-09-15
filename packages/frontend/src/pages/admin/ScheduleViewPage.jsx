@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useParams, useLocation } from 'react-router-dom'
 import { useScheduleStore } from '../../store/scheduleStore'
-import { getSchedules, getRooms, getFaculty, saveSchedule, finalizeSchedule, unfinalizeSchedule, updateScheduleMeta, getSubmittedSchedule } from '../../services/api'
+import { getSchedules, getRooms, getFaculty, saveSchedule, finalizeSchedule, unfinalizeSchedule, updateScheduleMeta, getSubmittedSchedule, getMasterSchedule } from '../../services/api'
 import { buildConflictMap, DAYS, getEventId, getMergedIds } from '../../components/ScheduleView/svHelpers'
 import { TV, ConflictSummaryBar, Toast, FilterButton, FilterRow, PendingChangesBar, ProgramLegend, ModalOverlay, ModalHeader } from '../../components/ScheduleView/svPrimitives'
 import { useFilters, useDragDrop } from '../../components/ScheduleView/svHooks'
@@ -669,7 +669,7 @@ function markOnboardingCompleted() {
   try { localStorage.setItem(TOUR_SEEN_KEY, '1') } catch {}
 }
 
-export default function ScheduleViewPage({ isSubmittedView = false }) {
+export default function ScheduleViewPage({ isSubmittedView = false, embeddedId = null, onClose = null, onSaveOverride = null, adminActions = null, masterEvents = [], isMasterView = false, masterProgramEvents = null }) {
   const { name: urlName, id: urlId } = useParams()
   const location = useLocation()
   const { events:storeEvents, scheduleName:storeName, setEvents, setName } = useScheduleStore()
@@ -764,6 +764,13 @@ export default function ScheduleViewPage({ isSubmittedView = false }) {
   const [schedAY,           setSchedAY]       = useState('')
   const [schedSem,          setSchedSem]      = useState('')
   const [schedFinalized,    setSchedFinalized]= useState(false)
+  // Which program this submitted-view schedule belongs to. Used to keep the
+  // "Overlay Master Schedule" toggle from re-drawing this same program's own
+  // classes a second time on top of themselves (see allEvents memo below).
+  const [schedProgram,      setSchedProgram]  = useState('')
+  // Raw status ('submitted' | 'approved') of the submission being reviewed —
+  // drives the "Edit Schedule" toggle below (only offered pre-approval).
+  const [schedStatus,       setSchedStatus]   = useState('')
   const [scheduleMeta,      setScheduleMeta]  = useState(null)  // New: full metadata
   const [finalizingState,   setFinalizingState]= useState('idle') // 'idle' | 'working' | 'done' | 'error'
   const [showFinalizeModal, setShowFinalizeModal] = useState(false)
@@ -807,15 +814,51 @@ export default function ScheduleViewPage({ isSubmittedView = false }) {
     if (!nameOrId || (!force && nameOrId === activeName)) return
     setLoading(true); setError(null); setSaveState('idle')
     try {
-      if (isSubmittedView) {
-        const data = await getSubmittedSchedule(nameOrId)
+      if (isMasterView) {
+        // Master schedule events live in their own collection (queueId,
+        // not a saved-schedule name/id) — getSchedules()/getSubmittedSchedule()
+        // both 404 or return the wrong thing for this. `nameOrId` here is
+        // the raw queueId (embeddedId with the "master_" prefix stripped).
+        const data = await getMasterSchedule(nameOrId)
         setLocalEvents(data.schedule || []); setEvents(data.schedule || [])
+        setPast([]); setFuture([])
+        setActiveName(`master_${nameOrId}`); setName(`master_${nameOrId}`)
+        setSchedAY(data.academicYear || ''); setSchedSem(data.semester || '')
+        setSchedFinalized(data.status === 'finalized'); setMetaDirty(false)
+        setHasUnsavedChanges(false)
+        setScheduleMeta({ version: 1, eventCount: (data.schedule || []).length })
+      } else if (isSubmittedView) {
+        const data = await getSubmittedSchedule(nameOrId)
+        // Self-heal: a prior bug could save the master-overlay "ghost"
+        // events (schedule_id prefixed `master_...`, flagged
+        // _isOtherProgram) directly into a submission's own event list.
+        // Strip those back out on load so old contaminated submissions
+        // stop showing duplicates even before the source bug is fixed
+        // server-side. Safe no-op for uncontaminated data.
+        const cleanSchedule = (data.schedule || []).filter(
+          e => !e._isOtherProgram && !(typeof e.schedule_id === 'string' && e.schedule_id.startsWith('master_'))
+        )
+        // Once a schedule is approved, its events are copied into the
+        // master schedule's own collection — admin edits made from the
+        // Master Schedule tab (MasterTab's "Edit" mode) write there, not
+        // back onto this coordinator_schedules document. So the doc we
+        // just fetched can be stale the moment an admin nudges a room on
+        // the master grid. When the caller knows this program is already
+        // approved, it can pass down that program's *current* master
+        // events via `masterProgramEvents` — use those instead so Review
+        // shows what's actually live, not the frozen original submission.
+        const displaySchedule = masterProgramEvents && masterProgramEvents.length > 0
+          ? masterProgramEvents
+          : cleanSchedule
+        setLocalEvents(displaySchedule); setEvents(displaySchedule)
         setPast([]); setFuture([])
         setActiveName(data.name || nameOrId); setName(data.name || nameOrId)
         setSchedAY(data.academicYear || ''); setSchedSem(data.semester || '')
+        setSchedProgram(data.programCode || '')
+        setSchedStatus(data.status || '')
         setSchedFinalized(true); setMetaDirty(false)
         setHasUnsavedChanges(false)
-        setScheduleMeta({ version: 1, eventCount: (data.schedule || []).length })
+        setScheduleMeta({ version: 1, eventCount: displaySchedule.length })
       } else {
         const data = await getSchedules(nameOrId)
         setLocalEvents(data.events); setEvents(data.events)
@@ -841,8 +884,21 @@ export default function ScheduleViewPage({ isSubmittedView = false }) {
     finally   { setLoading(false) }
   }
 
+  /* ── Auto-load when embedded (e.g. MasterTab's "Edit" overlay) ───────────
+     `embeddedId` was previously accepted as a prop but never read, so this
+     view silently fell back to whatever schedule the URL/store happened to
+     have — not the master schedule the admin actually opened. ── */
+  useEffect(() => {
+    if (!initLoading && embeddedId) {
+      const rawId = isMasterView && embeddedId.startsWith('master_') ? embeddedId.slice(7) : embeddedId
+      loadSchedule(rawId, { force: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initLoading, embeddedId, isMasterView, masterProgramEvents])
+
   /* ── Auto-load from URL param ────────────────────────────────────────────── */
   useEffect(() => {
+    if (embeddedId) return // embedded views load via embeddedId above, not the route
     if (!initLoading) {
       if (isSubmittedView && urlId) {
         loadSchedule(urlId, { force: true })
@@ -852,7 +908,7 @@ export default function ScheduleViewPage({ isSubmittedView = false }) {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initLoading, urlName, urlId, isSubmittedView])
+  }, [initLoading, urlName, urlId, isSubmittedView, embeddedId])
 
   /* ── Save schedule ──────────────────────────────────────────────────────── */
   
@@ -894,6 +950,25 @@ export default function ScheduleViewPage({ isSubmittedView = false }) {
           setTimeout(() => setSaveState('idle'), 2200)
           return
         }
+      }
+
+      // Embedded views (e.g. MasterTab's "Edit" overlay) hand us a custom
+      // save path — the normal flow below POSTs to the regular per-name
+      // schedule endpoint, which would silently create a new schedule
+      // called "master_<queueId>" instead of updating the master schedule.
+      if (onSaveOverride) {
+        // NEVER pass allEvents here — it includes the master-schedule
+        // overlay (ghost events prefixed `master_...`) whenever the
+        // "Overlay Master Schedule" toggle happens to be on. Saving
+        // allEvents bakes those ghost events permanently into this
+        // schedule's own data, which is what caused the duplicate-key /
+        // stacked-card bug — every autosave while the toggle was on
+        // wrote another copy of the master schedule into the submission.
+        await onSaveOverride(localEvents)
+        setSaveState('saved')
+        setHasUnsavedChanges(false)
+        setTimeout(() => setSaveState('idle'), 2500)
+        return
       }
 
       // Check if this is an existing schedule or a new one
@@ -1146,7 +1221,27 @@ export default function ScheduleViewPage({ isSubmittedView = false }) {
   }
 
   /* ── Derived data ───────────────────────────────────────────────────────── */
-  const allEvents   = localEvents
+  const [showMasterOverlay, setShowMasterOverlay] = useState(false)
+  const allEvents = useMemo(() => {
+    let base = localEvents
+    if (showMasterOverlay && masterEvents && masterEvents.length > 0) {
+      // The overlay exists to show *other* programs' master-schedule
+      // events for conflict-checking against this one. `masterEvents` is
+      // the full merged master schedule though, so without this filter a
+      // program being reviewed would see its own already-merged classes
+      // drawn a second time on top of `base` — looking like duplicates,
+      // or like an edit hadn't "taken" when it actually had.
+      const otherProgramEvents = schedProgram
+        ? masterEvents.filter(e => e.program !== schedProgram)
+        : masterEvents
+      base = [...base, ...otherProgramEvents.map(e => ({
+        ...e,
+        schedule_id: e.schedule_id != null ? `master_${e.schedule_id}` : e.schedule_id,
+        _isOtherProgram: true,
+      }))]
+    }
+    return base
+  }, [localEvents, showMasterOverlay, masterEvents, schedProgram])
   const conflictMap = useMemo(() => buildConflictMap(allEvents.filter(e => e.day === activeDay)), [allEvents, activeDay])
 
   const filters = useFilters(allEvents, masterFacultyList, masterRooms, activeDay)
@@ -1313,7 +1408,7 @@ export default function ScheduleViewPage({ isSubmittedView = false }) {
               </div>
               
               {/* Finalize/Unfinalize - same row as title */}
-              {activeName && allEvents.length > 0 && (
+              {activeName && allEvents.length > 0 && !isSubmittedView && !isMasterView && (
                 schedFinalized ? (
                   <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                     <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'var(--meadow-soft)', color: 'var(--meadow-text)', border:'1px solid var(--meadow-border)' }}>
@@ -1338,7 +1433,12 @@ export default function ScheduleViewPage({ isSubmittedView = false }) {
         </div>
         {!isEditingName && (
           <div id="tour-sv-save" style={{ display:'flex', gap:5, alignItems:'center', flexShrink:0 }}>
-            {(initLoading || savedNames.length > 0) && (
+            {/* Embedded views (submission review / master-schedule fix mode)
+                open one specific schedule the caller chose — letting the
+                admin switch to some other saved schedule from here doesn't
+                make sense and silently navigates them away from the thing
+                they were reviewing. */}
+            {!embeddedId && (initLoading || savedNames.length > 0) && (
               <ScheduleDropdown names={savedNames} activeName={activeName} loading={loading} initLoading={initLoading} onChange={loadSchedule} schedulesMeta={schedulesMeta} />
             )}
             {activeName && !schedFinalized && <SmartSaveButton state={saveState} onClick={handleSave} hasUnsavedChanges={hasUnsavedChanges} scheduleMeta={scheduleMeta} activeName={activeName} />}
@@ -1379,6 +1479,49 @@ export default function ScheduleViewPage({ isSubmittedView = false }) {
                 onExportRooms={handleExportAvailableRooms}
                 onExportSchedulePdf={handleExportSchedulePdf}
               />
+            )}
+            {/* Lets an admin fix up a coordinator's draft directly from the
+                review panel — drag-and-drop, room swaps, etc. — before it's
+                been approved. Only offered pre-approval: once approved, the
+                editable copy of a program's schedule lives in the Master
+                Schedule tab instead, so edits merge with everyone else's. */}
+            {isSubmittedView && schedStatus === 'submitted' && (
+              <button
+                onClick={() => setSchedFinalized(v => !v)}
+                className="sv-save-btn"
+                title={schedFinalized ? 'Unlock to drag-and-drop this schedule' : 'Lock editing back off'}
+                style={{
+                  minWidth: 'auto', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: 6,
+                  ...(schedFinalized ? {} : { background: 'var(--meadow)', color: '#fff', borderColor: 'var(--meadow)' }),
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                {schedFinalized ? 'Edit Schedule' : 'Editing…'}
+              </button>
+            )}
+            {/* Admin approve/reject/unapprove controls, passed in by
+                ApprovalDashboardPage when this is opened as a submission
+                review. These were accepted as a prop but never actually
+                rendered anywhere, so they never showed up. */}
+            {adminActions && (
+              <>
+                <Sep />
+                {adminActions}
+              </>
+            )}
+            {/* Close button for embedded views (review panel / master fix
+                mode) — same fix as above, `onClose` was accepted but never
+                rendered, so there was no way to close the overlay itself
+                (only the outer portal's own chrome, which had none either). */}
+            {onClose && (
+              <button onClick={onClose} className="sv-icon-btn" title="Close">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
             )}
           </div>
         )}
@@ -1526,6 +1669,27 @@ export default function ScheduleViewPage({ isSubmittedView = false }) {
               </svg>
               Available Rooms
             </button>
+            {masterEvents && masterEvents.length > 0 && (
+              <button
+                onClick={() => setShowMasterOverlay(v => !v)}
+                title="Show all finalized events from other programs underneath your schedule to check for overlap."
+                style={{
+                  display:'inline-flex', alignItems:'center', gap:4,
+                  padding:'3px 10px', borderRadius:20, fontSize:11, cursor:'pointer',
+                  fontFamily:'Inter,sans-serif', transition:'all .15s',
+                  fontWeight: showMasterOverlay ? 700 : 400,
+                  border: `1px solid ${showMasterOverlay ? '#3B82F6' : TV.border}`,
+                  background: showMasterOverlay ? '#EFF6FF' : 'var(--surface)',
+                  color: showMasterOverlay ? '#2563EB' : TV.muted,
+                }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <line x1="3" y1="9" x2="21" y2="9" />
+                  <line x1="9" y1="21" x2="9" y2="9" />
+                </svg>
+                Overlay Master Schedule
+              </button>
+            )}
             {localHasFilters && (
               <button onClick={handleClearAll} style={{
                 fontSize:11.5, color:'#EF4444', background:'rgba(220, 38, 38, 0.05)',

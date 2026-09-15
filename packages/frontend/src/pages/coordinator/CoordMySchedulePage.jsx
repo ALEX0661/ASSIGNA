@@ -162,8 +162,12 @@ function semRank(sem) {
 
 // Sort term keys newest first: latest academic year first, then latest
 // semester within that year. Untermed bucket always sinks to the bottom.
-function sortTermKeys(keys) {
+function sortTermKeys(keys, activeTermKey) {
   return [...keys].sort((ka, kb) => {
+    if (activeTermKey) {
+      if (ka === activeTermKey) return -1
+      if (kb === activeTermKey) return 1
+    }
     if (ka === '__no_term__') return 1
     if (kb === '__no_term__') return -1
     const [ayA, semA] = ka.split('||')
@@ -412,9 +416,11 @@ export default function CoordMySchedulePage() {
     approved:  schedules.filter(s => s.status === 'approved').length,
   }
 
+  const activeTermKey = roundTerm ? `${roundTerm.academicYear || '—'}||${roundTerm.semester || '—'}` : null;
+
   // Distinct terms present across all schedules, newest first — drives the
   // term selector regardless of which status tab is active.
-  const termKeys = sortTermKeys([...new Set(schedules.map(termKey))])
+  const termKeys = sortTermKeys([...new Set(schedules.map(termKey))], activeTermKey)
   const termMeta = Object.fromEntries(
     termKeys.map(k => [k, schedules.find(s => termKey(s) === k)])
   )
@@ -422,7 +428,7 @@ export default function CoordMySchedulePage() {
   // Group the currently filtered/sorted rows into per-term sections. Each
   // section carries its own submitted schedule pulled out separately, since
   // a term can only have one submission in flight at a time.
-  const sections = sortTermKeys([...new Set(sorted.map(termKey))]).map(key => {
+  const sections = sortTermKeys([...new Set(sorted.map(termKey))], activeTermKey).map(key => {
     const rows = sorted.filter(s => termKey(s) === key)
     const submitted = rows.filter(s => s.status === 'submitted')
     const rest = rows.filter(s => s.status !== 'submitted')
@@ -434,6 +440,11 @@ export default function CoordMySchedulePage() {
   function termLocked(s) {
     const key = termKey(s)
     return schedules.some(o => o.id !== s.id && termKey(o) === key && (o.status === 'submitted' || o.status === 'approved'))
+  }
+
+  function isNotActiveTerm(s) {
+    if (!roundTerm) return true;
+    return s.academicYear !== roundTerm.academicYear || s.semester !== roundTerm.semester;
   }
 
   // Allow viewing the combined master schedule for any schedule belonging to
@@ -529,38 +540,74 @@ export default function CoordMySchedulePage() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          {sections.map(sec => (
-            <div key={sec.key} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {(termKeys.length > 1 || sec.key === '__no_term__') && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 2px' }}>
-                  <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--meadow-text)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
-                    {sec.label}
-                  </span>
-                  <span style={{ flex: 1, height: 1, background: G.border }} />
-                  <span style={{ fontSize: 10.5, fontWeight: 600, color: G.muted }}>
-                    {sec.submitted.length + sec.rest.length} schedule{sec.submitted.length + sec.rest.length === 1 ? '' : 's'}
-                  </span>
-                </div>
-              )}
+          {activeTermKey && sections.find(s => s.key === activeTermKey) && (
+            <div style={{ border: '1.5px solid var(--meadow-border)', borderRadius: 12, overflow: 'hidden', marginBottom: 24 }}>
+              <div style={{ padding: '12px 20px', background: 'var(--meadow-soft)', borderBottom: '1px solid var(--meadow-border)' }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--meadow-deep)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Active Queue: {sections.find(s => s.key === activeTermKey).label}
+                </span>
+              </div>
+              <div style={{ background: '#fff', padding: '16px' }}>
+                {(() => {
+                  const sec = sections.find(s => s.key === activeTermKey)
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {sec.submitted.map(s => (
+                        <div key={s.id} className="co-card" style={{ border: `1.5px solid ${G.amberBorder}` }}>
+                          <div style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 8, background: G.amberSoft }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            <span style={{ fontSize: 11.5, fontWeight: 700, color: '#92400E' }}>Awaiting admin review</span>
+                          </div>
+                          {renderScheduleRow(s)}
+                        </div>
+                      ))}
+                      {sec.rest.length > 0 && (
+                        <div className="co-card">
+                          {sec.rest.map(s => renderScheduleRow(s))}
+                        </div>
+                      )}
+                      {sec.submitted.length === 0 && sec.rest.length === 0 && (
+                        <div style={{ padding: '24px', textAlign: 'center', fontSize: 13, color: G.muted }}>No schedules yet.</div>
+                      )}
+                    </div>
+                  )
+                })()}
+              </div>
+            </div>
+          )}
 
-              {/* Submitted schedule gets its own callout — a term can only have one in flight */}
-              {sec.submitted.map(s => (
-                <div key={s.id} className="co-card" style={{ border: `1.5px solid ${G.amberBorder}` }}>
-                  <div style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 8, background: G.amberSoft }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    <span style={{ fontSize: 11.5, fontWeight: 700, color: '#92400E' }}>Awaiting admin review</span>
+          {sections.filter(s => s.key !== activeTermKey).length > 0 && (
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: G.ink, padding: '0 4px 12px', borderBottom: `2px solid ${G.border}`, marginBottom: 12 }}>
+                Past Terms
+              </div>
+              {sections.filter(s => s.key !== activeTermKey).map(sec => (
+                <div key={sec.key} style={{ marginBottom: 20 }}>
+                  <div style={{ padding: '0 4px 8px' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: G.muted, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      {sec.label}
+                    </span>
                   </div>
-                  {renderScheduleRow(s)}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {sec.submitted.map(s => (
+                      <div key={s.id} className="co-card" style={{ border: `1.5px solid ${G.amberBorder}` }}>
+                        <div style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 8, background: G.amberSoft }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                          <span style={{ fontSize: 11.5, fontWeight: 700, color: '#92400E' }}>Awaiting admin review</span>
+                        </div>
+                        {renderScheduleRow(s)}
+                      </div>
+                    ))}
+                    {sec.rest.length > 0 && (
+                      <div className="co-card">
+                        {sec.rest.map(s => renderScheduleRow(s))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
-
-              {sec.rest.length > 0 && (
-                <div className="co-card">
-                  {sec.rest.map(s => renderScheduleRow(s))}
-                </div>
-              )}
             </div>
-          ))}
+          )}
         </div>
       )}
         </div>
@@ -638,6 +685,11 @@ export default function CoordMySchedulePage() {
                         </span>
                       )}
                     </div>
+                    {isDraft && s.rejectionFeedback && (
+                      <div style={{ marginBottom: 4, fontSize: 12, color: G.red, background: G.redSoft, padding: '4px 8px', borderRadius: 4, display: 'inline-block' }}>
+                        <strong>Rejected:</strong> {s.rejectionFeedback}
+                      </div>
+                    )}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 11.5, color: 'var(--muted2)' }}>
                       <span className="co-chip">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
@@ -669,9 +721,9 @@ export default function CoordMySchedulePage() {
                   </button>
                   {s.status === 'draft' && (
                     <>
-                      <button className="co-row-icon-btn tour-btn-submit" disabled={termLocked(s)}
-                        title={termLocked(s) ? 'Another schedule is already submitted/approved for this term' : 'Submit for review'}
-                        onClick={() => !termLocked(s) && setConfirmModal({ action: 'submit', id: s.id })}>
+                      <button className="co-row-icon-btn tour-btn-submit" disabled={termLocked(s) || isNotActiveTerm(s)}
+                        title={termLocked(s) ? 'Another schedule is already submitted/approved for this term' : isNotActiveTerm(s) ? 'You can only submit schedules for the active scheduling queue term' : 'Submit for review'}
+                        onClick={() => !(termLocked(s) || isNotActiveTerm(s)) && setConfirmModal({ action: 'submit', id: s.id })}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                       </button>
                       <button className="co-row-icon-btn tour-btn-delete danger" title="Delete" onClick={() => setConfirmModal({ action: 'delete', id: s.id })}>

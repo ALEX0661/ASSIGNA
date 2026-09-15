@@ -542,9 +542,41 @@ def finalize_schedule(name: str, user=Depends(admin_only)):
 @router.post("/final/{name}/unfinalize")
 def unfinalize_schedule(name: str, user=Depends(admin_only)):
     doc_ref = db.collection("final_schedules").document(name)
-    if not doc_ref.get().exists:
+    doc = doc_ref.get()
+    if not doc.exists:
         raise HTTPException(404, "Schedule not found")
+    
     doc_ref.update({"finalized": False})
+
+    # Unapprove coordinator submissions for this term
+    data = doc.to_dict()
+    ay = data.get("academicYear")
+    sem = data.get("semester")
+    if ay and sem:
+        schedules = db.collection("coordinator_schedules") \
+            .where("academicYear", "==", ay) \
+            .where("semester", "==", sem) \
+            .where("status", "in", ["submitted", "approved"]) \
+            .stream()
+        batch = db.batch()
+        count = 0
+        now = datetime.utcnow().isoformat()
+        for s in schedules:
+            batch.update(s.reference, {
+                "status": "draft",
+                "approvedAt": None,
+                "approvedBy": None,
+                "submittedAt": None,
+                "updatedAt": now
+            })
+            count += 1
+            if count >= 450:
+                batch.commit()
+                batch = db.batch()
+                count = 0
+        if count:
+            batch.commit()
+            
     return {"unfinalized": name}
 
 @router.put("/final/{name}/metadata")
@@ -711,6 +743,39 @@ def get_version_diff(name: str, version: int, user=Depends(any_authenticated)):
 @router.delete("/final/{name}")
 def delete_saved(name: str, user=Depends(admin_only)):
     doc_ref = db.collection("final_schedules").document(name)
+    doc = doc_ref.get()
+    
+    if doc.exists:
+        data = doc.to_dict()
+        ay = data.get("academicYear")
+        sem = data.get("semester")
+        
+        # Unapprove associated coordinator schedules
+        if ay and sem:
+            schedules = db.collection("coordinator_schedules") \
+                .where("academicYear", "==", ay) \
+                .where("semester", "==", sem) \
+                .where("status", "in", ["submitted", "approved"]) \
+                .stream()
+            batch = db.batch()
+            count = 0
+            now = datetime.utcnow().isoformat()
+            for s in schedules:
+                batch.update(s.reference, {
+                    "status": "draft",
+                    "approvedAt": None,
+                    "approvedBy": None,
+                    "submittedAt": None,
+                    "updatedAt": now
+                })
+                count += 1
+                if count >= 450:
+                    batch.commit()
+                    batch = db.batch()
+                    count = 0
+            if count:
+                batch.commit()
+
     _delete_subcollection(doc_ref.collection("events"))
     _delete_subcollection(doc_ref.collection("versions"))
     doc_ref.delete()

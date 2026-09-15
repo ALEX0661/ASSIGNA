@@ -31,16 +31,47 @@ def _advance_to_next(queue_data: dict):
     program_status = queue_data.get("programStatus", {})
     current_index = queue_data.get("currentTurnIndex", 0)
     
+    # Self-healing guard: mirrors approval.py's _advance_queue. If the
+    # outgoing program is still marked "active" here, whoever called this
+    # forgot to set its resulting status first — default it to "skipped"
+    # instead of leaving it stuck "active" forever.
+    if 0 <= current_index < len(queue):
+        outgoing = queue[current_index]
+        if program_status.get(outgoing) == "active":
+            program_status[outgoing] = "skipped"
+
+    n = len(queue)
     next_index = -1
-    for i in range(current_index + 1, len(queue)):
-        if program_status.get(queue[i]) == "waiting":
-            next_index = i
-            break
-            
+
+    if n > 0:
+        # Pass 1: anyone still "waiting" further ahead.
+        for offset in range(1, n + 1):
+            i = (current_index + offset) % n
+            if program_status.get(queue[i]) == "waiting":
+                next_index = i
+                break
+
+        # Pass 2: nobody's "waiting" anymore -- loop back around and give
+        # "skipped" programs another turn instead of ending the queue the
+        # moment everyone's been skipped once. A program only stops
+        # getting turns once it's "approved" (or the admin manually
+        # finishes the queue via /finish) -- skipped is a retry state,
+        # not a terminal one.
+        if next_index == -1:
+            for offset in range(1, n + 1):
+                i = (current_index + offset) % n
+                if program_status.get(queue[i]) == "skipped":
+                    next_index = i
+                    break
+
     if next_index != -1:
         program_status[queue[next_index]] = "active"
         queue_data["currentTurnIndex"] = next_index
+        queue_data["programStatus"] = program_status
     else:
+        # Truly nothing left to give a turn to (everyone "approved", or
+        # the queue is empty) -- only now does it auto-complete.
+        queue_data["programStatus"] = program_status
         queue_data["status"] = "completed"
         
     return queue_data
@@ -50,6 +81,14 @@ def create_queue(req: CreateQueueRequest, user: dict = Depends(admin_only)):
     active_queues = db.collection("coordinator_queues").where(filter=firestore.FieldFilter("status", "==", "active")).limit(1).get()
     if active_queues:
         raise HTTPException(status_code=400, detail="An active queue already exists")
+
+    # Check if a master schedule already exists for this term
+    existing_master = db.collection("master_schedules") \
+        .where("semester", "==", req.semester) \
+        .where("academicYear", "==", req.academicYear) \
+        .limit(1).get()
+    if existing_master:
+        raise HTTPException(status_code=400, detail=f"A schedule for {req.semester} {req.academicYear} already exists.")
         
     queue_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
@@ -207,3 +246,19 @@ def delete_queue(queue_id: str, user: dict = Depends(admin_only)):
     doc_ref, _ = _get_queue_or_404(queue_id)
     doc_ref.delete()
     return {"message": "Queue deleted successfully"}
+
+@router.post("/{queue_id}/finish")
+def finish_queue(queue_id: str, user: dict = Depends(admin_only)):
+    """Manual admin override to end a queue regardless of where turns are.
+    Needed because the queue no longer auto-completes just because every
+    program has been skipped at least once (see _advance_to_next) -- that
+    used to end the queue permanently even though nobody had an approved
+    schedule yet. This gives the admin an explicit way to stop things
+    (e.g. "we're out of time this term, lock it in as-is")."""
+    doc_ref, queue_data = _get_queue_or_404(queue_id)
+    if queue_data.get("status") == "completed":
+        raise HTTPException(status_code=400, detail="Queue is already completed")
+    queue_data["status"] = "completed"
+    queue_data["updatedAt"] = datetime.now(timezone.utc).isoformat()
+    doc_ref.set(queue_data)
+    return queue_data

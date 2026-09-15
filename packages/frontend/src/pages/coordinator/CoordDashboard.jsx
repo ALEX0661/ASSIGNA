@@ -824,6 +824,19 @@ export default function CoordDashboard() {
       out.push({ id: 'unsubmitted', type: 'warning', title: `${drafts} unsubmitted draft${drafts === 1 ? '' : 's'}`, body: "A draft schedule isn't visible to the admin until you submit it for approval.", action: { label: 'Go to My Schedules', href: '/coordinator/schedules' } })
     }
 
+    const rejected = schedules.filter(s => s.status === 'draft' && s.rejectionFeedback);
+    if (rejected.length > 0) {
+      rejected.forEach(s => {
+        out.push({
+          id: `rejected-${s.id}`,
+          type: 'error',
+          title: `Schedule Rejected: ${s.name || 'Unnamed'}`,
+          body: `Feedback: ${s.rejectionFeedback}`,
+          action: { label: 'View Schedule', href: '/coordinator/schedules' }
+        });
+      });
+    }
+
     if (out.length === 0 && courseCount > 0) {
       out.push({ id: 'all-good', type: 'success', title: 'Everything looks ready', body: 'Courses and rooms are set up with no open issues.' })
     }

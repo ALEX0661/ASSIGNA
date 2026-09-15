@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Any
+from google.cloud import firestore
 
 from app.core.auth import admin_only
 from app.core.firebase import db
@@ -29,11 +30,36 @@ def _advance_queue(queue_data: dict, queue_id: str):
     program_status = queue_data.get("programStatus", {})
     current_index = queue_data.get("currentTurnIndex", 0)
 
+    # Self-healing guard: if the outgoing program is still marked "active"
+    # at this point, the caller forgot to set its resulting status (e.g.
+    # approved/skipped) before advancing. Default it to "skipped" rather
+    # than silently leaving it "active" forever.
+    if 0 <= current_index < len(queue_list):
+        outgoing = queue_list[current_index]
+        if program_status.get(outgoing) == "active":
+            program_status[outgoing] = "skipped"
+
+    n = len(queue_list)
     next_index = -1
-    for i in range(current_index + 1, len(queue_list)):
-        if program_status.get(queue_list[i]) == "waiting":
-            next_index = i
-            break
+
+    if n > 0:
+        # Pass 1: anyone still "waiting" further ahead.
+        for offset in range(1, n + 1):
+            i = (current_index + offset) % n
+            if program_status.get(queue_list[i]) == "waiting":
+                next_index = i
+                break
+
+        # Pass 2: nobody's "waiting" anymore -- loop back and give
+        # "skipped" programs another turn instead of ending the queue the
+        # moment everyone's been skipped once. Mirrors queue.py's
+        # _advance_to_next -- keep the two in sync.
+        if next_index == -1:
+            for offset in range(1, n + 1):
+                i = (current_index + offset) % n
+                if program_status.get(queue_list[i]) == "skipped":
+                    next_index = i
+                    break
 
     now = datetime.utcnow().isoformat()
     if next_index != -1:
@@ -78,9 +104,42 @@ def _get_or_create_master(queue_id: str, semester: str, academic_year: str):
     return master_id, master_data
 
 
+def _replace_all_events(events_ref, events: list):
+    batch = db.batch()
+    count = 0
+    existing = events_ref.stream()
+    for doc in existing:
+        batch.delete(doc.reference)
+        count += 1
+        if count >= 450:
+            batch.commit()
+            batch = db.batch()
+            count = 0
+    for ev in events:
+        ev_id = str(ev.get("schedule_id") or uuid.uuid4())
+        batch.set(events_ref.document(ev_id), ev)
+        count += 1
+        if count >= 450:
+            batch.commit()
+            batch = db.batch()
+            count = 0
+    if count:
+        batch.commit()
+
 def _replace_program_events(events_ref, program_code: str, events: list):
     """Delete a program's existing events from a subcollection, then write
-    the new ones. Batched at 450 ops to stay under Firestore's 500 limit."""
+    the new ones. Batched at 450 ops to stay under Firestore's 500 limit.
+
+    Doc IDs are namespaced with program_code (f"{program_code}_{schedule_id}")
+    rather than the bare schedule_id. Each program's solver numbers its own
+    sessions independently (0, 1, 2, ...), so without the prefix, two
+    programs' events collide on the same doc slot in this shared
+    subcollection -- one program's approve can silently overwrite another
+    program's already-approved events, and an unapprove's delete-by-
+    programCode query then only sees whichever program most recently won
+    that slot. This was causing approved programs to lose most of their
+    sessions after an unapprove/re-approve cycle.
+    """
     batch = db.batch()
     count = 0
 
@@ -95,7 +154,7 @@ def _replace_program_events(events_ref, program_code: str, events: list):
 
     for ev in events:
         ev["programCode"] = program_code
-        ev_id = str(ev.get("schedule_id") or uuid.uuid4())
+        ev_id = f"{program_code}_{ev.get('schedule_id') or uuid.uuid4()}"
         batch.set(events_ref.document(ev_id), ev)
         count += 1
         if count >= 450:
@@ -136,19 +195,8 @@ def get_submitted_schedules(user: dict = Depends(admin_only)):
     # empty. "in" pulls both statuses; the frontend still splits them
     # into pending/approved buckets itself.
     #
-    # Scoped to the currently-active queue's term. An "approved" schedule's
-    # status never reverts, so without this filter the query scanned every
-    # schedule ever approved across every past semester — cost that only
-    # grows over time, on a dashboard polled every 20-45s. The admin only
-    # ever needs this term's submissions/approvals here; past terms are
-    # available through the finalized master schedule, not this endpoint.
+    # Removed active queue scoping per user request, so past submissions don't disappear when a new queue starts
     query = db.collection("coordinator_schedules").where("status", "in", ["submitted", "approved"])
-    active_queues = db.collection("coordinator_queues").where("status", "==", "active").limit(1).get()
-    if active_queues:
-        active = active_queues[0].to_dict()
-        semester, academic_year = active.get("semester"), active.get("academicYear")
-        if semester and academic_year:
-            query = query.where("semester", "==", semester).where("academicYear", "==", academic_year)
     docs = query.get()
     results = []
     for doc in docs:
@@ -210,8 +258,25 @@ def approve_schedule(schedule_id: str, user: dict = Depends(admin_only)):
     program_status[program_code] = "approved"
     queue_data["programStatus"] = program_status
 
-    # Advance to next waiting coordinator
-    updates = _advance_queue(queue_data, queue_id)
+    # Only move the turn forward if the program being approved is actually
+    # the one currently holding the turn. Without this check, re-approving
+    # a schedule after an unapprove (where the turn had already moved on
+    # to someone else) would call _advance_queue anyway -- which advances
+    # from whatever currentTurnIndex happens to be right now, silently
+    # skipping past whoever's actual turn it is. Approving out-of-turn
+    # should just record the approval, not touch anyone else's turn.
+    queue_list = queue_data.get("queue", [])
+    current_index = queue_data.get("currentTurnIndex", -1)
+    is_current_turn = 0 <= current_index < len(queue_list) and queue_list[current_index] == program_code
+
+    if is_current_turn:
+        updates = _advance_queue(queue_data, queue_id)
+    else:
+        db.collection("coordinator_queues").document(queue_id).update({
+            "programStatus": program_status,
+            "updatedAt": now
+        })
+        updates = {"programStatus": program_status, "updatedAt": now}
 
     master_id, master_data = _get_or_create_master(
         queue_id,
@@ -274,6 +339,59 @@ def get_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
     data = master_doc.to_dict()
     data["schedule"] = _get_master_events(master_doc.reference)
     return data
+
+@router.post("/schedule/{schedule_id}/unapprove")
+def unapprove_schedule(schedule_id: str, user: dict = Depends(admin_only)):
+    doc = db.collection("coordinator_schedules").document(schedule_id).get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    data = doc.to_dict()
+    ay = data.get("academicYear")
+    sem = data.get("semester")
+    prog = data.get("programCode")
+    queue_id = data.get("queueId")
+    
+    doc.reference.update({
+        "status": "submitted",
+        "approvedAt": firestore.DELETE_FIELD,
+        "approvedBy": firestore.DELETE_FIELD,
+        "updatedAt": datetime.utcnow().isoformat()
+    })
+    
+    # Update queue status using the stored queueId
+    if queue_id:
+        queue_ref = db.collection("coordinator_queues").document(queue_id)
+        queue_doc = queue_ref.get()
+        if queue_doc.exists:
+            program_status = queue_doc.to_dict().get("programStatus", {})
+            program_status[prog] = "submitted"
+            queue_ref.update({
+                "programStatus": program_status,
+                "updatedAt": datetime.utcnow().isoformat()
+            })
+            
+            # Remove from master schedule
+            mdocs = db.collection("master_schedules").where("queueId", "==", queue_id).get()
+            if mdocs:
+                md = mdocs[0]
+                mref = md.reference
+                _replace_program_events(mref.collection("events"), prog, [])
+                mref.update({
+                    "approvedPrograms": firestore.ArrayRemove([prog]),
+                    "updatedAt": datetime.utcnow().isoformat()
+                })
+    
+    return {"message": "Schedule unapproved"}
+
+@router.put("/master/{queue_id}/edit")
+def admin_edit_master_schedule(queue_id: str, payload: EditScheduleRequest, user: dict = Depends(admin_only)):
+    docs = db.collection("master_schedules").where("queueId", "==", queue_id).get()
+    if not docs:
+        raise HTTPException(status_code=404, detail="Master schedule not found")
+    master_ref = docs[0].reference
+    _replace_all_events(master_ref.collection("events"), payload.schedule)
+    master_ref.update({"updatedAt": firestore.SERVER_TIMESTAMP})
+    return {"message": "Master schedule updated"}
 
 @router.post("/master/{queue_id}/finalize")
 def finalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):

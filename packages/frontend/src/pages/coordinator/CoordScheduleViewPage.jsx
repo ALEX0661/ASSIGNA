@@ -752,16 +752,23 @@ export default function CoordScheduleViewPage() {
   /* ── Schedule status (draft / submitted / approved) ─────────────────────── */
   const [status,            setStatus]        = useState('draft')
   const [scheduleMeta,      setScheduleMeta]  = useState(null)
-  const [actionState,       setActionState]   = useState('idle') // 'idle' | 'working' | 'done' | 'error' — for Submit/Unsubmit
-  const [actionError,       setActionError]   = useState('') // message shown when Submit/Unsubmit is rejected (e.g. term already has a submission)
+  const [actionState,       setActionState]   = useState('idle') 
+  const [actionError,       setActionError]   = useState('') 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [showVersionHistory, setShowVersionHistory] = useState(false)
+  
+  const [roundTerm,         setRoundTerm]     = useState(null)
 
-  // Editing (drag-drop, overrides, Save) is only allowed while still a
-  // draft — mirrors the admin page's "locked while finalized" behavior,
-  // just keyed off the coordinator workflow's status instead.
+  useEffect(() => {
+    coordCheckTurn().then(t => {
+      if (t) setRoundTerm({ academicYear: t.academicYear, semester: t.semester })
+    }).catch(() => {})
+  }, [])
+
   const isMasterView = id === MASTER_VIEW_ID
   const locked = (isMasterView && !overlayId) || status !== 'draft'
+
+  const isActiveTerm = Boolean(roundTerm && schedAY === roundTerm.academicYear && schedSem === roundTerm.semester)
 
   /* ── Bootstrap ──────────────────────────────────────────────────────────── */
   useEffect(() => {
@@ -1309,8 +1316,9 @@ export default function CoordScheduleViewPage() {
                 Approved
               </span>
             ) : (
-              <button onClick={handleSubmit} disabled={actionState === 'working'}
-                style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 13px', borderRadius:8, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 2px 8px rgba(0,0,0,.25)', flexShrink:0, whiteSpace:'nowrap' }}>
+              <button onClick={handleSubmit} disabled={actionState === 'working' || !isActiveTerm}
+                title={!isActiveTerm ? 'You can only submit schedules for the active scheduling queue term' : ''}
+                style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 13px', borderRadius:8, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize:11.5, fontWeight:600, cursor: (actionState === 'working' || !isActiveTerm) ? 'default' : 'pointer', opacity: (actionState === 'working' || !isActiveTerm) ? 0.6 : 1, fontFamily:'Inter,sans-serif', boxShadow:'0 2px 8px rgba(0,0,0,.25)', flexShrink:0, whiteSpace:'nowrap' }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                 {actionState === 'working' ? 'Submitting…' : 'Submit'}
               </button>

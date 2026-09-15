@@ -1,1330 +1,24 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  listQueues, createQueue, skipProgram, advanceQueue, deleteQueue, reorderQueue,
-  getSubmittedSchedules, getSubmittedSchedule, approveSchedule, rejectSchedule,
-  getMasterSchedule, finalizeMasterSchedule, getCourses, adminEditSchedule,
+  listQueues, createQueue, skipProgram, advanceQueue, finishQueue, deleteQueue, reorderQueue,
+  getSubmittedSchedules, getSubmittedSchedule, approveSchedule, rejectSchedule, unapproveSchedule,
+  getMasterSchedule, finalizeMasterSchedule, getCourses, adminEditSchedule, adminEditMasterSchedule
 } from '../../services/api'
+import ScheduleViewPage from './ScheduleViewPage'
 import { ProgramLegend } from '../../components/ScheduleView/svPrimitives'
-import TimeGrid from '../../components/ScheduleView/TimeGrid'
 import { useTour } from '../../hooks/useTour.jsx'
 
-/* ─────────────────────────── DESIGN TOKENS ───────────────────────────
-   Same meadow palette + Inter/Poppins/IBM Plex Mono stack as
-   CoordSchedulerPage / SchedulerPage / CoordMySchedulePage, so this page
-   reads as part of the same product instead of a one-off. ── 
-   Cache bust comment for Vite */
-const G = {
-  meadow: 'var(--meadow, var(--meadow))', meadowDeep: 'var(--meadow-deep)', meadowMid: 'var(--meadow-mid)',
-  meadowSoft: 'var(--meadow-soft)', meadowBorder: 'var(--meadow-border)',
-  ink: 'var(--ink, #0E2A20)', inkMid: '#1C3D2A', muted: 'var(--muted, #4B7060)', muted2: 'var(--muted2, #6B8C7A)',
-  border: 'var(--border)', borderLight: 'var(--hover)', bg: 'var(--bg, #F2F7F4)',
-  surface: 'var(--surface, #FFFFFF)', hover: 'var(--hover)',
-  amber: '#F59E0B', amberSoft: 'rgba(245, 158, 11, 0.1)', amberBorder: 'rgba(245, 158, 11, 0.25)',
-  blue: '#60A5FA', blueSoft: 'rgba(59, 130, 246, 0.1)', blueBorder: '#BFDBFE',
-  red: '#EF4444', redSoft: 'rgba(239, 68, 68, 0.1)', redBorder: 'rgba(220, 38, 38, 0.25)',
-}
-
-if (!document.getElementById('approval-dashboard-style')) {
-  const s = document.createElement('style')
-  s.id = 'approval-dashboard-style'
-  s.textContent = `
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap');
-
-    .ap-root { font-family:'Inter',sans-serif; background:${G.bg}; }
-    @keyframes apFadeUp { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } }
-    @keyframes apShimmer { 0% { background-position:-600px 0 } 100% { background-position:600px 0 } }
-    @keyframes apSpin { to { transform:rotate(360deg) } }
-    @keyframes apSlideIn { from { transform:translateX(24px); opacity:0 } to { transform:translateX(0); opacity:1 } }
-    @keyframes apOverlayIn { from { opacity:0 } to { opacity:1 } }
-    .ap-fadein { animation:apFadeUp .28s ease both; }
-    .ap-spin { animation:apSpin .8s linear infinite; }
-    .ap-skeleton { background:linear-gradient(90deg,${G.hover} 25%,${G.borderLight} 50%,${G.hover} 75%); background-size:600px 100%; animation:apShimmer 1.4s ease-in-out infinite; border-radius:7px; }
-
-    .ap-card { background: var(--surface); border-radius:12px; border:1px solid ${G.border}; box-shadow:0 2px 12px rgba(0,0,0,0.03); overflow:hidden; }
-    .ap-row { display:flex; align-items:center; gap:14px; padding:13px 18px; border-bottom:1px solid ${G.borderLight}; transition:background .12s; }
-    .ap-row:last-child { border-bottom:none; }
-    .ap-row:hover { background:${G.hover}; }
-
-    .btn-outline { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; border:1px solid ${G.border}; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; background: var(--surface); color:${G.muted}; transition:all .13s; }
-    .btn-outline:hover:not(:disabled) { background:${G.hover}; color:${G.ink}; border-color:${G.meadowBorder}; }
-    .btn-outline:disabled { opacity:.5; cursor:default; }
-    .btn-primary { display:inline-flex; align-items:center; gap:6px; padding:7px 16px; border-radius:8px; border:none; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; background:${G.meadow}; color:#fff; box-shadow:0 3px 10px rgba(0,0,0,0.25); }
-    .btn-primary:hover:not(:disabled) { background:${G.meadowDeep}; transform:translateY(-1px); }
-    .btn-primary:disabled { opacity:.55; cursor:default; transform:none; box-shadow:none; }
-    .btn-danger { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; border:1px solid ${G.redBorder}; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; background: var(--surface); color:${G.red}; transition:all .13s; }
-    .btn-danger:hover:not(:disabled) { background:${G.redSoft}; border-color:${G.red}; }
-    .btn-danger:disabled { opacity:.5; cursor:default; }
-    .btn-amber { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; border:1px solid ${G.amberBorder}; font-family:'Inter',sans-serif; font-size:11.5px; font-weight:600; cursor:pointer; background:${G.amberSoft}; color:#92400E; transition:all .13s; }
-    .btn-amber:hover:not(:disabled) { background:#FDE9B0; }
-    .btn-blue { display:inline-flex; align-items:center; gap:6px; padding:7px 16px; border-radius:8px; border:none; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; background:${G.blue}; color:#fff; box-shadow:0 3px 10px rgba(29,78,216,0.22); }
-    .btn-blue:hover:not(:disabled) { background:#1E40AF; transform:translateY(-1px); }
-
-    .ap-icon-btn { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; border:1px solid ${G.border}; background: var(--surface); color:${G.muted}; cursor:pointer; transition:all .15s; padding:0; flex-shrink:0; }
-    .ap-icon-btn:hover:not(:disabled) { background:${G.hover}; color: var(--meadow-text); border-color:${G.meadowBorder}; }
-    .ap-icon-btn:disabled { opacity:.4; cursor:default; }
-
-    .cp-inp { padding:8px 12px; border-radius:8px; border:1.5px solid ${G.border}; font-family:'Inter',sans-serif; font-size:12.5px; color:${G.ink}; background: var(--surface); outline:none; transition:all .15s; width:100%; box-sizing:border-box; }
-    .cp-inp:focus { border-color: var(--meadow-text-hover); box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
-    .cp-inp.sm { padding:5px 8px; font-size:11.5px; border-radius:6px; }
-
-    .ap-badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:99px; font-family:'Inter',sans-serif; font-size:10.5px; font-weight:700; border:1px solid transparent; line-height:1.5; white-space:nowrap; }
-
-    .ap-tab { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:9px; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:700; cursor:pointer; transition:all .15s; border:1px solid transparent; background:transparent; color:${G.muted}; }
-    .ap-tab:hover:not(.active) { background:${G.hover}; color:${G.ink}; }
-    .ap-tab.active { background:${G.meadow}; color:#fff; box-shadow:0 3px 10px rgba(0,0,0,0.22); }
-    .ap-tab-count { display:inline-flex; align-items:center; justify-content:center; min-width:17px; height:17px; padding:0 6px; border-radius:99px; font-size:10px; font-weight:800; background:rgba(255,255,255,0.28); font-family:'IBM Plex Mono',monospace; }
-    .ap-tab:not(.active) .ap-tab-count { background:${G.amberSoft}; color:#92400E; }
-
-    .r-tab { display:inline-flex; align-items:center; gap:5px; padding:6px 13px; border-radius:8px; font-family:'Inter',sans-serif; font-size:11.5px; font-weight:600; cursor:pointer; transition:all .15s; border:1px solid ${G.border}; background: var(--surface); color:${G.muted}; }
-    .r-tab.active { background:${G.meadow}; color:#fff; border-color: var(--meadow-text); box-shadow:0 3px 10px rgba(0,0,0,0.22); }
-    .r-tab:hover:not(.active) { background:${G.hover}; border-color:${G.meadowBorder}; color:${G.ink}; }
-
-    .ap-tile { flex:1; display:flex; flex-direction:column; align-items:flex-start; gap:2px; padding:11px 15px; border-radius:11px; border:1px solid; background: var(--surface); font-family:'Inter',sans-serif; text-align:left; transition:transform .15s, box-shadow .15s; cursor:pointer; }
-    .ap-tile:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,0.08); }
-    .ap-tile-value { font-family:'IBM Plex Mono',monospace; font-size:21px; font-weight:800; line-height:1; }
-    .ap-tile-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; opacity:.85; }
-
-    .prog-bar-wrap { height:6px; background:${G.borderLight}; border-radius:99px; overflow:hidden; width:100%; }
-    .prog-bar-fill { height:100%; border-radius:99px; transition:width .4s cubic-bezier(.4,0,.2,1); background:linear-gradient(90deg,${G.meadow},var(--meadow)); }
-
-    /* Queue rail — mirrors the coordinator-side queue card (gradient head
-       + circular status rail) so the admin queue view reads as the same
-       product instead of the old boxy phase-track squares. */
-    .aq-card { border-radius:13px; border:1px solid ${G.border}; overflow:hidden; background: var(--surface); }
-    .aq-head { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:12px 16px; background:linear-gradient(135deg, ${G.meadowDeep}, ${G.meadow}); color:#fff; }
-    .aq-head-title { font-size:13px; font-weight:800; letter-spacing:-.1px; line-height:1.3; }
-    .aq-head-sub { font-size:11px; font-weight:500; color:rgba(255,255,255,0.82); margin-top:2px; line-height:1.3; }
-    .aq-head-turn { font-family:'IBM Plex Mono',monospace; font-size:12.5px; font-weight:800; flex-shrink:0; white-space:nowrap; }
-    .aq-head-of { font-size:9.5px; font-weight:600; color:rgba(255,255,255,0.75); margin-left:2px; }
-    .aq-rail-wrap { padding:20px 16px 16px; }
-
-    .ap-order-item { display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:9px; background: var(--surface); cursor:grab; transition:border-color .12s, box-shadow .12s; }
-
-    .cp-toast-wrap { position:fixed; bottom:24px; right:26px; z-index:9999; display:flex; flex-direction:column-reverse; gap:10px; align-items:flex-end; pointer-events:none; }
-    .cp-toast { display:flex; align-items:center; gap:10px; padding:13px 20px; border-radius:11px; font-family:'Inter',sans-serif; font-size:13px; font-weight:600; animation:apFadeUp .22s cubic-bezier(.4,0,.2,1); white-space:nowrap; pointer-events:auto; box-shadow:0 8px 24px rgba(0,0,0,0.15); }
-    .cp-toast.success { background:${G.meadow}; color:#fff; border:1px solid ${G.meadowBorder}; }
-    .cp-toast.error { background: var(--surface); color:${G.red}; border:1px solid ${G.redBorder}; }
-    .cp-toast.info { background: var(--surface); color: var(--meadow-text); border:1px solid ${G.meadowBorder}; }
-
-    .ap-modal-overlay { position:fixed; inset:0; background:rgba(10,30,20,0.48); z-index:2000; display:flex; align-items:center; justify-content:center; padding:20px; animation:apOverlayIn .15s ease; }
-    .ap-modal { background: var(--surface); border-radius:15px; box-shadow:0 24px 60px rgba(0,0,0,0.22); overflow:hidden; }
-    .ap-modal-header { padding:17px 20px; border-bottom:1px solid ${G.border}; display:flex; align-items:flex-start; gap:12px; background:${G.bg}; }
-    .ap-modal-title { font-size:15.5px; font-weight:800; color:${G.ink}; margin:0; letter-spacing:-.1px; }
-    .ap-modal-close { width:28px; height:28px; border-radius:8px; border:1px solid ${G.border}; background: var(--surface); cursor:pointer; color:${G.muted}; font-size:15px; line-height:1; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-    .ap-modal-close:hover { background:${G.hover}; }
-
-    /* Review panel — slide-over from the right, keeps queue context visible
-       behind a dim backdrop instead of yanking the admin to a full modal. */
-    .ap-panel-overlay { position:fixed; inset:0; background:rgba(10,30,20,0.4); z-index:2500; animation:apOverlayIn .15s ease; }
-    .ap-panel { position:fixed; top:0; right:0; bottom:0; width:min(620px, 100vw); background: var(--surface); z-index:2501; display:flex; flex-direction:column; box-shadow:-16px 0 48px rgba(0,0,0,0.18); animation:apSlideIn .22s cubic-bezier(.16,1,.3,1); }
-    .ap-kbd { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 4px; border-radius:5px; background:${G.hover}; border:1px solid ${G.border}; font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:700; color:${G.muted}; }
-  `
-  document.head.appendChild(s)
-}
-
-/* ─────────────────────────── CONSTANTS ─────────────────────────── */
-const DEFAULT_PROGRAMS = ['BSIT', 'BSCS', 'BSEMC-GD', 'BSEMC-DAT']
-const SEMESTERS = ['1st Semester', '2nd Semester', 'Midyear']
-// The submitted-schedules list is now scoped server-side to the active
-// term (see approval.py), so it no longer grows with every semester that's
-// ever been approved — but it's still worth polling less aggressively than
-// every 20s, and not at all while the tab is hidden.
-const POLL_MS = 45000
-
-// PH school years run roughly June–May, so anything from June onward
-// counts as the start of that calendar year's AY. Centers the dropdown
-// on "today's" AY with a couple years of slack either side, so admins
-// can still set up a queue for a term that hasn't started yet.
-function currentAcademicYearStart(d = new Date()) {
-  return d.getMonth() >= 5 ? d.getFullYear() : d.getFullYear() - 1
-}
-function academicYearOptions() {
-  const start = currentAcademicYearStart()
-  const years = []
-  for (let y = start - 1; y <= start + 3; y++) years.push(`${y}-${y + 1}`)
-  return years
-}
-
-const STATUS = {
-  waiting:    { bg: '#F1F5F9', color: 'var(--muted2)', dot: '#94A3B8', label: 'Waiting'    },
-  active:     { bg: G.meadowSoft, color: 'var(--meadow-text)', dot: G.meadow, label: 'Their turn' },
-  generating: { bg: G.blueSoft, color: G.blue, dot: '#3B82F6', label: 'Generating' },
-  submitted:  { bg: G.amberSoft, color: '#92400E', dot: G.amber, label: 'Submitted'  },
-  approved:   { bg: G.meadowSoft, color: 'var(--meadow-text-hover)', dot: G.meadow, label: 'Approved'   },
-  skipped:    { bg: 'rgba(217, 119, 6, 0.05)', color: '#9A3412', dot: '#FB923C', label: 'Skipped'    },
-}
-const SCHED_STATUS = {
-  draft:     { bg: G.hover, color: G.muted, border: G.border, label: 'Draft'     },
-  submitted: { bg: G.amberSoft, color: '#92400E', border: G.amberBorder, label: 'Submitted' },
-  approved:  { bg: G.meadowSoft, color: 'var(--meadow-text-hover)', border: G.meadowBorder, label: 'Approved'  },
-}
-
-const PROG_COLORS = { 'BSIT': G.meadow, 'BSCS': '#60A5FA', 'BSEMC-GD': '#7C3AED', 'BSEMC-DAT': '#F59E0B' }
-const PROG_COLOR_PALETTE = [G.meadow, '#60A5FA', '#7C3AED', '#F59E0B', '#DB2777', '#0EA5E9', '#CA8A04', 'var(--meadow)']
-function getProgColor(prog) {
-  if (!prog) return G.meadow
-  if (PROG_COLORS[prog]) return PROG_COLORS[prog]
-  let hash = 0
-  for (let i = 0; i < prog.length; i++) hash = prog.charCodeAt(i) + ((hash << 5) - hash)
-  return PROG_COLOR_PALETTE[Math.abs(hash) % PROG_COLOR_PALETTE.length]
-}
-function progShort(prog = '') {
-  const stripped = prog.replace(/^BS/, '')
-  const parts = stripped.split('-')
-  return parts.length > 1 ? parts[parts.length - 1] : stripped
-}
-
-const ICONS = {
-  queue: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="18" height="4" rx="1"/></svg>,
-  inbox: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>,
-  calendar: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
-  clipboard: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 2h6a1 1 0 0 1 1 1v2H8V3a1 1 0 0 1 1-1z"/><rect x="5" y="4" width="14" height="17" rx="2"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="15" y2="15"/></svg>,
-  activity: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
-}
-
-/* ─────────────────────────── HELPERS ─────────────────────────── */
-function useEscapeClose(onClose) {
-  useEffect(() => {
-    const onKey = e => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
-}
-
-function useToast() {
-  const [toasts, setToasts] = useState([])
-  const toast = useCallback((msg, type = 'info', dur = 3200) => {
-    const id = Date.now() + Math.random()
-    setToasts(p => [...p, { id, message: msg, type }])
-    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), dur)
-  }, [])
-  return { toasts, toast }
-}
-function ToastContainer({ toasts }) {
-  const icons = {
-    success: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>,
-    error: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
-    info: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/></svg>,
-  }
-  return <div className="cp-toast-wrap">{toasts.map(t => <div key={t.id} className={`cp-toast ${t.type}`}>{icons[t.type]}{t.message}</div>)}</div>
-}
-
-function Skel({ w = '100%', h = 13, r = 6, style = {} }) {
-  return <div className="ap-skeleton" style={{ width: w, height: h, borderRadius: r, flexShrink: 0, ...style }} />
-}
-function Badge({ label, bg, color, border }) {
-  return <span className="ap-badge" style={{ background: bg, color, borderColor: border || 'transparent' }}>{label}</span>
-}
-function EmptyState({ icon, text, action }) {
-  return (
-    <div style={{ padding: '42px 20px', textAlign: 'center', color: G.muted2, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 11 }}>
-      <div style={{ width: 44, height: 44, borderRadius: 12, background: G.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: G.muted2 }}>{icon}</div>
-      <div style={{ fontSize: 12.5, fontWeight: 500, maxWidth: 280, lineHeight: 1.5 }}>{text}</div>
-      {action}
-    </div>
-  )
-}
-
-// The backend sends timestamps with no "Z"/offset (e.g. "2026-08-22T10:15:00").
-// JS reads a bare string like that as *local* time, not UTC — on a PH
-// client (UTC+8) that silently adds 8 hours to everything, so a schedule
-// submitted seconds ago reads as "8h ago". Assume UTC when no timezone
-// marker is present and append "Z" before parsing. Accepts a Date too
-// (e.g. from ActivityTab, which builds Date objects up front).
-function toSafeDate(dateLike) {
-  if (!dateLike) return null
-  let val = dateLike
-  if (typeof val === 'string' && !/[zZ]|[+-]\d{2}:?\d{2}$/.test(val)) {
-    val += 'Z'
-  }
-  const d = val instanceof Date ? val : new Date(val)
-  return Number.isNaN(d.getTime()) ? null : d
-}
-
-function timeAgo(dateLike) {
-  const d = toSafeDate(dateLike)
-  if (!d) return ''
-  const diff = Math.max(0, Date.now() - d.getTime())
-  const min = Math.floor(diff / 60000)
-  if (min < 1) return 'just now'
-  if (min < 60) return `${min}m ago`
-  const hr = Math.floor(min / 60)
-  if (hr < 24) return `${hr}h ago`
-  const day = Math.floor(hr / 24)
-  if (day < 7) return `${day}d ago`
-  return d.toLocaleDateString()
-}
-
-// Flags same-room/same-day/same-period collisions between a candidate
-// schedule's events and events already merged into the master schedule
-// (excluding the candidate's own program, in case it was previously
-// approved and is being re-submitted). Pure client-side, no extra calls —
-// the data is already on screen by the time a review is opened.
-function computeConflicts(events = [], masterEvents = [], excludeProgram) {
-  const key = e => `${e.day}__${e.period}__${e.room}`
-  const masterByKey = new Map()
-  for (const ev of masterEvents) {
-    if (excludeProgram && ev.program === excludeProgram) continue
-    const k = key(ev)
-    if (!masterByKey.has(k)) masterByKey.set(k, [])
-    masterByKey.get(k).push(ev)
-  }
-  const conflicts = []
-  for (const ev of events) {
-    if (!ev.room || !ev.day || !ev.period) continue
-    const hits = masterByKey.get(key(ev))
-    if (hits && hits.length) {
-      conflicts.push({ event: ev, against: hits })
-    }
-  }
-  return conflicts
-}
-
-/* ─────────────────────────── SHARED ORDER LIST ───────────────────────────
-   Used by both CreateQueueModal and QueueTab's reorder view. Each program
-   gets the same color-coded chip used everywhere else in the dashboard
-   (submission rows, activity feed) instead of a plain number box, so the
-   queue order reads as part of the same visual language. ── */
-function DraggableOrderList({ order, dragIndex, overIndex, onDragStart, onDragEnter, onDrop, onDragEnd }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-      {order.map((prog, i) => {
-        const isDragging = dragIndex === i
-        const isOver = overIndex === i && dragIndex !== null && dragIndex !== i
-        const color = getProgColor(prog)
-        return (
-          <div key={prog} draggable
-            onDragStart={() => onDragStart(i)}
-            onDragEnter={() => onDragEnter(i)}
-            onDragOver={e => e.preventDefault()}
-            onDrop={() => onDrop(i)}
-            onDragEnd={onDragEnd}
-            className="ap-order-item"
-            style={{
-              border: `1.5px solid ${isOver ? G.meadow : G.border}`,
-              boxShadow: isDragging ? '0 6px 16px rgba(0,0,0,0.16)' : '0 1px 3px rgba(0,0,0,0.04)',
-              opacity: isDragging ? 0.55 : 1,
-            }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#B8CCC0" strokeWidth="2" style={{ flexShrink: 0 }}><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg>
-            <div style={{ width: 26, height: 26, borderRadius: 7, background: `${color}18`, border: `1.5px solid ${color}40`, color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0, fontFamily: "'IBM Plex Mono',monospace" }}>{progShort(prog)}</div>
-            <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: G.ink }}>{prog}</div>
-            <div style={{ fontSize: 10, fontWeight: 800, color: G.muted2, fontFamily: "'IBM Plex Mono',monospace" }}>#{i + 1}</div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-/* ─────────────────────────── ADMIN QUEUE RAIL ───────────────────────────
-   Same visual language as the coordinator-side QueueRail (circular status
-   nodes joined by a progress line) instead of the old boxy phase-track,
-   so the two sides of the same queue look like one product. ── */
-function AdminQueueRail({ programs, statuses, turnIndex }) {
-  if (!programs || programs.length === 0) return null
-  const n = programs.length
-  const CIRCLE = 30
-  const MIN_COL = 68
-  return (
-    <div style={{ width: '100%', overflowX: 'auto' }}>
-      <div style={{ position: 'relative', minWidth: n * MIN_COL }}>
-        {n > 1 && (
-          <div style={{ position: 'absolute', top: CIRCLE / 2 - 1, left: `${50 / n}%`, right: `${50 / n}%`, height: 2 }}>
-            {programs.slice(0, -1).map((prog, i) => (
-              <div key={prog} style={{
-                position: 'absolute', left: `${(i / (n - 1)) * 100}%`, width: `${100 / (n - 1)}%`, height: 2, borderRadius: 99,
-                background: i < turnIndex ? G.meadowBorder : G.border,
-              }} />
-            ))}
-          </div>
-        )}
-        <div style={{ display: 'flex', position: 'relative' }}>
-          {programs.map((prog, i) => {
-            const s = statuses[prog] || 'waiting'
-            const stm = STATUS[s] || STATUS.waiting
-            const isCurrent = i === turnIndex
-            return (
-              <div key={prog} style={{ flex: '1 1 0', minWidth: MIN_COL, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div style={{
-                  width: CIRCLE, height: CIRCLE, borderRadius: '50%', flexShrink: 0,
-                  background: s === 'active' ? G.meadow : stm.bg,
-                  border: `2px solid ${stm.dot}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: s === 'active' ? `0 0 0 5px ${stm.dot}22` : 'none',
-                  transition: 'all .25s',
-                }}>
-                  {s === 'approved'
-                    ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={stm.color} strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-                    : s === 'generating'
-                      ? <svg className="ap-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={stm.color} strokeWidth="3"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg>
-                      : s === 'submitted'
-                        ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={stm.color} strokeWidth="2.5"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
-                        : s === 'active'
-                          ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                          : s === 'skipped'
-                            ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={stm.color} strokeWidth="2.5"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
-                            : <span style={{ width: 7, height: 7, borderRadius: '50%', background: stm.dot }} />}
-                </div>
-                <div style={{ marginTop: 7, textAlign: 'center' }}>
-                  <div style={{ fontSize: 11.5, fontWeight: isCurrent ? 800 : 700, color: isCurrent ? 'var(--meadow-text)' : G.ink, whiteSpace: 'nowrap' }}>{prog}</div>
-                  <div style={{ fontSize: 9, fontWeight: 800, color: stm.color, letterSpacing: '.4px', textTransform: 'uppercase', whiteSpace: 'nowrap', marginTop: 2 }}>{stm.label}</div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// Header banner copy — mirrors the coordinator side's "It's your turn" /
-// "Waiting in line" head, but written from the admin's vantage point.
-function queueHeadCopy(programs, statuses, turnIndex) {
-  if (!programs.length) return { title: 'No queue', subtitle: '' }
-  if (turnIndex >= programs.length) return { title: 'Queue complete', subtitle: 'Every program has had their turn.' }
-  const prog = programs[turnIndex]
-  const s = statuses[prog] || 'waiting'
-  if (s === 'generating') return { title: `${prog} is generating`, subtitle: 'Their schedule is being solved right now.' }
-  if (s === 'submitted') return { title: `${prog} submitted`, subtitle: 'Waiting on your review to advance the queue.' }
-  return { title: `${prog}'s turn`, subtitle: 'Picking rooms and building their schedule now.' }
-}
-
-/* ─────────────────────────── CREATE QUEUE MODAL ─────────────────────────── */
-function CreateQueueModal({ onClose, onCreate, programs }) {
-  useEscapeClose(onClose)
-  const [semester, setSemester] = useState('1st Semester')
-  const [year, setYear] = useState(() => academicYearOptions()[1])
-  const [order, setOrder] = useState([...programs])
-  const [saving, setSaving] = useState(false)
-  const [dragIndex, setDragIndex] = useState(null)
-  const [overIndex, setOverIndex] = useState(null)
-
-  function handleDrop(dropAt) {
-    if (dragIndex === null || dragIndex === dropAt) { setDragIndex(null); setOverIndex(null); return }
-    const next = [...order]
-    const [moved] = next.splice(dragIndex, 1)
-    next.splice(dropAt, 0, moved)
-    setOrder(next)
-    setDragIndex(null); setOverIndex(null)
-  }
-  async function handleCreate() {
-    if (!year.trim()) return
-    setSaving(true)
-    try { await onCreate({ semester, academicYear: year, queue: order }); onClose() }
-    catch (e) { alert(e?.response?.data?.detail || 'Failed to create queue') }
-    finally { setSaving(false) }
-  }
-
-  return (
-    <div className="ap-modal-overlay" onClick={onClose}>
-      <div className="ap-modal" style={{ width: 460 }} onClick={e => e.stopPropagation()}>
-        <div className="ap-modal-header" style={{ background: `linear-gradient(135deg, ${G.meadowDeep}, ${G.meadow})`, borderBottom: 'none' }}>
-          <div style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(255,255,255,0.18)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="18" height="4" rx="1"/></svg>
-          </div>
-          <div style={{ flex: 1 }}>
-            <h3 className="ap-modal-title" style={{ color: '#fff' }}>Create Coordinator Queue</h3>
-            <p style={{ margin: '3px 0 0', fontSize: 11.5, color: 'rgba(255,255,255,0.82)' }}>Set the scheduling order for this semester</p>
-          </div>
-          <button onClick={onClose} className="ap-modal-close" style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.32)', color: '#fff' }}>×</button>
-        </div>
-
-        <div style={{ padding: '20px 22px 22px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
-            <div>
-              <label style={{ fontSize: 11.5, fontWeight: 600, color: G.muted, display: 'block', marginBottom: 5 }}>Semester</label>
-              <select value={semester} onChange={e => setSemester(e.target.value)} className="cp-inp">
-                {SEMESTERS.map(s => <option key={s}>{s}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize: 11.5, fontWeight: 600, color: G.muted, display: 'block', marginBottom: 5 }}>Academic Year</label>
-              <select value={year} onChange={e => setYear(e.target.value)} className="cp-inp">
-                {academicYearOptions().map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <label style={{ fontSize: 11.5, fontWeight: 600, color: G.muted, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <span>Scheduling Order</span>
-            <span style={{ fontWeight: 500, color: 'var(--meadow-text-hover)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg>
-              drag to reorder
-            </span>
-          </label>
-          <div style={{ marginBottom: 22, background: G.bg, border: `1px solid ${G.border}`, borderRadius: 12, padding: 8 }}>
-            <DraggableOrderList
-              order={order}
-              dragIndex={dragIndex}
-              overIndex={overIndex}
-              onDragStart={setDragIndex}
-              onDragEnter={setOverIndex}
-              onDrop={handleDrop}
-              onDragEnd={() => { setDragIndex(null); setOverIndex(null) }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button onClick={onClose} className="btn-outline">Cancel</button>
-            <button onClick={handleCreate} disabled={saving} className="btn-primary" style={{ minWidth: 110, justifyContent: 'center' }}>
-              {saving
-                ? <><svg className="ap-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg> Creating…</>
-                : 'Create Queue'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/* ─────────────────────────── REJECT MODAL ─────────────────────────── */
-function RejectModal({ schedule, onClose, onReject }) {
-  useEscapeClose(onClose)
-  const [feedback, setFeedback] = useState('')
-  const [saving, setSaving] = useState(false)
-
-  async function handle() {
-    if (!feedback.trim()) return
-    setSaving(true)
-    try { await onReject(schedule.id || schedule.scheduleId, feedback); onClose() }
-    finally { setSaving(false) }
-  }
-
-  return createPortal(
-    <div className="ap-modal-overlay" style={{ zIndex: 3000 }} onClick={onClose}>
-      <div className="ap-modal" style={{ width: 440 }} onClick={e => e.stopPropagation()}>
-        <div className="ap-modal-header">
-          <div style={{ width: 34, height: 34, borderRadius: 9, background: G.redSoft, color: G.red, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-          </div>
-          <div style={{ flex: 1 }}>
-            <h3 className="ap-modal-title">Reject Schedule</h3>
-            <p style={{ margin: '3px 0 0', fontSize: 11.5, color: G.muted, lineHeight: 1.5 }}>
-              The coordinator for <strong style={{ color: G.ink }}>{schedule?.programCode}</strong> will receive this feedback.
-            </p>
-          </div>
-          <button onClick={onClose} className="ap-modal-close">×</button>
-        </div>
-        <div style={{ padding: '18px 22px 22px' }}>
-          <textarea value={feedback} onChange={e => setFeedback(e.target.value)} rows={4}
-            placeholder="Describe what needs to be corrected..." autoFocus
-            className="cp-inp" style={{ resize: 'vertical', lineHeight: 1.6 }} />
-          <p style={{ margin: '6px 0 18px', fontSize: 11, color: G.muted2 }}>{feedback.length} characters</p>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button onClick={onClose} className="btn-outline">Cancel</button>
-            <button onClick={handle} disabled={!feedback.trim() || saving} className="btn-danger" style={{ minWidth: 120, justifyContent: 'center', background: saving ? undefined : G.red, color: '#fff', border: 'none' }}>
-              {saving ? 'Rejecting…' : 'Reject & Notify'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>,
-    document.body
-  )
-}
-
-/* ─────────────────────────── REVIEW PANEL (inbox-style slide-over) ───────────────────────────
-   Replaces the old full-screen detail modal. Stays anchored to the
-   Submissions list so the admin can page through pending schedules with
-   the keyboard (J/K to move, A to approve, R to reject, Esc to close),
-   optionally patch a room/period before approving, and see room/time
-   conflicts against the master schedule before merging. ── */
-function ReviewPanel({ scheduleId, pendingList, masterEvents, onClose, onApprove, onReject, onNavigate, onSaved, showToast }) {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [showReject, setShowReject] = useState(false)
-  const [acting, setActing] = useState(false)
-  const [editing, setEditing] = useState(false)
-  const [editedEvents, setEditedEvents] = useState([])
-  const [savingEdit, setSavingEdit] = useState(false)
-  const [showConflictsOnly, setShowConflictsOnly] = useState(false)
-  const [reviewViewMode, setReviewViewMode] = useState('grid')
-  const [activeDay, setActiveDay] = useState('Monday')
-  const [isMaximized, setIsMaximized] = useState(false)
-
-  useEscapeClose(() => { if (!showReject) onClose() })
-
-  useEffect(() => {
-    setLoading(true); setEditing(false)
-    getSubmittedSchedule(scheduleId).then(d => { setData(d); setEditedEvents(d?.schedule || []) })
-      .catch(() => setData(null)).finally(() => setLoading(false))
-  }, [scheduleId])
-
-  // Keyboard nav — ignored while typing in the reject/edit inputs or with
-  // the reject modal open, so shortcuts never eat real text.
-  useEffect(() => {
-    function onKey(e) {
-      const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)
-      if (typing || showReject) return
-      if (e.key === 'j' || e.key === 'ArrowDown') { e.preventDefault(); onNavigate(1) }
-      else if (e.key === 'k' || e.key === 'ArrowUp') { e.preventDefault(); onNavigate(-1) }
-      else if ((e.key === 'a' || e.key === 'A') && data?.status === 'submitted' && !editing) { e.preventDefault(); handleApprove() }
-      else if ((e.key === 'r' || e.key === 'R') && data?.status === 'submitted' && !editing) { e.preventDefault(); setShowReject(true) }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [data, editing, showReject, onNavigate])
-
-  async function handleApprove() {
-    setActing(true)
-    try { await onApprove(scheduleId) } finally { setActing(false) }
-  }
-  async function handleSaveEdit() {
-    setSavingEdit(true)
-    try {
-      await adminEditSchedule(scheduleId, { events: editedEvents })
-      setData(d => ({ ...d, schedule: editedEvents }))
-      setEditing(false)
-      showToast('Edits saved', 'success')
-      onSaved?.()
-    } catch (e) { showToast(e?.response?.data?.detail || 'Failed to save edits', 'error') }
-    finally { setSavingEdit(false) }
-  }
-  function patchEvent(i, field, value) {
-    setEditedEvents(prev => prev.map((ev, idx) => idx === i ? { ...ev, [field]: value } : ev))
-  }
-
-  const events = editing ? editedEvents : (data?.schedule || [])
-  const st = SCHED_STATUS[data?.status] || SCHED_STATUS.submitted
-  const isSubmitted = data?.status === 'submitted'
-  const idx = pendingList.findIndex(s => (s.id || s.scheduleId) === scheduleId)
-  const conflicts = useMemo(
-    () => computeConflicts(data?.schedule || [], masterEvents, data?.programCode),
-    [data, masterEvents]
-  )
-  const COLS = ['Course', 'Section', 'Session', 'Day', 'Period', 'Room', 'Faculty']
-
-  return (
-    <>
-      <div className="ap-panel-overlay" onClick={onClose} />
-      <div className="ap-panel" style={isMaximized ? { width: '100vw' } : {}}>
-        {/* Header */}
-        <div style={{ padding: '16px 20px', borderBottom: `1px solid ${G.border}`, display: 'flex', alignItems: 'flex-start', gap: 12, background: G.bg, flexShrink: 0 }}>
-          {data && (
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: `${getProgColor(data.programCode)}18`, color: getProgColor(data.programCode), display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <span style={{ fontSize: 10, fontWeight: 800, fontFamily: "'IBM Plex Mono',monospace" }}>{progShort(data.programCode || '')}</span>
-            </div>
-          )}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 15, fontWeight: 800, color: G.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{loading ? 'Loading…' : data?.name}</span>
-              {data && <Badge label={st.label} bg={st.bg} color={st.color} border={st.border} />}
-            </div>
-            {data && <div style={{ fontSize: 11.5, color: G.muted, marginTop: 2 }}>{data.programCode} · {events.length} events{data.semester ? ` · ${data.semester}` : ''}</div>}
-          </div>
-          {pendingList.length > 1 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-              <button className="ap-icon-btn" disabled={idx <= 0} onClick={() => onNavigate(-1)} title="Previous (K)">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15"/></svg>
-              </button>
-              <span style={{ fontSize: 10.5, fontWeight: 700, color: G.muted2, fontFamily: "'IBM Plex Mono',monospace", minWidth: 32, textAlign: 'center' }}>{idx + 1}/{pendingList.length}</span>
-              <button className="ap-icon-btn" disabled={idx < 0 || idx >= pendingList.length - 1} onClick={() => onNavigate(1)} title="Next (J)">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-              </button>
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <button onClick={() => setIsMaximized(m => !m)} className="ap-icon-btn" title={isMaximized ? "Restore size" : "Maximize"}>
-              {isMaximized ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-              )}
-            </button>
-            <button onClick={onClose} className="ap-modal-close" style={{ margin: 0 }}>×</button>
-          </div>
-        </div>
-
-        {/* Conflict banner */}
-        {!loading && conflicts.length > 0 && (
-          <div style={{ padding: '11px 20px', background: G.redSoft, borderBottom: `1px solid ${G.redBorder}`, display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={G.red} strokeWidth="2.5" style={{ flexShrink: 0 }}><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#FCA5A5' }}>
-              {conflicts.length} room/time conflict{conflicts.length > 1 ? 's' : ''} with the master schedule — check the highlighted rows below before approving.
-            </span>
-          </div>
-        )}
-
-        {/* Edit toolbar */}
-        {!loading && isSubmitted && (
-          <div style={{ padding: '9px 20px', borderBottom: `1px solid ${G.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: 'var(--surface)' }}>
-            <span style={{ fontSize: 11, color: G.muted2, display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span><span className="ap-kbd">J</span><span className="ap-kbd">K</span> nav · <span className="ap-kbd">A</span> approve</span>
-              
-              {conflicts.length > 0 && (
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: G.inkMid, fontWeight: 500 }}>
-                  <input type="checkbox" checked={showConflictsOnly} onChange={e => setShowConflictsOnly(e.target.checked)} style={{ margin: 0, accentColor: G.red }} />
-                  Show conflicts only
-                </label>
-              )}
-            </span>
-            <div style={{ display: 'flex', gap: 7 }}>
-              {!editing && (
-                <button className="btn-outline" style={{ padding: '5px 11px', fontSize: 11.5 }} onClick={() => window.open(`/admin/schedule/submitted/${scheduleId}`, '_blank')}>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-                  View Grid
-                </button>
-              )}
-              {editing ? (
-                <>
-                  <button className="btn-outline" style={{ padding: '5px 11px', fontSize: 11.5 }} onClick={() => { setEditing(false); setEditedEvents(data?.schedule || []) }}>Cancel</button>
-                  <button className="btn-primary" style={{ padding: '5px 12px', fontSize: 11.5 }} onClick={handleSaveEdit} disabled={savingEdit}>{savingEdit ? 'Saving…' : 'Save Changes'}</button>
-                </>
-              ) : (
-                <button className="btn-outline" style={{ padding: '5px 11px', fontSize: 11.5 }} onClick={() => setEditing(true)}>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                  Fix
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Table / Grid */}
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          {loading ? (
-            <div style={{ padding: '40px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {[...Array(6)].map((_, i) => <Skel key={i} h={34} r={8} style={{ opacity: 1 - i * 0.12 }} />)}
-            </div>
-          ) : events.length === 0 ? (
-            <EmptyState icon={ICONS.clipboard} text="No events found in this schedule." />
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: reviewViewMode === 'grid' ? 500 : 'auto' }}>
-              <div style={{ display: 'flex', padding: '12px 20px', background: 'var(--bg)', borderBottom: `1px solid ${G.border}`, alignItems: 'center', gap: 12 }}>
-                <div style={{ display: 'flex', background: G.hover, borderRadius: 8, padding: 4 }}>
-                  <button onClick={() => setReviewViewMode('grid')}
-                    style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'grid' ? 'var(--surface)' : 'transparent', color: reviewViewMode === 'grid' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'grid' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
-                    Grid
-                  </button>
-                  <button onClick={() => setReviewViewMode('table')}
-                    style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'table' ? 'var(--surface)' : 'transparent', color: reviewViewMode === 'table' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'table' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
-                    List
-                  </button>
-                </div>
-                {reviewViewMode === 'grid' && (
-                  <div style={{ display: 'flex', gap: 6, overflowX: 'auto', flex: 1 }}>
-                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(d => (
-                      <button key={d} onClick={() => setActiveDay(d)} 
-                        style={{
-                          padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                          cursor: 'pointer', border: '1px solid var(--border)',
-                          background: activeDay === d ? `linear-gradient(135deg, ${G.meadow}, ${G.meadowDeep})` : 'var(--surface)',
-                          color: activeDay === d ? '#fff' : G.muted,
-                          transition: 'all .15s', whiteSpace: 'nowrap',
-                          boxShadow: activeDay === d ? '0 2px 8px rgba(0,0,0,.3)' : 'none'
-                        }}>
-                        {d}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {reviewViewMode === 'table' ? (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                  <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
-                    <tr style={{ background: G.bg }}>
-                      {COLS.map(h => (
-                        <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: G.muted, letterSpacing: 0.4, textTransform: 'uppercase', borderBottom: `1px solid ${G.border}`, whiteSpace: 'nowrap' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {events.map((ev, i) => {
-                      const originalEvent = (data.schedule || [])[i]
-                      const conflicted = conflicts.some(c => c.event === originalEvent)
-                      
-                      if (showConflictsOnly && !conflicted) return null;
-                      
-                      return (
-                        <tr key={i} className="ap-row" style={{ padding: 0, background: conflicted && !editing ? 'rgba(239, 68, 68, 0.05)' : undefined }}>
-                          <td style={{ padding: '8px 12px', fontWeight: 600, color: G.ink }}>{ev.courseCode}</td>
-                          <td style={{ padding: '8px 12px', color: G.inkMid }}>{ev.program}-{ev.year}{ev.block}</td>
-                          <td style={{ padding: '8px 12px', color: G.inkMid }}>{ev.session}</td>
-                          <td style={{ padding: '8px 12px', color: G.inkMid }}>
-                            {editing ? <input className="cp-inp sm" value={ev.day || ''} onChange={e => patchEvent(i, 'day', e.target.value)} /> : ev.day}
-                          </td>
-                          <td style={{ padding: '8px 12px', color: G.inkMid, whiteSpace: 'nowrap' }}>
-                            {editing ? <input className="cp-inp sm" value={ev.period || ''} onChange={e => patchEvent(i, 'period', e.target.value)} style={{ width: 100 }} /> : ev.period}
-                          </td>
-                          <td style={{ padding: '8px 12px', color: conflicted && !editing ? '#FCA5A5' : G.inkMid, fontWeight: conflicted && !editing ? 700 : 400 }}>
-                            {editing ? <input className="cp-inp sm" value={ev.room || ''} onChange={e => patchEvent(i, 'room', e.target.value)} style={{ width: 90 }} /> : ev.room}
-                          </td>
-                          <td style={{ padding: '8px 12px', color: G.muted }}>{ev.assigned_faculty || ev.faculty || 'TBA'}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              ) : (
-                <div style={{ flex: 1, padding: '16px', background: 'var(--surface)', minHeight: 400 }}>
-                  <TimeGrid 
-                    rooms={Array.from(new Set(events.map(e => e.room))).sort()} 
-                    dayEvents={events.filter(e => e.day === activeDay)} 
-                    conflictMap={new Map(conflicts.map(c => [getEventId(c.event), c]))}
-                    locked={!editing} 
-                    gridSize="normal" fullscreen={false}
-                    ambientConflictIds={new Set()} ambientMergeIds={new Set()}
-                    conflictingDragIds={new Set()} dragConflictBands={[]}
-                    mergedIds={new Set()} allEvents={events} availabilityMap={new Map()}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Footer actions */}
-        {!loading && isSubmitted && !editing && (
-          <div style={{ padding: '13px 20px', borderTop: `1px solid ${G.border}`, display: 'flex', gap: 8, justifyContent: 'flex-end', background: G.bg, flexShrink: 0 }}>
-            <button onClick={() => setShowReject(true)} disabled={acting} className="btn-danger">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-              Reject
-            </button>
-            <button onClick={handleApprove} disabled={acting} className="btn-primary">
-              {acting
-                ? <><svg className="ap-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg> Approving…</>
-                : <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> Approve{pendingList.length > 1 ? ' & Next' : ''}</>}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {showReject && (
-        <RejectModal schedule={data}
-          onClose={() => setShowReject(false)}
-          onReject={async (id, fb) => { await onReject(id, fb); onClose() }} />
-      )}
-    </>
-  )
-}
-
-/* ─────────────────────────── QUEUE TAB ─────────────────────────── */
-function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, onDelete, onReorder, showToast }) {
-  const [acting, setActing] = useState(null)
-  const [reordering, setReordering] = useState(false)
-  const [order, setOrder] = useState([])
-  const [dragIndex, setDragIndex] = useState(null)
-  const [overIndex, setOverIndex] = useState(null)
-  const [savingOrder, setSavingOrder] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [deletingQueue, setDeletingQueue] = useState(false)
-
-  const queue = queues.find(q => (q.id || q.queueId) === activeQueueId) || queues[0] || null
-  const programs = queue?.queue || []
-  const statuses = queue?.programStatus || {}
-  const turnIndex = queue?.currentTurnIndex ?? 0
-  const skippable = programs.filter(p => statuses[p] === 'waiting' || statuses[p] === 'active')
-  const canReorder = turnIndex === 0
-
-  function startReorder() { setOrder([...programs]); setReordering(true) }
-  function handleDrop(dropAt) {
-    if (dragIndex === null || dragIndex === dropAt) { setDragIndex(null); setOverIndex(null); return }
-    const next = [...order]
-    const [moved] = next.splice(dragIndex, 1)
-    next.splice(dropAt, 0, moved)
-    setOrder(next); setDragIndex(null); setOverIndex(null)
-  }
-  async function saveOrder() {
-    setSavingOrder(true)
-    try { await onReorder(queue.id || queue.queueId, order); setReordering(false) }
-    finally { setSavingOrder(false) }
-  }
-
-  async function doSkip(prog) { setActing(`skip-${prog}`); try { await onSkip(queue.id || queue.queueId, prog) } finally { setActing(null) } }
-  async function doAdvance() { setActing('advance'); try { await onAdvance(queue.id || queue.queueId) } finally { setActing(null) } }
-  async function doDelete() { setShowDeleteConfirm(true) }
-
-  return (
-    <div className="ap-card ap-fadein">
-      <div className="aq-head" style={{ borderRadius: 0 }}>
-        <div style={{ minWidth: 0 }}>
-          <div className="aq-head-title">Coordinator Queue</div>
-          <div className="aq-head-sub">{queue ? `${queue.semester} · ${queue.academicYear}` : 'No queues created'}</div>
-        </div>
-        {queue && programs.length > 0 && (
-          <span className="aq-head-turn">
-            {Math.min(turnIndex + 1, programs.length)}<span className="aq-head-of"> of {programs.length}</span>
-          </span>
-        )}
-      </div>
-      {queues.length > 1 && (
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', padding: '12px 20px', borderBottom: `1px solid ${G.border}` }}>
-          {queues.map(q => {
-            const qid = q.id || q.queueId
-            return <button key={qid} onClick={() => { setActiveQueueId(qid); setReordering(false) }} className={`r-tab${activeQueueId === qid ? ' active' : ''}`}>{q.semester?.replace(' Semester', '')} {q.academicYear}</button>
-          })}
-        </div>
-      )}
-
-      {!queue ? (
-        <EmptyState icon={ICONS.queue} text="No queues yet. Create one to get started." />
-      ) : (
-        <div style={{ padding: '22px 20px 20px' }}>
-          {reordering ? (
-            <div style={{ background: G.bg, border: `1px solid ${G.border}`, borderRadius: 13, padding: '20px 18px 16px' }}>
-              <DraggableOrderList
-                order={order}
-                dragIndex={dragIndex}
-                overIndex={overIndex}
-                onDragStart={setDragIndex}
-                onDragEnter={setOverIndex}
-                onDrop={handleDrop}
-                onDragEnd={() => { setDragIndex(null); setOverIndex(null) }}
-              />
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 11 }}>
-                <button className="btn-outline" onClick={() => setReordering(false)}>Cancel</button>
-                <button className="btn-primary" onClick={saveOrder} disabled={savingOrder}>{savingOrder ? 'Saving…' : 'Save Order'}</button>
-              </div>
-            </div>
-          ) : (
-            <div className="aq-card">
-              <div className="aq-rail-wrap">
-                <AdminQueueRail programs={programs} statuses={statuses} turnIndex={turnIndex} />
-              </div>
-            </div>
-          )}
-
-          {!reordering && (
-            <>
-              <div style={{ height: 1, background: G.borderLight, margin: '16px 0' }} />
-              
-              {turnIndex >= programs.length && (
-                <div style={{ padding: '14px 20px', background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, borderRadius: 10, display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: G.meadow, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--meadow-text)' }}>Queue Complete!</div>
-                    <div style={{ fontSize: 12, color: 'var(--meadow-text-hover)', marginTop: 2 }}>All coordinators have finished. Head over to the <b>Master Schedule</b> tab to review the final result and generate the combined schedule.</div>
-                  </div>
-                </div>
-              )}
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                {skippable.length > 0 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: G.muted, marginRight: 2 }}>Skip:</span>
-                    {skippable.map(prog => (
-                      <button key={prog} onClick={() => doSkip(prog)} disabled={acting === `skip-${prog}`} className="btn-amber">{prog}</button>
-                    ))}
-                  </div>
-                )}
-                <div style={{ flex: 1 }} />
-                <button
-                  onClick={canReorder ? startReorder : () => showToast('Reorder is locked once the queue has started', 'info')}
-                  className="btn-outline" title={canReorder ? 'Change the scheduling order' : 'Locked — the queue has already started'}>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg>
-                  Reorder
-                </button>
-                <button onClick={doAdvance} disabled={acting === 'advance'} className="btn-primary">
-                  {acting === 'advance'
-                    ? <><svg className="ap-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg> Advancing…</>
-                    : <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg> Advance Queue</>}
-                </button>
-                <button onClick={doDelete} className="btn-danger" title="Delete queue" style={{ padding: '7px 10px' }}>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {showDeleteConfirm && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(10,30,18,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => !deletingQueue && setShowDeleteConfirm(false)}>
-          <div style={{ background: 'var(--surface)', borderRadius: 18, padding: '28px 28px 24px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(10,30,18,0.22)', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-            <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(220, 38, 38, 0.1)', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke='#EF4444' strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: G.ink, marginBottom: 8, fontFamily: 'Inter,sans-serif' }}>Delete Queue?</div>
-            <div style={{ fontSize: 13, color: G.muted2, marginBottom: 24, lineHeight: 1.5, fontFamily: 'Inter,sans-serif' }}>
-              This cannot be undone. The queue and its scheduling order will be removed forever.
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setShowDeleteConfirm(false)} disabled={deletingQueue} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: 'var(--surface)', fontSize: 13, fontWeight: 600, color: G.muted, cursor: deletingQueue ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
-                Cancel
-              </button>
-              <button
-                onClick={async () => { setDeletingQueue(true); try { await onDelete(queue.id || queue.queueId) } finally { setDeletingQueue(false); setShowDeleteConfirm(false) } }}
-                disabled={deletingQueue}
-                style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: '#EF4444', fontSize: 13, fontWeight: 700, color: '#fff', cursor: deletingQueue ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: deletingQueue ? 0.7 : 1 }}
-              >
-                {deletingQueue ? 'Deleting...' : 'Yes, Delete'}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-    </div>
-  )
-}
-
-/* ─────────────────────────── SUBMISSIONS TAB ─────────────────────────── */
-function SubmissionsTab({ schedules, onOpen, onQuickApprove, onReject, onBulkApprove, loadingIds }) {
-  const [search, setSearch] = useState('')
-  const [rejectTarget, setRejectTarget] = useState(null)
-  const [selected, setSelected] = useState(new Set())
-  const [bulkBusy, setBulkBusy] = useState(false)
-
-  const q = search.trim().toLowerCase()
-  const matches = s => !q || `${s.name} ${s.programCode}`.toLowerCase().includes(q)
-  const pending = schedules.filter(s => s.status === 'submitted' && matches(s)).sort((a, b) => new Date(a.submittedAt || 0) - new Date(b.submittedAt || 0))
-  const approved = schedules.filter(s => s.status === 'approved' && matches(s)).sort((a, b) => new Date(b.approvedAt || b.submittedAt || 0) - new Date(a.approvedAt || a.submittedAt || 0))
-
-  function toggleSelect(id) { setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n }) }
-  function toggleSelectAll() { setSelected(prev => prev.size === pending.length ? new Set() : new Set(pending.map(s => s.id || s.scheduleId))) }
-  async function runBulkApprove() {
-    setBulkBusy(true)
-    try { await onBulkApprove([...selected]); setSelected(new Set()) }
-    finally { setBulkBusy(false) }
-  }
-
-  function ScheduleRow({ s }) {
-    const st = SCHED_STATUS[s.status] || SCHED_STATUS.submitted
-    const c = getProgColor(s.programCode)
-    const id = s.id || s.scheduleId
-    const isLoading = loadingIds.has(id)
-    const isPending = s.status === 'submitted'
-    return (
-      <div className="ap-row">
-        {isPending && (
-          <input type="checkbox" checked={selected.has(id)} onChange={() => toggleSelect(id)} onClick={e => e.stopPropagation()}
-            style={{ width: 15, height: 15, accentColor: G.meadow, cursor: 'pointer', flexShrink: 0 }} />
-        )}
-        <div onClick={() => onOpen(id)} style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0, cursor: 'pointer' }}>
-          <div style={{ width: 38, height: 38, borderRadius: 10, background: `${c}18`, border: `1.5px solid ${c}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: c, fontFamily: "'IBM Plex Mono',monospace" }}>{progShort(s.programCode || '??')}</span>
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: G.ink }}>{s.name}</span>
-              <Badge label={st.label} bg={st.bg} color={st.color} border={st.border} />
-            </div>
-            <div style={{ display: 'flex', gap: 13, fontSize: 11.5, color: G.muted, flexWrap: 'wrap' }}>
-              <span style={{ fontWeight: 600, color: c }}>{s.programCode}</span>
-              {s.eventCount != null && <span>{s.eventCount} events</span>}
-              {s.submittedAt && <span>Submitted {timeAgo(s.submittedAt)}</span>}
-              {s.semester && <span>{s.semester}</span>}
-            </div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-          <button onClick={() => onOpen(id)} className="btn-outline">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-            Review
-          </button>
-          {isPending && (
-            <>
-              <button onClick={() => setRejectTarget(s)} disabled={isLoading} className="btn-danger" style={{ padding: '7px 10px' }} title="Reject">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-              </button>
-              <button onClick={() => onQuickApprove(id)} disabled={isLoading} className="btn-primary">
-                {isLoading ? <svg className="ap-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg> : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
-                Approve
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="ap-card ap-fadein">
-      <div className="aq-head" style={{ borderRadius: 0, flexWrap: 'wrap' }}>
-        <div style={{ minWidth: 0 }}>
-          <div className="aq-head-title">Submitted Schedules</div>
-          <div className="aq-head-sub">{pending.length} pending review{approved.length ? ` · ${approved.length} approved` : ''}</div>
-        </div>
-        {schedules.length > 3 && (
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search schedules…" className="cp-inp" style={{ width: 190, padding: '6px 11px', fontSize: 12 }} />
-        )}
-      </div>
-
-      {pending.length > 0 && (
-        <div style={{ padding: '9px 20px', borderBottom: `1px solid ${G.border}`, display: 'flex', alignItems: 'center', gap: 12, background: selected.size ? G.meadowSoft : G.bg }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11.5, fontWeight: 600, color: G.muted, cursor: 'pointer' }}>
-            <input type="checkbox" checked={selected.size === pending.length} onChange={toggleSelectAll} style={{ width: 14, height: 14, accentColor: G.meadow, cursor: 'pointer' }} />
-            {selected.size > 0 ? `${selected.size} selected` : 'Select all pending'}
-          </label>
-          {selected.size > 0 && (
-            <button className="btn-primary" style={{ padding: '5px 13px', fontSize: 11.5 }} onClick={runBulkApprove} disabled={bulkBusy}>
-              {bulkBusy ? 'Approving…' : `Approve ${selected.size} selected`}
-            </button>
-          )}
-        </div>
-      )}
-
-      {schedules.length === 0 ? (
-        <EmptyState icon={ICONS.inbox} text="No submitted schedules yet. Coordinators will appear here once they submit." />
-      ) : pending.length === 0 && approved.length === 0 ? (
-        <EmptyState icon={ICONS.inbox} text={`No schedules match "${search}".`} />
-      ) : (
-        <>
-          {pending.length > 0 && (
-            <div>
-              <div style={{ padding: '10px 20px 4px', fontSize: 10, fontWeight: 700, color: G.muted2, letterSpacing: 0.5, textTransform: 'uppercase' }}>Pending Review</div>
-              {pending.map(s => <ScheduleRow key={s.id || s.scheduleId} s={s} />)}
-            </div>
-          )}
-          {approved.length > 0 && (
-            <div>
-              <div style={{ padding: '10px 20px 4px', fontSize: 10, fontWeight: 700, color: G.muted2, letterSpacing: 0.5, textTransform: 'uppercase', borderTop: pending.length > 0 ? `1px solid ${G.border}` : 'none' }}>Approved</div>
-              {approved.map(s => <ScheduleRow key={s.id || s.scheduleId} s={s} />)}
-            </div>
-          )}
-        </>
-      )}
-
-      {rejectTarget && (
-        <RejectModal schedule={rejectTarget} onClose={() => setRejectTarget(null)}
-          onReject={async (id, fb) => { await onReject(id, fb); setRejectTarget(null) }} />
-      )}
-    </div>
-  )
-}
-
-/* ─────────────────────────── MASTER SCHEDULE TAB ─────────────────────────── */
-function MasterTab({ queueId, onFinalize, programs }) {
-  const [master, setMaster] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [expanded, setExpanded] = useState(true)
-  const [filter, setFilter] = useState('All')
-  const [acting, setActing] = useState(false)
-  const [reviewViewMode, setReviewViewMode] = useState('grid')
-  const [activeDay, setActiveDay] = useState('Monday')
-  const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false)
-
-  useEffect(() => {
-    if (!queueId) return
-    setLoading(true)
-    getMasterSchedule(queueId).then(setMaster).catch(() => setMaster(null)).finally(() => setLoading(false))
-  }, [queueId])
-
-  async function handleFinalize() {
-    setActing(true)
-    try { await onFinalize(queueId) } finally { setActing(false); setShowFinalizeConfirm(false) }
-  }
-
-  if (!queueId) return <div className="ap-card ap-fadein"><EmptyState icon={ICONS.calendar} text="Create a coordinator queue first — the master schedule builds up as programs get approved." /></div>
-
-  const events = master?.schedule || []
-  const approved = master?.approvedPrograms || []
-  const isFinalized = master?.status === 'finalized'
-  const progList = ['All', ...new Set(events.map(e => e.program).filter(Boolean))]
-  const visible = filter === 'All' ? events : events.filter(e => e.program === filter)
-
-  return (
-    <div className="ap-card ap-fadein">
-      <div className="aq-head" style={{ borderRadius: 0, flexWrap: 'wrap' }}>
-        <div style={{ minWidth: 0 }}>
-          <div className="aq-head-title">Master Schedule</div>
-          <div className="aq-head-sub">{approved.length} program(s) merged · {events.length} total events</div>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {isFinalized
-            ? <Badge label="Published to Faculty" bg="rgba(255,255,255,0.18)" color="#fff" border="rgba(255,255,255,0.4)" />
-            : approved.length > 0 && (
-              <button onClick={() => setShowFinalizeConfirm(true)} disabled={acting} className="btn-blue">
-                {acting
-                  ? <><svg className="ap-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg> Finalizing…</>
-                  : <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Finalize & Publish</>}
-              </button>
-            )}
-          {events.length > 0 && (
-            <button onClick={() => setExpanded(v => !v)} className="btn-outline" style={{ background: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.4)', color: '#fff' }}>
-              {expanded
-                ? <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15"/></svg> Collapse</>
-                : <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg> View Events</>}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {loading ? (
-        <div style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>{[...Array(3)].map((_, i) => <Skel key={i} h={14} style={{ opacity: 1 - i * 0.25 }} />)}</div>
-      ) : !master ? (
-        <EmptyState icon={ICONS.calendar} text="No master schedule yet. Approve coordinator schedules to start building it." />
-      ) : (
-        <>
-          <div style={{ padding: '14px 20px', display: 'flex', flexWrap: 'wrap', gap: 8, borderBottom: expanded ? `1px solid ${G.border}` : 'none' }}>
-            {programs.map(prog => {
-              const done = approved.includes(prog)
-              const c = getProgColor(prog)
-              return (
-                <div key={prog} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 99, background: done ? `${c}14` : '#F1F5F9', border: `1px solid ${done ? `${c}40` : '#E2E8F0'}` }}>
-                  <div style={{ width: 7, height: 7, borderRadius: 99, background: done ? c : '#CBD5E1', flexShrink: 0 }} />
-                  <span style={{ fontSize: 11.5, fontWeight: 700, color: done ? c : '#94A3B8' }}>{prog}</span>
-                  {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
-                </div>
-              )
-            })}
-          </div>
-
-          {expanded && events.length > 0 && (
-            <>
-              <div style={{ padding: '10px 20px', background: G.bg, borderBottom: `1px solid ${G.border}`, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: G.muted, marginRight: 4 }}>Filter:</span>
-                {progList.map(p => (
-                  <button key={p} onClick={() => setFilter(p)} className={`r-tab${filter === p ? ' active' : ''}`}>
-                    {p}{p !== 'All' && <span style={{ marginLeft: 5, opacity: 0.7, fontWeight: 400 }}>({events.filter(e => e.program === p).length})</span>}
-                  </button>
-                ))}
-                
-                <div style={{ flex: 1 }} />
-                <div style={{ display: 'flex', background: G.borderLight, borderRadius: 8, padding: 4 }}>
-                  <button onClick={() => setReviewViewMode('grid')}
-                    style={{ padding: '4px 10px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'grid' ? 'var(--surface)' : 'transparent', color: reviewViewMode === 'grid' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'grid' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
-                    Grid
-                  </button>
-                  <button onClick={() => setReviewViewMode('table')}
-                    style={{ padding: '4px 10px', fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: 'pointer', border: 'none', background: reviewViewMode === 'table' ? 'var(--surface)' : 'transparent', color: reviewViewMode === 'table' ? G.ink : G.muted2, boxShadow: reviewViewMode === 'table' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
-                    List
-                  </button>
-                </div>
-              </div>
-              <div style={{ maxHeight: reviewViewMode === 'grid' ? 500 : 380, overflowY: 'auto' }}>
-                {reviewViewMode === 'table' ? (
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
-                    <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
-                      <tr style={{ background: G.bg }}>
-                        {['Program', 'Course', 'Section', 'Day', 'Period', 'Room', 'Faculty'].map(h => (
-                          <th key={h} style={{ padding: '9px 14px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, color: G.muted, letterSpacing: 0.4, textTransform: 'uppercase', borderBottom: `1px solid ${G.border}`, whiteSpace: 'nowrap' }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {visible.map((ev, i) => {
-                        const c = getProgColor(ev.program)
-                        return (
-                          <tr key={i} className="ap-row">
-                            <td style={{ padding: '8px 14px' }}><span style={{ padding: '2px 8px', borderRadius: 6, background: `${c}14`, color: c, fontSize: 11, fontWeight: 700 }}>{ev.program}</span></td>
-                            <td style={{ padding: '8px 14px', fontWeight: 600, color: G.ink }}>{ev.courseCode}</td>
-                            <td style={{ padding: '8px 14px', color: G.inkMid }}>{ev.program}-{ev.year}{ev.block}</td>
-                            <td style={{ padding: '8px 14px', color: G.inkMid }}>{ev.day}</td>
-                            <td style={{ padding: '8px 14px', color: G.inkMid, whiteSpace: 'nowrap' }}>{ev.period}</td>
-                            <td style={{ padding: '8px 14px', color: G.inkMid }}>{ev.room}</td>
-                            <td style={{ padding: '8px 14px', color: G.muted }}>{ev.assigned_faculty || ev.faculty || 'TBA'}</td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 450, padding: '12px 16px', background: 'var(--surface)' }}>
-                    <div style={{ display: 'flex', gap: 6, marginBottom: 12, overflowX: 'auto', paddingBottom: 4 }}>
-                      {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(d => (
-                        <button key={d} onClick={() => setActiveDay(d)} 
-                          style={{
-                            padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                            cursor: 'pointer', border: '1px solid var(--border)',
-                            background: activeDay === d ? `linear-gradient(135deg, ${G.meadow}, ${G.meadowDeep})` : 'var(--surface)',
-                            color: activeDay === d ? '#fff' : G.muted,
-                            transition: 'all .15s', whiteSpace: 'nowrap',
-                            boxShadow: activeDay === d ? '0 2px 8px rgba(0,0,0,.3)' : 'none'
-                          }}>
-                          {d}
-                        </button>
-                      ))}
-                    </div>
-                    <div style={{ flex: 1, minHeight: 400 }}>
-                      <TimeGrid 
-                        rooms={Array.from(new Set(visible.map(e => e.room))).sort()} 
-                        dayEvents={visible.filter(e => e.day === activeDay)} 
-                        conflictMap={new Map()}
-                        locked={true} 
-                        gridSize="normal" fullscreen={false}
-                        ambientConflictIds={new Set()} ambientMergeIds={new Set()}
-                        conflictingDragIds={new Set()} dragConflictBands={[]}
-                        mergedIds={new Set()} allEvents={visible} availabilityMap={new Map()}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </>
-      )}
-
-      {showFinalizeConfirm && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(10,30,18,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => !acting && setShowFinalizeConfirm(false)}>
-          <div style={{ background: 'var(--surface)', borderRadius: 18, padding: '28px 28px 24px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(10,30,18,0.22)', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-            <div style={{ width: 52, height: 52, borderRadius: '50%', background: G.blueSoft, margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={G.blue} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: G.ink, marginBottom: 8, fontFamily: 'Inter,sans-serif' }}>Finalize Master Schedule?</div>
-            <div style={{ fontSize: 13, color: G.muted2, marginBottom: 24, lineHeight: 1.5, fontFamily: 'Inter,sans-serif' }}>
-              Finalize and publish this schedule to faculty. This cannot be undone.
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setShowFinalizeConfirm(false)} disabled={acting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: 'var(--surface)', fontSize: 13, fontWeight: 600, color: G.muted, cursor: acting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
-                Cancel
-              </button>
-              <button onClick={handleFinalize} disabled={acting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: G.blue, fontSize: 13, fontWeight: 700, color: '#fff', cursor: acting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: acting ? 0.7 : 1 }}>
-                {acting ? 'Publishing...' : 'Publish'}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-    </div>
-  )
-}
-
-/* ─────────────────────────── ACTIVITY TAB (new) ───────────────────────────
-   Derived entirely from timestamps already present on submitted schedules
-   (submittedAt / approvedAt) — no extra endpoint needed — so the admin
-   gets a running feed of what's happened without leaving the page. ── */
-function ActivityTab({ schedules }) {
-  const items = useMemo(() => {
-    const out = []
-    for (const s of schedules) {
-      const c = getProgColor(s.programCode)
-      if (s.submittedAt) out.push({ t: toSafeDate(s.submittedAt) || new Date(0), c, kind: 'submitted', text: `${s.programCode} submitted "${s.name}" for review` })
-      if (s.status === 'approved' && s.approvedAt) out.push({ t: toSafeDate(s.approvedAt) || new Date(0), c, kind: 'approved', text: `${s.programCode}'s "${s.name}" was approved and merged` })
-    }
-    return out.sort((a, b) => b.t - a.t).slice(0, 40)
-  }, [schedules])
-
-  const KIND_META = {
-    submitted: { bg: G.amberSoft, color: '#92400E', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg> },
-    approved: { bg: G.meadowSoft, color: 'var(--meadow-text)', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> },
-  }
-
-  return (
-    <div className="ap-card ap-fadein">
-      <div className="aq-head" style={{ borderRadius: 0 }}>
-        <div style={{ minWidth: 0 }}>
-          <div className="aq-head-title">Recent Activity</div>
-          <div className="aq-head-sub">Submissions and approvals across all coordinators</div>
-        </div>
-      </div>
-      {items.length === 0 ? (
-        <EmptyState icon={ICONS.activity} text="Nothing has happened yet — activity shows up here as coordinators submit and you approve schedules." />
-      ) : (
-        <div>
-          {items.map((it, i) => {
-            const m = KIND_META[it.kind]
-            return (
-              <div key={i} className="ap-row">
-                <div style={{ width: 30, height: 30, borderRadius: 8, background: m.bg, color: m.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{m.icon}</div>
-                <div style={{ flex: 1, fontSize: 12.5, color: G.inkMid, fontWeight: 500 }}>{it.text}</div>
-                <div style={{ fontSize: 11, color: G.muted2, flexShrink: 0, fontFamily: "'IBM Plex Mono',monospace" }}>{timeAgo(it.t)}</div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
+import G from '../../components/admin/ApprovalDashboard/tokens'
+import { DEFAULT_PROGRAMS, POLL_MS } from '../../components/admin/ApprovalDashboard/constants'
+import { useToast } from '../../components/admin/ApprovalDashboard/hooks'
+import { Skel, ToastContainer } from '../../components/admin/ApprovalDashboard/primitives'
+import CreateQueueModal from '../../components/admin/ApprovalDashboard/CreateQueueModal'
+import RejectModal from '../../components/admin/ApprovalDashboard/RejectModal'
+import QueueTab from '../../components/admin/ApprovalDashboard/QueueTab'
+import SubmissionsTab from '../../components/admin/ApprovalDashboard/SubmissionsTab'
+import MasterTab from '../../components/admin/ApprovalDashboard/MasterTab'
+import ActivityTab from '../../components/admin/ApprovalDashboard/ActivityTab'
 
 const TOUR_SEEN_KEY = 'adminApprovalDashboard_tourSeen'
 function isOnboardingCompleted() {
@@ -1344,6 +38,12 @@ export default function ApprovalDashboardPage() {
   const [lastUpdated, setLastUpdated] = useState(null)
   const [showCreate, setShowCreate] = useState(false)
   const [reviewId, setReviewId] = useState(null)
+  // Confirmation targets for the Reject/Unapprove buttons that live inside
+  // the full-screen review panel (adminActions below) — distinct from the
+  // same-named state inside SubmissionsTab, which handles the row-level
+  // buttons in the list view.
+  const [rejectTarget, setRejectTarget] = useState(null)
+  const [unapproveTarget, setUnapproveTarget] = useState(null)
   const [activeQueueId, setActiveQueueId] = useState(null)
   const [approvingIds, setApprovingIds] = useState(new Set())
   const [tab, setTab] = useState('submissions')
@@ -1486,6 +186,10 @@ export default function ApprovalDashboardPage() {
     try { await advanceQueue(qId); toast('Queue advanced', 'success'); loadAll(true) }
     catch (e) { toast(e?.response?.data?.detail || 'Advance failed', 'error') }
   }
+  async function handleFinish(qId) {
+    try { await finishQueue(qId); toast('Queue finished', 'success'); loadAll(true) }
+    catch (e) { toast(e?.response?.data?.detail || 'Finish failed', 'error') }
+  }
   async function handleDeleteQueue(qId) {
     try { await deleteQueue(qId); toast('Queue deleted', 'info'); setActiveQueueId(null); loadAll() }
     catch (e) { toast(e?.response?.data?.detail || 'Delete failed', 'error') }
@@ -1496,6 +200,16 @@ export default function ApprovalDashboardPage() {
   }
 
   /* ── Approval handlers ── */
+  async function handleUnapprove(id) {
+    try {
+      await unapproveSchedule(id)
+      toast('Schedule unapproved and returned to draft status.', 'success')
+      setReviewId(prev => prev === id ? null : prev)
+      loadAll(true)
+      refreshMaster(activeQueueId)
+    } catch (e) { toast(e?.response?.data?.detail || 'Unapprove failed', 'error') }
+  }
+
   async function handleApprove(id) {
     setApprovingIds(s => new Set(s).add(id))
     try {
@@ -1625,8 +339,15 @@ export default function ApprovalDashboardPage() {
               onOpen={setReviewId}
               onQuickApprove={handleApprove}
               onReject={handleReject}
+              onUnapprove={handleUnapprove}
               onBulkApprove={handleBulkApprove}
               loadingIds={approvingIds}
+              activeTermKey={
+                (() => {
+                  const active = queues.find(q => (q.id || q.queueId) === activeQueueId)
+                  return active ? `${active.academicYear || '—'}||${active.semester || '—'}` : null
+                })()
+              }
             />
           )}
           {tab === 'queue' && (
@@ -1636,13 +357,14 @@ export default function ApprovalDashboardPage() {
               setActiveQueueId={setActiveQueueId}
               onSkip={handleSkip}
               onAdvance={handleAdvance}
+              onFinish={handleFinish}
               onDelete={handleDeleteQueue}
               onReorder={handleReorder}
               showToast={toast}
             />
           )}
           {tab === 'master' && (
-            <MasterTab queueId={activeQueueId} onFinalize={handleFinalize} programs={programs} />
+            <MasterTab queueId={activeQueueId} onFinalize={handleFinalize} programs={programs} onMasterSaved={() => refreshMaster(activeQueueId)} />
           )}
           {tab === 'activity' && <ActivityTab schedules={submitted} />}
         </>
@@ -1650,18 +372,91 @@ export default function ApprovalDashboardPage() {
 
       {/* Modals / overlays */}
       {showCreate && <CreateQueueModal onClose={() => setShowCreate(false)} onCreate={handleCreate} programs={programs} />}
-      {reviewId && (
-        <ReviewPanel
-          scheduleId={reviewId}
-          pendingList={pendingList}
-          masterEvents={master?.schedule || []}
-          onClose={() => setReviewId(null)}
-          onApprove={handleApprove}
-          onReject={handleReject}
-          onNavigate={navigateReview}
-          onSaved={() => loadAll(true)}
-          showToast={toast}
-        />
+      {reviewId && (() => {
+        const reviewSchedule = submitted.find(s => (s.id || s.scheduleId) === reviewId)
+        const isPending = reviewSchedule?.status === 'submitted'
+        const isApproved = reviewSchedule?.status === 'approved'
+        // Once approved, a program's events live in the master schedule's
+        // own collection — admin edits from the Master Schedule tab land
+        // there, not back on the original submission doc. Hand Review
+        // that program's slice of the current master so it reflects any
+        // edits instead of the frozen submitted-at-the-time copy.
+        const masterProgramEvents = isApproved && reviewSchedule?.programCode
+          ? (master?.schedule || []).filter(e => e.program === reviewSchedule.programCode)
+          : null
+
+        return createPortal(
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+            <ScheduleViewPage 
+              isSubmittedView={true}
+              embeddedId={reviewId} 
+              onClose={() => setReviewId(null)}
+              masterEvents={master?.schedule || []}
+              masterProgramEvents={masterProgramEvents}
+              onSaveOverride={async (events) => {
+                await adminEditSchedule(reviewId, { schedule: events })
+                loadAll(true)
+              }}
+              adminActions={
+                <>
+                  {isPending && (
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <button onClick={() => handleApprove(reviewId)} className="btn-primary" style={{ padding: '5px 12px', fontSize: 11.5, background: 'var(--meadow)', color: 'var(--meadow-text)' }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        Approve
+                      </button>
+                      <button onClick={() => setRejectTarget(reviewSchedule)} className="btn-danger" style={{ padding: '5px 12px', fontSize: 11.5 }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        Reject...
+                      </button>
+                    </div>
+                  )}
+                  {isApproved && (
+                    <button onClick={() => setUnapproveTarget(reviewSchedule)} className="btn-outline" style={{ padding: '5px 12px', fontSize: 11.5, borderColor: '#F59E0B', color: '#F59E0B' }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                      Unapprove
+                    </button>
+                  )}
+                </>
+              }
+            />
+          </div>,
+          document.body
+        )
+      })()}
+
+      {rejectTarget && (
+        <RejectModal schedule={rejectTarget} onClose={() => setRejectTarget(null)}
+          onReject={async (id, fb) => { await handleReject(id, fb); setRejectTarget(null) }}
+          zIndex={10000} />
+      )}
+
+      {unapproveTarget && createPortal(
+        <div className="ap-modal-overlay" style={{ zIndex: 10000 }} onClick={() => setUnapproveTarget(null)}>
+          <div className="ap-modal" style={{ width: 440 }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', gap: 14, marginBottom: 20 }}>
+              <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'rgba(245, 158, 11, 0.1)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 16, color: 'var(--ink)' }}>Unapprove Schedule</h3>
+                <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>
+                  This will remove the schedule from the master list and return it to a "Submitted" state.
+                </p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setUnapproveTarget(null)} className="btn-outline">Cancel</button>
+              <button onClick={async () => {
+                await handleUnapprove(unapproveTarget.id || unapproveTarget.scheduleId)
+                setUnapproveTarget(null)
+              }} className="btn-primary" style={{ background: '#F59E0B', color: '#fff', border: 'none' }}>
+                Unapprove
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       <ToastContainer toasts={toasts} />
