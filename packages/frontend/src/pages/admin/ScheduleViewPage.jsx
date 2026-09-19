@@ -1,11 +1,11 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useParams, useLocation } from 'react-router-dom'
 import { useScheduleStore } from '../../store/scheduleStore'
-import { getSchedules, getRooms, getFaculty, saveSchedule, finalizeSchedule, unfinalizeSchedule, updateScheduleMeta, getSubmittedSchedule, getMasterSchedule } from '../../services/api'
+import { getSchedules, getRooms, getFaculty, saveSchedule, finalizeSchedule, unfinalizeSchedule, updateScheduleMeta, getSubmittedSchedule, getMasterSchedule, deleteSaved, getTime } from '../../services/api'
 import { buildConflictMap, DAYS, getEventId, getMergedIds } from '../../components/ScheduleView/svHelpers'
-import { TV, ConflictSummaryBar, Toast, FilterButton, FilterRow, PendingChangesBar, ProgramLegend, ModalOverlay, ModalHeader } from '../../components/ScheduleView/svPrimitives'
+import { TV, ConflictSummaryBar, Toast, FilterButton, FilterRow, PendingChangesBar, PendingChangesModal, ProgramLegend, ModalOverlay, ModalHeader } from '../../components/ScheduleView/svPrimitives'
 import { useFilters, useDragDrop } from '../../components/ScheduleView/svHooks'
-import { FilterModal, FacultyFilterModal, RoomFilterModal, OverrideConfirmModal } from '../../components/ScheduleView/FilterModals'
+import { FilterModal, FacultyFilterModal, RoomFilterModal, OverrideConfirmModal, DeleteScheduleModal } from '../../components/ScheduleView/FilterModals'
 import TimeGrid from '../../components/ScheduleView/TimeGrid'
 import SessionModal from '../../components/ScheduleView/SessionModal'
 import VersionHistoryModal from '../../components/VersionHistoryModal'
@@ -368,10 +368,15 @@ function ScheduleDropdown({ names, activeName, loading, initLoading, onChange, s
   const getLabel = (n) => {
     const sName = toStr(n)
     const meta = (schedulesMeta || []).find(s => (s.id || s.name) === sName)
-    // Show the friendly name (meta.name), not the raw id/document key that
-    // sName resolves to for master-finalized schedules -- otherwise the
-    // dropdown shows a uuid instead of e.g. "1st Semester 2025-2026 - Final".
-    const label = meta?.name || sName
+    let label = meta?.name || sName
+    
+    // Differentiate source for professional look
+    if (meta?.source === 'queue') {
+      label = `${label} (Official Queue)`
+    } else if (meta?.source === 'admin') {
+      label = `${label} (Admin)`
+    }
+
     return meta?.finalized ? `${label} ★` : label
   }
   return (
@@ -669,16 +674,16 @@ function markOnboardingCompleted() {
   try { localStorage.setItem(TOUR_SEEN_KEY, '1') } catch {}
 }
 
-export default function ScheduleViewPage({ isSubmittedView = false, embeddedId = null, onClose = null, onSaveOverride = null, adminActions = null, masterEvents = [], isMasterView = false, masterProgramEvents = null }) {
+export default function ScheduleViewPage({ isSubmittedView = false, embeddedId = null, onClose = null, onSaveOverride = null, adminActions = null, masterEvents = [], masterTerm = null, isMasterView = false, masterProgramEvents = null }) {
   const { name: urlName, id: urlId } = useParams()
   const location = useLocation()
-  const { events:storeEvents, scheduleName:storeName, setEvents, setName } = useScheduleStore()
+  const { events:storeEvents, scheduleName:storeName, scheduleId:storeId, setEvents, setName, setId } = useScheduleStore()
 
-  
+  const idToMatch = isSubmittedView ? (embeddedId || urlId) : urlName
+  const initialEvents = storeId === idToMatch ? storeEvents : []
+  const initialName   = storeId === idToMatch ? storeName : null
 
-  
-
-  const [localEvents,       setLocalEvents]   = useState(storeEvents)
+  const [localEvents,       setLocalEvents]   = useState(initialEvents)
   const [past,              setPast]          = useState([])
   const [future,            setFuture]        = useState([])
   const [masterRooms,       setMasterRooms]   = useState({ lecture:[], lab:[] })
@@ -691,6 +696,8 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
   const [activeDay,         setActiveDay]     = useState('Monday')
   const [initLoading,       setInitLoading]   = useState(true)
   const [loading,           setLoading]       = useState(false)
+  const [globalStartHour,   setGlobalStartHour] = useState(7)
+  const [globalEndHour,     setGlobalEndHour]   = useState(21)
 
   const { TourElement, startTour } = useTour('adminScheduleView', [
     {
@@ -755,6 +762,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
   const [maximizeDensity,   setMaximizeDensity] = useState('normal') // density inside fullscreen: 'compact' | 'normal'
   const [maximizeFilterOpen, setMaximizeFilterOpen] = useState(false)
   const [openModal,         setOpenModal]     = useState(null)
+  const [showPendingModal,  setShowPendingModal] = useState(false)
   const [filterMerged,      setFilterMerged]  = useState(false)
   const [filterLec,         setFilterLec]     = useState(false)
   const [filterLab,         setFilterLab]     = useState(false)
@@ -797,8 +805,13 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
 
   /* ── Bootstrap ──────────────────────────────────────────────────────────── */
   useEffect(() => {
-    Promise.all([getRooms(), getFaculty()])
-      .then(([r, f]) => { setMasterRooms(r); setMasterFaculty(f) })
+    Promise.all([getRooms(), getFaculty(), getTime().catch(() => null)])
+      .then(([r, f, t]) => { 
+        setMasterRooms(r); 
+        setMasterFaculty(f);
+        if (t && t.start_time != null) setGlobalStartHour(Number(t.start_time));
+        if (t && t.end_time != null) setGlobalEndHour(Number(t.end_time));
+      })
       .catch(() => {})
     getSchedules()
       .then(r => {
@@ -811,6 +824,9 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
 
   /* ── Load schedule ──────────────────────────────────────────────────────── */
   async function loadSchedule(nameOrId, { force = false } = {}) {
+    if (!force && (hasUnsavedChanges || dd.pendingOverrides.size > 0)) {
+      if (!window.confirm('You have unsaved changes. Are you sure you want to discard them?')) return;
+    }
     if (!nameOrId || (!force && nameOrId === activeName)) return
     setLoading(true); setError(null); setSaveState('idle')
     try {
@@ -820,7 +836,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
         // both 404 or return the wrong thing for this. `nameOrId` here is
         // the raw queueId (embeddedId with the "master_" prefix stripped).
         const data = await getMasterSchedule(nameOrId)
-        setLocalEvents(data.schedule || []); setEvents(data.schedule || [])
+        setLocalEvents(data.schedule || []); setEvents(data.schedule || []); setId(idToMatch)
         setPast([]); setFuture([])
         setActiveName(`master_${nameOrId}`); setName(`master_${nameOrId}`)
         setSchedAY(data.academicYear || ''); setSchedSem(data.semester || '')
@@ -850,7 +866,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
         const displaySchedule = masterProgramEvents && masterProgramEvents.length > 0
           ? masterProgramEvents
           : cleanSchedule
-        setLocalEvents(displaySchedule); setEvents(displaySchedule)
+        setLocalEvents(displaySchedule); setEvents(displaySchedule); setId(idToMatch)
         setPast([]); setFuture([])
         setActiveName(data.name || nameOrId); setName(data.name || nameOrId)
         setSchedAY(data.academicYear || ''); setSchedSem(data.semester || '')
@@ -861,7 +877,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
         setScheduleMeta({ version: 1, eventCount: displaySchedule.length })
       } else {
         const data = await getSchedules(nameOrId)
-        setLocalEvents(data.events); setEvents(data.events)
+        setLocalEvents(data.events); setEvents(data.events); setId(idToMatch)
         setPast([]); setFuture([])
         setActiveName(nameOrId); setName(nameOrId)
         setSchedAY(data.academicYear || ''); setSchedSem(data.semester || '')
@@ -1084,6 +1100,32 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
     }
   }
 
+  const [deletingState, setDeletingState] = useState('idle')
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+
+  async function confirmDeleteAdminSchedule() {
+    if (!activeName) return
+    setDeletingState('working')
+    try {
+      await deleteSaved(activeName)
+      setDeletingState('idle')
+      setShowDeleteModal(false)
+      // Reset active view completely or load another schedule if available
+      const remaining = schedulesMeta.filter(s => (s.id || s.name) !== activeName)
+      setSchedulesMeta(remaining)
+      if (remaining.length > 0) {
+        loadSchedule(remaining[0].id || remaining[0].name)
+      } else {
+        setLocalEvents([])
+        setActiveName('')
+        setSchedFinalized(false)
+      }
+    } catch {
+      setDeletingState('error')
+      setTimeout(() => setDeletingState('idle'), 2200)
+    }
+  }
+
   /* ── Rename ─────────────────────────────────────────────────────────────── */
   function handleSaveName() {
     if (tempName.trim()) { setActiveName(tempName.trim()); setName(tempName.trim()) }
@@ -1187,53 +1229,57 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
 
   /* ── Undo / Redo ────────────────────────────────────────────────────────── */
   const syncLocalEvents = useCallback(updated => {
-    setLocalEvents(prev => {
-      setPast(p => [...p, prev])
-      setFuture([])
-      setEvents(updated)
-      setHasUnsavedChanges(true) // Mark as having unsaved changes
-      return updated
-    })
-  }, [setEvents])
+    setPast(p => [...p, localEvents])
+    setFuture([])
+    setEvents(updated)
+    setHasUnsavedChanges(true)
+    setLocalEvents(updated)
+  }, [localEvents, setEvents])
 
   const undo = () => {
-    setLocalEvents(current => {
-      if (past.length === 0) return current
-      const previous = past[past.length - 1]
-      setPast(past.slice(0, -1))
-      setFuture([current, ...future])
-      setEvents(previous)
-      setHasUnsavedChanges(true) // Mark as having unsaved changes
-      return previous
-    })
+    if (past.length === 0) return
+    const previous = past[past.length - 1]
+    setPast(past.slice(0, -1))
+    setFuture(f => [localEvents, ...f])
+    setEvents(previous)
+    setHasUnsavedChanges(true)
+    setLocalEvents(previous)
   }
 
   const redo = () => {
-    setLocalEvents(current => {
-      if (future.length === 0) return current
-      const next = future[0]
-      setFuture(future.slice(1))
-      setPast([...past, current])
-      setEvents(next)
-      setHasUnsavedChanges(true) // Mark as having unsaved changes
-      return next
-    })
+    if (future.length === 0) return
+    const next = future[0]
+    setFuture(future.slice(1))
+    setPast(p => [...p, localEvents])
+    setEvents(next)
+    setHasUnsavedChanges(true)
+    setLocalEvents(next)
   }
+
 
   /* ── Derived data ───────────────────────────────────────────────────────── */
   const [showMasterOverlay, setShowMasterOverlay] = useState(false)
+  const termFilteredMaster = useMemo(() => {
+    if (!masterEvents || masterEvents.length === 0) return []
+    if (masterTerm) {
+      if (schedAY && masterTerm.academicYear && masterTerm.academicYear !== schedAY) return []
+      if (schedSem && masterTerm.semester && masterTerm.semester !== schedSem) return []
+    }
+    return masterEvents
+  }, [masterEvents, masterTerm, schedAY, schedSem])
+
   const allEvents = useMemo(() => {
     let base = localEvents
-    if (showMasterOverlay && masterEvents && masterEvents.length > 0) {
+    if (showMasterOverlay && termFilteredMaster && termFilteredMaster.length > 0) {
       // The overlay exists to show *other* programs' master-schedule
-      // events for conflict-checking against this one. `masterEvents` is
+      // events for conflict-checking against this one. `termFilteredMaster` is
       // the full merged master schedule though, so without this filter a
       // program being reviewed would see its own already-merged classes
       // drawn a second time on top of `base` — looking like duplicates,
       // or like an edit hadn't "taken" when it actually had.
       const otherProgramEvents = schedProgram
-        ? masterEvents.filter(e => e.program !== schedProgram)
-        : masterEvents
+        ? termFilteredMaster.filter(e => e.program !== schedProgram)
+        : termFilteredMaster
       base = [...base, ...otherProgramEvents.map(e => ({
         ...e,
         schedule_id: e.schedule_id != null ? `master_${e.schedule_id}` : e.schedule_id,
@@ -1241,7 +1287,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
       }))]
     }
     return base
-  }, [localEvents, showMasterOverlay, masterEvents, schedProgram])
+  }, [localEvents, showMasterOverlay, termFilteredMaster, schedProgram])
   const conflictMap = useMemo(() => buildConflictMap(allEvents.filter(e => e.day === activeDay)), [allEvents, activeDay])
 
   const filters = useFilters(allEvents, masterFacultyList, masterRooms, activeDay)
@@ -1274,8 +1320,59 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
   const localHasFilters = hasFilters || filterMerged || filterLec || filterLab || showAvailableOnly
   const handleClearAll  = () => { clearFilters(); setFilterMerged(false); setFilterLec(false); setFilterLab(false); setShowAvailableOnly(false) }
 
+  const overrideFn = useCallback(async () => {
+    // Admin mode doesn't save individual session overrides to the network.
+    // It buffers them in localEvents, and the main "Save" button 
+    // pushes the entire schedule payload via saveSchedule or onSaveOverride.
+    return { success: true }
+  }, [])
+
   /* ── Drag & drop — now with pending overrides + conflict ids ──────────── */
-  const dd = useDragDrop(allEvents, activeDay, syncLocalEvents, setEvents, storeEvents, schedFinalized)
+  const dd = useDragDrop(allEvents, activeDay, syncLocalEvents, setEvents, storeEvents, schedFinalized, overrideFn)
+
+  // New: Prevent accidental exit (reload, back button, and links)
+  useEffect(() => {
+    if (!hasUnsavedChanges && (!dd || dd.pendingOverrides.size === 0)) return
+
+    // 1. Tab close / reload
+    const handleBeforeUnload = (e) => {
+      e.preventDefault()
+      e.returnValue = 'You have unsaved changes. Are you sure you want to leave?'
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    // 2. Browser back button (popstate trap)
+    // Push a dummy state so the back button doesn't instantly leave
+    window.history.pushState('sv-trap', null, window.location.href)
+    const handlePopState = (e) => {
+      if (!window.confirm('You have unsaved changes. Are you sure you want to discard them?')) {
+        // User canceled: restore the trap
+        window.history.pushState('sv-trap', null, window.location.href)
+      } else {
+        // User accepted: actually go back (this triggers popstate again, but we remove the listener on unmount)
+        window.history.back()
+      }
+    }
+    window.addEventListener('popstate', handlePopState)
+
+    // 3. In-app navigation links (Sidebar, etc.)
+    const handleLinkClick = (e) => {
+      const target = e.target.closest('a')
+      if (target && target.href && !target.hasAttribute('download') && target.origin === window.location.origin && target.pathname !== window.location.pathname) {
+        if (!window.confirm('You have unsaved changes. Are you sure you want to discard them?')) {
+          e.preventDefault()
+          e.stopPropagation()
+        }
+      }
+    }
+    document.addEventListener('click', handleLinkClick, { capture: true })
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.removeEventListener('popstate', handlePopState)
+      document.removeEventListener('click', handleLinkClick, { capture: true })
+    }
+  }, [hasUnsavedChanges, dd])
 
   const allDayRooms = useMemo(() => {
     const occupied = new Set(dayEvents.map(e => e.room).filter(Boolean))
@@ -1325,17 +1422,28 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
   const visibleRooms = useMemo(() => {
     let rooms
     if (filterRooms.size > 0) {
-      // A room the user explicitly filtered for should always show as a
-      // column — even if it has zero sessions today — so start from the
-      // full known room list (options.allRooms) instead of allDayRooms,
-      // which only contains rooms that already have events on this day.
       rooms = options.allRooms.filter(r => filterRooms.has(r))
     } else {
       rooms = allDayRooms
     }
     if (showAvailableOnly) rooms = rooms.filter(r => availableRoomSet.has(r))
+    
+    // Ensure the dragged event's original room column stays mounted 
+    // even if we switch to a day where that room normally has no events.
+    if (dd.draggedEvent?.room && dd.draggedEvent.room !== 'TBA') {
+      if (!rooms.includes(dd.draggedEvent.room)) {
+        rooms = [...rooms, dd.draggedEvent.room]
+      }
+    }
     return rooms
-  }, [allDayRooms, filterRooms, showAvailableOnly, availableRoomSet, options.allRooms])
+  }, [allDayRooms, filterRooms, showAvailableOnly, availableRoomSet, options.allRooms, dd.draggedEvent])
+
+  const activeDayEvents = useMemo(() => {
+    if (!dd.draggedEvent) return dayEvents
+    if (dayEvents.some(e => getEventId(e) === getEventId(dd.draggedEvent))) return dayEvents
+    // Append as ghost so the DOM node stays alive
+    return [...dayEvents, { ...dd.draggedEvent, _isDragGhost: true }]
+  }, [dayEvents, dd.draggedEvent])
 
   const dayCounts = useMemo(() => {
     const m = {}
@@ -1361,6 +1469,15 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
   const Sep = () => <div style={{ width:1, height:20, background:TV.border, flexShrink:0 }} />
 
   /* ════════════════════ RENDER ════════════════════════════════════════════ */
+  if (initLoading) {
+    return (
+      <div className="sv-page loading" style={{ height:'100dvh', display:'flex', flexDirection:'column', padding: embeddedId ? '20px 24px' : 0 }}>
+        {embeddedId && <ModalHeader title="Loading…" onClose={onClose} />}
+        <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center' }}><div className="co-spinner" /></div>
+      </div>
+    )
+  }
+
   return (
     <div className="page" style={{ padding:'15px 15px 30px', overflowX:'hidden', width:'100%', minWidth:0 }}>
       {TourElement}
@@ -1381,23 +1498,23 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
           ) : (
             <div style={{ display:'flex', alignItems:'center', gap:16 }}>
               <div>
-                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <h1 className="page-title" style={{ margin:0, fontSize:18, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'28ch' }}>
-                    {activeName || 'Untitled Schedule'}
-                  </h1>
-                  {activeName && (
-                    <button
-                      onClick={() => { setTempName(activeName); setIsEditingName(true) }}
-                      style={{ background:'transparent', border:'none', cursor:'pointer', color:'var(--muted2)', display:'flex', alignItems:'center', padding:4, borderRadius:6 }}
-                      title="Rename"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                      </svg>
-                    </button>
-                  )}
-                </div>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <h1 className="page-title" style={{ margin:0, fontSize:18, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'28ch' }}>
+                      {isMasterView ? 'Master Schedule' : (activeName || 'Untitled Schedule')}
+                    </h1>
+                    {activeName && !isMasterView && !isSubmittedView && (
+                      <button
+                        onClick={() => { setTempName(activeName); setIsEditingName(true) }}
+                        style={{ background:'transparent', border:'none', cursor:'pointer', color:'var(--muted2)', display:'flex', alignItems:'center', padding:4, borderRadius:6 }}
+                        title="Rename"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </button>
+                    )}
+                  </div>
                 
                 {/* Academic Year & Semester - under the name */}
                 {activeName && schedAY && schedSem && (
@@ -1407,26 +1524,38 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
                 )}
               </div>
               
-              {/* Finalize/Unfinalize - same row as title */}
+              {/* Finalize/Unfinalize and Delete - same row as title */}
               {activeName && allEvents.length > 0 && !isSubmittedView && !isMasterView && (
-                schedFinalized ? (
-                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                    <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'var(--meadow-soft)', color: 'var(--meadow-text)', border:'1px solid var(--meadow-border)' }}>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                      Finalized
-                    </span>
-                    <button onClick={handleUnfinalize} disabled={finalizingState === 'working'}
-                      style={{ padding:'3px 10px', borderRadius:7, border:'1px solid #fecaca', background:'rgba(220, 38, 38, 0.05)', color:'#EF4444', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
-                      {finalizingState === 'working' ? 'Removing…' : 'Unfinalize'}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {schedFinalized ? (
+                    <>
+                      <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'5px 12px', borderRadius:99, fontSize:11.5, fontWeight:700, background:'var(--meadow-soft)', color: 'var(--meadow-text)', border:'1px solid var(--meadow-border)' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        Finalized
+                      </span>
+                      <button onClick={handleUnfinalize} disabled={finalizingState === 'working'}
+                        style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--surface)', color:'var(--ink)', fontSize:11.5, fontWeight:600, cursor: finalizingState === 'working' ? 'default' : 'pointer', fontFamily:'Inter,sans-serif', transition:'all 0.15s' }}>
+                        {finalizingState === 'working' ? 'Removing…' : 'Unfinalize'}
+                      </button>
+                    </>
+                  ) : (
+                    <button onClick={handleFinalizeClick} disabled={finalizingState === 'working'}
+                      style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 14px', borderRadius:8, border:'none', background:'var(--meadow)', color: '#fff', fontSize:11.5, fontWeight:600, cursor: finalizingState === 'working' ? 'default' : 'pointer', fontFamily:'Inter,sans-serif', transition:'all 0.15s' }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                      {finalizingState === 'working' ? 'Finalizing…' : 'Finalize'}
                     </button>
-                  </div>
-                ) : (
-                  <button onClick={handleFinalizeClick} disabled={finalizingState === 'working'}
-                    style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 13px', borderRadius:8, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 2px 8px rgba(0,0,0,.25)' }}>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    {finalizingState === 'working' ? 'Finalizing…' : 'Finalize'}
+                  )}
+                  
+                  <button onClick={() => setShowDeleteModal(true)} disabled={deletingState === 'working'}
+                    style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--surface)', color:'var(--red)', fontSize:11.5, fontWeight:600, cursor: deletingState === 'working' ? 'default' : 'pointer', fontFamily:'Inter,sans-serif', display: 'inline-flex', alignItems: 'center', gap: 5, transition: 'all 0.15s', opacity: deletingState === 'working' ? 0.7 : 1 }}>
+                    {deletingState === 'working' ? (
+                      <svg className="sv-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg>
+                    ) : (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                    )}
+                    {deletingState === 'working' ? 'Deleting...' : 'Delete'}
                   </button>
-                )
+                </div>
               )}
             </div>
           )}
@@ -1517,7 +1646,12 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
                 rendered, so there was no way to close the overlay itself
                 (only the outer portal's own chrome, which had none either). */}
             {onClose && (
-              <button onClick={onClose} className="sv-icon-btn" title="Close">
+              <button onClick={() => {
+                if (hasUnsavedChanges || dd.pendingOverrides.size > 0) {
+                  if (!window.confirm('You have unsaved changes. Are you sure you want to discard them?')) return;
+                }
+                onClose();
+              }} className="sv-icon-btn" title="Close">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                   <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                 </svg>
@@ -1534,13 +1668,28 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
       {/* Appears below stats, above day selector — amber, prominent */}
     {!schedFinalized && (
       <div id="tour-sv-pending">
-      <PendingChangesBar
-        pendingOverrides={dd.pendingOverrides}
-        onSave={dd.saveAllOverrides}
-        onRevertAll={dd.revertAllOverrides}
-        saving={dd.saving}
-        autoSaveIn={dd.autoSaveIn}
-      />
+        <PendingChangesBar
+          pendingOverrides={dd.pendingOverrides}
+          onSave={handleSave}
+          onRevertAll={() => {
+            dd.revertAllOverrides()
+            setHasUnsavedChanges(false)
+          }}
+          onViewAll={() => setShowPendingModal(true)}
+          saving={dd.saving}
+        />
+        {showPendingModal && (
+          <PendingChangesModal
+            pendingOverrides={dd.pendingOverrides}
+            onClose={() => setShowPendingModal(false)}
+            onSave={handleSave}
+            onRevertAll={() => {
+              dd.revertAllOverrides()
+              setHasUnsavedChanges(false)
+            }}
+            saving={dd.saving}
+          />
+        )}
       </div>
     )}
  
@@ -1669,7 +1818,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
               </svg>
               Available Rooms
             </button>
-            {masterEvents && masterEvents.length > 0 && (
+            {termFilteredMaster && termFilteredMaster.length > 0 && (
               <button
                 onClick={() => setShowMasterOverlay(v => !v)}
                 title="Show all finalized events from other programs underneath your schedule to check for overlap."
@@ -1730,6 +1879,9 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
           <div id="tour-sv-days" style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
             {DAYS.map(d => (
               <button key={d} onClick={() => setActiveDay(d)}
+                onDragEnter={() => setActiveDay(d)}
+                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
+                onDrop={(e) => dd.handleDayDrop(e, d)}
                 className={`sv-day-btn${activeDay===d?' active':''}`}>
                 {d.slice(0,3)}
                 {dayCounts[d] > 0 && (
@@ -1870,6 +2022,9 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
             <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
               {DAYS.map(d => (
                 <button key={d} onClick={() => setActiveDay(d)}
+                  onDragEnter={() => setActiveDay(d)}
+                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
+                  onDrop={(e) => dd.handleDayDrop(e, d)}
                   className={`sv-day-btn${activeDay === d ? ' active' : ''}`}
                   style={{ padding: '5px 12px', fontSize: 11 }}>
                   {d.slice(0, 3)}
@@ -1965,7 +2120,9 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
               ? <EmptyState hasFilters={localHasFilters} onClear={handleClearAll} />
               : (
                 <TimeGrid
-                  rooms={visibleRooms} dayEvents={dayEvents} conflictMap={conflictMap}
+                  propStartHour={globalStartHour} propEndHour={globalEndHour}
+                  activeDay={activeDay}
+                  rooms={visibleRooms} dayEvents={activeDayEvents} conflictMap={conflictMap}
                   draggedEvent={dd.draggedEvent} hoveredCell={dd.hoveredCell} getDropConflict={dd.getDropConflict}
                   onDragStart={dd.handleDragStart} onDragEnd={dd.handleDragEnd} onDragOver={dd.handleDragOver}
                   onDragLeave={dd.handleDragLeave} onDrop={dd.handleDrop} onCardClick={setSelectedEvent}
@@ -2142,8 +2299,10 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
             ? <EmptyState hasFilters={localHasFilters} onClear={handleClearAll} />
             : (
               <TimeGrid
+                propStartHour={globalStartHour} propEndHour={globalEndHour}
+                activeDay={activeDay}
                 rooms={visibleRooms}
-                dayEvents={dayEvents}
+                dayEvents={activeDayEvents}
                 conflictMap={conflictMap}
                 draggedEvent={dd.draggedEvent}
                 hoveredCell={dd.hoveredCell}
@@ -2179,14 +2338,11 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
           masterRooms={masterRooms}
           masterFacultyList={masterFacultyList}
           readOnly={schedFinalized}
+          overrideFn={overrideFn}
           onSaved={(updates) => {
             setSelectedEvent(null)
             if (!updates) return
-            const arr = Array.isArray(updates) ? updates : [updates]
-            const patchMap = new Map(arr.map(u => [getEventId(u), u]))
-            syncLocalEvents(localEvents.map(e =>
-              patchMap.has(getEventId(e)) ? { ...e, ...patchMap.get(getEventId(e)) } : e
-            ))
+            dd.applyEdits(updates)
           }}
         />
       )}
@@ -2219,10 +2375,14 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
               </div>
               <div>
                 <h3 style={{ margin:0, fontSize:15, fontWeight:700, color: 'var(--ink)' }}>Finalize Schedule</h3>
-                <p style={{ margin:'5px 0 0', fontSize:12.5, color: 'var(--muted2)', lineHeight:1.5 }}>
-                  This will publish <strong>{activeName}</strong>{schedAY || schedSem ? ` (${[schedAY ? `A.Y. ${schedAY}` : '', schedSem].filter(Boolean).join(', ')})` : ''} to faculty.
-                  Any other finalized schedule for the same period will be replaced.
-                </p>
+                <div style={{ margin:'5px 0 0', fontSize:12.5, color: 'var(--muted2)', lineHeight:1.5 }}>
+                  <p style={{ margin: '0 0 10px' }}>
+                    This will publish <strong>{activeName}</strong>{schedAY || schedSem ? ` (${[schedAY ? `A.Y. ${schedAY}` : '', schedSem].filter(Boolean).join(', ')})` : ''} to faculty.
+                  </p>
+                  <p style={{ margin: 0, padding: '10px 14px', background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: 8, fontSize: 12.5, fontWeight: 500, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                    Warning: If you already published a Master Schedule for this term, it will be automatically overwritten and unpublished. There can only be one active published schedule per term.
+                  </p>
+                </div>
               </div>
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
@@ -2246,6 +2406,16 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
         onConfirm={dd.confirmDrop}
         onCancel={dd.cancelDrop}
       />
+
+      {showDeleteModal && (
+        <DeleteScheduleModal 
+          scheduleName={activeName}
+          isMaster={true}
+          onConfirm={confirmDeleteAdminSchedule}
+          onCancel={() => setShowDeleteModal(false)}
+          deletingState={deletingState}
+        />
+      )}
 
       {dd.toast && (
         <Toast

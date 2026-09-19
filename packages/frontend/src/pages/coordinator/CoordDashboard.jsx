@@ -7,6 +7,7 @@ import {
   coordDuplicateSchedule, coordDeleteSchedule, coordRenameSchedule, coordUnsubmitSchedule,
 } from '../../services/api'
 import { useTour } from '../../hooks/useTour.jsx'
+import QueueAuditTrail from '../../components/QueueAuditTrail'
 
 // Two-speed polling: the queue/turn status is the only thing that genuinely
 // needs to feel "live" (it's what tells a coordinator it's their turn), and
@@ -109,7 +110,7 @@ if (!document.getElementById(STYLE_TAG_ID)) {
 
 
     /* Schedules/Analytics/Insights row — same reasoning. */
-    .cd-bottom-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px; margin-bottom:24px; align-items:start; }
+    .cd-bottom-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px; margin-bottom:24px; align-items:stretch; }
     @media (max-width: 980px) { .cd-bottom-row { grid-template-columns:1fr; } }
 
     /* Analytics row (Courses by Semester / Room Coverage) — full page width,
@@ -837,6 +838,20 @@ export default function CoordDashboard() {
       });
     }
 
+    const unfinalized = schedules.filter(s => s.status === 'draft' && s.unfinalizedNote && !s.rejectionFeedback);
+    if (unfinalized.length > 0) {
+      unfinalized.forEach(s => {
+        const isUnapproved = s.unfinalizedNote.includes("Admin unapproved") || s.unfinalizedNote.includes("Admin deleted");
+        out.push({
+          id: `unfinalized-${s.id}`,
+          type: 'warning',
+          title: isUnapproved ? `Schedule Returned to Draft` : `Master Schedule Unpublished`,
+          body: `Note: ${s.unfinalizedNote}`,
+          action: { label: 'View Schedule', href: '/coordinator/schedules' }
+        });
+      });
+    }
+
     if (out.length === 0 && courseCount > 0) {
       out.push({ id: 'all-good', type: 'success', title: 'Everything looks ready', body: 'Courses and rooms are set up with no open issues.' })
     }
@@ -865,6 +880,9 @@ export default function CoordDashboard() {
       steps.push({ target: '#tour-setup-checklist-anchor', spotlightTarget: '#tour-setup-checklist', title: 'Setup Checklist', content: 'This checklist walks you through everything to set up — adding courses, selecting rooms, and generating a schedule — before you can submit.', placement: 'top' })
     }
     steps.push({ target: '#tour-scheduling-queue-anchor', spotlightTarget: '#tour-scheduling-queue', title: 'Scheduling Queue', content: "This shows the active scheduling queue. When it's your turn, you get exclusive access to run the solver, and once other programs are approved you'll see combined progress here too.", placement: 'top' })
+    if (hasQueue) {
+      steps.push({ target: '#tour-queue-audit-trail', title: 'Queue Audit Trail', content: "Keep track of all actions taking place in the active queue in real-time, such as schedule approvals, skips, and position changes.", placement: 'top' })
+    }
     if (courseCount > 0) {
       steps.push({ target: '#tour-analytics-row-anchor', spotlightTarget: '#tour-analytics-row', title: 'Course Analytics', content: "These charts break down your courses by semester and show how much of your selected rooms' time is already covered by approved sessions.", placement: 'top' })
     }
@@ -874,7 +892,7 @@ export default function CoordDashboard() {
     }
     steps.push({ target: '#tour-scheduler-btn', title: 'Run the Scheduler', content: "Ready to build? Click here to enter the smart scheduler and generate your program's schedule.", placement: 'left' })
     return steps
-  }, [loading, courseCount, hasInsights, readinessPct])
+  }, [loading, courseCount, hasInsights, readinessPct, hasQueue])
 
   const { TourElement, startTour } = useTour('coordDashboard', tourSteps, !loading)
 
@@ -1170,6 +1188,12 @@ export default function CoordDashboard() {
           </div>
       </div>
 
+      {turnData?.queueId && (
+        <div id="tour-queue-audit-trail">
+          <QueueAuditTrail queueId={turnData.queueId} />
+        </div>
+      )}
+
       {/* ── Analytics: Courses by Semester / Room Coverage ──
           Full-width row of its own (not nested inside one half of the
           bottom row below) so each card gets a proper half of the page
@@ -1266,7 +1290,7 @@ export default function CoordDashboard() {
               />
 
               {schedules.length > 4 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 24px', borderBottom: `1px solid ${G.borderLight}`, flexWrap: 'wrap', background: '#FAFAFA' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 24px', borderBottom: `1px solid ${G.borderLight}`, flexWrap: 'wrap', background: 'var(--bg)' }}>
                   <div className="cd-search-wrap">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={G.muted2} strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     <input
@@ -1391,11 +1415,11 @@ export default function CoordDashboard() {
           )}
         </div>
         {hasInsights && (
-        <div id="tour-insights" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div id="tour-insights" style={{ display: 'flex', flexDirection: 'column', gap: 20, height: '100%', minHeight: 0 }}>
             {/* Insights */}
           <div id="tour-insights-anchor" style={{ height: 0 }} />
           {!loading && suggestions.length > 1 && (
-            <div className="d-card">
+            <div className="d-card" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
               <SectionHeader
                 title="Insights & Recommendations"
                 sub="Other things to keep in mind"
@@ -1406,8 +1430,10 @@ export default function CoordDashboard() {
                   </div>
                 }
               />
-              <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {suggestions.slice(1).map((s, i) => <SuggestionCard key={s.id} suggestion={s} navigate={navigate} delay={i * 0.04} />)}
+              <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
+                <div className="cd-sched-scroll" style={{ position: 'absolute', inset: 0, padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 'none' }}>
+                  {suggestions.slice(1).map((s, i) => <SuggestionCard key={s.id} suggestion={s} navigate={navigate} delay={i * 0.04} />)}
+                </div>
               </div>
             </div>
           )}

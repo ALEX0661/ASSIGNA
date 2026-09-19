@@ -516,73 +516,128 @@ export function RoomChip({ room, selected, hasRoomConflict, hasMergePreview = fa
   )
 }
 
+export function PendingChangesModal({ pendingOverrides, onClose, onRevertAll, onSave, saving }) {
+  const overrides = [...pendingOverrides.values()]
+  return (
+    <ModalOverlay onClose={onClose}>
+      <div style={{
+        background: 'var(--surface)', borderRadius: 14, padding: '22px 24px 20px',
+        width: 500, maxWidth: '92vw', maxHeight: '82vh',
+        display: 'flex', flexDirection: 'column',
+        boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>Pending Changes</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--muted)' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto', marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {overrides.map(o => {
+            const sessType = (o.session || 'CLASS').toUpperCase();
+            const progBlock = `${o.program || ''} ${o.year || ''}${o.block || ''}`.replace(/\s+/g, ' ').trim();
+            return (
+              <div key={o.id} style={{
+                padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border)',
+                background: 'var(--hover)', display: 'flex', flexDirection: 'column', gap: 4
+              }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>
+                  {o.courseCode} {sessType} <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--muted)' }}>({progBlock})</span>
+                </div>
+              <div style={{ fontSize: 12, color: 'var(--text)', display: 'flex', flexWrap: 'wrap', gap: '8px 16px' }}>
+                {o.new_room !== o.orig_room && <div><span style={{color:'var(--muted)'}}>Room:</span> {o.orig_room} &rarr; <span style={{fontWeight:600}}>{o.new_room}</span></div>}
+                {o.new_day !== o.orig_day && <div><span style={{color:'var(--muted)'}}>Day:</span> {o.orig_day} &rarr; <span style={{fontWeight:600}}>{o.new_day}</span></div>}
+                {o.new_period !== o.orig_period && <div><span style={{color:'var(--muted)'}}>Time:</span> {o.orig_period} &rarr; <span style={{fontWeight:600}}>{o.new_period}</span></div>}
+                {o.new_faculty !== o.orig_faculty && <div><span style={{color:'var(--muted)'}}>Faculty:</span> {o.orig_faculty || 'TBA'} &rarr; <span style={{fontWeight:600}}>{o.new_faculty || 'TBA'}</span></div>}
+              </div>
+            </div>
+          )})}
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+          <button onClick={() => { onRevertAll(); onClose(); }} disabled={saving} style={{
+            padding: '8px 16px', borderRadius: 8, fontWeight: 600, border: '1px solid var(--border)',
+            background: 'var(--surface)', color: 'var(--text)', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.5 : 1
+          }}>Revert All</button>
+          <button onClick={() => { onSave(); onClose(); }} disabled={saving} style={{
+            padding: '8px 16px', borderRadius: 8, fontWeight: 600, border: 'none',
+            background: 'var(--meadow-mid)', color: 'white', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.5 : 1
+          }}>Save Changes</button>
+        </div>
+      </div>
+    </ModalOverlay>
+  )
+}
+
 // ── Pending Changes Bar ───────────────────────────────────────────────────────
 // Shows unsaved drag-drop moves with an auto-save countdown.
 // autoSaveIn = number (seconds remaining) | null (no countdown active)
-export function PendingChangesBar({ pendingOverrides, onSave, onRevertAll, saving, autoSaveIn }) {
+export function PendingChangesBar({ pendingOverrides, onSave, onRevertAll, onViewAll, saving }) {
   const count = pendingOverrides.size
   if (count === 0) return null
 
   const labels = [...pendingOverrides.values()].map(o => o.label)
 
   // Countdown ring — simple progress arc drawn in SVG
-  const pct   = autoSaveIn != null ? autoSaveIn / 5 : 0   // 5-second window
+  const pct   = 0   // 5-second window
   const r     = 7, circ = 2 * Math.PI * r
   const dash  = circ * pct
 
   return (
-    <div style={{
+    <div className="sv-pending-bar" style={{
       display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-      background: 'linear-gradient(135deg,#fffbeb,#fff7d6)',
-      border: '1px solid #fcd34d',
       borderRadius: 10, padding: '8px 14px', marginBottom: 10,
       fontFamily: 'Inter, sans-serif',
     }}>
       {/* Icon + count */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2.5">
+        <svg className="sv-pb-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2.5">
           <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
           <line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
-        <span style={{ fontSize: 12, fontWeight: 700, color: '#92400e', whiteSpace: 'nowrap' }}>
+        <span className="sv-pb-count" style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
           {count} unsaved change{count !== 1 ? 's' : ''}
         </span>
       </div>
 
       {/* Scrollable change list */}
       <div style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
-        <span style={{ fontSize: 10.5, color: '#78350f', opacity: .8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
-          {labels.join(' · ')}
+        <span className="sv-pb-labels" style={{ fontSize: 10.5, opacity: .8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
+          {labels.join(' • ')}
         </span>
       </div>
-
-      {/* Auto-save countdown */}
-      {autoSaveIn != null && !saving && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-          {/* Countdown ring */}
-          <svg width="18" height="18" viewBox="0 0 18 18" style={{ transform: 'rotate(-90deg)' }}>
-            <circle cx="9" cy="9" r={r} fill="none" stroke='rgba(245, 158, 11, 0.25)' strokeWidth="2.5"/>
-            <circle cx="9" cy="9" r={r} fill="none" stroke='#F59E0B' strokeWidth="2.5"
-              strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
-              style={{ transition: 'stroke-dasharray .9s linear' }}
-            />
-          </svg>
-          <span style={{ fontSize: 10.5, fontWeight: 600, color: '#92400e', whiteSpace: 'nowrap' }}>
-            Auto-saving in {autoSaveIn}s
-          </span>
-        </div>
-      )}
 
       {/* Actions */}
       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
         <button
+          className="sv-pb-undo"
+          onClick={onViewAll}
+          disabled={saving}
+          title="View all changes in detail"
+          style={{
+            padding: '5px 13px', fontSize: 11.5, fontWeight: 600,
+            borderRadius: 7,
+            cursor: saving ? 'not-allowed' : 'pointer',
+            fontFamily: 'Inter, sans-serif', opacity: saving ? .5 : 1,
+            transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 4,
+            background: 'rgba(255,255,255,0.1)', color: 'inherit', border: 'none'
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          View All
+        </button>
+        <button
+          className="sv-pb-undo"
           onClick={onRevertAll}
           disabled={saving}
           title="Undo all pending moves"
           style={{
             padding: '5px 13px', fontSize: 11.5, fontWeight: 600,
-            background: 'var(--surface)', color: '#92400e',
-            border: '1.5px solid #fcd34d', borderRadius: 7,
+            borderRadius: 7,
             cursor: saving ? 'not-allowed' : 'pointer',
             fontFamily: 'Inter, sans-serif', opacity: saving ? .5 : 1,
             transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 4,

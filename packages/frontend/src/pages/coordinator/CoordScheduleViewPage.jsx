@@ -4,20 +4,21 @@ import { useScheduleStore } from '../../store/scheduleStore'
 import { useAuth } from '../../hooks/useAuth'
 import {
   coordLoadSchedule, coordSaveScheduleInPlace, coordOverrideSession,
-  coordSubmitSchedule, coordUnsubmitSchedule, coordGetRooms, getFaculty,
+  coordSubmitSchedule, coordUnsubmitSchedule, coordDeleteSchedule, coordGetRooms, getFaculty,
   coordRestoreScheduleVersion, coordGetScheduleVersionDiff,
   coordGetSubmittedSchedule, coordListSchedules, coordCheckTurn,
-  coordRenameSchedule,
+  coordRenameSchedule, loadSaved
 } from '../../services/api'
+import { coordGetSettings } from '../../services/api'
 
 // Special :id value used for the read-only "combined schedule so far" view —
 // there's no single schedule doc behind it, just the merged events from
 // whichever programs ahead in the queue have already been approved.
 const MASTER_VIEW_ID = 'master'
 import { buildConflictMap, DAYS, getEventId, getMergedIds } from '../../components/ScheduleView/svHelpers'
-import { TV, ConflictSummaryBar, Toast, FilterButton, FilterRow, PendingChangesBar, ProgramLegend, ModalOverlay, ModalHeader } from '../../components/ScheduleView/svPrimitives'
+import { TV, ConflictSummaryBar, Toast, FilterButton, FilterRow, PendingChangesBar, PendingChangesModal, ProgramLegend, ModalOverlay, ModalHeader } from '../../components/ScheduleView/svPrimitives'
 import { useFilters, useDragDrop } from '../../components/ScheduleView/svHooks'
-import { FilterModal, FacultyFilterModal, RoomFilterModal, OverrideConfirmModal } from '../../components/ScheduleView/FilterModals'
+import { FilterModal, FacultyFilterModal, RoomFilterModal, OverrideConfirmModal, DeleteScheduleModal } from '../../components/ScheduleView/FilterModals'
 import TimeGrid from '../../components/ScheduleView/TimeGrid'
 import SessionModal from '../../components/ScheduleView/SessionModal'
 import VersionHistoryModal from '../../components/VersionHistoryModal'
@@ -676,15 +677,19 @@ export default function CoordScheduleViewPage() {
   const navigate = useNavigate()
   const { search } = useLocation()
   const overlayId = new URLSearchParams(search).get('overlay')
+  const isFinalType = new URLSearchParams(search).get('type') === 'final'
   const { coordinatorProgram } = useAuth()
-  const { events:storeEvents, scheduleName:storeName, setEvents, setName } = useScheduleStore()
+  const { events:storeEvents, scheduleName:storeName, scheduleId:storeId, setEvents, setName, setId } = useScheduleStore()
 
-  const [localEvents,       setLocalEvents]   = useState(storeEvents)
+  const initialEvents = storeId === id ? storeEvents : []
+  const initialName   = storeId === id ? storeName : null
+
+  const [localEvents,       setLocalEvents]   = useState(initialEvents)
   const [past,              setPast]          = useState([])
   const [future,            setFuture]        = useState([])
   const [masterRooms,       setMasterRooms]   = useState({ lecture:[], lab:[] })
   const [masterFacultyList, setMasterFaculty] = useState([])
-  const [activeName,        setActiveName]    = useState(storeName)
+  const [activeName,        setActiveName]    = useState(initialName)
   const [isEditingName,     setIsEditingName] = useState(false)
   const [tempName,          setTempName]      = useState('')
   const [renameState,       setRenameState]   = useState('idle') // 'idle' | 'saving' | 'error'
@@ -701,6 +706,7 @@ export default function CoordScheduleViewPage() {
   const [maximizeDensity,   setMaximizeDensity] = useState('normal') // density inside fullscreen: 'compact' | 'normal'
   const [maximizeFilterOpen, setMaximizeFilterOpen] = useState(false)
   const [openModal,         setOpenModal]     = useState(null)
+  const [showPendingModal,  setShowPendingModal] = useState(false)
   const [filterMerged,      setFilterMerged]  = useState(false)
   const [filterLec,         setFilterLec]     = useState(false)
   const [filterLab,         setFilterLab]     = useState(false)
@@ -745,6 +751,12 @@ export default function CoordScheduleViewPage() {
       content: 'Drag and drop sessions to assign faculty, change rooms, or move timeslots. The system will warn you if you create a conflict, and you can click any card for its full details.',
       placement: 'left',
     },
+    {
+      target: '#tour-sv-master-overlay',
+      title: 'Overlay Master Schedule',
+      content: 'Toggle this to see all other approved programs\' sessions laid over your schedule in a striped/hatched style. This helps you spot room and faculty conflicts with the rest of the master schedule — any overlap will be highlighted in red. Only sessions from the same term are shown.',
+      placement: 'bottom',
+    },
   ], !loading)
 
   
@@ -766,14 +778,23 @@ export default function CoordScheduleViewPage() {
   }, [])
 
   const isMasterView = id === MASTER_VIEW_ID
-  const locked = (isMasterView && !overlayId) || status !== 'draft'
+  const locked = (isMasterView && !overlayId) || isFinalType || status !== 'draft'
 
   const isActiveTerm = Boolean(roundTerm && schedAY === roundTerm.academicYear && schedSem === roundTerm.semester)
+  const [globalStartHour,   setGlobalStartHour] = useState(7)
+  const [globalEndHour,     setGlobalEndHour]   = useState(21)
 
   /* ── Bootstrap ──────────────────────────────────────────────────────────── */
   useEffect(() => {
-    Promise.all([coordGetRooms(), getFaculty()])
-      .then(([r, f]) => { setMasterRooms(r); setMasterFaculty(f) })
+    Promise.all([coordGetRooms(), getFaculty(), coordGetSettings().catch(() => null)])
+      .then(([r, f, t]) => { 
+        setMasterRooms(r); 
+        setMasterFaculty(f);
+        if (t && t.time) {
+          if (t.time.start_time != null) setGlobalStartHour(Number(t.time.start_time));
+          if (t.time.end_time != null) setGlobalEndHour(Number(t.time.end_time));
+        }
+      })
       .catch(() => {})
       .finally(() => setInitLoading(false))
   }, [])
@@ -798,7 +819,24 @@ export default function CoordScheduleViewPage() {
     const requestId = id
     setLoading(true); setError(null); setSaveState('idle')
     try {
-      if (isMasterView) {
+      if (isFinalType) {
+        const data = await loadSaved(id).catch(() => null)
+        if (requestId !== id) return
+        const evs = data?.schedule || []
+        setLocalEvents(evs)
+        setEvents(evs)
+        setId(id)
+        setPast([]); setFuture([])
+        
+        setActiveName(data?.name || id); setName(data?.name || id)
+        setSchedAY(data?.academicYear || ''); setSchedSem(data?.semester || '')
+        setStatus('approved')
+        setHasUnsavedChanges(false)
+        setScheduleMeta({
+          version: data?.version || 1, savedAt: data?.updatedAt || data?.createdAt || null, eventCount: evs.length,
+          versionHistory: data?.versionHistory || [], restoredFromVersion: null, restoredAt: null,
+        })
+      } else if (isMasterView) {
         // The queue endpoint only returns programs already approved *ahead*
         // of this coordinator — it never includes this coordinator's own
         // schedule, even once it's approved too. Pull that in separately
@@ -844,19 +882,20 @@ export default function CoordScheduleViewPage() {
         // Mark events appropriately
         const myProgramName = coordinatorProgram || ''
         const overEvents = overlayEvents.map(e => ({ ...e, _isOtherProgram: false, _isReadonly: false }))
-        const overlayEventIds = new Set(overEvents.map(getEventId))
+        
+        const progToExclude = overlayId ? (overlayEvents[0]?.program || myProgramName) : null
         
         const qEvents = queueEvents
-          .filter(e => !overlayEventIds.has(getEventId(e)))
+          .filter(e => !progToExclude || e.program !== progToExclude)
           .map(e => ({ ...e, _isOtherProgram: e.program !== myProgramName, _isReadonly: true }))
           
         const myApprEvents = myApprovedEvents
-          .filter(e => !overlayEventIds.has(getEventId(e)))
+          .filter(e => !progToExclude || e.program !== progToExclude)
           .map(e => ({ ...e, _isOtherProgram: false, _isReadonly: true }))
         
         const events = [...qEvents, ...myApprEvents, ...overEvents]
         if (requestId !== id) return // superseded by a newer navigation — drop this stale response
-        setLocalEvents(events); setEvents(events)
+        setLocalEvents(events); setEvents(events); setId(id)
         setPast([]); setFuture([])
         
         const finalName = overlayId ? 'Combined Schedule (with Draft Overlay)' : 'Combined Schedule (Approved So Far)'
@@ -869,11 +908,15 @@ export default function CoordScheduleViewPage() {
           versionHistory: overlayData?.versionHistory || [], restoredFromVersion: null, restoredAt: null,
         })
       } else {
-        const data = await coordLoadSchedule(id)
+        const [data, masterData] = await Promise.all([
+          coordLoadSchedule(id),
+          coordGetSubmittedSchedule(true).catch(() => ({ schedule: [] }))
+        ])
         if (requestId !== id) return // superseded by a newer navigation — drop this stale response
-        const events = data.schedule || []
-        setLocalEvents(events); setEvents(events)
+        const evs = data?.schedule || []
+        setLocalEvents(evs); setEvents(evs); setId(id)
         setPast([]); setFuture([])
+        setMasterEvents(masterData?.schedule || [])
         setActiveName(data.name || 'Schedule'); setName(data.name || 'Schedule')
         setSchedAY(data.academicYear || ''); setSchedSem(data.semester || '')
         setStatus(data.status || 'draft')
@@ -881,7 +924,7 @@ export default function CoordScheduleViewPage() {
         setScheduleMeta({
           version:        data.version || 1,
           savedAt:        data.updatedAt || data.createdAt,
-          eventCount:     events.length,
+          eventCount:     evs.length,
           versionHistory: data.versionHistory || [],
           restoredFromVersion: data.restoredFromVersion || null,
           restoredAt:          data.restoredAt || null,
@@ -995,6 +1038,24 @@ export default function CoordScheduleViewPage() {
     }
   }
 
+  const [deletingState, setDeletingState] = useState('idle')
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+
+  async function confirmDeleteSchedule() {
+    if (!id || isMasterView) return
+    setDeletingState('working')
+    try {
+      await coordDeleteSchedule(id)
+      setDeletingState('idle')
+      setShowDeleteModal(false)
+      // Redirect back to dashboard
+      navigate('/coordinator')
+    } catch (e) {
+      setDeletingState('error')
+      setTimeout(() => setDeletingState('idle'), 2200)
+    }
+  }
+
   /* ── Rename ──────────────────────────────────────────────────────────────
      Unlike the admin page (which just holds the new name locally and lets
      the next Save persist it), the coordinator's schedule name is renamed
@@ -1088,41 +1149,60 @@ export default function CoordScheduleViewPage() {
 
   /* ── Undo / Redo ────────────────────────────────────────────────────────── */
   const syncLocalEvents = useCallback(updated => {
-    setLocalEvents(prev => {
-      setPast(p => [...p, prev])
-      setFuture([])
-      setEvents(updated)
-      setHasUnsavedChanges(true) // Mark as having unsaved changes
-      return updated
-    })
-  }, [setEvents])
+    setPast(p => [...p, localEvents])
+    setFuture([])
+    setEvents(updated)
+    setHasUnsavedChanges(true)
+    setLocalEvents(updated)
+  }, [localEvents, setEvents])
 
   const undo = () => {
-    setLocalEvents(current => {
-      if (past.length === 0) return current
-      const previous = past[past.length - 1]
-      setPast(past.slice(0, -1))
-      setFuture([current, ...future])
-      setEvents(previous)
-      setHasUnsavedChanges(true) // Mark as having unsaved changes
-      return previous
-    })
+    if (past.length === 0) return
+    const previous = past[past.length - 1]
+    setPast(past.slice(0, -1))
+    setFuture(f => [localEvents, ...f])
+    setEvents(previous)
+    setHasUnsavedChanges(true)
+    setLocalEvents(previous)
   }
 
   const redo = () => {
-    setLocalEvents(current => {
-      if (future.length === 0) return current
-      const next = future[0]
-      setFuture(future.slice(1))
-      setPast([...past, current])
-      setEvents(next)
-      setHasUnsavedChanges(true) // Mark as having unsaved changes
-      return next
-    })
+    if (future.length === 0) return
+    const next = future[0]
+    setFuture(future.slice(1))
+    setPast(p => [...p, localEvents])
+    setEvents(next)
+    setHasUnsavedChanges(true)
+    setLocalEvents(next)
   }
 
+
   /* ── Derived data ───────────────────────────────────────────────────────── */
-  const allEvents   = localEvents
+  const [showMasterOverlay, setShowMasterOverlay] = useState(false)
+  const [masterEvents, setMasterEvents] = useState([])
+
+  const termFilteredMaster = useMemo(() => {
+    if (!masterEvents || masterEvents.length === 0) return []
+    if (roundTerm) {
+      if (schedAY && roundTerm.academicYear && roundTerm.academicYear !== schedAY) return []
+      if (schedSem && roundTerm.semester && roundTerm.semester !== schedSem) return []
+    }
+    return masterEvents
+  }, [masterEvents, roundTerm, schedAY, schedSem])
+
+  const allEvents = useMemo(() => {
+    let base = localEvents
+    if (showMasterOverlay && termFilteredMaster && termFilteredMaster.length > 0) {
+      const otherProgramEvents = coordinatorProgram
+        ? termFilteredMaster.filter(e => e.program !== coordinatorProgram)
+        : termFilteredMaster
+      return [
+        ...base,
+        ...otherProgramEvents.map(e => ({ ...e, _isOtherProgram: true }))
+      ]
+    }
+    return base
+  }, [localEvents, showMasterOverlay, termFilteredMaster, coordinatorProgram])
   const conflictMap = useMemo(() => buildConflictMap(allEvents.filter(e => e.day === activeDay)), [allEvents, activeDay])
 
   const filters = useFilters(allEvents, masterFacultyList, masterRooms, activeDay)
@@ -1149,6 +1229,50 @@ export default function CoordScheduleViewPage() {
 
   /* ── Drag & drop — now with pending overrides + conflict ids ──────────── */
   const dd = useDragDrop(allEvents, activeDay, syncLocalEvents, setEvents, storeEvents, locked, overrideFn)
+
+  // New: Prevent accidental exit (reload, back button, and links)
+  useEffect(() => {
+    if (!hasUnsavedChanges && (!dd || dd.pendingOverrides.size === 0)) return
+
+    // 1. Tab close / reload
+    const handleBeforeUnload = (e) => {
+      e.preventDefault()
+      e.returnValue = 'You have unsaved changes. Are you sure you want to leave?'
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    // 2. Browser back button (popstate trap)
+    // Push a dummy state so the back button doesn't instantly leave
+    window.history.pushState('sv-trap', null, window.location.href)
+    const handlePopState = (e) => {
+      if (!window.confirm('You have unsaved changes. Are you sure you want to discard them?')) {
+        // User canceled: restore the trap
+        window.history.pushState('sv-trap', null, window.location.href)
+      } else {
+        // User accepted: actually go back
+        window.history.back()
+      }
+    }
+    window.addEventListener('popstate', handlePopState)
+
+    // 3. In-app navigation links (Sidebar, etc.)
+    const handleLinkClick = (e) => {
+      const target = e.target.closest('a')
+      if (target && target.href && !target.hasAttribute('download') && target.origin === window.location.origin && target.pathname !== window.location.pathname) {
+        if (!window.confirm('You have unsaved changes. Are you sure you want to discard them?')) {
+          e.preventDefault()
+          e.stopPropagation()
+        }
+      }
+    }
+    document.addEventListener('click', handleLinkClick, { capture: true })
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.removeEventListener('popstate', handlePopState)
+      document.removeEventListener('click', handleLinkClick, { capture: true })
+    }
+  }, [hasUnsavedChanges, dd])
 
   const allDayRooms = useMemo(() => {
     const occupied = new Set(dayEvents.map(e => e.room).filter(Boolean))
@@ -1198,17 +1322,29 @@ export default function CoordScheduleViewPage() {
   const visibleRooms = useMemo(() => {
     let rooms
     if (filterRooms.size > 0) {
-      // A room the user explicitly filtered for should always show as a
-      // column — even if it has zero sessions today — so start from the
-      // full known room list (options.allRooms) instead of allDayRooms,
-      // which only contains rooms that already have events on this day.
       rooms = options.allRooms.filter(r => filterRooms.has(r))
     } else {
       rooms = allDayRooms
     }
     if (showAvailableOnly) rooms = rooms.filter(r => availableRoomSet.has(r))
+    
+    // Ensure the dragged event's original room column stays mounted 
+    // even if we switch to a day where that room normally has no events.
+    if (dd.draggedEvent?.room && dd.draggedEvent.room !== 'TBA') {
+      if (!rooms.includes(dd.draggedEvent.room)) {
+        rooms = [...rooms, dd.draggedEvent.room]
+      }
+    }
     return rooms
-  }, [allDayRooms, filterRooms, showAvailableOnly, availableRoomSet, options.allRooms])
+  }, [allDayRooms, filterRooms, showAvailableOnly, availableRoomSet, options.allRooms, dd.draggedEvent])
+
+  const activeDayEvents = useMemo(() => {
+    if (!dd.draggedEvent) return dayEvents
+    if (dayEvents.some(e => getEventId(e) === getEventId(dd.draggedEvent))) return dayEvents
+    // If the dragged event is not naturally in this day's events, append it as a ghost 
+    // so its DOM node stays alive and the native drag doesn't abort when switching days!
+    return [...dayEvents, { ...dd.draggedEvent, _isDragGhost: true }]
+  }, [dayEvents, dd.draggedEvent])
 
   const dayCounts = useMemo(() => {
     const m = {}
@@ -1234,6 +1370,14 @@ export default function CoordScheduleViewPage() {
   const Sep = () => <div style={{ width:1, height:20, background:TV.border, flexShrink:0 }} />
 
   /* ════════════════════ RENDER ════════════════════════════════════════════ */
+  if (initLoading) {
+    return (
+      <div className="page" style={{ height:'100dvh', display:'flex', flexDirection:'column' }}>
+        <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center' }}><div className="co-spinner" /></div>
+      </div>
+    )
+  }
+
   return (
     <div className="page" style={{ padding:'15px 15px 30px', overflowX:'hidden', width:'100%', minWidth:0 }}>
       {TourElement}
@@ -1242,7 +1386,12 @@ export default function CoordScheduleViewPage() {
       <div className="sv-header-row">
         <div className="sv-header-cluster">
           <button
-            onClick={() => navigate('/coordinator/schedules')}
+            onClick={() => {
+              if (hasUnsavedChanges || dd.pendingOverrides.size > 0) {
+                if (!window.confirm('You have unsaved changes. Are you sure you want to discard them?')) return;
+              }
+              navigate('/coordinator/schedules')
+            }}
             className="sv-icon-btn"
             title="Back to My Schedules"
           >
@@ -1297,32 +1446,42 @@ export default function CoordScheduleViewPage() {
             </div>
           )}
 
-          {/* Submit/Unsubmit — same row as title, replaces admin's Finalize/Unfinalize */}
+          {/* Submit/Unsubmit and Delete — same row as title, replaces admin's Finalize/Unfinalize */}
           {!isEditingName && allEvents.length > 0 && (
-            status === 'submitted' ? (
-              <div style={{ display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
-                <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'rgba(245, 158, 11, 0.1)', color:'#92400E', border:'1px solid #FDE68A', whiteSpace:'nowrap' }}>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                  Submitted
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              {status === 'submitted' ? (
+                <>
+                  <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'5px 12px', borderRadius:99, fontSize:11.5, fontWeight:700, background:'rgba(245, 158, 11, 0.1)', color:'#F59E0B', border:'1px solid rgba(245, 158, 11, 0.3)', whiteSpace:'nowrap' }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Submitted
+                  </span>
+                  <button onClick={handleUnsubmit} disabled={actionState === 'working'}
+                    style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--surface)', color:'var(--ink)', fontSize:11.5, fontWeight:600, cursor: actionState === 'working' ? 'default' : 'pointer', fontFamily:'Inter,sans-serif', transition:'all 0.15s', whiteSpace:'nowrap' }}>
+                    {actionState === 'working' ? 'Withdrawing…' : 'Unsubmit'}
+                  </button>
+                </>
+              ) : status === 'approved' ? (
+                <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'5px 12px', borderRadius:99, fontSize:11.5, fontWeight:700, background:'var(--meadow-soft)', color: 'var(--meadow-text)', border:'1px solid var(--meadow-border)', whiteSpace:'nowrap' }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  Approved
                 </span>
-                <button onClick={handleUnsubmit} disabled={actionState === 'working'}
-                  style={{ padding:'3px 10px', borderRadius:7, border:'1px solid #fecaca', background:'rgba(220, 38, 38, 0.05)', color:'#EF4444', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap' }}>
-                  {actionState === 'working' ? 'Withdrawing…' : 'Unsubmit'}
+              ) : (
+                <button onClick={handleSubmit} disabled={actionState === 'working' || !isActiveTerm}
+                  title={!isActiveTerm ? 'You can only submit schedules for the active scheduling queue term' : ''}
+                  style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 14px', borderRadius:8, border:'none', background:'var(--meadow)', color: '#fff', fontSize:11.5, fontWeight:600, cursor: (actionState === 'working' || !isActiveTerm) ? 'default' : 'pointer', opacity: (actionState === 'working' || !isActiveTerm) ? 0.6 : 1, fontFamily:'Inter,sans-serif', whiteSpace:'nowrap', transition:'all 0.15s' }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  {actionState === 'working' ? 'Submitting…' : 'Submit'}
                 </button>
-              </div>
-            ) : status === 'approved' ? (
-              <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:'var(--meadow-soft)', color: 'var(--meadow-text)', border:'1px solid var(--meadow-border)', flexShrink:0, whiteSpace:'nowrap' }}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                Approved
-              </span>
-            ) : (
-              <button onClick={handleSubmit} disabled={actionState === 'working' || !isActiveTerm}
-                title={!isActiveTerm ? 'You can only submit schedules for the active scheduling queue term' : ''}
-                style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 13px', borderRadius:8, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize:11.5, fontWeight:600, cursor: (actionState === 'working' || !isActiveTerm) ? 'default' : 'pointer', opacity: (actionState === 'working' || !isActiveTerm) ? 0.6 : 1, fontFamily:'Inter,sans-serif', boxShadow:'0 2px 8px rgba(0,0,0,.25)', flexShrink:0, whiteSpace:'nowrap' }}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                {actionState === 'working' ? 'Submitting…' : 'Submit'}
-              </button>
-            )
+              )}
+              
+              {status !== 'submitted' && status !== 'approved' && (
+                <button onClick={() => setShowDeleteModal(true)} disabled={deletingState === 'working'}
+                  style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--surface)', color:'var(--red)', fontSize:11.5, fontWeight:600, cursor: deletingState === 'working' ? 'default' : 'pointer', fontFamily:'Inter,sans-serif', display: 'inline-flex', alignItems: 'center', gap: 5, transition: 'all 0.15s', whiteSpace:'nowrap' }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                  {deletingState === 'working' ? 'Deleting…' : 'Delete'}
+                </button>
+              )}
+            </div>
           )}
         </div>
 
@@ -1330,20 +1489,6 @@ export default function CoordScheduleViewPage() {
             Everything below is pushed to the right edge via the row's
             justify-content:space-between. */}
         <div id="tour-sv-save" className="sv-header-cluster">
-          {/* Combined-schedule tab — replaces the old separate "Approved so far"
-              card/link on the My Schedules list; one click switches views right
-              here instead of navigating through a different page. */}
-          {isMasterView ? (
-            <button onClick={() => navigate('/coordinator/schedules')} className="sv-day-btn active" title="Back to your own schedule">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" style={{ marginRight:4, verticalAlign:-1 }}><polyline points="15 18 9 12 15 6"/></svg>
-              My Schedule
-            </button>
-          ) : (
-            <button onClick={() => navigate('/coordinator/schedules/master')} className="sv-day-btn" title="View what's been approved so far — programs ahead of you in the queue, plus your own approved schedule">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ marginRight:4, verticalAlign:-1 }}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
-              Approved So Far
-            </button>
-          )}
           {activeName && !locked && <SmartSaveButton state={saveState} onClick={handleSave} hasUnsavedChanges={hasUnsavedChanges} scheduleMeta={scheduleMeta} activeName={activeName} />}
           {activeName && scheduleMeta && scheduleMeta.versionHistory && scheduleMeta.versionHistory.length > 0 && (
             <button
@@ -1415,11 +1560,26 @@ export default function CoordScheduleViewPage() {
       <div id="tour-sv-pending">
         <PendingChangesBar
           pendingOverrides={dd.pendingOverrides}
-          onSave={dd.saveAllOverrides}
-          onRevertAll={dd.revertAllOverrides}
+          onSave={handleSave}
+          onRevertAll={() => {
+            dd.revertAllOverrides()
+            setHasUnsavedChanges(false)
+          }}
+          onViewAll={() => setShowPendingModal(true)}
           saving={dd.saving}
-          autoSaveIn={dd.autoSaveIn}
         />
+        {showPendingModal && (
+          <PendingChangesModal
+            pendingOverrides={dd.pendingOverrides}
+            onClose={() => setShowPendingModal(false)}
+            onSave={handleSave}
+            onRevertAll={() => {
+              dd.revertAllOverrides()
+              setHasUnsavedChanges(false)
+            }}
+            saving={dd.saving}
+          />
+        )}
       </div>
     )}
  
@@ -1548,6 +1708,32 @@ export default function CoordScheduleViewPage() {
               </svg>
               Available Rooms
             </button>
+            {/* Only show the master overlay toggle when the schedule being viewed belongs to the
+                same academic term as the currently active queue round. Showing it for a schedule
+                from a completely different term (e.g. a 1st-Sem-2022 draft when the active queue
+                is 2nd-Sem-2026) would be misleading — the master would be irrelevant context. */}
+            {termFilteredMaster && termFilteredMaster.length > 0 && !isMasterView && (
+              <button
+                id="tour-sv-master-overlay"
+                onClick={() => setShowMasterOverlay(v => !v)}
+                title="Show all finalized events from other programs underneath your schedule to check for overlap."
+                style={{
+                  display:'inline-flex', alignItems:'center', gap:4,
+                  padding:'3px 10px', borderRadius:20, fontSize:11, cursor:'pointer',
+                  fontFamily:'Inter,sans-serif', transition:'all .15s',
+                  fontWeight: showMasterOverlay ? 700 : 400,
+                  border: `1px solid ${showMasterOverlay ? '#3B82F6' : TV.border}`,
+                  background: showMasterOverlay ? '#EFF6FF' : 'var(--surface)',
+                  color: showMasterOverlay ? '#2563EB' : TV.muted,
+                }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <line x1="3" y1="9" x2="21" y2="9" />
+                  <line x1="9" y1="21" x2="9" y2="9" />
+                </svg>
+                Overlay Master Schedule
+              </button>
+            )}
             {localHasFilters && (
               <button onClick={handleClearAll} style={{
                 fontSize:11.5, color:'#EF4444', background:'rgba(220, 38, 38, 0.05)',
@@ -1588,6 +1774,9 @@ export default function CoordScheduleViewPage() {
           <div id="tour-sv-days" style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
             {DAYS.map(d => (
               <button key={d} onClick={() => setActiveDay(d)}
+                onDragEnter={() => setActiveDay(d)}
+                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
+                onDrop={(e) => dd.handleDayDrop(e, d)}
                 className={`sv-day-btn${activeDay===d?' active':''}`}>
                 {d.slice(0,3)}
                 {dayCounts[d] > 0 && (
@@ -1726,6 +1915,9 @@ export default function CoordScheduleViewPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
               {DAYS.map(d => (
                 <button key={d} onClick={() => setActiveDay(d)}
+                  onDragEnter={() => setActiveDay(d)}
+                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
+                  onDrop={(e) => dd.handleDayDrop(e, d)}
                   className={`sv-day-btn${activeDay === d ? ' active' : ''}`}
                   style={{ padding: '5px 12px', fontSize: 11 }}>
                   {d.slice(0, 3)}
@@ -1821,7 +2013,9 @@ export default function CoordScheduleViewPage() {
               ? <EmptyState hasFilters={localHasFilters} onClear={handleClearAll} />
               : (
                 <TimeGrid
-                  rooms={visibleRooms} dayEvents={dayEvents} conflictMap={conflictMap}
+                  propStartHour={globalStartHour} propEndHour={globalEndHour}
+                  activeDay={activeDay}
+                  rooms={visibleRooms} dayEvents={activeDayEvents} conflictMap={conflictMap}
                   draggedEvent={dd.draggedEvent} hoveredCell={dd.hoveredCell} getDropConflict={dd.getDropConflict}
                   onDragStart={dd.handleDragStart} onDragEnd={dd.handleDragEnd} onDragOver={dd.handleDragOver}
                   onDragLeave={dd.handleDragLeave} onDrop={dd.handleDrop} onCardClick={setSelectedEvent}
@@ -1998,8 +2192,10 @@ export default function CoordScheduleViewPage() {
             ? <EmptyState hasFilters={localHasFilters} onClear={handleClearAll} />
             : (
               <TimeGrid
+                propStartHour={globalStartHour} propEndHour={globalEndHour}
+                activeDay={activeDay}
                 rooms={visibleRooms}
-                dayEvents={dayEvents}
+                dayEvents={activeDayEvents}
                 conflictMap={conflictMap}
                 draggedEvent={dd.draggedEvent}
                 hoveredCell={dd.hoveredCell}
@@ -2039,11 +2235,7 @@ export default function CoordScheduleViewPage() {
           onSaved={(updates) => {
             setSelectedEvent(null)
             if (!updates) return
-            const arr = Array.isArray(updates) ? updates : [updates]
-            const patchMap = new Map(arr.map(u => [getEventId(u), u]))
-            syncLocalEvents(localEvents.map(e =>
-              patchMap.has(getEventId(e)) ? { ...e, ...patchMap.get(getEventId(e)) } : e
-            ))
+            dd.applyEdits(updates)
           }}
         />
       )}
@@ -2072,6 +2264,16 @@ export default function CoordScheduleViewPage() {
         onConfirm={dd.confirmDrop}
         onCancel={dd.cancelDrop}
       />
+
+      {showDeleteModal && (
+        <DeleteScheduleModal 
+          scheduleName={activeName}
+          isMaster={false}
+          onConfirm={confirmDeleteSchedule}
+          onCancel={() => setShowDeleteModal(false)}
+          deletingState={deletingState}
+        />
+      )}
 
       {dd.toast && (
         <Toast

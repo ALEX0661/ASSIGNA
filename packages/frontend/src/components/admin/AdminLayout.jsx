@@ -94,6 +94,14 @@ export default function AdminLayout() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
+  useEffect(() => {
+    const handleTourStart = () => {
+      if (isMobile) setCollapsed(true)
+    }
+    window.addEventListener('start-tour', handleTourStart)
+    return () => window.removeEventListener('start-tour', handleTourStart)
+  }, [isMobile])
+
   const [now, setNow] = useState(new Date())
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000)
@@ -112,12 +120,13 @@ export default function AdminLayout() {
 
       {/* ── Sidebar ── */}
       <aside style={{
-        width: sidebarWidth,
+        width: isMobile ? 240 : sidebarWidth,
         background: 'linear-gradient(180deg, var(--meadow-mid) 0%, var(--meadow-deep) 100%)',
         display:'flex', flexDirection:'column', flexShrink:0,
         boxShadow:'4px 0 20px rgba(10,40,20,0.22)', zIndex:100,
-        position: isMobile ? 'absolute' : 'sticky', top:0, left:0, height:'100vh', overflow:'visible',
-        transition:'width 0.25s cubic-bezier(0.4,0,0.2,1)',
+        position: isMobile ? 'fixed' : 'sticky', top:0, left:0, height:'100vh', overflow:'visible',
+        transition:'transform 0.25s cubic-bezier(0.4,0,0.2,1), width 0.25s cubic-bezier(0.4,0,0.2,1)',
+          transform: isMobile ? (collapsed ? 'translateX(-100%)' : 'translateX(0)') : 'none',
       }}>
 
         {/* subtle texture */}
@@ -127,7 +136,8 @@ export default function AdminLayout() {
           backgroundSize:'32px 32px',
         }} />
 
-        <button
+        {!isMobile && (
+          <button
           className="sidebar-toggle"
           onClick={() => setCollapsed(c => !c)}
           title={collapsed ? 'Expand' : 'Collapse'}
@@ -136,6 +146,7 @@ export default function AdminLayout() {
             {collapsed ? <polyline points="9 18 15 12 9 6"/> : <polyline points="15 18 9 12 15 6"/>}
           </svg>
         </button>
+        )}
 
         <div style={{ position:'relative', zIndex:1, display:'flex', flexDirection:'column', flex:1, overflow:'hidden' }}>
 
@@ -202,11 +213,29 @@ export default function AdminLayout() {
       )}
 
       {/* ── Right panel ── */}
-      <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', height:'100vh', background:'var(--bg)', overflow:'hidden', marginLeft: isMobile ? 58 : 0 }}>
+      <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', height:'100vh', background:'var(--bg)', overflow:'hidden', marginLeft: 0 }}>
         <header className="topbar" style={{ position: 'relative' }}>
           <div className="topbar-left" style={{ display: 'flex', alignItems: 'center', gap: 24, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span className="topbar-title" style={{ fontSize:18, fontWeight:700, color:'var(--ink)', letterSpacing:'-.3px', fontFamily:"'Sora',sans-serif", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {isMobile && (
+              <button
+                onClick={() => setCollapsed(false)}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "transparent", border: "none", cursor: "pointer",
+                  color: "var(--ink)", padding: "6px", marginRight: "4px",
+                  borderRadius: "8px"
+                }}
+                title="Open Menu"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="3" y1="12" x2="21" y2="12"></line>
+                  <line x1="3" y1="6" x2="21" y2="6"></line>
+                  <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+              </button>
+            )}
+            <span className="topbar-title" style={{ fontSize:18, fontWeight:700, color:'var(--ink)', letterSpacing:'-.3px', fontFamily:"'Sora',sans-serif", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {currentPageLabel}
               </span>
               <button 

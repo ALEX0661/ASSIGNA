@@ -3,6 +3,7 @@ from app.core.auth import admin_only, any_authenticated
 from app.core.firebase import db
 from app.core.globals import schedule_dict, progress_state, running_processes, cancel_flags, failure_details, phase_state
 from app.core.scheduler import generate_schedule, validate_phase_order, DEFAULT_PHASE_ORDER
+from app.core.event_cache import event_cache
 import uuid
 import hashlib
 import json
@@ -64,8 +65,21 @@ def _write_events(events_ref, events):
         batch.commit()
 
 
-def _read_events(events_ref):
-    return [d.to_dict() for d in events_ref.stream()]
+def _read_events(events_ref, cache_key: str = None):
+    """Read all docs from an events subcollection.
+    
+    When *cache_key* is provided the result is served from / stored into
+    the in-memory event_cache, so repeated reads of the same schedule
+    within the TTL window cost zero Firestore reads.
+    """
+    if cache_key:
+        cached = event_cache.get(cache_key)
+        if cached is not None:
+            return cached
+    events = [d.to_dict() for d in events_ref.stream()]
+    if cache_key:
+        event_cache.put(cache_key, events)
+    return events
 
 
 def _delete_subcollection(coll_ref):
@@ -113,7 +127,7 @@ def _prune_version_snapshots(doc_ref, keep_versions: set):
 
 # Fields never worth surfacing in a changelog even if their value differs —
 # purely internal bookkeeping, not something a person changed on purpose.
-_DIFF_IGNORED_FIELDS = {"schedule_id"}
+_DIFF_IGNORED_FIELDS = {"schedule_id", "startTime", "endTime", "_isOtherProgram", "_isMergedHead", "id", "_id", "_isReadonly"}
 
 # Preferred display order for changed fields within a modified session, so
 # the most meaningful things (what/where/who/when) read first instead of
@@ -452,10 +466,12 @@ def save_schedule(data: dict, user=Depends(admin_only)):
         "eventCount":     len(current_events),
         "createdAt":      existing_data.get("createdAt", current_time),
         "versionHistory": version_history,
+        "source":         existing_data.get("source", "admin"),
     }
 
     doc_ref.set(doc_data)
     _write_events(doc_ref.collection("events"), current_events)
+    event_cache.invalidate(f"final:{name}")
 
     return {
         "saved":        name,
@@ -490,7 +506,7 @@ def get_active(academic_year: str, semester: str, user=Depends(any_authenticated
         .stream()
     for d in docs:
         data = d.to_dict()
-        data["schedule"] = _read_events(d.reference.collection("events"))
+        data["schedule"] = _read_events(d.reference.collection("events"), cache_key=f"final:{d.id}")
         return data
     raise HTTPException(404, "Active schedule not found")
 
@@ -502,7 +518,7 @@ def load_saved(name: str, user=Depends(any_authenticated)):
         raise HTTPException(404, "Schedule not found")
     data = doc.to_dict()
 
-    raw_list = _read_events(doc_ref.collection("events"))
+    raw_list = _read_events(doc_ref.collection("events"), cache_key=f"final:{name}")
     schedule_dict.clear()
     schedule_dict.update({str(ev.get("schedule_id")): ev for ev in raw_list})
 
@@ -567,7 +583,7 @@ def unfinalize_schedule(name: str, user=Depends(admin_only)):
                 "approvedAt": None,
                 "approvedBy": None,
                 "submittedAt": None,
-                "unfinalizedNote": "The master schedule was unpublished.",
+                "unfinalizedNote": f"The master schedule for {sem} {ay} was unpublished.",
                 "updatedAt": now
             })
             count += 1
@@ -690,6 +706,7 @@ def restore_version(name: str, version: int, user=Depends(admin_only)):
 
     # Replace the live events subcollection with the restored events.
     _write_events(doc_ref.collection("events"), restored_events)
+    event_cache.invalidate(f"final:{name}")
 
     # Update Firestore metadata: keep the same version number — this is a
     # preview, not a new save.
@@ -740,7 +757,7 @@ def get_version_diff(name: str, version: int, user=Depends(any_authenticated)):
         # Not archived as a snapshot yet — only valid if it's the current
         # live version (the one that hasn't been superseded by a save/restore).
         if data.get("version") == version and not data.get("restoredFromVersion"):
-            target_events = _read_events(doc_ref.collection("events"))
+            target_events = _read_events(doc_ref.collection("events"), cache_key=f"final:{name}")
         else:
             raise HTTPException(404, f"Version {version} has no stored schedule data")
 
@@ -798,4 +815,5 @@ def delete_saved(name: str, user=Depends(admin_only)):
     _delete_subcollection(doc_ref.collection("events"))
     _delete_subcollection(doc_ref.collection("versions"))
     doc_ref.delete()
+    event_cache.invalidate(f"final:{name}")
     return {"deleted": name}

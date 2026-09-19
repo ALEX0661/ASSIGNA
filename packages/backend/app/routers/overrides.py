@@ -110,6 +110,9 @@ def override_session(data: dict, user=Depends(admin_only)):
         target["day"] = new_day
     if new_period:
         target["period"] = new_period
+        parts = new_period.split(" - ")
+        if len(parts) == 2:
+            target["startTime"], target["endTime"] = parts[0], parts[1]
     if new_room:
         target["room"] = new_room
 

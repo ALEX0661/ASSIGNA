@@ -36,8 +36,8 @@ if (!document.getElementById('approval-dashboard-style')) {
     .btn-primary { display:inline-flex; align-items:center; gap:6px; padding:7px 16px; border-radius:8px; border:none; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; background:${G.meadow}; color:#fff; box-shadow:0 3px 10px rgba(0,0,0,0.25); }
     .btn-primary:hover:not(:disabled) { background:${G.meadowDeep}; transform:translateY(-1px); }
     .btn-primary:disabled { opacity:.55; cursor:default; transform:none; box-shadow:none; }
-    .btn-danger { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; border:1px solid ${G.redBorder}; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; background: var(--surface); color:${G.red}; transition:all .13s; }
-    .btn-danger:hover:not(:disabled) { background:${G.redSoft}; border-color:${G.red}; }
+    .btn-danger { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; border:1px solid ${G.redBorder}; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; background: ${G.redSoft}; color:${G.red}; transition:all .13s; }
+    .btn-danger:hover:not(:disabled) { background: rgba(239, 68, 68, 0.2); border-color:${G.red}; }
     .btn-danger:disabled { opacity:.5; cursor:default; }
     .btn-amber { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; border:1px solid ${G.amberBorder}; font-family:'Inter',sans-serif; font-size:11.5px; font-weight:600; cursor:pointer; background:${G.amberSoft}; color:#92400E; transition:all .13s; }
     .btn-amber:hover:not(:disabled) { background:#FDE9B0; }

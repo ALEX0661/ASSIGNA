@@ -391,3 +391,34 @@ aside:hover .sidebar-toggle {
 :root[data-mode="dark"] {
   color-scheme: dark;
 }
+
+@keyframes svSpin { to { transform: rotate(360deg) } }
+.sv-spin { animation: svSpin .6s linear infinite; }
+
+
+/* Pending Changes Bar */
+.sv-pending-bar {
+  background: linear-gradient(135deg, #fffbeb, #fff7d6);
+  border: 1px solid #fcd34d;
+}
+.sv-pending-bar .sv-pb-count { color: #92400e; }
+.sv-pending-bar .sv-pb-labels { color: #78350f; }
+.sv-pending-bar .sv-pb-undo {
+  background: var(--surface); color: #92400e;
+  border: 1.5px solid #fcd34d;
+}
+
+:root[data-mode="dark"] .sv-pending-bar {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05));
+  border-color: rgba(245, 158, 11, 0.3);
+}
+:root[data-mode="dark"] .sv-pending-bar .sv-pb-count { color: #FCD34D; }
+:root[data-mode="dark"] .sv-pending-bar .sv-pb-labels { color: #FDE68A; }
+:root[data-mode="dark"] .sv-pending-bar .sv-pb-undo {
+  background: rgba(245, 158, 11, 0.1); color: #FCD34D;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+:root[data-mode="dark"] .sv-pending-bar .sv-pb-undo:hover {
+  background: rgba(245, 158, 11, 0.2);
+}
+

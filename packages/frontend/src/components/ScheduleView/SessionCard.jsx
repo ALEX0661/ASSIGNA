@@ -4,7 +4,7 @@ import { TV } from './svPrimitives'
 
 export default function SessionCard({
   event, onClick, conflictInfo, isDragging, isDimmed,
-  onDragStart, onDragEnd, compact, slotH = SLOT_HEIGHT, overlapIndex = 0,
+  onDragStart, onDragEnd, compact, slotH = SLOT_HEIGHT, gridStart, overlapIndex = 0,
   spreadOffset = 0,
   isInHoveredGroup = false,
   onHoverChange,
@@ -23,8 +23,11 @@ export default function SessionCard({
   const clr    = sectionColor(event.program, event.block)
   // `accent` is the vivid left-stripe colour (bold, clearly different per block).
   // `border` is the subtle card outline. Fall back gracefully if palette is old.
-  const stripeColor = clr.accent ?? clr.border
-  const { top, height } = getEventStyle(event.period, slotH)
+  const accent = clr?.accent || clr?.border || TV.accentDefault
+  const border = clr?.border || clr?.accent || TV.border
+  const stripeColor = accent
+
+  const { top, height } = getEventStyle(event.period, slotH, gridStart)
   const merged = isMerged
 
   // ── Unassigned faculty detection ─────────────────────────────────────────
@@ -69,6 +72,16 @@ export default function SessionCard({
     badgeBg     = isDark ? `color-mix(in srgb, #EF4444 20%, var(--surface))` : 'rgba(239,68,68,.10)'
     textColor   = isDark ? '#FCA5A5' : '#EF4444'
     glowColor   = 'rgba(239,68,68,.30)'
+  } else if (event._isOtherProgram) {
+    // Striped background to indicate "locked/background" from other programs
+    accentColor = isDark ? `color-mix(in srgb, ${stripeColor} 40%, var(--surface))` : `color-mix(in srgb, ${stripeColor} 40%, white)`
+    bgGradient = isDark 
+       ? `repeating-linear-gradient(45deg, var(--surface), var(--surface) 4px, color-mix(in srgb, ${stripeColor} 10%, var(--surface)) 4px, color-mix(in srgb, ${stripeColor} 10%, var(--surface)) 8px)`
+       : `repeating-linear-gradient(45deg, #ffffff, #ffffff 4px, ${clr.bg} 4px, ${clr.bg} 8px)`
+    borderColor = isDark ? `color-mix(in srgb, ${stripeColor} 20%, var(--surface))` : clr.border
+    badgeBg     = isDark ? `color-mix(in srgb, ${stripeColor} 15%, var(--surface))` : `${clr.accent}10`
+    textColor   = isDark ? `color-mix(in srgb, ${stripeColor} 70%, var(--surface))` : clr.text
+    glowColor   = 'transparent'
   } else {
     // Normal state - solid saturated program tint, adapt to dark mode
     accentColor = stripeColor
@@ -201,7 +214,8 @@ export default function SessionCard({
           padding: isTiny ? '0 4px' : '1px 5px',
           cursor: locked ? 'default' : 'grab', overflow: 'hidden',
           boxShadow: computeShadow(),
-          opacity: isDimmed ? 0.32 : isDragging ? 0.55 : event._isOtherProgram ? 0.35 : 1,
+          opacity: event._isDragGhost ? 0 : isDimmed ? 0.32 : isDragging ? 0.55 : 1,
+          pointerEvents: event._isDragGhost ? 'none' : 'auto',
           transform,
           transition: 'all .15s ease-out',
           zIndex,
@@ -288,7 +302,8 @@ export default function SessionCard({
         cursor: locked ? 'default' : isDragging ? 'grabbing' : 'grab',
         overflow: 'hidden',
         boxShadow: computeShadow(),
-        opacity: isDimmed ? 0.25 : isDragging ? 0.5 : event._isOtherProgram ? 0.35 : 1,
+        opacity: event._isDragGhost ? 0 : isDimmed ? 0.25 : isDragging ? 0.5 : 1,
+        pointerEvents: event._isDragGhost ? 'none' : 'auto',
         transform,
         transition: isDragging ? 'opacity .12s ease' : 'all .18s ease-out',
         zIndex,

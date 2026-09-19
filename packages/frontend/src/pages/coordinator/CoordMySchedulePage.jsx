@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import {
   coordListSchedules, coordDeleteSchedule,
   coordRenameSchedule, coordDuplicateSchedule, coordSubmitSchedule,
-  coordUnsubmitSchedule, coordCheckTurn,
+  coordUnsubmitSchedule, coordCheckTurn, listSaved
 } from '../../services/api'
 import { useTour } from '../../hooks/useTour.jsx'
+import QueueAuditTrail from '../../components/QueueAuditTrail'
 
 const TOUR_SEEN_KEY = 'coordMySchedule_tourSeen'
 function isOnboardingCompleted() {
@@ -34,9 +35,10 @@ const CO_STYLE = `
   @keyframes spin { to { transform:rotate(360deg) } }
   .co-skel { background:linear-gradient(90deg,${G.hover} 25%,${G.meadowSoft} 50%,${G.hover} 75%); background-size:600px 100%; animation:shimmer 1.4s ease-in-out infinite; border-radius:6px; }
   .co-card { background:${G.surface}; border-radius:14px; border:1px solid ${G.border}; box-shadow:0 1px 8px rgba(0,0,0,0.06); overflow:hidden; animation:fadeUp .28s ease both; }
+  .d-card { background:${G.surface}; border-radius:12px; border:1px solid ${G.border}; box-shadow:0 2px 8px rgba(0,0,0,0.05); animation:fadeUp .28s ease both; overflow:hidden; }
   .co-row { display:flex; align-items:center; gap:14px; padding:12px 20px; border-bottom:1px solid ${G.borderLight}; transition:background .12s; }
   .co-row:last-child { border-bottom:none; }
-  .co-row:hover { background:#F8FBFA; }
+  .co-row:hover { background: var(--hover); }
   .co-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 15px; border-radius:9px; font-size:12px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; transition:opacity .15s; border:none; }
   .co-btn:hover { opacity:.88; }
   .co-btn:disabled { opacity:.5; cursor:default; }
@@ -219,6 +221,81 @@ function Toast({ msg, onClose }) {
     )
   }
 
+function MasterSchedulesTab({ navigate, roundTerm, hasQueue }) {
+  const [loading, setLoading] = useState(true)
+  const [masters, setMasters] = useState([])
+
+  useEffect(() => {
+    listSaved().then(res => {
+      setMasters(Array.isArray(res) ? res : (res.schedules || []))
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="co-card" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {[...Array(3)].map((_, i) => <div key={i} className="co-skel" style={{ height: 48, borderRadius: 9, opacity: 1 - i * 0.15 }} />)}
+      </div>
+    )
+  }
+
+  const finalized = masters.filter(m => m.finalized)
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {hasQueue && (
+        <div data-tour="master-active-queue">
+          <div style={{ fontSize: 14, fontWeight: 800, color: G.ink, padding: '0 4px 12px', borderBottom: `2px solid ${G.border}`, marginBottom: 12 }}>
+            Active Queue Master Schedule
+          </div>
+          <div className="co-card co-row" style={{ cursor: 'pointer', margin: 0 }} onClick={() => navigate('/coordinator/schedules/master')}>
+            <div style={{ width: 42, height: 42, borderRadius: 10, background: 'var(--meadow-soft)', border: '1.5px solid var(--meadow-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: G.ink, marginBottom: 2 }}>{roundTerm ? `Combined Master (${roundTerm.semester} ${roundTerm.academicYear})` : 'Combined Master Schedule'}</div>
+              <div style={{ fontSize: 13, color: G.muted }}>Includes all programs currently approved in the queue</div>
+            </div>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: G.muted, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div data-tour="master-finalized">
+        <div style={{ fontSize: 14, fontWeight: 800, color: G.ink, padding: '0 4px 12px', borderBottom: `2px solid ${G.border}`, marginBottom: 12 }}>
+          Finalized Master Schedules
+        </div>
+        {finalized.length === 0 ? (
+           <div style={{ padding: '30px', textAlign: 'center', color: G.muted2, fontSize: 13.5, background: 'var(--surface)', borderRadius: 12, border: `1px dashed ${G.border}` }}>
+             No finalized master schedules yet.
+           </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {finalized.map(m => (
+              <div key={m.name} className="co-card co-row" style={{ cursor: 'pointer', margin: 0 }} onClick={() => navigate(`/coordinator/schedules/${encodeURIComponent(m.name)}?type=final`)}>
+                <div style={{ width: 42, height: 42, borderRadius: 10, background: 'var(--surface)', border: `1.5px solid ${G.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={G.ink} strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: G.ink }}>{m.name}</div>
+                  <div style={{ fontSize: 13, color: G.muted }}>
+                    {m.semester && m.academicYear ? `${m.semester} ${m.academicYear} • ` : ''}
+                    {m.eventCount || 0} sessions
+                  </div>
+                </div>
+                <button className="co-icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function CoordMySchedulePage() {
   const navigate = useNavigate()
 
@@ -226,6 +303,7 @@ export default function CoordMySchedulePage() {
   const [loading,        setLoading]        = useState(true)
   const [search,         setSearch]         = useState('')
   const [filter,         setFilter]         = useState('all')
+  const [mainTab,        setMainTab]        = useState('my') // 'my' | 'master'
   const [renameId,       setRenameId]       = useState(null)
   const [renameName,     setRenameName]     = useState('')
   const [toast,          setToast]          = useState('')
@@ -243,6 +321,7 @@ export default function CoordMySchedulePage() {
   // "view combined schedule" action on its row).
   const [roundTerm,         setRoundTerm]         = useState(null)
   const [hasApprovedInQueue, setHasApprovedInQueue] = useState(false)
+  const [activeQueueId,     setActiveQueueId]     = useState(null)
 
   const tourSteps = useMemo(() => {
     const steps = [
@@ -308,10 +387,49 @@ export default function CoordMySchedulePage() {
       });
     }
 
-    return steps;
-  }, [schedules.length]);
+    if (activeQueueId) {
+      steps.push({
+        target: '#tour-queue-audit-trail-my',
+        title: 'Queue Audit Trail',
+        content: 'Track all actions happening in the live queue in real-time right here.',
+        placement: 'top'
+      });
+    }
 
-  const { TourElement, startTour } = useTour('coordSchedules', tourSteps, !loading)
+    return steps;
+  }, [schedules.length, activeQueueId]);
+
+  const masterTabTourSteps = useMemo(() => {
+    const steps = [
+      {
+        target: '[data-tour="main-tabs"]',
+        title: 'My Schedules vs Master Schedules',
+        content: 'This page has two tabs. "My Schedules" shows all the draft/submitted/approved schedules you have generated. Switch to "Master Schedules" to see the combined timetable for the entire institution.',
+        disableBeacon: true,
+        placement: 'bottom',
+      },
+    ]
+    if (hasApprovedInQueue) {
+      steps.push({
+        target: '[data-tour="master-active-queue"]',
+        title: 'Active Queue Combined Master',
+        content: 'This card links to the live combined schedule of every program approved so far in the current queue — all programs on one timetable so you can see the full picture.',
+        placement: 'bottom',
+      })
+    }
+    steps.push({
+      target: '[data-tour="master-finalized"]',
+      title: 'Finalized Master Schedules',
+      content: hasApprovedInQueue
+        ? 'Below the active queue card you will find permanently finalized master schedules from past rounds. Click any entry to open its full read-only timetable.'
+        : 'Once a round is completed and finalized by the admin, the final merged timetable appears here. Click any entry to open its full schedule view. When a round is active, an "Active Queue Combined Master" card will also appear above this section.',
+      placement: 'bottom',
+    })
+    return steps
+  }, [hasApprovedInQueue])
+
+  const { TourElement, startTour } = useTour('coordSchedules', tourSteps, !loading, { isPrimary: mainTab === 'my' })
+  const { TourElement: MasterTourElement, startTour: startMasterTour } = useTour('coordSchedulesMaster', masterTabTourSteps, mainTab === 'master' && !loading, { isPrimary: mainTab === 'master' })
 
   
 
@@ -322,6 +440,7 @@ export default function CoordMySchedulePage() {
       if (t) {
         setRoundTerm({ academicYear: t.academicYear, semester: t.semester })
         setHasApprovedInQueue(t.queue?.some(p => p.status === 'approved') || false)
+        setActiveQueueId(t.queueId)
       }
     }).catch(() => {})
   }, [])
@@ -461,8 +580,25 @@ export default function CoordMySchedulePage() {
       <style>{CO_STYLE}</style>
       <Toast msg={toast} onClose={() => setToast('')} />
       {TourElement}
+      {MasterTourElement}
 
-      {/* ── Your schedules ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+        <div className="co-seg" style={{ padding: 4 }} data-tour="main-tabs">
+           <button className={`co-seg-btn ${mainTab === 'my' ? 'active' : ''}`} onClick={() => setMainTab('my')}>My Schedules</button>
+           <button className={`co-seg-btn ${mainTab === 'master' ? 'active' : ''}`} onClick={() => setMainTab('master')}>Master Schedules</button>
+        </div>
+        {mainTab === 'master' && (
+          <button onClick={startMasterTour} title="Take a tour of the Master Schedules tab"
+            style={{ background: 'none', border: `1px solid ${G.border}`, borderRadius: 8, padding: '5px 10px', fontSize: 12, color: G.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Tour
+          </button>
+        )}
+      </div>
+
+      {mainTab === 'master' ? (
+        <MasterSchedulesTab navigate={navigate} roundTerm={roundTerm} hasQueue={hasApprovedInQueue} />
+      ) : (
       <div id="tour-schedules-list" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
           {selectionMode ? (
@@ -547,7 +683,7 @@ export default function CoordMySchedulePage() {
                   Active Queue: {sections.find(s => s.key === activeTermKey).label}
                 </span>
               </div>
-              <div style={{ background: '#fff', padding: '16px' }}>
+              <div style={{ background: 'var(--surface)', padding: '16px' }}>
                 {(() => {
                   const sec = sections.find(s => s.key === activeTermKey)
                   return (
@@ -573,6 +709,12 @@ export default function CoordMySchedulePage() {
                   )
                 })()}
               </div>
+            </div>
+          )}
+
+          {activeQueueId && (
+            <div id="tour-queue-audit-trail-my">
+              <QueueAuditTrail queueId={activeQueueId} />
             </div>
           )}
 
@@ -611,6 +753,7 @@ export default function CoordMySchedulePage() {
         </div>
       )}
         </div>
+      )}
 
         {confirmModal && (() => {
           const isSubmit = confirmModal.action === 'submit'

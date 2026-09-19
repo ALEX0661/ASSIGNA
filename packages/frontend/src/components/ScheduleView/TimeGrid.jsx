@@ -1,8 +1,9 @@
-import { useMemo, useState, useRef, useEffect } from 'react'
+import React, { useMemo, useState, useRef, useEffect, memo } from 'react'
 import {
-  TIME_SLOTS, GRID_START, SLOT_MINUTES,
+  SLOT_MINUTES, buildTimeSlots,
   getEventId, parsePeriodRange, timeOverlaps, isOnlineRoom,
 } from './svHelpers'
+import { getTime, coordGetSettings } from '../../services/api'
 import { TV } from './svPrimitives'
 import SessionCard from './SessionCard'
 
@@ -51,8 +52,8 @@ function resolveDims(gridSize) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-function RoomColumn({
-  room, dayEvents, conflictMap, draggedEvent, hoveredCell, getDropConflict,
+const RoomColumnMemo = React.memo(function RoomColumn({
+  room, dayEvents, conflictMap, draggedEvent, hoveredSlot, getDropConflict,
   onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop, onCardClick,
   gridSize, slotH, locked,
   conflictingDragIds,
@@ -62,6 +63,8 @@ function RoomColumn({
   preGlowCells,   // { conflict: Set<cellKey>, merge: Set<cellKey> }
   availabilityMap,     // Map<room, {start,end}[]> — TRUE free ranges, from unfiltered allEvents
   highlightAvailable,  // bool — "Available Rooms" toggle is on
+  timeSlots,
+  gridStart,
 }) {
   const compact    = gridSize === 'compact'
   const roomEvents = dayEvents.filter(e => e.room === room)
@@ -76,7 +79,7 @@ function RoomColumn({
     const ranges = availabilityMap?.get(room)
     if (!ranges || ranges.length === 0) return new Set()
     const set = new Set()
-    TIME_SLOTS.forEach(slot => {
+    timeSlots.forEach(slot => {
       const slotEnd = slot.startMinutes + SLOT_MINUTES
       if (ranges.some(r => slot.startMinutes >= r.start && slotEnd <= r.end)) {
         set.add(slot.startMinutes)
@@ -136,9 +139,9 @@ function RoomColumn({
       onDragLeave={onDragLeave}
     >
       {/* Drop-target cells */}
-      {TIME_SLOTS.map(slot => {
+      {timeSlots.map(slot => {
         const cellKey  = `${room}|${slot.startMinutes}`
-        const isHov    = hoveredCell === cellKey
+        const isHov    = hoveredSlot === slot.startMinutes
         const dropConf = isHov ? getDropConflict(room, slot) : null
         const isHour   = slot.startMinutes % 60 === 0
 
@@ -170,7 +173,7 @@ function RoomColumn({
             className={isPreConflict ? 'tg-cell-conflict' : isPreMerge ? 'tg-cell-merge' : isAvailableSlot ? 'tg-cell-available' : ''}
             style={{
               position: 'absolute',
-              top: ((slot.startMinutes - GRID_START) / SLOT_MINUTES) * slotH,
+              top: ((slot.startMinutes - gridStart) / SLOT_MINUTES) * slotH,
               left: 0, right: 0, height: slotH,
               borderBottom: isHour
                 ? `1px solid ${TV.border}`
@@ -255,7 +258,7 @@ function RoomColumn({
             <SessionCard
               event={event} conflictInfo={conflictInfo}
               isDragging={isDragging} isDimmed={isDimmed}
-              compact={compact} slotH={slotH}
+              compact={compact} slotH={slotH} gridStart={gridStart}
               onClick={onCardClick}
               onDragStart={e => onDragStart(e, event)} onDragEnd={onDragEnd}
               locked={locked || event._isReadonly}
@@ -273,7 +276,7 @@ function RoomColumn({
       })}
     </div>
   )
-}
+})
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function TimeGrid({
@@ -293,7 +296,31 @@ export default function TimeGrid({
   allEvents = [],     // Unfiltered events to compute proper pre-glows when filters are active
   availabilityMap = null,     // Map<room, {start,end}[]> — TRUE free ranges per room, from unfiltered allEvents
   highlightAvailable = false, // "Available Rooms" toggle — glow the genuinely free slots green
+  propStartHour, // Optional injected bounds
+  propEndHour,
+  activeDay, // The day this grid is rendering for
 }) {
+  const { finalStartHour, finalEndHour } = useMemo(() => {
+    let minH = propStartHour ?? 7
+    let maxH = propEndHour ?? 21
+    
+    // Ensure we don't chop off existing events if they fall outside the settings bounds
+    const scanEvents = allEvents && allEvents.length > 0 ? allEvents : dayEvents
+    for (const ev of scanEvents || []) {
+      const range = parsePeriodRange(ev.period)
+      if (range) {
+        const evStartH = Math.floor(range.start / 60)
+        const evEndH = Math.ceil(range.end / 60)
+        if (evStartH < minH) minH = evStartH
+        if (evEndH > maxH) maxH = evEndH
+      }
+    }
+    return { finalStartHour: minH, finalEndHour: maxH }
+  }, [propStartHour, propEndHour, allEvents, dayEvents])
+
+  const timeSlots = useMemo(() => buildTimeSlots(finalStartHour, finalEndHour), [finalStartHour, finalEndHour])
+  const gridStart = finalStartHour * 60
+
   // Resolve gridSize from legacy compact prop when needed
   const resolvedSize = compact ? 'compact' : gridSize
   const { slotH, roomMinW } = resolveDims(resolvedSize)
@@ -351,8 +378,11 @@ export default function TimeGrid({
     }
   }, [])
 
-  const totalH   = TIME_SLOTS.length * slotH
+  const totalH   = timeSlots.length * slotH
   const gridMinW = TIME_COL_W + rooms.length * roomMinW
+
+  const hoveredRoom = hoveredCell ? hoveredCell.split('|')[0] : null
+  const hoveredSlot = hoveredCell ? parseInt(hoveredCell.split('|')[1]) : null
 
   // ── Passive section conflict ranges ─────────────────────────────────────────
   const sectionConflictRanges = useMemo(() => {
@@ -360,7 +390,7 @@ export default function TimeGrid({
     const dragId = getEventId(draggedEvent)
     return allEvents // 👈 Use unfiltered allEvents
       .filter(ev =>
-        ev.day === draggedEvent.day && // Ensure same day
+        ev.day === activeDay && // Ensure same day
         getEventId(ev) !== dragId &&
         ev.program === draggedEvent.program &&
         String(ev.year) === String(draggedEvent.year) &&
@@ -368,7 +398,7 @@ export default function TimeGrid({
       )
       .map(ev => parsePeriodRange(ev.period))
       .filter(Boolean)
-  }, [draggedEvent, allEvents])
+  }, [draggedEvent, allEvents, activeDay])
 
   // ── Passive faculty conflict ranges ─────────────────────────────────────────
   const facultyConflictRanges = useMemo(() => {
@@ -376,13 +406,13 @@ export default function TimeGrid({
     const dragId = getEventId(draggedEvent)
     return allEvents // 👈 Use unfiltered allEvents
       .filter(ev =>
-        ev.day === draggedEvent.day && // Ensure same day
+        ev.day === activeDay && // Ensure same day
         getEventId(ev) !== dragId &&
         ev.faculty === draggedEvent.faculty
       )
       .map(ev => parsePeriodRange(ev.period))
       .filter(Boolean)
-  }, [draggedEvent, allEvents])
+  }, [draggedEvent, allEvents, activeDay])
 
   // fullscreen = fills the fixed overlay (top bar 56px)
   const gridH = fullscreen ? 'calc(100vh - 56px)' : GRID_HEIGHT
@@ -400,7 +430,7 @@ export default function TimeGrid({
     if (!dragRange) return empty
 
     // 👈 Get all events on this day, completely ignoring active filters
-    const unfilteredDayEvents = allEvents.filter(ev => ev.day === draggedEvent.day)
+    const unfilteredDayEvents = allEvents.filter(ev => ev.day === activeDay)
 
     const cellConf  = new Set()
     const cellMerge = new Set()
@@ -408,7 +438,7 @@ export default function TimeGrid({
     const slotMerge = new Set()
 
     rooms.forEach(room => {
-      TIME_SLOTS.forEach(slot => {
+      timeSlots.forEach(slot => {
         const cellKey  = `${room}|${slot.startMinutes}`
         const proposed = { start: slot.startMinutes, end: slot.startMinutes + dragRange.duration }
 
@@ -450,7 +480,7 @@ export default function TimeGrid({
       preGlowCells: { conflict: cellConf, merge: cellMerge },
       conflictSlots: { conflict: slotConf, merge: slotMerge },
     }
-  }, [draggedEvent, rooms, allEvents, ambientMergeIds])
+  }, [draggedEvent, rooms, allEvents, ambientMergeIds, activeDay])
 
   return (
     <div ref={scrollRef} style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: gridH, paddingBottom: 12 }}>
@@ -504,9 +534,9 @@ export default function TimeGrid({
             position: 'sticky', left: 0, background: 'var(--bg)', zIndex: 20,
             boxShadow: '2px 0 6px rgba(0,0,0,0.03)',
           }}>
-            {TIME_SLOTS.map(slot => {
+            {timeSlots.map(slot => {
               const isHour = slot.startMinutes % 60 === 0
-              const top    = ((slot.startMinutes - GRID_START) / SLOT_MINUTES) * slotH
+              const top    = ((slot.startMinutes - gridStart) / SLOT_MINUTES) * slotH
               let displayLabel = slot.label
               if (!isHour) {
                 const h    = Math.floor(slot.startMinutes / 60)
@@ -552,15 +582,14 @@ export default function TimeGrid({
               position: 'relative',
               overflow: 'visible',
             }}>
-              <RoomColumn
+              <RoomColumnMemo
                 room={room} dayEvents={dayEvents} conflictMap={conflictMap}
-                draggedEvent={draggedEvent} hoveredCell={hoveredCell}
+                draggedEvent={draggedEvent} hoveredSlot={hoveredRoom === room ? hoveredSlot : null}
                 getDropConflict={getDropConflict}
                 onDragStart={onDragStart} onDragEnd={onDragEnd}
                 onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
                 onCardClick={onCardClick}
-                locked={locked}
-                gridSize={resolvedSize} slotH={slotH}
+                gridSize={resolvedSize} slotH={slotH} locked={locked}
                 conflictingDragIds={conflictingDragIds}
                 ambientConflictIds={ambientConflictIds}
                 ambientMergeIds={ambientMergeIds}
@@ -568,13 +597,15 @@ export default function TimeGrid({
                 preGlowCells={preGlowCells}
                 availabilityMap={availabilityMap}
                 highlightAvailable={highlightAvailable}
+                timeSlots={timeSlots}
+                gridStart={gridStart}
               />
             </div>
           ))}
 
           {/* ── Passive section conflict bands ── */}
           {draggedEvent && sectionConflictRanges.map((range, i) => {
-            const bandTop = ((range.start - GRID_START) / SLOT_MINUTES) * slotH
+            const bandTop = ((range.start - gridStart) / SLOT_MINUTES) * slotH
             const bandH   = ((range.end - range.start) / SLOT_MINUTES) * slotH
             return (
               <div key={`sc-${i}`} style={{
@@ -591,7 +622,7 @@ export default function TimeGrid({
 
           {/* ── Passive faculty conflict bands ── */}
           {draggedEvent && facultyConflictRanges.map((range, i) => {
-            const bandTop = ((range.start - GRID_START) / SLOT_MINUTES) * slotH
+            const bandTop = ((range.start - gridStart) / SLOT_MINUTES) * slotH
             const bandH   = ((range.end - range.start) / SLOT_MINUTES) * slotH
             return (
               <div key={`fc-${i}`} style={{
@@ -608,7 +639,7 @@ export default function TimeGrid({
 
           {/* ── Active drag conflict bands ── */}
           {dragConflictBands.map((band, i) => {
-            const bandTop = ((band.start - GRID_START) / SLOT_MINUTES) * slotH
+            const bandTop = ((band.start - gridStart) / SLOT_MINUTES) * slotH
             const bandH   = ((band.end - band.start) / SLOT_MINUTES) * slotH
             const both    = band.section && band.faculty
             const bg      = both         ? 'rgba(249,115,22,.10)'

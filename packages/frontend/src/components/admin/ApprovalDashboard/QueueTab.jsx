@@ -3,11 +3,8 @@ import { createPortal } from 'react-dom'
 import G from './tokens'
 import { EmptyState, ICONS } from './primitives'
 import AdminQueueRail, { queueHeadCopy } from './AdminQueueRail'
-import DraggableOrderList from './DraggableOrderList'
 
-function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, onFinish, onDelete, onReorder, showToast }) {
-  const [dragIndex, setDragIndex] = useState(null)
-  const [overIndex, setOverIndex] = useState(null)
+function QueueTab({ queues, activeQueueId, setActiveQueueId, onAdvance, onFinish, onDelete, showToast }) {
   const [busy, setBusy] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [confirmFinish, setConfirmFinish] = useState(null)
@@ -25,15 +22,6 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, 
   async function runBusy(fn) {
     setBusy(true)
     try { await fn() } finally { setBusy(false) }
-  }
-
-  function handleDrop(dropAt) {
-    if (dragIndex === null || dragIndex === dropAt || !activeId) { setDragIndex(null); setOverIndex(null); return }
-    const next = [...order]
-    const [moved] = next.splice(dragIndex, 1)
-    next.splice(dropAt, 0, moved)
-    setDragIndex(null); setOverIndex(null)
-    onReorder(activeId, next)
   }
 
   if (queues.length === 0) {
@@ -62,14 +50,13 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, 
           <div className="aq-head" style={{ borderRadius: 0, flexWrap: 'wrap' }}>
             <div style={{ minWidth: 0 }}>
               <div className="aq-head-title">{head.title}</div>
-              <div className="aq-head-sub">{head.subtitle || `${active.semester} · ${active.academicYear}`}</div>
+              <div className="aq-head-sub">
+                {active.semester} {active.academicYear}{head.subtitle ? ` · ${head.subtitle}` : ''}
+              </div>
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               {!isComplete && currentProgram && (
                 <>
-                  <button onClick={() => runBusy(() => onSkip(activeId, currentProgram))} disabled={busy} className="btn-outline" style={{ background: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.4)', color: '#fff' }}>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg> Skip
-                  </button>
                   <button onClick={() => runBusy(() => onAdvance(activeId))} disabled={busy} className="btn-blue">
                     {busy
                       ? <><svg className="ap-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg> Advancing…</>
@@ -91,48 +78,25 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, 
           <div style={{ padding: '22px 20px' }}>
             <AdminQueueRail programs={order} statuses={statuses} turnIndex={effectiveTurnIndex} />
           </div>
-
-          <div style={{ padding: '4px 20px 20px' }}>
-            <label style={{ fontSize: 11.5, fontWeight: 600, color: G.muted, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span>Scheduling Order</span>
-              <span style={{ fontWeight: 500, color: 'var(--meadow-text-hover)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg>
-                drag to reorder
-              </span>
-            </label>
-            <div style={{ background: G.bg, border: `1px solid ${G.border}`, borderRadius: 12, padding: 8 }}>
-              <DraggableOrderList
-                order={order}
-                dragIndex={dragIndex}
-                overIndex={overIndex}
-                onDragStart={setDragIndex}
-                onDragEnter={setOverIndex}
-                onDrop={handleDrop}
-                onDragEnd={() => { setDragIndex(null); setOverIndex(null) }}
-              />
-            </div>
-          </div>
         </div>
       )}
 
       {confirmDelete && createPortal(
-        <div className="ap-modal-overlay" style={{ zIndex: 3000 }} onClick={() => !busy && setConfirmDelete(null)}>
-          <div className="ap-modal" style={{ width: 420 }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', gap: 14, marginBottom: 20 }}>
-              <div style={{ width: 46, height: 46, borderRadius: '50%', background: G.redSoft, color: G.red, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-              </div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 16, color: 'var(--ink)' }}>Delete Queue?</h3>
-                <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>
-                  This removes the {confirmDelete.semester} {confirmDelete.academicYear} queue and its turn order. This cannot be undone.
-                </p>
-              </div>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 11000, background: 'rgba(10,30,18,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => !busy && setConfirmDelete(null)}>
+          <div style={{ background: 'var(--surface)', borderRadius: 18, padding: '28px 28px 24px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(10,30,18,0.22)', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+            <div style={{ width: 52, height: 52, borderRadius: '50%', background: G.redSoft, margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={G.red} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
             </div>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setConfirmDelete(null)} className="btn-outline" disabled={busy}>Cancel</button>
-              <button onClick={() => runBusy(async () => { await onDelete(confirmDelete.id || confirmDelete.queueId); setConfirmDelete(null) })} disabled={busy} className="btn-danger" style={{ background: G.red, color: '#fff', border: 'none' }}>
-                {busy ? 'Deleting…' : 'Delete Queue'}
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 8, fontFamily: 'Inter,sans-serif' }}>Delete Queue?</div>
+            <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 24, lineHeight: 1.5, fontFamily: 'Inter,sans-serif' }}>
+              This removes the {confirmDelete.semester} {confirmDelete.academicYear} queue and its turn order. This cannot be undone.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setConfirmDelete(null)} disabled={busy} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid var(--border)`, background: 'var(--surface)', fontSize: 13, fontWeight: 600, color: 'var(--muted)', cursor: busy ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
+                Cancel
+              </button>
+              <button onClick={() => runBusy(async () => { await onDelete(confirmDelete.id || confirmDelete.queueId); setConfirmDelete(null) })} disabled={busy} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: G.red, fontSize: 13, fontWeight: 700, color: '#fff', cursor: busy ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: busy ? 0.7 : 1 }}>
+                {busy ? 'Deleting...' : 'Delete Queue'}
               </button>
             </div>
           </div>
@@ -141,7 +105,7 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onSkip, onAdvance, 
       )}
       {confirmFinish && createPortal(
         <div className="ap-modal-overlay" style={{ zIndex: 3000 }} onClick={() => !busy && setConfirmFinish(null)}>
-          <div className="ap-modal" style={{ width: 420 }} onClick={e => e.stopPropagation()}>
+          <div className="ap-modal" style={{ width: 420, padding: '24px 28px' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', gap: 14, marginBottom: 20 }}>
               <div style={{ width: 46, height: 46, borderRadius: '50%', background: G.redSoft, color: G.red, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="5" width="14" height="14" rx="1.5"/></svg>

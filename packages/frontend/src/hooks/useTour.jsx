@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Joyride, STATUS, EVENTS, ACTIONS } from 'react-joyride'
 import { useAuth } from './useAuth'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { db } from '../services/firebase'
 
 // Module-level (shared across every useTour instance on the page) lock so
 // at most one tour can ever be running at a time — no matter whether it
@@ -25,12 +27,30 @@ export function useTour(tourId, steps, isReady = true, { isPrimary = true } = {}
     return true
   }, [tourId])
 
-  const stop = useCallback((markSeen) => {
+  const stop = useCallback(async (markSeen, markGlobalSkip = false) => {
     if (activeTourId === tourId) activeTourId = null
     setRun(false)
     setStepIndex(0)
-    if (markSeen) localStorage.setItem(storageKey, 'true')
-  }, [tourId, storageKey])
+    if (markSeen) {
+      localStorage.setItem(storageKey, 'true')
+      const updates = { toursSeen: { [tourId]: true } }
+      
+      if (markGlobalSkip) {
+        const globalKey = `tour_global_${user?.uid || 'guest'}`
+        localStorage.setItem(globalKey, 'true')
+        updates.hasSeenGlobalTours = true
+      }
+      
+      if (user?.uid) {
+        try {
+          const userRef = doc(db, 'users', user.uid)
+          await setDoc(userRef, updates, { merge: true })
+        } catch(e) {
+          console.warn("Failed to save tour status to DB", e)
+        }
+      }
+    }
+  }, [tourId, storageKey, user])
 
   useEffect(() => {
     return () => {
@@ -42,13 +62,41 @@ export function useTour(tourId, steps, isReady = true, { isPrimary = true } = {}
 
   // Auto-start if not seen
   useEffect(() => {
-    if (!isReady) return
-    const hasSeen = localStorage.getItem(storageKey)
-    if (!hasSeen) {
-      const t = setTimeout(() => { tryStart() }, 1000)
-      return () => clearTimeout(t)
+    if (!isReady || !user?.uid) return
+    let cancelled = false;
+
+    const checkTour = async () => {
+      const globalKey = `tour_global_${user.uid}`
+      // Fast path: if local storage says global true OR specific tour true, trust it immediately
+      if (localStorage.getItem(globalKey) === 'true' || localStorage.getItem(storageKey) === 'true') {
+        return
+      }
+
+      // Slow path: check DB (handles cross-device or cleared cache)
+      try {
+        const userRef = doc(db, 'users', user.uid)
+        const docSnap = await getDoc(userRef)
+        if (docSnap.exists()) {
+          const data = docSnap.data()
+          if (data?.hasSeenGlobalTours || data?.toursSeen?.[tourId]) {
+            // Already seen! Cache it locally and abort start.
+            localStorage.setItem(globalKey, 'true')
+            localStorage.setItem(storageKey, 'true')
+            return
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to fetch tour status from DB', e)
+      }
+
+      if (!cancelled) {
+        setTimeout(() => { tryStart() }, 1000)
+      }
     }
-  }, [tourId, isReady, tryStart, storageKey])
+
+    checkTour()
+    return () => { cancelled = true }
+  }, [tourId, isReady, tryStart, storageKey, user])
 
   // Listen for the shared header trigger. The event can target a specific
   // tour via detail.tourId (e.g. { detail: { tourId: 'coordSchedulerYourTurn' } }).
@@ -72,18 +120,18 @@ export function useTour(tourId, steps, isReady = true, { isPrimary = true } = {}
     if (type === EVENTS.STEP_AFTER || type === EVENTS.TARGET_NOT_FOUND) {
       const nextIndex = index + (action === ACTIONS.PREV ? -1 : 1)
       if (nextIndex >= steps.length || nextIndex < 0) {
-        stop(true)
+        stop(true, false) // Natural finish
       } else {
         setStepIndex(nextIndex)
       }
     } else if (action === ACTIONS.CLOSE) {
-      stop(false)
+      stop(false, false)
     } else if (action === ACTIONS.SKIP) {
-      stop(true)
+      stop(true, true) // Explicit skip
     } else {
       const finishedStatuses = [STATUS.FINISHED, STATUS.SKIPPED]
       if (finishedStatuses.includes(status)) {
-        stop(true)
+        stop(true, status === STATUS.SKIPPED)
       }
     }
   }, [steps.length, stop])

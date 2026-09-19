@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  listQueues, createQueue, skipProgram, advanceQueue, finishQueue, deleteQueue, reorderQueue,
+  listQueues, createQueue, advanceQueue, finishQueue, deleteQueue,
   getSubmittedSchedules, getSubmittedSchedule, approveSchedule, rejectSchedule, unapproveSchedule,
   getMasterSchedule, finalizeMasterSchedule, unfinalizeMasterSchedule, getCourses, adminEditSchedule, adminEditMasterSchedule
 } from '../../services/api'
 import ScheduleViewPage from './ScheduleViewPage'
 import { ProgramLegend } from '../../components/ScheduleView/svPrimitives'
 import { useTour } from '../../hooks/useTour.jsx'
-
+import QueueAuditTrail from '../../components/QueueAuditTrail'
 import G from '../../components/admin/ApprovalDashboard/tokens'
 import { DEFAULT_PROGRAMS, POLL_MS } from '../../components/admin/ApprovalDashboard/constants'
 import { useToast } from '../../components/admin/ApprovalDashboard/hooks'
@@ -172,7 +172,17 @@ export default function ApprovalDashboardPage() {
   const programs = useMemo(() => {
     const fromCourses = new Set(courses.map(c => c.program).filter(Boolean))
     if (fromCourses.size === 0) return DEFAULT_PROGRAMS
-    return [...fromCourses].sort()
+    
+    // Sort such that DEFAULT_PROGRAMS are exactly in that order first, then anything else alphabetically
+    const orderMap = {}
+    DEFAULT_PROGRAMS.forEach((p, i) => orderMap[p] = i)
+    
+    return [...fromCourses].sort((a, b) => {
+      const idxA = orderMap[a] ?? 999
+      const idxB = orderMap[b] ?? 999
+      if (idxA !== idxB) return idxA - idxB
+      return a.localeCompare(b)
+    })
   }, [courses])
 
   const pendingList = useMemo(
@@ -182,12 +192,11 @@ export default function ApprovalDashboardPage() {
 
   /* ── Queue handlers ── */
   async function handleCreate(data) {
-    try { await createQueue(data); toast('Queue created!', 'success'); loadAll(true) }
-    catch (e) { toast(e?.response?.data?.detail || 'Failed to create queue', 'error') }
-  }
-  async function handleSkip(qId, prog) {
-    try { await skipProgram(qId, prog); toast(`${prog} skipped`, 'info'); loadAll(true) }
-    catch (e) { toast(e?.response?.data?.detail || 'Skip failed', 'error') }
+    const newQueue = await createQueue(data)
+    toast('Queue created!', 'success')
+    loadAll(true)
+    setTab('queue')
+    setActiveQueueId(newQueue.queueId)
   }
   async function handleAdvance(qId) {
     try { await advanceQueue(qId); toast('Queue advanced', 'success'); loadAll(true) }
@@ -201,15 +210,11 @@ export default function ApprovalDashboardPage() {
     try { await deleteQueue(qId); toast('Queue deleted', 'info'); setActiveQueueId(null); loadAll() }
     catch (e) { toast(e?.response?.data?.detail || 'Delete failed', 'error') }
   }
-  async function handleReorder(qId, order) {
-    try { await reorderQueue(qId, { queue: order }); toast('Scheduling order updated', 'success'); loadAll(true) }
-    catch (e) { toast(e?.response?.data?.detail || 'Reorder failed', 'error') }
-  }
 
   /* ── Approval handlers ── */
-  async function handleUnapprove(id) {
+  async function handleUnapprove(id, feedback) {
     try {
-      await unapproveSchedule(id)
+      await unapproveSchedule(id, feedback)
       toast('Schedule unapproved and returned to draft status.', 'success')
       setReviewId(prev => prev === id ? null : prev)
       loadAll(true)
@@ -222,9 +227,7 @@ export default function ApprovalDashboardPage() {
     try {
       await approveSchedule(id)
       toast('Schedule approved and merged into master!', 'success')
-      // Inbox flow: jump to the next pending item instead of just closing.
-      const remaining = pendingList.filter(s => (s.id || s.scheduleId) !== id)
-      setReviewId(remaining.length ? (remaining[0].id || remaining[0].scheduleId) : null)
+      setReviewId(null)
       loadAll(true)
       refreshMaster(activeQueueId)
     } catch (e) { toast(e?.response?.data?.detail || 'Approval failed', 'error') }
@@ -245,7 +248,7 @@ export default function ApprovalDashboardPage() {
     try {
       await rejectSchedule(id, { feedback })
       toast('Feedback sent — schedule returned to draft', 'info')
-      setReviewId(prev => prev === id ? null : prev)
+      setReviewId(null)
       loadAll(true)
       // Rejection doesn't touch the master schedule, so no refreshMaster() call.
     } catch (e) { toast(e?.response?.data?.detail || 'Reject failed', 'error') }
@@ -360,23 +363,24 @@ export default function ApprovalDashboardPage() {
               activeTermKey={
                 (() => {
                   const active = queues.find(q => (q.id || q.queueId) === activeQueueId)
-                  return active ? `${active.academicYear || '—'}||${active.semester || '—'}` : null
+                  return active ? `${active.academicYear || '—'}||${active.semester || '—'}||${active.id || active.queueId}` : null
                 })()
               }
             />
           )}
           {tab === 'queue' && (
-            <QueueTab
-              queues={queues}
-              activeQueueId={activeQueueId}
-              setActiveQueueId={setActiveQueueId}
-              onSkip={handleSkip}
-              onAdvance={handleAdvance}
-              onFinish={handleFinish}
-              onDelete={handleDeleteQueue}
-              onReorder={handleReorder}
-              showToast={toast}
-            />
+            <>
+              <QueueTab
+                queues={queues}
+                activeQueueId={activeQueueId}
+                setActiveQueueId={setActiveQueueId}
+                onAdvance={handleAdvance}
+                onFinish={handleFinish}
+                onDelete={handleDeleteQueue}
+                showToast={toast}
+              />
+              {activeQueueId && <QueueAuditTrail queueId={activeQueueId} />}
+            </>
           )}
           {tab === 'master' && (
             <MasterTab queueId={activeQueueId} onFinalize={handleFinalize} onUnpublish={handleUnpublish} programs={programs} onMasterSaved={() => refreshMaster(activeQueueId)} />
@@ -407,6 +411,7 @@ export default function ApprovalDashboardPage() {
               embeddedId={reviewId} 
               onClose={() => setReviewId(null)}
               masterEvents={master?.schedule || []}
+              masterTerm={master ? { academicYear: master.academicYear, semester: master.semester } : null}
               masterProgramEvents={masterProgramEvents}
               onSaveOverride={async (events) => {
                 await adminEditSchedule(reviewId, { schedule: events })
@@ -415,22 +420,24 @@ export default function ApprovalDashboardPage() {
               adminActions={
                 <>
                   {isPending && (
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <button onClick={() => handleApprove(reviewId)} className="btn-primary" style={{ padding: '5px 12px', fontSize: 11.5, background: 'var(--meadow)', color: 'var(--meadow-text)' }}>
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <button onClick={() => handleApprove(reviewId)} disabled={approvingIds.has(reviewId)} style={{ padding: '6px 14px', fontSize: 11.5, background: 'var(--meadow)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                        {approvingIds.has(reviewId) ? <svg className="ap-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg> : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
                         Approve
                       </button>
-                      <button onClick={() => setRejectTarget(reviewSchedule)} className="btn-danger" style={{ padding: '5px 12px', fontSize: 11.5 }}>
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      <button onClick={() => setRejectTarget(reviewSchedule)} disabled={approvingIds.has(reviewId)} style={{ padding: '6px 14px', fontSize: 11.5, background: 'var(--red)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                         Reject...
                       </button>
                     </div>
                   )}
                   {isApproved && (
-                    <button onClick={() => setUnapproveTarget(reviewSchedule)} className="btn-outline" style={{ padding: '5px 12px', fontSize: 11.5, borderColor: '#F59E0B', color: '#F59E0B' }}>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                      Unapprove
-                    </button>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <button onClick={() => setUnapproveTarget(reviewSchedule)} style={{ padding: '6px 14px', fontSize: 11.5, border: '1.5px solid #F59E0B', background: 'rgba(245, 158, 11, 0.1)', color: '#F59E0B', borderRadius: 8, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        Unapprove
+                      </button>
+                    </div>
                   )}
                 </>
               }
@@ -447,26 +454,38 @@ export default function ApprovalDashboardPage() {
       )}
 
       {unapproveTarget && createPortal(
-        <div className="ap-modal-overlay" style={{ zIndex: 10000 }} onClick={() => setUnapproveTarget(null)}>
-          <div className="ap-modal" style={{ width: 440 }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', gap: 14, marginBottom: 20 }}>
-              <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'rgba(245, 158, 11, 0.1)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              </div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 16, color: 'var(--ink)' }}>Unapprove Schedule</h3>
-                <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>
-                  This will remove the schedule from the master list and return it to a "Submitted" state.
-                </p>
-              </div>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 11000, background: 'rgba(10,30,18,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => setUnapproveTarget(null)}>
+          <div style={{ background: 'var(--surface)', borderRadius: 18, padding: '28px 28px 24px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(10,30,18,0.22)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(245, 158, 11, 0.1)', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             </div>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setUnapproveTarget(null)} className="btn-outline">Cancel</button>
-              <button onClick={async () => {
-                await handleUnapprove(unapproveTarget.id || unapproveTarget.scheduleId)
-                setUnapproveTarget(null)
-              }} className="btn-primary" style={{ background: '#F59E0B', color: '#fff', border: 'none' }}>
-                Unapprove
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 8, fontFamily: 'Inter,sans-serif', textAlign: 'center' }}>Unapprove Schedule?</div>
+            <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.5, fontFamily: 'Inter,sans-serif', textAlign: 'center' }}>
+              This will remove the schedule from the master list and return it to a "Draft" state so the coordinator can edit it.
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--ink)', marginBottom: 6 }}>Reason / Note for Coordinator:</label>
+              <textarea 
+                id="unapprove-feedback"
+                placeholder="e.g. Please fix the overlap in Room 402 before I can finalize this."
+                style={{ width: '100%', minHeight: 80, padding: 12, borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setUnapproveTarget(null)} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid var(--border)`, background: 'var(--surface)', fontSize: 13, fontWeight: 600, color: 'var(--muted)', cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>
+                Cancel
+              </button>
+              <button disabled={approvingIds.has('unapprove-busy')} onClick={async () => {
+                setApprovingIds(s => new Set(s).add('unapprove-busy'))
+                try {
+                  const fb = document.getElementById('unapprove-feedback')?.value || 'Schedule unapproved by admin.'
+                  await handleUnapprove(unapproveTarget.id || unapproveTarget.scheduleId, fb)
+                  setUnapproveTarget(null)
+                } finally {
+                  setApprovingIds(s => { const n = new Set(s); n.delete('unapprove-busy'); return n })
+                }
+              }} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: '#F59E0B', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer', fontFamily: 'Inter,sans-serif', opacity: approvingIds.has('unapprove-busy') ? 0.6 : 1 }}>
+                {approvingIds.has('unapprove-busy') ? 'Unapproving...' : 'Unapprove'}
               </button>
             </div>
           </div>

@@ -8,6 +8,8 @@ from google.cloud import firestore
 from app.core.auth import admin_only
 from app.core.firebase import db
 from app.core.globals import schedule_dict
+from app.core.event_cache import event_cache
+from app.core.audit import log_audit_event
 
 router = APIRouter()
 
@@ -155,6 +157,7 @@ def _replace_program_events(events_ref, program_code: str, events: list):
     for ev in events:
         ev["programCode"] = program_code
         ev_id = f"{program_code}_{ev.get('schedule_id') or uuid.uuid4()}"
+        ev["schedule_id"] = ev_id
         batch.set(events_ref.document(ev_id), ev)
         count += 1
         if count >= 450:
@@ -182,8 +185,21 @@ def _delete_subcollection(coll_ref):
         batch.commit()
 
 
-def _get_master_events(master_ref):
-    return [d.to_dict() for d in master_ref.collection("events").stream()]
+def _get_master_events(master_ref, cache_key: str = None):
+    if cache_key:
+        cached = event_cache.get(cache_key)
+        if cached is not None:
+            return cached
+            
+    events = []
+    for doc in master_ref.collection("events").stream():
+        ev = doc.to_dict()
+        ev["schedule_id"] = doc.id
+        events.append(ev)
+        
+    if cache_key:
+        event_cache.put(cache_key, events)
+    return events
 
 
 @router.get("/submitted")
@@ -216,7 +232,8 @@ def get_submitted_schedules(user: dict = Depends(admin_only)):
             "status": data.get("status"),
             "submittedAt": data.get("submittedAt"),
             "approvedAt": data.get("approvedAt"),
-            "eventCount": len(data.get("schedule", []))
+            "eventCount": len(data.get("schedule", [])),
+            "queueId": data.get("queueId")
         })
     return {"submitted": results}
 
@@ -244,7 +261,15 @@ def approve_schedule(schedule_id: str, user: dict = Depends(admin_only)):
 
     queue_id = schedule_data.get("queueId")
     if not queue_id:
-        raise HTTPException(status_code=400, detail="Schedule has no queueId")
+        ay = schedule_data.get("academicYear")
+        sem = schedule_data.get("semester")
+        q_docs = db.collection("coordinator_queues").where("academicYear", "==", ay).where("semester", "==", sem).get()
+        if not q_docs:
+            raise HTTPException(status_code=400, detail="Schedule has no queueId and no matching queue found")
+        queue_id = q_docs[0].id
+        db.collection("coordinator_schedules").document(schedule_id).update({
+            "queueId": queue_id
+        })
 
     queue_doc = db.collection("coordinator_queues").document(queue_id).get()
     if not queue_doc.exists:
@@ -298,7 +323,9 @@ def approve_schedule(schedule_id: str, user: dict = Depends(admin_only)):
         "approvedPrograms": approved_progs,
         "updatedAt": now
     })
+    event_cache.invalidate(f"master:{master_id}")
 
+    log_audit_event(queue_id, "SCHEDULE_APPROVED", user, target_program=program_code, details=f"Approved {program_code}'s schedule")
     return {"message": "Schedule approved successfully", "queue_updates": updates}
 
 @router.post("/schedule/{schedule_id}/reject")
@@ -325,8 +352,12 @@ def reject_schedule(schedule_id: str, req: RejectRequest, user: dict = Depends(a
         if queue_doc.exists and queue_doc.to_dict().get("programStatus", {}).get(program_code) == "submitted":
             queue_ref.update({
                 f"programStatus.{program_code}": "active",
+                "status": "active",
                 "updatedAt": datetime.utcnow().isoformat()
             })
+
+    if queue_id and program_code:
+        log_audit_event(queue_id, "SCHEDULE_REJECTED", user, target_program=program_code, details=f"Rejected {program_code}'s schedule: {req.feedback}")
 
     return {"message": "Schedule rejected"}
 
@@ -337,11 +368,11 @@ def get_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
         return {}
     master_doc = docs[0]
     data = master_doc.to_dict()
-    data["schedule"] = _get_master_events(master_doc.reference)
+    data["schedule"] = _get_master_events(master_doc.reference, cache_key=f"master:{master_doc.id}")
     return data
 
 @router.post("/schedule/{schedule_id}/unapprove")
-def unapprove_schedule(schedule_id: str, user: dict = Depends(admin_only)):
+def unapprove_schedule(schedule_id: str, req: RejectRequest, user: dict = Depends(admin_only)):
     doc = db.collection("coordinator_schedules").document(schedule_id).get()
     if not doc.exists:
         raise HTTPException(status_code=404, detail="Schedule not found")
@@ -352,9 +383,11 @@ def unapprove_schedule(schedule_id: str, user: dict = Depends(admin_only)):
     queue_id = data.get("queueId")
     
     doc.reference.update({
-        "status": "submitted",
+        "status": "draft",
         "approvedAt": firestore.DELETE_FIELD,
         "approvedBy": firestore.DELETE_FIELD,
+        "submittedAt": firestore.DELETE_FIELD,
+        "unfinalizedNote": f"Admin unapproved this schedule: {req.feedback}",
         "updatedAt": datetime.utcnow().isoformat()
     })
     
@@ -364,8 +397,9 @@ def unapprove_schedule(schedule_id: str, user: dict = Depends(admin_only)):
         queue_doc = queue_ref.get()
         if queue_doc.exists:
             program_status = queue_doc.to_dict().get("programStatus", {})
-            program_status[prog] = "submitted"
+            program_status[prog] = "waiting"
             queue_ref.update({
+                "status": "active",
                 "programStatus": program_status,
                 "updatedAt": datetime.utcnow().isoformat()
             })
@@ -380,7 +414,10 @@ def unapprove_schedule(schedule_id: str, user: dict = Depends(admin_only)):
                     "approvedPrograms": firestore.ArrayRemove([prog]),
                     "updatedAt": datetime.utcnow().isoformat()
                 })
+                event_cache.invalidate(f"master:{md.id}")
     
+    if queue_id and prog:
+        log_audit_event(queue_id, "SCHEDULE_UNAPPROVED", user, target_program=prog, details=f"Unapproved {prog}'s schedule. Note: {req.feedback}")
     return {"message": "Schedule unapproved"}
 
 @router.put("/master/{queue_id}/edit")
@@ -389,8 +426,16 @@ def admin_edit_master_schedule(queue_id: str, payload: EditScheduleRequest, user
     if not docs:
         raise HTTPException(status_code=404, detail="Master schedule not found")
     master_ref = docs[0].reference
+    old_events = [d.to_dict() for d in master_ref.collection("events").stream()]
+    
     _replace_all_events(master_ref.collection("events"), payload.schedule)
     master_ref.update({"updatedAt": firestore.SERVER_TIMESTAMP})
+    event_cache.invalidate(f"master:{docs[0].id}")
+    
+    diff_details = _generate_schedule_diff(old_events, payload.schedule)
+    if diff_details and diff_details != "Edited schedule (no class changes)":
+        log_audit_event(queue_id, "MASTER_SCHEDULE_EDITED", user, target_program="Master", details=diff_details)
+        
     return {"message": "Master schedule updated"}
 
 @router.post("/master/{queue_id}/finalize")
@@ -411,10 +456,13 @@ def finalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
         "updatedAt": now
     })
 
-    final_name = f"{master_data.get('semester', '')} {master_data.get('academicYear', '')} - Final".strip()
-
     semester = master_data.get("semester")
     academic_year = master_data.get("academicYear")
+    
+    if semester and academic_year:
+        final_name = f"A.Y. {academic_year}, {semester}".strip()
+    else:
+        final_name = f"{semester} {academic_year} - Final".strip()
 
     if semester and academic_year:
         other_docs = db.collection("final_schedules")\
@@ -450,6 +498,7 @@ def finalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
         "lastModified": now,
         "savedAt": now,
         "createdBy": user.get("uid"),
+        "source": "queue",
     })
 
     # Copy master's events subcollection into final_schedules/{final_name}/events
@@ -475,6 +524,9 @@ def finalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
         "updatedAt": now
     })
 
+    event_cache.invalidate(f"master:{master_id}")
+    event_cache.invalidate(f"final:{final_name}")
+
     return {"message": "Master schedule finalized"}
 
 @router.post("/master/{queue_id}/unfinalize")
@@ -494,16 +546,39 @@ def unfinalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
     now = datetime.utcnow().isoformat()
     
     # 1. Mark final schedule as not finalized (if it exists)
-    final_name = f"{semester} {academic_year} - Final".strip()
+    if semester and academic_year:
+        final_name = f"A.Y. {academic_year}, {semester}".strip()
+    else:
+        final_name = f"{semester} {academic_year} - Final".strip()
     final_ref = db.collection("final_schedules").document(final_name)
     if final_ref.get().exists:
         final_ref.update({"finalized": False})
     
-    # 2. Re-open the queue
-    db.collection("coordinator_queues").document(queue_id).update({
-        "status": "active",
-        "updatedAt": now
-    })
+    # 2. Re-open the queue and reset program statuses
+    queue_ref = db.collection("coordinator_queues").document(queue_id)
+    queue_doc = queue_ref.get()
+    if queue_doc.exists:
+        queue_data = queue_doc.to_dict()
+        program_status = queue_data.get("programStatus", {})
+        original_queue = queue_data.get("queue", [])
+        
+        for prog in program_status.keys():
+            if program_status[prog] != "generating":
+                program_status[prog] = "waiting"
+                
+        current_turn_index = -1
+        for i, prog in enumerate(original_queue):
+            if program_status.get(prog) == "waiting":
+                program_status[prog] = "active"
+                current_turn_index = i
+                break
+                
+        queue_ref.update({
+            "status": "active",
+            "currentTurnIndex": current_turn_index,
+            "programStatus": program_status,
+            "updatedAt": now
+        })
     
     # 3. Mark master_schedules as draft
     master_doc.reference.update({
@@ -526,7 +601,7 @@ def unfinalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
             "approvedAt": None,
             "approvedBy": None,
             "submittedAt": None,
-            "unfinalizedNote": "The master schedule was unpublished. You may need to review and resubmit.",
+            "unfinalizedNote": f"The master schedule for {semester} {academic_year} was unpublished. You may need to review and resubmit.",
             "updatedAt": now
         })
         count += 1
@@ -536,12 +611,80 @@ def unfinalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
             count = 0
     if count:
         batch.commit()
+
+    # The master's event data didn't change, but the final schedule's
+    # finalized flag flipped — invalidate both so nothing reads stale.
+    event_cache.invalidate(f"master:{master_doc.id}")
+    event_cache.invalidate(f"final:{final_name}")
         
     return {"message": "Master schedule unpublished"}
+
+def _generate_schedule_diff(old_schedule: list, new_schedule: list) -> str:
+    def get_id(ev):
+        return ev.get("schedule_id") or f"{ev.get('courseCode', ev.get('course', ''))}-{ev.get('block', ev.get('section', ''))}-{ev.get('session', '')}-{ev.get('day', '')}"
+    
+    def format_name(ev):
+        code = ev.get('courseCode', ev.get('course', '?'))
+        session = str(ev.get('session', '')).upper() or "CLASS"
+            
+        prog = ev.get('program', '')
+        year = ev.get('year', '')
+        block = ev.get('block', ev.get('section', '?'))
+        
+        prog_block = f"{prog} {year}{block}".strip() if prog else block
+        # clean up multiple spaces
+        prog_block = " ".join(prog_block.split())
+        
+        return f"{code} {session} ({prog_block})".strip().upper()
+
+    old_dict = {get_id(ev): ev for ev in old_schedule}
+    new_dict = {get_id(ev): ev for ev in new_schedule}
+    
+    changes = []
+    
+    for uid, new_ev in new_dict.items():
+        name = format_name(new_ev)
+        if uid not in old_dict:
+            changes.append(f"Added {name}")
+        else:
+            old_ev = old_dict[uid]
+            modifications = []
+            
+            old_time = f"{old_ev.get('day', '?')} {old_ev.get('startTime', '?')}-{old_ev.get('endTime', '?')}"
+            new_time = f"{new_ev.get('day', '?')} {new_ev.get('startTime', '?')}-{new_ev.get('endTime', '?')}"
+            if old_time != new_time:
+                modifications.append(f"time to {new_time}")
+                
+            if old_ev.get("room") != new_ev.get("room"):
+                modifications.append(f"room to {new_ev.get('room', 'TBA')}")
+                
+            if old_ev.get("faculty") != new_ev.get("faculty"):
+                modifications.append(f"faculty to {new_ev.get('faculty', 'TBA')}")
+                
+            if modifications:
+                changes.append(f"Changed {name} " + " and ".join(modifications))
+                
+    for uid, old_ev in old_dict.items():
+        if uid not in new_dict:
+            name = format_name(old_ev)
+            changes.append(f"Removed {name}")
+            
+    if not changes:
+        return "Edited schedule (no class changes)"
+        
+    details = " | ".join(changes)
+    return details[:797] + "..." if len(details) > 800 else details
 
 @router.put("/schedule/{schedule_id}/edit")
 def edit_schedule(schedule_id: str, req: EditScheduleRequest, user: dict = Depends(admin_only)):
     schedule_data = _get_schedule_or_404(schedule_id)
+    program_code = schedule_data.get("programCode")
+    queue_id = schedule_data.get("queueId")
+
+    old_schedule = schedule_data.get("schedule", [])
+    new_schedule = req.schedule
+    
+    diff_details = _generate_schedule_diff(old_schedule, new_schedule)
 
     now = datetime.utcnow().isoformat()
     db.collection("coordinator_schedules").document(schedule_id).update({
@@ -550,16 +693,16 @@ def edit_schedule(schedule_id: str, req: EditScheduleRequest, user: dict = Depen
     })
 
     if schedule_data.get("status") == "approved":
-        queue_id = schedule_data.get("queueId")
         if queue_id:
             docs = db.collection("master_schedules").where("queueId", "==", queue_id).get()
             if docs:
                 master_doc = docs[0]
-                program_code = schedule_data.get("programCode")
                 events_ref = master_doc.reference.collection("events")
-
                 _replace_program_events(events_ref, program_code, req.schedule)
-
                 master_doc.reference.update({"updatedAt": now})
+                event_cache.invalidate(f"master:{master_doc.id}")
+                
+    if queue_id and program_code:
+        log_audit_event(queue_id, "SCHEDULE_EDITED", user, target_program=program_code, details=diff_details)
 
     return {"message": "Schedule updated successfully"}

@@ -3,11 +3,13 @@ import { create } from 'zustand'
 export const useScheduleStore = create((set) => ({
   events:       [],
   scheduleName: null,
+  scheduleId:   null,
   loading:      false,
   setEvents:    (events) => set({ events }),
   setName:      (name)   => set({ scheduleName: name }),
+  setId:        (id)     => set({ scheduleId: id }),
   setLoading:   (v)      => set({ loading: v }),
-  clearSchedule: ()      => set({ events: [], scheduleName: null }),
+  clearSchedule: ()      => set({ events: [], scheduleName: null, scheduleId: null }),
 }))
 
 export const useSolverStore = create((set) => ({

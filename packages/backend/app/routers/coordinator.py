@@ -12,7 +12,8 @@ from app.core.auth import admin_only
 from app.core.firebase import db, get_courses, get_rooms, get_time, get_days
 from app.core.globals import schedule_dict, progress_state, running_processes, cancel_flags, failure_details
 from app.core.scheduler import generate_coordinator_schedule, validate_phase_order, DEFAULT_PHASE_ORDER
-from app.core.coordinator_auth import coordinator_only
+from app.core.event_cache import event_cache
+from app.core.audit import log_audit_event
 
 router = APIRouter()
 
@@ -238,7 +239,8 @@ def list_schedules(
             "eventCount": len(data.get("schedule", [])),
             "academicYear": data.get("academicYear"),
             "semester": data.get("semester"),
-            "rejectionFeedback": data.get("rejectionFeedback")
+            "rejectionFeedback": data.get("rejectionFeedback"),
+            "unfinalizedNote": data.get("unfinalizedNote")
         })
     return schedules
 
@@ -339,6 +341,7 @@ def generate(background_tasks: BackgroundTasks,
         process_id, program, semester, selected_rooms, pre_booked_events, req.phase_order
     )
 
+    log_audit_event(queue_id, "GENERATION_STARTED", user, target_program=program, details=f"Started generating schedule")
     return {"process_id": process_id, "status": "started", "semester": semester, "academicYear": academic_year}
 
 @router.get("/schedule/phases")
@@ -589,6 +592,9 @@ def override_session(schedule_id: str, body: dict, user: dict = Depends(coordina
         target["day"] = new_day
     if new_period:
         target["period"] = new_period
+        parts = new_period.split(" - ")
+        if len(parts) == 2:
+            target["startTime"], target["endTime"] = parts[0], parts[1]
     if new_room:
         target["room"] = new_room
 
@@ -758,25 +764,34 @@ def submit_schedule(schedule_id: str, user: dict = Depends(coordinator_only)):
     if data.get("status") != "draft":
         raise HTTPException(status_code=400, detail="Only draft schedules can be submitted")
 
+    queue_id, queue_doc = _get_active_queue()
+    if not queue_id:
+        raise HTTPException(status_code=400, detail="There is no active scheduling queue.")
+        
+    q_sem = queue_doc.get("semester")
+    q_ay = queue_doc.get("academicYear")
+    if data.get("semester") != q_sem or data.get("academicYear") != q_ay:
+        raise HTTPException(status_code=400, detail="Schedule term does not match the active queue.")
+
     # Block submission if another schedule for the same term is already submitted/approved
-    ay = data.get("academicYear")
-    sem = data.get("semester")
-    if ay and sem:
+    if queue_id:
         existing = db.collection("coordinator_schedules") \
             .where("programCode", "==", program) \
-            .where("academicYear", "==", ay) \
-            .where("semester", "==", sem) \
+            .where("queueId", "==", queue_id) \
             .where("status", "in", ["submitted", "approved"]) \
             .get()
         if len(existing) > 0:
-            raise HTTPException(status_code=400, detail=f"A schedule for {sem} {ay} is already submitted or approved.")
+            raise HTTPException(status_code=400, detail=f"You already have a submitted or approved schedule in the active queue.")
     doc_ref.update({
         "status": "submitted",
         "submittedAt": datetime.utcnow().isoformat(),
         "updatedAt": datetime.utcnow().isoformat(),
-        "rejectionFeedback": firestore.DELETE_FIELD
+        "queueId": queue_id,
+        "rejectionFeedback": firestore.DELETE_FIELD,
+        "unfinalizedNote": firestore.DELETE_FIELD
     })
-    _set_program_status(data.get("queueId"), program, "submitted")
+    _set_program_status(queue_id, program, "submitted")
+    log_audit_event(queue_id, "SCHEDULE_SUBMITTED", user, target_program=program, details=f"Submitted schedule for review")
     return {"message": "Schedule submitted successfully"}
 
 @router.post("/schedule/{schedule_id}/unsubmit")
@@ -907,7 +922,14 @@ def get_submitted_master_schedule(
 
     master_doc = docs[0]
     data = master_doc.to_dict()
-    events = [d.to_dict() for d in master_doc.reference.collection("events").stream()] if include_events else []
+    events = []
+    if include_events:
+        cache_key = f"master:{master_doc.id}"
+        events = event_cache.get(cache_key)
+        if events is None:
+            events = [d.to_dict() for d in master_doc.reference.collection("events").stream()]
+            event_cache.put(cache_key, events)
+
     return {
         "schedule": events,
         "approvedPrograms": data.get("approvedPrograms", []),

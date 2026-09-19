@@ -243,6 +243,7 @@ export const coordGetSubmittedSchedule = async (includeEvents = false) => axios.
 // ── Queue Management (Admin) ──────────────────────────────────────────────────
 export const createQueue     = async (d)       => axios.post(`${BASE}/queue/create`, d,           { headers: await authHeaders() }).then(r => r.data)
 export const listQueues      = async ()        => axios.get(`${BASE}/queue/list`,                 { headers: await authHeaders() }).then(r => r.data)
+export const getQueueAuditLogs = async (qId)   => axios.get(`${BASE}/queue/${qId}/audit-logs`,    { headers: await authHeaders() }).then(r => r.data)
 export const getQueue        = async (id)      => axios.get(`${BASE}/queue/${id}`,                { headers: await authHeaders() }).then(r => r.data)
 export const reorderQueue    = async (id, d)   => axios.patch(`${BASE}/queue/${id}/reorder`, d,   { headers: await authHeaders() }).then(r => r.data)
 export const skipProgram     = async (id, prog)=> axios.post(`${BASE}/queue/${id}/skip/${prog}`,{},{ headers: await authHeaders() }).then(r => r.data)
@@ -254,7 +255,7 @@ export const deleteQueue     = async (id)      => axios.delete(`${BASE}/queue/${
 export const getSubmittedSchedules  = async ()     => axios.get(`${BASE}/approval/submitted`,                   { headers: await authHeaders() }).then(r => r.data)
 export const getSubmittedSchedule   = async (id)   => axios.get(`${BASE}/approval/schedule/${id}`,              { headers: await authHeaders() }).then(r => r.data)
 export const approveSchedule        = async (id)   => axios.post(`${BASE}/approval/schedule/${id}/approve`, {}, { headers: await authHeaders() }).then(r => r.data)
-export const unapproveSchedule      = async (id)   => axios.post(`${BASE}/approval/schedule/${id}/unapprove`, {}, { headers: await authHeaders() }).then(r => r.data)
+export const unapproveSchedule      = async (id, fb) => axios.post(`${BASE}/approval/schedule/${id}/unapprove`, { feedback: fb }, { headers: await authHeaders() }).then(r => r.data)
 export const rejectSchedule         = async (id,d) => axios.post(`${BASE}/approval/schedule/${id}/reject`, d,   { headers: await authHeaders() }).then(r => r.data)
 export const getMasterSchedule      = async (qid)  => axios.get(`${BASE}/approval/master/${qid}`,               { headers: await authHeaders() }).then(r => r.data)
 export const unfinalizeMasterSchedule = async (qid)  => axios.post(`${BASE}/approval/master/${qid}/unfinalize`, {}, { headers: await authHeaders() }).then(r => r.data)

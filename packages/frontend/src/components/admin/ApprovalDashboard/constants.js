@@ -23,7 +23,7 @@ function academicYearOptions() {
 }
 
 const STATUS = {
-  waiting:    { bg: '#F1F5F9', color: 'var(--muted2)', dot: '#94A3B8', label: 'Waiting'    },
+  waiting:    { bg: G.hover, color: 'var(--muted)', dot: G.muted2, label: 'Waiting'    },
   active:     { bg: G.meadowSoft, color: 'var(--meadow-text)', dot: G.meadow, label: 'Their turn' },
   generating: { bg: G.blueSoft, color: G.blue, dot: '#3B82F6', label: 'Generating' },
   submitted:  { bg: G.amberSoft, color: '#92400E', dot: G.amber, label: 'Submitted'  },

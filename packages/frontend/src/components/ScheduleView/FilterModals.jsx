@@ -949,3 +949,62 @@ function Notice({ text }) {
     </div>
   )
 }
+export function DeleteScheduleModal({ scheduleName, isMaster, onConfirm, onCancel, deletingState }) {
+  return (
+    <ModalOverlay onClose={onCancel}>
+      <div onClick={e => e.stopPropagation()} style={{ 
+        width: 400, 
+        padding: 24, 
+        textAlign: 'center',
+        background: 'var(--surface)',
+        borderRadius: 16,
+        boxShadow: '0 24px 64px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,.05)'
+      }}>
+        <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(220, 38, 38, 0.1)', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+        </div>
+        <h3 style={{ fontSize: 18, color: 'var(--ink)', margin: '0 0 8px 0' }}>Delete Schedule?</h3>
+        <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 16px 0', lineHeight: 1.5 }}>
+          Are you sure you want to delete <strong>{scheduleName}</strong>? This action cannot be undone.
+        </p>
+        
+        {isMaster && (
+          <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', padding: '12px', borderRadius: 8, marginBottom: 20, textAlign: 'left' }}>
+            <div style={{ color: '#D97706', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+               Important Note
+            </div>
+            <div style={{ color: '#92400E', fontSize: 12, lineHeight: 1.5 }}>
+              Deleting this Final Master Schedule will automatically revert all associated coordinator submissions for this term back to <strong>Draft</strong> status, requiring them to be re-approved.
+            </div>
+          </div>
+        )}
+
+        <style>{`
+          @keyframes svSpin { to { transform: rotate(360deg) } }
+          .sv-spin { animation: svSpin .6s linear infinite; }
+        `}</style>
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button 
+            onClick={onCancel}
+            disabled={deletingState === 'working'}
+            style={{ flex: 1, padding: '10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--ink)', fontWeight: 600, cursor: 'pointer', fontSize: 13, fontFamily: 'Inter,sans-serif' }}>
+            Cancel
+          </button>
+          <button 
+            onClick={onConfirm}
+            disabled={deletingState === 'working'}
+            style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: '#DC2626', color: '#fff', fontWeight: 600, cursor: deletingState === 'working' ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 13, fontFamily: 'Inter,sans-serif', opacity: deletingState === 'working' ? 0.7 : 1 }}>
+            {deletingState === 'working' ? (
+              <>
+                <svg className="sv-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg>
+                Deleting...
+              </>
+            ) : 'Delete'}
+          </button>
+        </div>
+      </div>
+    </ModalOverlay>
+  )
+}

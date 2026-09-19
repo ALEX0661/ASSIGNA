@@ -17,6 +17,7 @@ function MasterTab({ queueId, onFinalize, onUnpublish, programs, onMasterSaved }
   const [reviewViewMode, setReviewViewMode] = useState('grid')
   const [activeDay, setActiveDay] = useState('Monday')
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false)
+  const [showUnpublishConfirm, setShowUnpublishConfirm] = useState(false)
   const [fixMode, setFixMode] = useState(false)
 
   useEffect(() => {
@@ -30,9 +31,8 @@ function MasterTab({ queueId, onFinalize, onUnpublish, programs, onMasterSaved }
     try { await onFinalize(queueId) } finally { setActing(false); setShowFinalizeConfirm(false) }
   }
   async function handleUnpublish() {
-    if (!window.confirm("Are you sure you want to unpublish the master schedule? This will reopen the queue and revert coordinator schedules back to drafts.")) return
     setActing(true)
-    try { await onUnpublish(queueId) } finally { setActing(false) }
+    try { await onUnpublish(queueId) } finally { setActing(false); setShowUnpublishConfirm(false) }
   }
 
   if (!queueId) return <div className="ap-card ap-fadein"><EmptyState icon={ICONS.calendar} text="Create a coordinator queue first — the master schedule builds up as programs get approved." /></div>
@@ -49,14 +49,17 @@ function MasterTab({ queueId, onFinalize, onUnpublish, programs, onMasterSaved }
       <div className="aq-head" style={{ borderRadius: 0, flexWrap: 'wrap' }}>
         <div style={{ minWidth: 0 }}>
           <div className="aq-head-title">Master Schedule</div>
-          <div className="aq-head-sub">{approved.length} program(s) merged · {events.length} total events</div>
+          <div className="aq-head-sub">
+            {master?.semester && master?.academicYear ? `${master.semester} ${master.academicYear} · ` : ''}
+            {approved.length} program(s) merged · {events.length} total events
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {isFinalized
             ? (
               <>
                 <Badge label="Published to Faculty" bg="rgba(255,255,255,0.18)" color="#fff" border="rgba(255,255,255,0.4)" />
-                <button onClick={handleUnpublish} disabled={acting} className="btn-secondary" style={{ padding: '6px 12px', fontSize: 11, background: 'var(--surface-sunken)', color: 'var(--ink)' }}>
+                <button onClick={() => setShowUnpublishConfirm(true)} disabled={acting} className="btn-secondary" style={{ padding: '6px 12px', fontSize: 11, background: 'var(--surface-sunken)', color: 'var(--ink)' }}>
                   {acting ? 'Unpublishing...' : 'Unpublish'}
                 </button>
               </>
@@ -94,9 +97,9 @@ function MasterTab({ queueId, onFinalize, onUnpublish, programs, onMasterSaved }
               const done = approved.includes(prog)
               const c = getProgColor(prog)
               return (
-                <div key={prog} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 99, background: done ? `${c}14` : '#F1F5F9', border: `1px solid ${done ? `${c}40` : '#E2E8F0'}` }}>
-                  <div style={{ width: 7, height: 7, borderRadius: 99, background: done ? c : '#CBD5E1', flexShrink: 0 }} />
-                  <span style={{ fontSize: 11.5, fontWeight: 700, color: done ? c : '#94A3B8' }}>{prog}</span>
+                <div key={prog} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 99, background: done ? `${c}14` : G.hover, border: `1px solid ${done ? `${c}40` : G.border}` }}>
+                  <div style={{ width: 7, height: 7, borderRadius: 99, background: done ? c : G.muted2, flexShrink: 0 }} />
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: done ? c : G.muted }}>{prog}</span>
                   {done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
                 </div>
               )
@@ -197,7 +200,12 @@ function MasterTab({ queueId, onFinalize, onUnpublish, programs, onMasterSaved }
             </div>
             <div style={{ fontSize: 16, fontWeight: 700, color: G.ink, marginBottom: 8, fontFamily: 'Inter,sans-serif' }}>Finalize and Publish?</div>
             <div style={{ fontSize: 13, color: G.muted2, marginBottom: 24, lineHeight: 1.5, fontFamily: 'Inter,sans-serif' }}>
-              Finalizing and publishing this schedule will also mark the current scheduling queue as complete. This cannot be undone.
+              <p style={{ margin: '0 0 10px' }}>
+                Finalizing and publishing this schedule will mark the current scheduling queue as complete.
+              </p>
+              <p style={{ margin: 0, padding: '10px 14px', background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: 8, fontSize: 12.5, fontWeight: 500, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                Note: If there is already another published schedule for this term (like an Admin Generated one), it will be automatically overwritten and unpublished. There can only be one active published schedule per term.
+              </p>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setShowFinalizeConfirm(false)} disabled={acting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: 'var(--surface)', fontSize: 13, fontWeight: 600, color: G.muted, cursor: acting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
@@ -205,6 +213,28 @@ function MasterTab({ queueId, onFinalize, onUnpublish, programs, onMasterSaved }
               </button>
               <button onClick={handleFinalize} disabled={acting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: G.blue, fontSize: 13, fontWeight: 700, color: '#fff', cursor: acting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: acting ? 0.7 : 1 }}>
                 {acting ? 'Publishing...' : 'Publish'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      {showUnpublishConfirm && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(10,30,18,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => !acting && setShowUnpublishConfirm(false)}>
+          <div style={{ background: 'var(--surface)', borderRadius: 18, padding: '28px 28px 24px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(10,30,18,0.22)', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+            <div style={{ width: 52, height: 52, borderRadius: '50%', background: G.redSoft, margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={G.red} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: G.ink, marginBottom: 8, fontFamily: 'Inter,sans-serif' }}>Unpublish Schedule?</div>
+            <div style={{ fontSize: 13, color: G.muted2, marginBottom: 24, lineHeight: 1.5, fontFamily: 'Inter,sans-serif' }}>
+              Are you sure you want to unpublish the master schedule? This will reopen the queue and revert coordinator schedules back to drafts.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowUnpublishConfirm(false)} disabled={acting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: 'var(--surface)', fontSize: 13, fontWeight: 600, color: G.muted, cursor: acting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
+                Cancel
+              </button>
+              <button onClick={handleUnpublish} disabled={acting} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: G.red, fontSize: 13, fontWeight: 700, color: '#fff', cursor: acting ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: acting ? 0.7 : 1 }}>
+                {acting ? 'Unpublishing...' : 'Unpublish'}
               </button>
             </div>
           </div>

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from app.core.auth import admin_only
+from app.core.auth import admin_only, any_authenticated
 from app.core.firebase import db, refresh_courses_cache
 import logging
 
@@ -8,24 +8,36 @@ router = APIRouter()
 
 
 @router.get("/")
-def get_block_configs(semester: str = None, user=Depends(admin_only)):
+def get_block_configs(semester: str = None, user=Depends(any_authenticated)):
     """
     Return all block configs, optionally filtered by semester.
     Each doc: { program, yearLevel, semester, blocks }
     """
+    is_admin = user.get("role") == "admin"
+    coord_prog = user.get("coordinatorProgram")
+    if not is_admin and not coord_prog:
+        raise HTTPException(403, "Admin or Coordinator access required.")
+
     docs = db.collection("block_configs").stream()
     configs = [{**d.to_dict(), "id": d.id} for d in docs]
     if semester:
         configs = [c for c in configs if c.get("semester") == semester]
+    if not is_admin:
+        configs = [c for c in configs if c.get("program") == coord_prog]
     return configs
 
 
 @router.post("/")
-def save_block_configs(data: dict, user=Depends(admin_only)):
+def save_block_configs(data: dict, user=Depends(any_authenticated)):
     """
     Save/update a batch of block configs.
     Expects: { "configs": [ { program, yearLevel, semester, blocks }, ... ] }
     """
+    is_admin = user.get("role") == "admin"
+    coord_prog = user.get("coordinatorProgram")
+    if not is_admin and not coord_prog:
+        raise HTTPException(403, "Admin or Coordinator access required.")
+
     configs = data.get("configs", [])
     if not configs:
         raise HTTPException(400, "No configs provided.")
@@ -42,6 +54,9 @@ def save_block_configs(data: dict, user=Depends(admin_only)):
         if not program or not year or not semester or blocks is None:
             continue
 
+        if not is_admin and program != coord_prog:
+            continue
+
         doc_id = f"{program}_{year}_{semester}"
         ref = db.collection("block_configs").document(doc_id)
         batch.set(ref, {
@@ -53,7 +68,8 @@ def save_block_configs(data: dict, user=Depends(admin_only)):
         saved += 1
 
     try:
-        batch.commit()
+        if saved > 0:
+            batch.commit()
     except Exception as exc:
         logger.exception("Block config batch commit failed")
         raise HTTPException(500, f"Database error: {exc}")
@@ -62,12 +78,17 @@ def save_block_configs(data: dict, user=Depends(admin_only)):
 
 
 @router.post("/apply")
-def apply_block_configs(data: dict, user=Depends(admin_only)):
+def apply_block_configs(data: dict, user=Depends(any_authenticated)):
     """
     Apply saved block configs to all matching courses.
     Expects: { "semester": "1st Semester" }
     Updates course.blocks for every matching (program, yearLevel, semester) group.
     """
+    is_admin = user.get("role") == "admin"
+    coord_prog = user.get("coordinatorProgram")
+    if not is_admin and not coord_prog:
+        raise HTTPException(403, "Admin or Coordinator access required.")
+
     semester = data.get("semester")
     if not semester:
         raise HTTPException(400, "Semester is required.")
@@ -93,8 +114,12 @@ def apply_block_configs(data: dict, user=Depends(admin_only)):
         course = doc.to_dict()
         if course.get("semester", "1st Semester") != semester:
             continue
+            
+        program = course.get("program", "")
+        if not is_admin and program != coord_prog:
+            continue
 
-        key = f"{course.get('program', '')}_{course.get('yearLevel', 1)}"
+        key = f"{program}_{course.get('yearLevel', 1)}"
         if key in config_map:
             new_blocks = config_map[key]
             if course.get("blocks") != new_blocks:

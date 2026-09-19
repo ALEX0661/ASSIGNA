@@ -133,7 +133,7 @@ function Stepper({ value, onChange, disabled }) {
   )
 }
 
-export default function BlockConfigModal({ semester, onClose, onApplied }) {
+export default function BlockConfigModal({ semester, program, onClose, onApplied }) {
   const [groups,      setGroups]      = useState([])
   const [configs,     setConfigs]     = useState({})
   const [loading,     setLoading]     = useState(true)
@@ -142,7 +142,7 @@ export default function BlockConfigModal({ semester, onClose, onApplied }) {
   const [applyResult, setApplyResult] = useState(null)
   const [error,       setError]       = useState('')
 
-  useEffect(() => { loadData() }, [semester])
+  useEffect(() => { loadData() }, [semester, program])
 
   async function loadData() {
     setLoading(true); setError('')
@@ -151,6 +151,7 @@ export default function BlockConfigModal({ semester, onClose, onApplied }) {
       const seen = new Set()
       const grps = []
       courses.forEach(c => {
+        if (program && c.program !== program) return;
         const key = `${c.program}_${c.yearLevel}`
         if (!seen.has(key)) {
           seen.add(key)
@@ -161,7 +162,11 @@ export default function BlockConfigModal({ semester, onClose, onApplied }) {
       grps.sort((a, b) => a.program.localeCompare(b.program) || a.yearLevel - b.yearLevel)
       setGroups(grps)
       const map = {}
-      for (const cfg of cfgData) { map[`${cfg.program}_${cfg.yearLevel}`] = cfg.blocks }
+      for (const cfg of cfgData) {
+        if (!program || cfg.program === program) {
+          map[`${cfg.program}_${cfg.yearLevel}`] = cfg.blocks
+        }
+      }
       setConfigs(map)
     } catch {
       setError('Failed to load data.')

@@ -776,8 +776,17 @@ def _build_suggestions(
             "action": {"label": "Go to Settings", "href": "/dashboard/settings"},
         })
     elif room_stats["lab"] > 0 and course_stats["coursesWithLab"] > 0:
-        # Rough capacity check: each lab room typically handles ~5 sessions/day × 5 days
-        approx_lab_cap = room_stats["lab"] * 25
+        # Rough capacity check: each lab room handles ~26 slots/day (13 hours) / 6 slots per lab = ~4.3 sessions per day
+        from app.core.firebase import get_days, get_time
+        settings_time = get_time()
+        settings_days = get_days()
+        n_days = len(settings_days) or 6
+        start_t = int(settings_time.get("start_time", 7))
+        end_t = int(settings_time.get("end_time", 21))
+        slots_per_day = max(1, (end_t - start_t) * 2 - 2) # minus 2 for lunch
+        sessions_per_room_day = slots_per_day / 6 # 6 slots = 3 hours per lab session
+        
+        approx_lab_cap = room_stats["lab"] * (sessions_per_room_day * n_days)
         approx_lab_demand = course_stats["coursesWithLab"] * 2  # ~2 sessions per lab course
         if approx_lab_demand > approx_lab_cap:
             tips.append({
@@ -940,11 +949,14 @@ def pre_diagnostic(semester: str = None, user=Depends(admin_only)):
     lab_rooms = rooms.get("lab",     []) if isinstance(rooms, dict) else []
 
     # ── Time grid ─────────────────────────────────────────────────────────────
-    # Default: 7:00–21:00, 30-min slots, 6 days — matches scheduler defaults
-    n_days          = 6          # Mon–Sat
-    slots_per_day   = 28         # (21 - 7) / 0.5
+    settings_time   = get_time()
+    settings_days   = get_days()
+    n_days          = len(settings_days) or 6
+    start_t         = int(settings_time.get("start_time", 7))
+    end_t           = int(settings_time.get("end_time", 21))
+    slots_per_day   = (end_t - start_t) * 2  # e.g. (21 - 7) * 2 = 28
     lunch_slots     = 2          # 11:30–12:30 blocked
-    usable_per_day  = slots_per_day - lunch_slots   # 26 effective slots per room per day
+    usable_per_day  = max(1, slots_per_day - lunch_slots)
     total_lec_slots = usable_per_day * n_days * max(len(lec_rooms), 1)
     total_lab_slots = usable_per_day * n_days * max(len(lab_rooms), 1)
 

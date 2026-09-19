@@ -16,7 +16,9 @@ function SubmissionsTab({ schedules, onOpen, onQuickApprove, onReject, onUnappro
   const q = search.trim().toLowerCase()
   const matches = s => !q || `${s.name} ${s.programCode}`.toLowerCase().includes(q)
   function termKey(s) {
-    return s.academicYear || s.semester ? `${s.academicYear || '—'}||${s.semester || '—'}` : '__no_term__'
+    const base = s.academicYear || s.semester ? `${s.academicYear || '—'}||${s.semester || '—'}` : '__no_term__'
+    if (base === '__no_term__') return base
+    return `${base}||${s.queueId || 'legacy'}`
   }
   const pending = schedules.filter(s => s.status === 'submitted' && matches(s)).sort((a, b) => new Date(a.submittedAt || 0) - new Date(b.submittedAt || 0))
   const approved = schedules.filter(s => s.status === 'approved' && matches(s)).sort((a, b) => new Date(b.approvedAt || b.submittedAt || 0) - new Date(a.approvedAt || a.submittedAt || 0))
@@ -148,7 +150,7 @@ function SubmissionsTab({ schedules, onOpen, onQuickApprove, onReject, onUnappro
       ) : pending.length === 0 && approved.length === 0 ? (
         <EmptyState icon={ICONS.inbox} text={`No schedules match "${search}".`} />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: '24px' }}>
           {/* ACTIVE QUEUE TERM */}
           {activeTermKey && termKeys.includes(activeTermKey) && (
             <div style={{ border: `1.5px solid ${G.meadowBorder}`, borderRadius: 12, overflow: 'hidden' }}>
@@ -234,25 +236,42 @@ function SubmissionsTab({ schedules, onOpen, onQuickApprove, onReject, onUnappro
       )}
 
       {unapproveTarget && createPortal(
-        <div className="ap-modal-overlay" style={{ zIndex: 3000 }} onClick={() => setUnapproveTarget(null)}>
-          <div className="ap-modal" style={{ width: 440 }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', gap: 14, marginBottom: 20 }}>
-              <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'rgba(245, 158, 11, 0.1)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              </div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 16, color: 'var(--ink)' }}>Unapprove Schedule</h3>
-                <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>
-                  This will remove the schedule from the master list and return it to a "Submitted" state.
-                </p>
-              </div>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 11000, background: 'rgba(10,30,18,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => setUnapproveTarget(null)}>
+          <div style={{ background: 'var(--surface)', borderRadius: 18, padding: '28px 28px 24px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(10,30,18,0.22)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(245, 158, 11, 0.1)', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             </div>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setUnapproveTarget(null)} className="btn-outline">Cancel</button>
-              <button onClick={async () => {
-                await onUnapprove(unapproveTarget.id || unapproveTarget.scheduleId)
-                setUnapproveTarget(null)
-              }} className="btn-primary" style={{ background: '#F59E0B', color: '#fff', border: 'none' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 8, fontFamily: 'Inter,sans-serif', textAlign: 'center' }}>Unapprove Schedule?</div>
+            <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.5, fontFamily: 'Inter,sans-serif', textAlign: 'center' }}>
+              This will remove the schedule from the master list and return it to a "Draft" state so the coordinator can edit it.
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--ink)', marginBottom: 6 }}>Reason / Note for Coordinator:</label>
+              <textarea 
+                id="unapprove-feedback-tab"
+                placeholder="e.g. Please fix the overlap in Room 402 before I can finalize this."
+                style={{ width: '100%', minHeight: 80, padding: 12, borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setUnapproveTarget(null)} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid var(--border)`, background: 'var(--surface)', fontSize: 13, fontWeight: 600, color: 'var(--muted)', cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>
+                Cancel
+              </button>
+              <button disabled={loadingIds?.has('unapprove-busy')} onClick={async () => {
+                const fb = document.getElementById('unapprove-feedback-tab')?.value || 'Schedule unapproved by admin.'
+                // Simulate loadingIds locally since we can't easily modify the parent's Set without a dedicated function,
+                // but wait, onUnapprove is passed. If we just await it, we can disable it manually or rely on the parent.
+                // Actually, the parent handleUnapprove DOES NOT set `approvingIds`. So we must disable it by storing a local state,
+                // or just relying on `onUnapprove` resolving!
+                const btn = document.getElementById('unapprove-btn-tab')
+                if (btn) { btn.disabled = true; btn.textContent = 'Unapproving...' }
+                try {
+                  await onUnapprove(unapproveTarget.id || unapproveTarget.scheduleId, fb)
+                  setUnapproveTarget(null)
+                } finally {
+                  if (btn) { btn.disabled = false; btn.textContent = 'Unapprove' }
+                }
+              }} id="unapprove-btn-tab" style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: '#F59E0B', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>
                 Unapprove
               </button>
             </div>

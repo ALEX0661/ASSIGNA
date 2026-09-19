@@ -187,9 +187,9 @@ export function minutesToTimeLabel(minutes) {
   return `${displayH}:${m.toString().padStart(2, '0')} ${ampm}`
 }
 
-export function buildTimeSlots() {
+export function buildTimeSlots(startHour = DAY_START_HOUR, endHour = DAY_END_HOUR) {
   const slots = []
-  for (let m = DAY_START_HOUR * 60; m < DAY_END_HOUR * 60; m += SLOT_MINUTES)
+  for (let m = startHour * 60; m < endHour * 60; m += SLOT_MINUTES)
     slots.push({ startMinutes: m, label: minutesToTimeLabel(m) })
   return slots
 }
@@ -197,10 +197,10 @@ export function buildTimeSlots() {
 export const TIME_SLOTS = buildTimeSlots()
 export const GRID_START = DAY_START_HOUR * 60
 
-export function getEventStyle(period, slotH = SLOT_HEIGHT) {
+export function getEventStyle(period, slotH = SLOT_HEIGHT, gridStart = GRID_START) {
   const range = parsePeriodRange(period)
   if (!range) return { top: 0, height: slotH }
-  const top    = ((range.start - GRID_START) / SLOT_MINUTES) * slotH
+  const top    = ((range.start - gridStart) / SLOT_MINUTES) * slotH
   const height = Math.max((range.duration / SLOT_MINUTES) * slotH, slotH * 0.8)
   return { top, height }
 }

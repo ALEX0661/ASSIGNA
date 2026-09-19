@@ -13,6 +13,8 @@ function CreateQueueModal({ onClose, onCreate, programs }) {
   const [dragIndex, setDragIndex] = useState(null)
   const [overIndex, setOverIndex] = useState(null)
 
+  const [error, setError] = useState(null)
+
   function handleDrop(dropAt) {
     if (dragIndex === null || dragIndex === dropAt) { setDragIndex(null); setOverIndex(null); return }
     const next = [...order]
@@ -21,11 +23,13 @@ function CreateQueueModal({ onClose, onCreate, programs }) {
     setOrder(next)
     setDragIndex(null); setOverIndex(null)
   }
+
   async function handleCreate() {
     if (!year.trim()) return
     setSaving(true)
+    setError(null)
     try { await onCreate({ semester, academicYear: year, queue: order }); onClose() }
-    catch (e) { alert(e?.response?.data?.detail || 'Failed to create queue') }
+    catch (e) { setError(e?.response?.data?.detail || 'Failed to create queue') }
     finally { setSaving(false) }
   }
 
@@ -47,13 +51,13 @@ function CreateQueueModal({ onClose, onCreate, programs }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
             <div>
               <label style={{ fontSize: 11.5, fontWeight: 600, color: G.muted, display: 'block', marginBottom: 5 }}>Semester</label>
-              <select value={semester} onChange={e => setSemester(e.target.value)} className="cp-inp">
+              <select value={semester} onChange={e => { setSemester(e.target.value); setError(null) }} className="cp-inp">
                 {SEMESTERS.map(s => <option key={s}>{s}</option>)}
               </select>
             </div>
             <div>
               <label style={{ fontSize: 11.5, fontWeight: 600, color: G.muted, display: 'block', marginBottom: 5 }}>Academic Year</label>
-              <select value={year} onChange={e => setYear(e.target.value)} className="cp-inp">
+              <select value={year} onChange={e => { setYear(e.target.value); setError(null) }} className="cp-inp">
                 {academicYearOptions().map(y => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
@@ -77,6 +81,12 @@ function CreateQueueModal({ onClose, onCreate, programs }) {
               onDragEnd={() => { setDragIndex(null); setOverIndex(null) }}
             />
           </div>
+
+          {error && (
+            <div style={{ marginBottom: 16, padding: '8px 12px', background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: 8, fontSize: 12, fontWeight: 500 }}>
+              {error}
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button onClick={onClose} className="btn-outline">Cancel</button>

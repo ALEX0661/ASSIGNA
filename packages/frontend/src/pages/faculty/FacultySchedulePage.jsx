@@ -725,9 +725,12 @@ export default function FacultySchedulePage() {
     const meta = finalizedSchedules.find(s => (s.id || s.name) === idOrName)
     if (!meta) return idOrName
     const parts = [meta.name || idOrName]
-    if (meta.academicYear) parts.push(`A.Y. ${meta.academicYear}`)
-    if (meta.semester)     parts.push(meta.semester)
-    return parts.join(' · ')
+    
+    let sourceTag = ''
+    if (meta.source === 'queue') sourceTag = ' (Official Queue)'
+    else if (meta.source === 'admin') sourceTag = ' (Admin)'
+    
+    return parts.join(' • ') + sourceTag
   }
 
   useEffect(() => {

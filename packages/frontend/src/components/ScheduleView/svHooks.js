@@ -115,18 +115,18 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
   const [pendingStack, setPendingStack] = useState(null)
 
   // ── Auto-save state & refs ─────────────────────────────────────────────────
-  const [autoSaveIn,         setAutoSaveIn]        = useState(null)   // countdown seconds (null = idle)
-  const autoSaveTimerRef    = useRef(null)
-  const autoSaveIntervalRef = useRef(null)
+  
+  
+  
   // Always points to the latest saveAllOverrides — updated each render below
   const saveRef             = useRef(null)
   // Stable ref for scheduleAutoSave so applyMove can reference it
-  const scheduleAutoSaveRef = useRef(null)
+  
 
   // ── Clean up timers on unmount ─────────────────────────────────────────────
   useEffect(() => () => {
-    if (autoSaveTimerRef.current)    clearTimeout(autoSaveTimerRef.current)
-    if (autoSaveIntervalRef.current) clearInterval(autoSaveIntervalRef.current)
+    
+    
   }, [])
 
   // ── Global drag-end safety net ─────────────────────────────────────────────
@@ -293,41 +293,12 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     return bands
   }, [draggedEvent, hoveredCell, events, activeDay])
 
-  // ── Auto-save: 5-second countdown then save ────────────────────────────────
-  // Called after every successful applyMove.
-  // Resets the timer if another move happens before the 5 seconds elapse.
-  const scheduleAutoSave = useCallback(() => {
-    if (autoSaveTimerRef.current)    clearTimeout(autoSaveTimerRef.current)
-    if (autoSaveIntervalRef.current) clearInterval(autoSaveIntervalRef.current)
-
-    let secs = 5
-    setAutoSaveIn(secs)
-
-    autoSaveIntervalRef.current = setInterval(() => {
-      secs -= 1
-      if (secs <= 0) {
-        clearInterval(autoSaveIntervalRef.current)
-        setAutoSaveIn(null)
-      } else {
-        setAutoSaveIn(secs)
-      }
-    }, 1000)
-
-    autoSaveTimerRef.current = setTimeout(() => {
-      clearInterval(autoSaveIntervalRef.current)
-      setAutoSaveIn(null)
-      saveRef.current?.()
-    }, 5000)
-  }, [])
-
-  // Keep ref always pointing to the latest scheduleAutoSave (stable after mount)
-  scheduleAutoSaveRef.current = scheduleAutoSave
-
   // ── Apply a move to local state + enqueue as pending override ─────────────
   const applyMove = useCallback((event, targetRoom, newPeriod, day) => {
     const dragId = getEventId(event)
+    const [startTime, endTime] = newPeriod.split(' - ')
     const updated = events.map(ev =>
-      getEventId(ev) !== dragId ? ev : { ...ev, room: targetRoom, period: newPeriod, day }
+      getEventId(ev) !== dragId ? ev : { ...ev, room: targetRoom, period: newPeriod, day, startTime, endTime }
     )
     setLocalEvents(updated)
     setEvents(updated)
@@ -335,24 +306,41 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     setPendingOverrides(prev => {
       const next = new Map(prev)
       const existing = next.get(dragId)
+      
+      const origRoom   = existing?.orig_room   ?? event.room
+      const origDay    = existing?.orig_day    ?? event.day
+      const origPeriod = existing?.orig_period ?? event.period
+
+      const normTime = p => p ? p.replace(/\b0(\d):/g, '$1:') : ''
+      const parts = []
+      if (day !== origDay) parts.push(day)
+      if (normTime(newPeriod) !== normTime(origPeriod)) parts.push(newPeriod)
+      if (targetRoom !== origRoom) parts.push(targetRoom)
+      const moveDesc = parts.length > 0 ? parts.join(' | ') : 'Unchanged'
+
+      const sessType = (event.session || 'CLASS').toUpperCase();
+      const progBlock = `${event.program || ''} ${event.year || ''}${event.block || ''}`.replace(/\s+/g, ' ').trim();
+
       next.set(dragId, {
         id:         dragId,
         courseCode: event.courseCode,
+        program:    event.program,
+        year:       event.year,
         block:      event.block,
         session:    event.session,
         new_room:   targetRoom,
         new_day:    day,
         new_period: newPeriod,
-        orig_room:   existing?.orig_room   ?? event.room,
-        orig_day:    existing?.orig_day    ?? event.day,
-        orig_period: existing?.orig_period ?? event.period,
-        label: `${event.courseCode} (${event.program} ${event.year}-${event.block}) → ${targetRoom}`,
+        orig_room:  origRoom,
+        orig_day:   origDay,
+        orig_period: origPeriod,
+        label: `${event.courseCode} ${sessType} (${progBlock}) -> ${moveDesc}`,
       })
       return next
     })
 
     // Kick off (or reset) the auto-save countdown
-    scheduleAutoSaveRef.current?.()
+    
   }, [events, setLocalEvents, setEvents])
 
   // ── Drop handler — allows conflicting drops via confirmation ──────────────
@@ -364,13 +352,13 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     const newStart  = slot.startMinutes
     const newEnd    = newStart + dragRange.duration
     const newPeriod = `${minutesToTimeLabel(newStart)} - ${minutesToTimeLabel(newEnd)}`
-    if (draggedEvent.room === targetRoom && dragRange.start === newStart) return
+    if (draggedEvent.room === targetRoom && dragRange.start === newStart && draggedEvent.day === activeDay) return
 
     const dragId   = getEventId(draggedEvent)
     const proposed = { start: newStart, end: newEnd }
 
     const prevPartner = events.find(ev => {
-      if (getEventId(ev) === dragId || ev.day !== activeDay) return false
+      if (getEventId(ev) === dragId || ev.day !== draggedEvent.day) return false
       return areMergePartners(draggedEvent, ev)
     }) ?? null
 
@@ -415,6 +403,7 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     }
 
     applyMove(draggedEvent, targetRoom, newPeriod, activeDay)
+    setDraggedEvent(null)
 
     if (wouldMergeWith.length > 0) {
       const partner = wouldMergeWith[0]
@@ -441,6 +430,102 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
       })
     } else {
       setToast({ type: 'success', message: `Moved ${draggedEvent.courseCode} to ${targetRoom} at ${minutesToTimeLabel(newStart)}` })
+    }
+  }, [locked, draggedEvent, events, activeDay, applyMove])
+
+  // ── Day Tab Drop handler ──────────────────────────────────────────────────
+  const handleDayDrop = useCallback((e, targetDay) => {
+    e.preventDefault()
+    setHoveredCell(null)
+    if (locked || !draggedEvent) return
+    if (targetDay === draggedEvent.day) {
+      setDraggedEvent(null)
+      return
+    }
+
+    const targetRoom = draggedEvent.room
+    const dragRange = parsePeriodRange(draggedEvent.period)
+    if (!dragRange) return
+    const newStart = dragRange.start
+    const newEnd = dragRange.start + dragRange.duration
+    const newPeriod = draggedEvent.period
+
+    const dragId   = getEventId(draggedEvent)
+    const proposed = { start: newStart, end: newEnd }
+
+    const prevPartner = events.find(ev => {
+      if (getEventId(ev) === dragId || ev.day !== draggedEvent.day) return false
+      return areMergePartners(draggedEvent, ev)
+    }) ?? null
+
+    const wouldMergeWith = []
+    const conflicting    = []
+
+    for (const ev of events) {
+      if (getEventId(ev) === dragId || ev.day !== targetDay) continue
+      const r = parsePeriodRange(ev.period)
+      if (!r || !timeOverlaps(proposed, r)) continue
+
+      const isMergeCandidate = draggedEvent.courseCode &&
+        ev.courseCode === draggedEvent.courseCode &&
+        ev.program    === draggedEvent.program    &&
+        String(ev.year) === String(draggedEvent.year) &&
+        ev.block !== draggedEvent.block &&
+        ev.room === targetRoom && targetRoom !== 'TBA'
+
+      if (isMergeCandidate) {
+        wouldMergeWith.push(ev)
+        continue
+      }
+
+      const types = []
+      const roomC    = ev.room === targetRoom && targetRoom !== 'TBA' && !isOnlineRoom(targetRoom)
+      const sectionC = draggedEvent.program && draggedEvent.year && draggedEvent.block
+        && ev.program === draggedEvent.program
+        && String(ev.year) === String(draggedEvent.year)
+        && ev.block === draggedEvent.block
+      const facultyC = draggedEvent.faculty && draggedEvent.faculty !== 'TBA'
+        && ev.faculty === draggedEvent.faculty
+
+      if (roomC)    types.push('Room')
+      if (sectionC) types.push('Section')
+      if (facultyC) types.push('Faculty')
+      if (types.length > 0) conflicting.push({ ...ev, conflictLabel: types.join(' + ') + ' Conflict' })
+    }
+
+    if (conflicting.length > 0) {
+      setPendingDrop({ draggedEvent, targetRoom, newPeriod, day: targetDay, conflicts: conflicting })
+      return
+    }
+
+    applyMove(draggedEvent, targetRoom, newPeriod, targetDay)
+    setDraggedEvent(null)
+
+    if (wouldMergeWith.length > 0) {
+      const partner = wouldMergeWith[0]
+      setToast({
+        type: 'success',
+        icon: 'link',
+        message: `Merged: ${draggedEvent.courseCode} ${draggedEvent.program} ${draggedEvent.year}-${draggedEvent.block} + Block ${partner.block} on ${targetDay}`,
+      })
+    } else if (prevPartner) {
+      const otherMerges = events.filter(ev => {
+        if (getEventId(ev) === dragId) return false
+        return ev.courseCode === draggedEvent.courseCode &&
+          ev.program === draggedEvent.program &&
+          String(ev.year) === String(draggedEvent.year) &&
+          ev.day !== targetDay
+      })
+      const hasSiblings = otherMerges.length > 0
+      setToast({
+        type: 'info',
+        icon: 'unlink',
+        message: hasSiblings
+          ? `Unmerged from Block ${prevPartner.block}. ${draggedEvent.courseCode} may still have merged sessions on other days.`
+          : `${draggedEvent.courseCode} Block ${draggedEvent.block} unmerged from Block ${prevPartner.block}. Moved to ${targetDay}.`,
+      })
+    } else {
+      setToast({ type: 'success', message: `Moved ${draggedEvent.courseCode} to ${targetDay}` })
     }
   }, [locked, draggedEvent, events, activeDay, applyMove])
 
@@ -490,9 +575,9 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     if (overrides.length === 0) return { succeeded: 0, failed: [] }
 
     // Cancel any pending auto-save timer since we're saving now
-    if (autoSaveTimerRef.current)    clearTimeout(autoSaveTimerRef.current)
-    if (autoSaveIntervalRef.current) clearInterval(autoSaveIntervalRef.current)
-    setAutoSaveIn(null)
+    
+    
+    
 
     setSaving(true)
     const results = await Promise.allSettled(
@@ -503,6 +588,7 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
         new_room:   o.new_room,
         new_day:    o.new_day,
         new_period: o.new_period,
+        new_faculty: o.new_faculty,
       }))
     )
     setSaving(false)
@@ -538,6 +624,7 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
         room:   override.orig_room,
         day:    override.orig_day,
         period: override.orig_period,
+        ...(override.orig_faculty !== undefined ? { faculty: override.orig_faculty } : {})
       }
     )
     setLocalEvents(reverted)
@@ -546,24 +633,101 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     setToast({ type: 'success', message: `Reverted: ${override.courseCode}` })
   }, [pendingOverrides, events, setLocalEvents, setEvents])
 
+  // ── Apply edits from SessionModal ─────────────────────────────────────────
+  const applyEdits = useCallback((updates) => {
+    const arr = Array.isArray(updates) ? updates : [updates]
+    
+    // Inject startTime and endTime from period string if present
+    const processedUpdates = arr.map(u => {
+      if (u.period) {
+        const [startTime, endTime] = u.period.split(' - ')
+        return { ...u, startTime, endTime }
+      }
+      return u
+    })
+
+    const patchMap = new Map(processedUpdates.map(u => [getEventId(u), u]))
+    const updatedEvents = events.map(e => patchMap.has(getEventId(e)) ? { ...e, ...patchMap.get(getEventId(e)) } : e)
+    
+    setLocalEvents(updatedEvents)
+    setEvents(updatedEvents)
+
+    setPendingOverrides(prev => {
+      const next = new Map(prev)
+      for (const updated of processedUpdates) {
+        const id = getEventId(updated)
+        const existingOverride = next.get(id)
+        const oldEvent = events.find(e => getEventId(e) === id) || updated
+        
+        const origRoom = existingOverride?.orig_room ?? oldEvent.room
+        const origDay = existingOverride?.orig_day ?? oldEvent.day
+        const origPeriod = existingOverride?.orig_period ?? oldEvent.period
+        const origFaculty = existingOverride?.orig_faculty ?? oldEvent.faculty
+
+        const normTime = p => p ? p.replace(/\b0(\d):/g, '$1:') : ''
+        const parts = []
+        if (updated.day !== origDay) parts.push(updated.day)
+        if (normTime(updated.period) !== normTime(origPeriod)) parts.push(updated.period)
+        if (updated.room !== origRoom) parts.push(updated.room)
+        if (updated.faculty !== origFaculty) parts.push(`Faculty: ${updated.faculty || 'TBA'}`)
+        
+        const moveDesc = parts.length > 0 ? parts.join(' | ') : 'Unchanged'
+        
+        // If nothing changed, we could theoretically delete from pendingOverrides,
+        // but for now we just register the Unchanged label.
+          const sessType = (updated.session || 'CLASS').toUpperCase();
+          const progBlock = `${updated.program || ''} ${updated.year || ''}${updated.block || ''}`.replace(/\s+/g, ' ').trim();
+
+          next.set(id, {
+            id,
+            courseCode: updated.courseCode,
+            program: updated.program,
+            year: updated.year,
+            block: updated.block,
+            session: updated.session,
+            new_room: updated.room,
+            new_day: updated.day,
+            new_period: updated.period,
+            new_faculty: updated.faculty,
+            orig_room: origRoom,
+            orig_day: origDay,
+            orig_period: origPeriod,
+            orig_faculty: origFaculty,
+            label: `${updated.courseCode} ${sessType} (${progBlock}) -> ${moveDesc}`
+          })
+      }
+      return next
+    })
+  }, [events, setLocalEvents, setEvents])
+
   // ── Revert ALL pending overrides ──────────────────────────────────────────
   const revertAllOverrides = useCallback(() => {
-    // Cancel auto-save
-    if (autoSaveTimerRef.current)    clearTimeout(autoSaveTimerRef.current)
-    if (autoSaveIntervalRef.current) clearInterval(autoSaveIntervalRef.current)
-    setAutoSaveIn(null)
+    if (pendingOverrides.size === 0) return
 
-    setLocalEvents(storeEvents)
-    setEvents(storeEvents)
+    const reverted = events.map(ev => {
+      const id = getEventId(ev)
+      const override = pendingOverrides.get(id)
+      if (override) {
+          return {
+            ...ev,
+            room:   override.orig_room,
+            day:    override.orig_day,
+            period: override.orig_period,
+            ...(override.orig_faculty !== undefined ? { faculty: override.orig_faculty } : {})
+          }
+      }
+      return ev
+    })
+
+    setLocalEvents(reverted)
+    setEvents(reverted)
     setPendingOverrides(new Map())
     setToast({ type: 'success', message: 'All pending changes reverted' })
-  }, [storeEvents, setLocalEvents, setEvents])
+  }, [events, pendingOverrides, setLocalEvents, setEvents])
 
   // ── Drop-conflict preview (for cell highlight) ────────────────────────────
   const getDropConflict = useCallback((room, slot) => {
-    if (!draggedEvent || !hoveredCell) return null
-    const [hRoom, hSlot] = hoveredCell.split('|')
-    if (hRoom !== room || parseInt(hSlot) !== slot.startMinutes) return null
+    if (!draggedEvent) return null
     const dragRange = parsePeriodRange(draggedEvent.period)
     if (!dragRange) return null
     const newStart = slot.startMinutes
@@ -583,7 +747,7 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
           && ev.faculty === draggedEvent.faculty) conflictTypes.add('Faculty')
     }
     return conflictTypes.size > 0 ? { label: [...conflictTypes].join(' + ') + ' Conflict' } : null
-  }, [draggedEvent, hoveredCell, events, activeDay])
+  }, [draggedEvent, events, activeDay])
 
   return {
     // Locked (finalized) flag — consumers use this to disable draggable
@@ -593,7 +757,7 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     // Drag state
     draggedEvent, hoveredCell, toast, setToast,
     // Drag handlers
-    handleDragStart, handleDragEnd, handleDragOver, handleDragLeave, handleDrop,
+    handleDragStart, handleDragEnd, handleDragOver, handleDragLeave, handleDrop, handleDayDrop,
     getDropConflict,
     // Conflict visualization during drag
     conflictingDragIds,
@@ -609,8 +773,9 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     saveAllOverrides,
     revertOverride,
     revertAllOverrides,
+    applyEdits,
     saving,
     // Auto-save countdown (null = idle, number = seconds remaining)
-    autoSaveIn,
+    
   }
 }

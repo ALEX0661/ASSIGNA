@@ -6,8 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from google.cloud import firestore
 
-from app.core.auth import admin_only
+from app.core.auth import admin_only, any_authenticated
 from app.core.firebase import db
+from app.core.audit import log_audit_event
 
 router = APIRouter()
 
@@ -82,13 +83,13 @@ def create_queue(req: CreateQueueRequest, user: dict = Depends(admin_only)):
     if active_queues:
         raise HTTPException(status_code=400, detail="An active queue already exists")
 
-    # Check if a master schedule already exists for this term
-    existing_master = db.collection("master_schedules") \
+    # Prevent creating duplicate queues for the same term
+    existing_queues = db.collection("coordinator_queues") \
         .where("semester", "==", req.semester) \
         .where("academicYear", "==", req.academicYear) \
         .limit(1).get()
-    if existing_master:
-        raise HTTPException(status_code=400, detail=f"A schedule for {req.semester} {req.academicYear} already exists.")
+    if existing_queues:
+        raise HTTPException(status_code=400, detail=f"A queue for {req.semester} {req.academicYear} already exists. Please delete it first if you want to start over.")
         
     queue_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
@@ -111,6 +112,7 @@ def create_queue(req: CreateQueueRequest, user: dict = Depends(admin_only)):
     }
     
     db.collection("coordinator_queues").document(queue_id).set(queue_data)
+    log_audit_event(queue_id, "QUEUE_CREATED", user, details=f"Created master schedule queue for {req.semester} {req.academicYear}")
     return queue_data
 
 @router.get("/list")
@@ -122,6 +124,14 @@ def list_queues(user: dict = Depends(admin_only)):
     docs = db.collection("coordinator_queues") \
         .order_by("createdAt", direction=firestore.Query.DESCENDING) \
         .limit(20) \
+        .get()
+    return [doc.to_dict() for doc in docs]
+
+@router.get("/{queue_id}/audit-logs")
+def get_queue_audit_logs(queue_id: str, limit: int = 50, user: dict = Depends(any_authenticated)):
+    docs = db.collection("coordinator_queues").document(queue_id).collection("audit_logs") \
+        .order_by("timestamp", direction=firestore.Query.DESCENDING) \
+        .limit(limit) \
         .get()
     return [doc.to_dict() for doc in docs]
 
@@ -166,6 +176,7 @@ def reorder_queue(queue_id: str, req: ReorderRequest, user: dict = Depends(admin
     queue_data["updatedAt"] = datetime.now(timezone.utc).isoformat()
     
     doc_ref.set(queue_data)
+    log_audit_event(queue_id, "QUEUE_REORDERED", user, details="Reordered the waiting programs in the queue")
     return queue_data
 
 @router.post("/{queue_id}/skip/{program}")
@@ -202,6 +213,7 @@ def skip_program(queue_id: str, program: str, user: dict = Depends(admin_only)):
         
     queue_data["updatedAt"] = datetime.now(timezone.utc).isoformat()
     doc_ref.set(queue_data)
+    log_audit_event(queue_id, "PROGRAM_SKIPPED", user, target_program=program, details=f"Skipped {program}'s turn")
     return queue_data
 
 @router.post("/{queue_id}/advance")
@@ -239,11 +251,43 @@ def advance_queue(queue_id: str, user: dict = Depends(admin_only)):
     queue_data["updatedAt"] = datetime.now(timezone.utc).isoformat()
     
     doc_ref.set(queue_data)
+    log_audit_event(queue_id, "QUEUE_ADVANCED", user, target_program=active_prog if "active_prog" in locals() else None, details="Manually advanced the queue")
     return queue_data
 
 @router.delete("/{queue_id}")
 def delete_queue(queue_id: str, user: dict = Depends(admin_only)):
-    doc_ref, _ = _get_queue_or_404(queue_id)
+    doc_ref, queue_data = _get_queue_or_404(queue_id)
+    
+    # 1. Reset all submitted/approved schedules associated with this queue
+    schedules = db.collection("coordinator_schedules").where("queueId", "==", queue_id).get()
+    for sched in schedules:
+        data = sched.to_dict()
+        old_status = data.get("status")
+        update_data = {
+            "status": "draft",
+            "queueId": None,
+            "submittedAt": None,
+            "approvedAt": None,
+        }
+        
+        if old_status in ["submitted", "approved"]:
+            update_data["unfinalizedNote"] = f"Admin deleted the scheduling queue, returning this {old_status} schedule to draft."
+        else:
+            update_data["unfinalizedNote"] = None
+            
+        sched.reference.update(update_data)
+        
+    # 2. Delete the master schedule associated with this queue (if any)
+    masters = db.collection("master_schedules").where("queueId", "==", queue_id).get()
+    for master in masters:
+        master.reference.delete()
+        
+    # 3. Delete the audit logs subcollection
+    audit_logs = doc_ref.collection("audit_logs").get()
+    for log in audit_logs:
+        log.reference.delete()
+        
+    # 4. Finally, delete the queue itself
     doc_ref.delete()
     return {"message": "Queue deleted successfully"}
 
@@ -261,4 +305,5 @@ def finish_queue(queue_id: str, user: dict = Depends(admin_only)):
     queue_data["status"] = "completed"
     queue_data["updatedAt"] = datetime.now(timezone.utc).isoformat()
     doc_ref.set(queue_data)
+    log_audit_event(queue_id, "QUEUE_FINISHED", user, details="Manually finished the queue")
     return queue_data

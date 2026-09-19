@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import {
@@ -13,6 +14,7 @@ import { useTour } from '../../hooks/useTour.jsx'
 import { useCoordSolverStore } from '../../store/scheduleStore'
 import ScheduleGeneratorLoader from '../admin/ScheduleGeneratorLoader'
 import TimeGrid from '../../components/ScheduleView/TimeGrid'
+import { buildConflictMap, isOnlineRoom } from '../../components/ScheduleView/svHelpers'
 import roomsIcon from '../../assets/ROOMS.png'
 
 /* ─────────────────────────── CONSTANTS & SETTINGS ─────────────────────────── */
@@ -735,6 +737,228 @@ function PhaseReorderList({ phases, onReorder }) {
     </div>
   )
 }
+function MasterScheduleModal({ onClose, masterEvents }) {
+  const [activeDay, setActiveDay] = useState('Monday')
+  
+  const gridDayEvents = useMemo(() => masterEvents.filter(e => e.day === activeDay), [masterEvents, activeDay])
+  const gridUniqueRooms = useMemo(() => Array.from(new Set(masterEvents.map(e => e.room))).sort(), [masterEvents])
+
+  const content = (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--bg)', zIndex: 9999, height: '100dvh', padding: '24px 32px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
+        <div>
+          <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: G.ink }}>Master Schedule Grid</h2>
+          <p style={{ fontSize: 13, margin: 0, marginTop: 4, color: G.muted }}>Live approved queue events</p>
+        </div>
+        <div style={{ flex: 1 }} />
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
+          {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(d => (
+            <button key={d} onClick={() => setActiveDay(d)} 
+              style={{
+                padding: '6px 13px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+                cursor: 'pointer', border: '1px solid var(--border)',
+                background: activeDay === d ? `linear-gradient(135deg, ${G.meadow}, ${G.meadowDeep})` : 'var(--surface)',
+                color: activeDay === d ? '#fff' : G.muted,
+                transition: 'all .15s', whiteSpace: 'nowrap',
+                boxShadow: activeDay === d ? '0 2px 8px rgba(0,0,0,.3)' : 'none'
+              }}>
+              {d}
+            </button>
+          ))}
+        </div>
+        <div style={{ flex: 1 }} />
+        <button onClick={onClose} style={{ padding: '8px 16px', borderRadius: 8, background: 'var(--surface)', border: `1px solid ${G.border}`, color: G.ink, cursor: 'pointer', fontWeight: 600 }}>
+          Close Grid
+        </button>
+      </div>
+
+      <div style={{ flex: 1, minHeight: 0, overflow: 'auto', background: 'var(--surface)', borderRadius: 12, border: `1px solid ${G.border}` }}>
+        <TimeGrid 
+          propStartHour={Number(globalSettings?.time?.start_time) || 7}
+          propEndHour={Number(globalSettings?.time?.end_time) || 21}
+          rooms={gridUniqueRooms} dayEvents={gridDayEvents} conflictMap={buildConflictMap(gridDayEvents)}
+          locked={true} gridSize="normal" fullscreen={true}
+          ambientConflictIds={new Set()} ambientMergeIds={new Set()}
+          conflictingDragIds={new Set()} dragConflictBands={[]}
+          mergedIds={new Set()} allEvents={masterEvents} availabilityMap={new Map()}
+        />
+      </div>
+    </div>
+  )
+  
+  return createPortal(content, document.body)
+}
+
+// ── Master Schedule Analytics Panel ──
+function CoordinatorAnalytics({ masterEvents }) {
+  const [showGrid, setShowGrid] = useState(false);
+  
+  const roomProgramUsage = useMemo(() => {
+    const data = {};
+    const programs = new Set();
+    let maxHours = 0;
+
+    for (const ev of masterEvents) {
+      if (!ev.room || ev.room === 'TBA') continue;
+      if (!ev.program) continue;
+
+      const h = _periodHours(ev.period) || 0;
+      if (h <= 0) continue;
+      
+      if (!data[ev.room]) data[ev.room] = { room: ev.room, total: 0 };
+      data[ev.room][ev.program] = (data[ev.room][ev.program] || 0) + h;
+      data[ev.room].total += h;
+      programs.add(ev.program);
+    }
+    
+    // Sort alphabetically by room name so it's easy to read
+    const arr = Object.values(data).sort((a,b) => a.room.localeCompare(b.room));
+    arr.forEach(d => { if(d.total > maxHours) maxHours = d.total });
+
+    return { data: arr, programs: Array.from(programs).sort(), maxHours };
+  }, [masterEvents]);
+
+  const dayCoverage = useMemo(() => {
+    const counts = {};
+    for (const ev of masterEvents) {
+      if (!ev.day || ev.day === 'TBA') continue;
+      counts[ev.day] = (counts[ev.day] || 0) + 1;
+    }
+    const daysOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    return daysOrder.filter(d => counts[d] !== undefined).map(d => ({ day: d, events: counts[d] }));
+  }, [masterEvents]);
+  
+  const programHours = useMemo(() => {
+    const counts = {};
+    for (const ev of masterEvents) {
+      if (!ev.program) continue;
+      counts[ev.program] = (counts[ev.program] || 0) + (_periodHours(ev.period) || 0);
+    }
+    return Object.entries(counts).map(([prog, h]) => ({ program: prog, hours: h })).sort((a,b) => b.hours - a.hours);
+  }, [masterEvents]);
+
+  const sessionTypeData = useMemo(() => {
+    let lec = 0, lab = 0;
+    for (const ev of masterEvents) {
+      const t = (ev.session || 'lecture').toLowerCase();
+      if (t === 'lab' || t === 'laboratory') lab++;
+      else lec++; // 'practicum' and everything else just grouped under Lecture
+    }
+    const res = [];
+    if (lec > 0) res.push({ name: 'Lecture', value: lec });
+    if (lab > 0) res.push({ name: 'Lab', value: lab });
+    return res;
+  }, [masterEvents]);
+
+  const COLORS = ['#10B981', '#38BDF8', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#6366F1', '#14B8A6', '#F43F5E'];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {showGrid && <MasterScheduleModal onClose={() => setShowGrid(false)} masterEvents={masterEvents} />}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: G.ink }}>Live Queue Analytics</h3>
+          <p style={{ fontSize: 12.5, color: G.muted, margin: 0, marginTop: 4 }}>
+            Detailed breakdown of the {masterEvents.length} events from previously approved programs in the live queue.
+          </p>
+        </div>
+        <button className="btn-primary" onClick={() => setShowGrid(true)} style={{ padding: '8px 16px', fontSize: 12 }}>
+          View Live Queue Grid
+        </button>
+      </div>
+
+      {masterEvents.length === 0 ? (
+        <div style={{ padding: '40px', textAlign: 'center', background: G.hover, borderRadius: 12, border: `1px solid ${G.border}` }}>
+          <p style={{ fontSize: 13, color: G.muted, margin: 0, fontWeight: 600 }}>No approved schedules yet to analyze.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: 16 }}>
+          
+          <div className="sch-card" style={{ padding: 16, gridColumn: '1 / -1' }}>
+            <h4 style={{ fontSize: 13, fontWeight: 800, color: G.ink, margin: '0 0 4px 0' }}>Room Occupancy by Program (All Rooms)</h4>
+            <p style={{ fontSize: 11.5, color: G.muted, margin: '0 0 16px 0' }}>Shows how many hours each room is booked for, broken down by program. TBA events are excluded.</p>
+            <div style={{ height: Math.max(300, roomProgramUsage.data.length * 36), overflowY: 'auto', paddingRight: 8 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={roomProgramUsage.data} layout="vertical" margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                  <XAxis type="number" tick={{ fontSize: 11, fill: G.muted }} axisLine={false} tickLine={false} domain={[0, Math.ceil(roomProgramUsage.maxHours + 5)]} />
+                  <YAxis type="category" dataKey="room" tick={{ fontSize: 11, fill: G.ink, fontWeight: 700 }} axisLine={false} tickLine={false} width={100} />
+                  <Tooltip cursor={{ fill: G.hover }} contentStyle={{ borderRadius: 8, border: `1px solid ${G.border}`, fontSize: 12, fontWeight: 600 }} />
+                  <Legend wrapperStyle={{ fontSize: 11, fontWeight: 600, color: G.ink }} />
+                  {roomProgramUsage.programs.map((prog, i) => (
+                    <Bar key={prog} dataKey={prog} stackId="a" fill={COLORS[i % COLORS.length]} maxBarSize={24} />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="sch-card" style={{ padding: 16, gridColumn: '1 / -1' }}>
+            <h4 style={{ fontSize: 13, fontWeight: 800, color: G.ink, margin: '0 0 4px 0' }}>Events per Day</h4>
+            <p style={{ fontSize: 11.5, color: G.muted, margin: '0 0 16px 0' }}>Distribution of scheduled events across the week.</p>
+            <div style={{ height: 280 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dayCoverage} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: G.muted }} axisLine={false} tickLine={false} interval={0} />
+                  <YAxis tick={{ fontSize: 11, fill: G.muted }} axisLine={false} tickLine={false} />
+                  <Tooltip cursor={{ fill: G.hover }} contentStyle={{ borderRadius: 8, border: `1px solid ${G.border}`, fontSize: 12, fontWeight: 600 }} />
+                  <Bar dataKey="events" fill="#38BDF8" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="sch-card" style={{ padding: 16 }}>
+            <h4 style={{ fontSize: 13, fontWeight: 800, color: G.ink, margin: '0 0 4px 0' }}>Total Hours Generated</h4>
+            <p style={{ fontSize: 11.5, color: G.muted, margin: '0 0 16px 0' }}>Total scheduled hours produced by each program.</p>
+            <div style={{ height: 280 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={programHours} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <XAxis dataKey="program" tick={{ fontSize: 11, fill: G.muted }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: G.muted }} axisLine={false} tickLine={false} />
+                  <Tooltip cursor={{ fill: G.hover }} contentStyle={{ borderRadius: 8, border: `1px solid ${G.border}`, fontSize: 12, fontWeight: 600 }} />
+                  <Bar dataKey="hours" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                    {programHours.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="sch-card" style={{ padding: 16 }}>
+            <h4 style={{ fontSize: 13, fontWeight: 800, color: G.ink, margin: '0 0 4px 0' }}>Event Session Types</h4>
+            <p style={{ fontSize: 11.5, color: G.muted, margin: '0 0 16px 0' }}>Proportion of Lecture vs Lab events across the live queue.</p>
+            <div style={{ height: 280 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={sessionTypeData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={90}
+                    paddingAngle={3}
+                    dataKey="value"
+                    nameKey="name"
+                  >
+                    {sessionTypeData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[(index + 3) % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ borderRadius: 8, border: `1px solid ${G.border}`, fontSize: 12, fontWeight: 600 }} />
+                  <Legend wrapperStyle={{ fontSize: 11, fontWeight: 600, color: G.ink }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+        </div>
+      )}
+    </div>
+  );
+}
 
 function CoordinatorCheckPanel({ semester, masterEvents }) {
   const [diag, setDiag] = useState(null)
@@ -995,6 +1219,7 @@ function CoordinatorCheckPanel({ semester, masterEvents }) {
             <div style={{ display:'flex', gap:8, marginBottom: 14 }}>
               <button onClick={() => setDiagTab('checks')} className={`r-tab ${diagTab === 'checks' ? 'active' : ''}`}>Checks ({diag.checks.length})</button>
               <button onClick={() => setDiagTab('recs')} className={`r-tab ${diagTab === 'recs' ? 'active' : ''}`}>Recommendations ({diag.recommendations.length})</button>
+              <button onClick={() => setDiagTab('analytics')} className={`r-tab ${diagTab === 'analytics' ? 'active' : ''}`}>Analytics</button>
               <span style={{ flex: 1 }} />
               <button className="check-btn" onClick={runDiagnostic} disabled={diagLoading}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.2"/></svg> Refresh
@@ -1041,6 +1266,10 @@ function CoordinatorCheckPanel({ semester, masterEvents }) {
                 })}
               </div>
             )}
+            
+            {diagTab === 'analytics' && (
+              <CoordinatorAnalytics masterEvents={masterEvents} />
+            )}
           </div>
         )}
       </div>
@@ -1050,7 +1279,8 @@ function CoordinatorCheckPanel({ semester, masterEvents }) {
 
 /* ─────────────────────────── PAGE EXPORT ─────────────────────────── */
 
-export default function CoordSchedulerPage() {
+
+      export default function CoordSchedulerPage() {
   const { coordinatorProgram } = useAuth()
   const navigate = useNavigate()
   const { toasts, toast } = useToast()
@@ -1184,12 +1414,14 @@ export default function CoordSchedulerPage() {
   const [schedules, setSchedules] = useState([])
   const [loadingInit, setLoadingInit] = useState(true)
 
+  const [courses, setCourses] = useState([])
   const [allRooms, setAllRooms] = useState({ lecture: [], lab: [] })
   const [selLecture, setSelLecture] = useState([])
   const [selLab, setSelLab] = useState([])
   const [roomsLoading, setRoomsLoading] = useState(true)
   const [roomsSaving, setRoomsSaving] = useState(false)
   const [roomsDirty, setRoomsDirty] = useState(false)
+  const [showRoomWarningModal, setShowRoomWarningModal] = useState(false)
 
   // Events from every program already approved ahead of this coordinator in
   // the queue — used to show which rooms are filling up before generating,
@@ -1253,7 +1485,38 @@ export default function CoordSchedulerPage() {
     suggestions: ['Check your room selection and time constraints.']
   };
 
-  const [saveName, setSaveName] = useState('')
+  const unselectedPreAssignedRooms = useMemo(() => {
+    const missing = [];
+    const selLecSet = new Set(selLecture);
+    const selLabSet = new Set(selLab);
+    const activeCourses = courses || [];
+
+    for (const c of activeCourses) {
+      if (!c.preferredRoom) continue;
+      const prefs = c.preferredRoom.split(',').map(s => s.trim()).filter(Boolean);
+      const isLec = (Number(c.unitsLecture) || 0) > 0;
+      const isLab = (Number(c.unitsLab) || 0) > 0;
+      
+      const missingForCourse = [];
+      for (const pref of prefs) {
+         let found = false;
+         // We consider it "found" if it's selected in any of the lists required by the course
+         if (isLec && selLecSet.has(pref)) found = true;
+         if (isLab && selLabSet.has(pref)) found = true;
+         if (!found) missingForCourse.push(pref);
+      }
+      
+      if (missingForCourse.length > 0) {
+        missing.push({
+          course: c.courseCode,
+          rooms: missingForCourse
+        });
+      }
+    }
+    return missing;
+  }, [courses, selLecture, selLab]);
+
+    const [saveName, setSaveName] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [savedScheduleId, setSavedScheduleId] = useState(null)
@@ -1351,22 +1614,41 @@ export default function CoordSchedulerPage() {
     return () => { stop(); document.removeEventListener('visibilitychange', onVisibility) }
   }, [])
 
+  // If the admin deletes the queue and creates a new one while the coordinator
+  // is on Step 4, we shouldn't let them save the old generated events under the
+  // new queue's context. Wipe the state if the queue changes underneath us.
+  const prevQueueId = useRef(turnData?.queueId || null)
+  useEffect(() => {
+    if (turnData !== undefined) {
+      const qid = turnData?.queueId || null
+      if (prevQueueId.current !== undefined && prevQueueId.current !== qid) {
+        setResult(null)
+        setStatus('idle')
+        setWizStep(1)
+        setMaxReached(1)
+      }
+      prevQueueId.current = qid
+    }
+  }, [turnData?.queueId])
+
   function loadAll() {
     setLoadingInit(true)
     setRoomsLoading(true)
     Promise.all([
       coordCheckTurn().catch(() => null),
       coordListSchedules().catch(() => []),
-      coordGetRooms ? coordGetRooms().catch(() => ({ lecture: [], lab: [] })) : Promise.resolve({ lecture: [], lab: [] }),
+      coordGetCourses ? coordGetCourses().catch(() => []) : Promise.resolve([]),
+        coordGetRooms ? coordGetRooms().catch(() => ({ lecture: [], lab: [] })) : Promise.resolve({ lecture: [], lab: [] }),
       coordGetSelectedRooms ? coordGetSelectedRooms().catch(() => ({ lecture: [], lab: [] })) : Promise.resolve({ lecture: [], lab: [] }),
       // Needs the actual sessions (not just approvedPrograms) to run the
       // room/faculty conflict checks in CoordinatorCheckPanel below.
       coordGetSubmittedSchedule ? coordGetSubmittedSchedule(true).catch(() => ({ schedule: [] })) : Promise.resolve({ schedule: [] }),
       coordGetSettings ? coordGetSettings().catch(() => null) : Promise.resolve(null),
-    ]).then(([t, s, rooms, selected, master, settings]) => {
+    ]).then(([t, s, fetchedCourses, rooms, selected, master, settings]) => {
       setTurnData(t)
       setSchedules(Array.isArray(s) ? s : [])
-      setAllRooms({ lecture: rooms?.lecture || [], lab: rooms?.lab || [] })
+      setCourses(fetchedCourses || [])
+        setAllRooms({ lecture: rooms?.lecture || [], lab: rooms?.lab || [] })
       setSelLecture(selected?.lecture || [])
       setSelLab(selected?.lab || [])
       setMasterEvents(master?.schedule || [])
@@ -1527,13 +1809,16 @@ export default function CoordSchedulerPage() {
     finally { setActionLoading(null) }
   }
 
-  async function handleDelete(id, name) {
-    if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return
+  const [deleteTarget, setDeleteTarget] = useState(null)
+
+  async function confirmDelete(id) {
+    if (!id) return
     setActionLoading(id + '_del')
     try {
       await coordDeleteSchedule(id)
       setSchedules(p => p.filter(s => s.id !== id))
       toast('Deleted', 'success')
+      setDeleteTarget(null)
     } catch { toast('Failed to delete', 'error') }
     finally { setActionLoading(null) }
   }
@@ -1582,9 +1867,11 @@ export default function CoordSchedulerPage() {
   
   const combinedEventsForGrid = useMemo(() => {
     if (!overlayMaster) return events
-    const masterOthers = masterEvents.map(e => ({ ...e, _isOtherProgram: true }))
+    const masterOthers = masterEvents
+      .filter(e => e.program !== coordinatorProgram)
+      .map(e => ({ ...e, _isOtherProgram: true }))
     return [...events, ...masterOthers]
-  }, [events, overlayMaster, masterEvents])
+  }, [events, overlayMaster, masterEvents, coordinatorProgram])
 
   const gridDayEvents = useMemo(() => combinedEventsForGrid.filter(e => e.day === activeDay), [combinedEventsForGrid, activeDay])
   const gridUniqueRooms = useMemo(() => Array.from(new Set(combinedEventsForGrid.map(e => e.room))).sort(), [combinedEventsForGrid])
@@ -1715,7 +2002,17 @@ export default function CoordSchedulerPage() {
                              <img src={roomsIcon} alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} />
                           </div>
                           <div>
-                             <div style={{ fontSize: 14, fontWeight: 800, color: G.ink }}>Room Selection</div>
+                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                 <div style={{ fontSize: 14, fontWeight: 800, color: G.ink }}>Room Selection</div>
+                                 {unselectedPreAssignedRooms.length > 0 && (
+                                   <div 
+                                     onClick={() => setShowRoomWarningModal(true)}
+                                     title="Some pre-assigned rooms are not selected. Click for details."
+                                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: G.amberSoft, cursor: 'pointer', color: '#92400E', border: '1px solid #FDE68A' }}>
+                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                   </div>
+                                 )}
+                               </div>
                              <div style={{ fontSize: 11.5, color: G.muted, marginTop: 1 }}>Only these rooms will be used when generating</div>
                           </div>
                        </div>
@@ -1757,6 +2054,7 @@ export default function CoordSchedulerPage() {
                             const bothPresent = hasLec && hasLab
                             return (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}>
+                                
                                 <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
                                   {(bothPresent || hasLec) && (
                                     <RoomGroup title="Lecture Rooms" all={allRooms.lecture} selected={selLecture} onToggle={r => toggleRoom('lecture', r)} onSelectAll={() => selectAllRooms('lecture')} onClear={() => clearRooms('lecture')} usage={roomUsage} />
@@ -2110,7 +2408,7 @@ export default function CoordSchedulerPage() {
                         </button>
                       </div>
                     </div>
-                    <div className="csh-table-wrap" style={{ maxHeight: reviewViewMode === 'grid' ? 500 : 380, overflowY: 'auto' }}>
+                    <div className="csh-table-wrap" style={{ maxHeight: reviewViewMode === 'grid' ? 500 : 380, overflowY: 'auto', overflowX: 'auto' }}>
                       {reviewViewMode === 'table' ? (
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                           <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
@@ -2136,50 +2434,57 @@ export default function CoordSchedulerPage() {
                           </tbody>
                         </table>
                       ) : (
-                        <div style={{
-                          display: 'flex', flexDirection: 'column', height: '100%', minHeight: 450, padding: '12px 16px',
-                          ...(isMaximized ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--surface)', zIndex: 9999, minHeight: '100vh', padding: '24px 32px' } : {})
-                        }}>
-                          <div style={{ display: 'flex', gap: 12, marginBottom: 16, overflowX: 'auto', paddingBottom: 4, alignItems: 'center' }}>
-                            <div style={{ display: 'flex', gap: 6 }}>
-                              {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(d => (
-                                <button key={d} onClick={() => setActiveDay(d)} 
-                                  style={{
-                                    padding: '6px 13px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-                                    cursor: 'pointer', border: '1px solid var(--border)',
-                                    background: activeDay === d ? `linear-gradient(135deg, ${G.meadow}, ${G.meadowDeep})` : 'var(--surface)',
-                                    color: activeDay === d ? '#fff' : G.muted,
-                                    transition: 'all .15s', whiteSpace: 'nowrap',
-                                    boxShadow: activeDay === d ? '0 2px 8px rgba(0,0,0,.3)' : 'none'
-                                  }}>
-                                  {d}
+                        (() => {
+                          const gridViewContent = (
+                            <div style={{
+                              display: 'flex', flexDirection: 'column', height: '100%', minHeight: 450, padding: '12px 16px',
+                              ...(isMaximized ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--surface)', zIndex: 9999, height: '100dvh', padding: '24px 32px', overflow: 'hidden' } : {})
+                            }}>
+                              <div style={{ display: 'flex', gap: 12, marginBottom: 16, overflowX: 'auto', paddingBottom: 4, alignItems: 'center' }}>
+                                <div style={{ display: 'flex', gap: 6 }}>
+                                  {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(d => (
+                                    <button key={d} onClick={() => setActiveDay(d)} 
+                                      style={{
+                                        padding: '6px 13px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+                                        cursor: 'pointer', border: '1px solid var(--border)',
+                                        background: activeDay === d ? `linear-gradient(135deg, ${G.meadow}, ${G.meadowDeep})` : 'var(--surface)',
+                                        color: activeDay === d ? '#fff' : G.muted,
+                                        transition: 'all .15s', whiteSpace: 'nowrap',
+                                        boxShadow: activeDay === d ? '0 2px 8px rgba(0,0,0,.3)' : 'none'
+                                      }}>
+                                      {d}
+                                    </button>
+                                  ))}
+                                </div>
+                                <div style={{ flex: 1 }} />
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, fontWeight: 600, color: G.muted2, cursor: 'pointer', background: 'var(--bg)', padding: '6px 12px', borderRadius: 8, border: `1px solid ${G.border}` }}>
+                                  <input type="checkbox" checked={overlayMaster} onChange={e => setOverlayMaster(e.target.checked)} style={{ cursor: 'pointer' }} />
+                                  Show Other Programs (Background)
+                                </label>
+                                <button onClick={() => setIsMaximized(m => !m)} title={isMaximized ? "Restore size" : "Maximize"}
+                                  style={{ padding: '6px', borderRadius: 8, background: 'var(--bg)', border: `1px solid ${G.border}`, color: G.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  {isMaximized ? (
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
+                                  ) : (
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                                  )}
                                 </button>
-                              ))}
+                              </div>
+                              <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+                                <TimeGrid 
+                                  propStartHour={Number(globalSettings?.time?.start_time) || 7}
+                                  propEndHour={Number(globalSettings?.time?.end_time) || 21}
+                                  rooms={gridUniqueRooms} dayEvents={gridDayEvents} conflictMap={buildConflictMap(gridDayEvents)}
+                                  locked={true} gridSize="normal" fullscreen={isMaximized}
+                                  ambientConflictIds={new Set()} ambientMergeIds={new Set()}
+                                  conflictingDragIds={new Set()} dragConflictBands={[]}
+                                  mergedIds={new Set()} allEvents={combinedEventsForGrid} availabilityMap={new Map()}
+                                />
+                              </div>
                             </div>
-                            <div style={{ flex: 1 }} />
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, fontWeight: 600, color: G.muted2, cursor: 'pointer', background: 'var(--bg)', padding: '6px 12px', borderRadius: 8, border: `1px solid ${G.border}` }}>
-                              <input type="checkbox" checked={overlayMaster} onChange={e => setOverlayMaster(e.target.checked)} style={{ cursor: 'pointer' }} />
-                              Show Other Programs (Background)
-                            </label>
-                            <button onClick={() => setIsMaximized(m => !m)} title={isMaximized ? "Restore size" : "Maximize"}
-                              style={{ padding: '6px', borderRadius: 8, background: 'var(--bg)', border: `1px solid ${G.border}`, color: G.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              {isMaximized ? (
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
-                              ) : (
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-                              )}
-                            </button>
-                          </div>
-                          <div style={{ flex: 1, minHeight: 400 }}>
-                            <TimeGrid 
-                              rooms={gridUniqueRooms} dayEvents={gridDayEvents} conflictMap={new Map()}
-                              locked={true} gridSize="normal" fullscreen={isMaximized}
-                              ambientConflictIds={new Set()} ambientMergeIds={new Set()}
-                              conflictingDragIds={new Set()} dragConflictBands={[]}
-                              mergedIds={new Set()} allEvents={combinedEventsForGrid} availabilityMap={new Map()}
-                            />
-                          </div>
-                        </div>
+                          )
+                          return isMaximized ? createPortal(gridViewContent, document.body) : gridViewContent
+                        })()
                       )}
                     </div>
                     <div id="tour-save-schedule" style={{ padding: '18px 20px', borderTop: `1px solid ${G.border}`, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg)' }}>
@@ -2304,6 +2609,46 @@ export default function CoordSchedulerPage() {
           )}
         </div>
       </div>
+
+      {showRoomWarningModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(14,42,32,0.6)", backdropFilter: "blur(4px)", zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => setShowRoomWarningModal(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, boxShadow: "0 20px 40px rgba(0,0,0,0.15)", maxWidth: 450, width: "100%", padding: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: G.amberSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid #FDE68A' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: G.ink }}>Unselected Preferred Rooms</h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: 13, color: G.muted }}>You assigned specific rooms to some courses, but didn't select those rooms here.</p>
+              </div>
+            </div>
+            <div style={{ fontSize: 13, color: G.ink, lineHeight: 1.5, background: G.hover, padding: 12, borderRadius: 8, border: `1px solid ${G.border}`, marginBottom: 16 }}>
+              <strong>Note:</strong> The solver will automatically assign these courses to any available <em>selected</em> room to ensure they get scheduled.
+            </div>
+            <div style={{ maxHeight: 200, overflowY: 'auto', border: `1px solid ${G.border}`, borderRadius: 8, background: '#fff' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ position: 'sticky', top: 0, background: G.hover }}>
+                  <tr>
+                    <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: G.muted2, borderBottom: `1px solid ${G.border}` }}>COURSE</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: G.muted2, borderBottom: `1px solid ${G.border}` }}>MISSING ROOMS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {unselectedPreAssignedRooms.map(item => (
+                    <tr key={item.course}>
+                      <td style={{ padding: '8px 12px', fontSize: 12, fontWeight: 600, color: G.ink, borderBottom: `1px solid ${G.borderLight}` }}>{item.course}</td>
+                      <td style={{ padding: '8px 12px', fontSize: 12, color: '#DC2626', fontWeight: 500, borderBottom: `1px solid ${G.borderLight}` }}>{item.rooms.join(', ')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
+              <button className="btn-primary" onClick={() => setShowRoomWarningModal(false)}>Got it</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ToastContainer toasts={toasts} />
     </div>
