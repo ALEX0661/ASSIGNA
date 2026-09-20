@@ -156,25 +156,28 @@ class FacultyAssigner:
 
     def _has_specialization(self, faculty: dict, course_code: str) -> bool:
         """
-        Match by courseTitle (primary, stable across code changes).
-        Falls back to courseCode for legacy specialization entries that
-        predate the title-based system.
-
-        The course_code is resolved to a title via self._course_title_map,
+        True if the faculty explicitly specializes in the requested course_code.
+        Relies on `self._course_title_map`,
         which is built once per assign() run from the loaded course cache.
         """
         target_code  = course_code.upper().strip()
         target_title = self._normalise_title(self._course_title_map.get(target_code, ""))
 
         for s in faculty.get("specializations", []):
+            if type(s) is str:
+                continue
+
+            # If the course code matches exactly, it's valid even if flagged as unmatched
+            stored_code = (s.get("courseCode") or "").upper().strip()
+            if stored_code and stored_code == target_code:
+                return True
+
             if s.get("isUnmatched"):
                 continue
+
             # Primary: match on courseTitle (new format)
             stored_title = self._normalise_title(s.get("courseTitle", ""))
             if stored_title and target_title and stored_title == target_title:
-                return True
-            # Fallback: match on courseCode (legacy entries without courseTitle)
-            if not s.get("courseTitle") and s.get("courseCode", "").upper().strip() == target_code:
                 return True
 
         return False
@@ -184,12 +187,17 @@ class FacultyAssigner:
         target_title = self._normalise_title(self._course_title_map.get(target_code, ""))
 
         for s in faculty.get("specializations", []):
+            if type(s) is str: continue
+            
+            stored_code = (s.get("courseCode") or "").upper().strip()
+            if stored_code and stored_code == target_code:
+                return int(s.get("rating", 1))
+                
             if s.get("isUnmatched"):
                 continue
+                
             stored_title = self._normalise_title(s.get("courseTitle", ""))
             if stored_title and target_title and stored_title == target_title:
-                return int(s.get("rating", 1))
-            if not s.get("courseTitle") and s.get("courseCode", "").upper().strip() == target_code:
                 return int(s.get("rating", 1))
 
         return 0
