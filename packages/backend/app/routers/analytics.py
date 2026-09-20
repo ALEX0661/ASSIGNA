@@ -585,7 +585,15 @@ def dashboard_stats(user=Depends(admin_only)):
     active_faculty = [f for f in faculty if not f.get("archived", False)]
     full_time  = [f for f in active_faculty if f.get("status", "full-time") == "full-time"]
     part_time  = [f for f in active_faculty if f.get("status", "full-time") == "part-time"]
-    with_specs = [f for f in active_faculty if any(not s.get("isUnmatched") for s in f.get("specializations", []))]
+    valid_codes = {c.get("courseCode", "").strip().upper() for c in courses}
+    def has_valid_specs(f):
+        for s in f.get("specializations", []):
+            if type(s) is str: continue # handle legacy just in case
+            if not s.get("isUnmatched"): return True
+            if (s.get("courseCode") or "").strip().upper() in valid_codes: return True
+        return False
+    
+    with_specs = [f for f in active_faculty if has_valid_specs(f)]
 
     faculty_stats = {
         "total":                len(active_faculty),

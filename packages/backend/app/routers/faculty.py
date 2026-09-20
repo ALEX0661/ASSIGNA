@@ -293,6 +293,7 @@ def update_faculty(faculty_id: str, data: FacultyUpdate, user=Depends(any_authen
         raise HTTPException(404, "Faculty not found")
 
     update_data = data.dict(exclude_unset=True)
+    print("DEBUG update_faculty incoming update_data:", update_data)
 
     
 
