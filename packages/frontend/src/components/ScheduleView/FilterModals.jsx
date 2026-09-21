@@ -949,6 +949,38 @@ function Notice({ text }) {
     </div>
   )
 }
+export function DiscardChangesModal({ onConfirm, onCancel }) {
+  return (
+    <ModalOverlay onClose={onCancel}>
+      <div onClick={e => e.stopPropagation()} style={{ 
+        width: 400, 
+        padding: 24, 
+        textAlign: 'center',
+        background: 'var(--surface)',
+        borderRadius: 16,
+        boxShadow: '0 24px 64px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,.05)'
+      }}>
+        <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(245, 158, 11, 0.1)', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <h3 style={{ fontSize: 18, color: 'var(--ink)', margin: '0 0 8px 0' }}>Discard Unsaved Changes?</h3>
+        <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 24px 0', lineHeight: 1.5 }}>
+          You have unsaved changes. Are you sure you want to discard them? This action cannot be undone.
+        </p>
+        
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+          <button onClick={onCancel} style={{ flex: 1, padding: '10px 0', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--ink)', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+            Cancel
+          </button>
+          <button onClick={onConfirm} style={{ flex: 1, padding: '10px 0', borderRadius: 8, border: 'none', background: '#F59E0B', color: '#fff', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+            Discard Changes
+          </button>
+        </div>
+      </div>
+    </ModalOverlay>
+  )
+}
+
 export function DeleteScheduleModal({ scheduleName, isMaster, onConfirm, onCancel, deletingState }) {
   return (
     <ModalOverlay onClose={onCancel}>

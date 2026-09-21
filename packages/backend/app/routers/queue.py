@@ -257,31 +257,46 @@ def advance_queue(queue_id: str, user: dict = Depends(admin_only)):
 @router.delete("/{queue_id}")
 def delete_queue(queue_id: str, user: dict = Depends(admin_only)):
     doc_ref, queue_data = _get_queue_or_404(queue_id)
-    
-    # 1. Reset all submitted/approved schedules associated with this queue
-    schedules = db.collection("coordinator_schedules").where("queueId", "==", queue_id).get()
-    for sched in schedules:
-        data = sched.to_dict()
-        old_status = data.get("status")
-        update_data = {
-            "status": "draft",
-            "queueId": None,
-            "submittedAt": None,
-            "approvedAt": None,
-        }
-        
-        if old_status in ["submitted", "approved"]:
-            update_data["unfinalizedNote"] = f"Admin deleted the scheduling queue, returning this {old_status} schedule to draft."
-        else:
-            update_data["unfinalizedNote"] = None
-            
-        sched.reference.update(update_data)
-        
-    # 2. Delete the master schedule associated with this queue (if any)
+
+    # A queue whose master schedule was already finalized (see
+    # approval.py's /master/{queue_id}/finalize) is a published term --
+    # deleting the queue itself is just cleaning up the turn-order
+    # bookkeeping, it should NOT reach back and unpublish that work.
+    # Only unwind approvals / drop the master doc for a queue that's
+    # still "building" (never finalized).
     masters = db.collection("master_schedules").where("queueId", "==", queue_id).get()
-    for master in masters:
-        master.reference.delete()
-        
+    is_finalized = any(m.to_dict().get("status") == "finalized" for m in masters)
+
+    if not is_finalized:
+        # 1. Reset all submitted/approved schedules associated with this queue
+        schedules = db.collection("coordinator_schedules").where("queueId", "==", queue_id).get()
+        for sched in schedules:
+            data = sched.to_dict()
+            old_status = data.get("status")
+            update_data = {
+                "status": "draft",
+                "queueId": None,
+                "submittedAt": None,
+                "approvedAt": None,
+            }
+
+            if old_status in ["submitted", "approved"]:
+                update_data["unfinalizedNote"] = f"Admin deleted the scheduling queue, returning this {old_status} schedule to draft."
+            else:
+                update_data["unfinalizedNote"] = None
+
+            sched.reference.update(update_data)
+
+        # 2. Delete the master schedule associated with this queue (if any)
+        for master in masters:
+            master.reference.delete()
+    else:
+        # Master is finalized -- just detach it from the queue we're
+        # about to delete so it doesn't dangle on a stale queueId. Leave
+        # its status, events, and the coordinator schedules alone.
+        for master in masters:
+            master.reference.update({"queueId": None})
+
     # 3. Delete the audit logs subcollection
     audit_logs = doc_ref.collection("audit_logs").get()
     for log in audit_logs:

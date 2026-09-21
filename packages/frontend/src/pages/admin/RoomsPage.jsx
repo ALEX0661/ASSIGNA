@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 
 const isDark = document.documentElement.getAttribute('data-mode') === 'dark';
 import { getRooms, saveRooms, getCourses, bulkSetPreferredRooms } from '../../services/api'
@@ -446,10 +446,17 @@ export default function RoomsPage() {
   }, [toast])
 
   /* ── Room Handlers ── */
+  // A room can't be added as both Lecture and Lab -- the scheduler treats
+  // the two pools as disjoint, so a room in both would get double-booked
+  // (assigned as someone's lecture slot and someone's lab slot at once).
   function addLecture() {
     const vals = newLec.split(',').map(v => v.trim()).filter(Boolean)
     if (!vals.length) return
-    const valid = vals.filter(v => !lecture.includes(v))
+    const clash = vals.filter(v => lab.includes(v))
+    const valid = vals.filter(v => !lecture.includes(v) && !lab.includes(v))
+    if (clash.length) {
+      toast(`${clash.join(', ')} ${clash.length > 1 ? 'are' : 'is'} already a Lab room — a room can't be both. Remove ${clash.length > 1 ? 'them' : 'it'} from Lab first.`, 'error', 5000)
+    }
     if (valid.length) setLecture(l => [...l, ...valid])
     setNewLec('')
   }
@@ -457,7 +464,11 @@ export default function RoomsPage() {
   function addLab() {
     const vals = newLab.split(',').map(v => v.trim()).filter(Boolean)
     if (!vals.length) return
-    const valid = vals.filter(v => !lab.includes(v))
+    const clash = vals.filter(v => lecture.includes(v))
+    const valid = vals.filter(v => !lab.includes(v) && !lecture.includes(v))
+    if (clash.length) {
+      toast(`${clash.join(', ')} ${clash.length > 1 ? 'are' : 'is'} already a Lecture room — a room can't be both. Remove ${clash.length > 1 ? 'them' : 'it'} from Lecture first.`, 'error', 5000)
+    }
     if (valid.length) setLab(l => [...l, ...valid])
     setNewLab('')
   }
@@ -481,7 +492,9 @@ export default function RoomsPage() {
       setOriginalRooms({ lecture: [...lecture], lab: [...lab] })
       toast('Rooms saved successfully', 'success')
     }
-    catch (err) { toast('Failed to save rooms.', 'error') }
+    catch (err) {
+      toast(err?.response?.data?.detail || 'Failed to save rooms.', 'error', 5000)
+    }
     finally { setSavingRooms(false) }
   }
 

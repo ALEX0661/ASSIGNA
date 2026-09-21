@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
-import { useParams, useLocation } from 'react-router-dom'
+import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { useScheduleStore } from '../../store/scheduleStore'
-import { getSchedules, getRooms, getFaculty, saveSchedule, finalizeSchedule, unfinalizeSchedule, updateScheduleMeta, getSubmittedSchedule, getMasterSchedule, deleteSaved, getTime } from '../../services/api'
+import { getSchedules, getRooms, getFaculty, saveSchedule, finalizeSchedule, unfinalizeSchedule, updateScheduleMeta, getSubmittedSchedule, getMasterSchedule, deleteSaved, getTime, getResult } from '../../services/api'
 import { buildConflictMap, DAYS, getEventId, getMergedIds } from '../../components/ScheduleView/svHelpers'
 import { TV, ConflictSummaryBar, Toast, FilterButton, FilterRow, PendingChangesBar, PendingChangesModal, ProgramLegend, ModalOverlay, ModalHeader } from '../../components/ScheduleView/svPrimitives'
 import { useFilters, useDragDrop } from '../../components/ScheduleView/svHooks'
@@ -677,6 +677,7 @@ function markOnboardingCompleted() {
 export default function ScheduleViewPage({ isSubmittedView = false, embeddedId = null, onClose = null, onSaveOverride = null, adminActions = null, masterEvents = [], masterTerm = null, isMasterView = false, masterProgramEvents = null }) {
   const { name: urlName, id: urlId } = useParams()
   const location = useLocation()
+  const navigate = useNavigate()
   const { events:storeEvents, scheduleName:storeName, scheduleId:storeId, setEvents, setName, setId } = useScheduleStore()
 
   const idToMatch = isSubmittedView ? (embeddedId || urlId) : urlName
@@ -790,7 +791,9 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
   /* ── Handle passed metadata from SchedulerPage ─────────────────────────── */
   useEffect(() => {
     const passedMetadata = location.state
-    if (passedMetadata && passedMetadata.academicYear && passedMetadata.semester) {
+    // Academic year can legitimately be blank (custom term), so the semester
+    // alone is enough to apply the handed-over metadata.
+    if (passedMetadata && passedMetadata.semester) {
       // Set metadata from the passed state
       setSchedAY(passedMetadata.academicYear)
       setSchedSem(passedMetadata.semester)
@@ -900,6 +903,32 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
     finally   { setLoading(false) }
   }
 
+  /* ── Adopt a freshly generated (not yet saved) schedule ─────────────────────
+     SchedulerPage hands over { isUnsaved: true, scheduleName, semester, ... }
+     when you click "View Schedule" on a run that hasn't been saved. That
+     schedule exists only in memory, so re-fetching "final/<name>" from
+     Firestore either 404s (nothing there yet) or -- worse -- returns an OLDER
+     saved schedule that happens to share the name and clobbers the new one.
+     Use the in-memory events instead. ── */
+  async function adoptFreshSchedule(name, st) {
+    setLoading(true); setError(null); setSaveState('idle')
+    try {
+      let evs = Array.isArray(storeEvents) ? storeEvents : []
+      if (evs.length === 0) {
+        const r = await getResult()
+        evs = Array.isArray(r?.schedule) ? r.schedule : []
+      }
+      setLocalEvents(evs); setEvents(evs); setId(name)
+      setPast([]); setFuture([])
+      setActiveName(name); setName(name)
+      setSchedAY(st.academicYear || ''); setSchedSem(st.semester || '')
+      setSchedFinalized(false); setMetaDirty(false)
+      setHasUnsavedChanges(true)
+      setScheduleMeta(null)
+    } catch { setError('Failed to load the generated schedule.') }
+    finally   { setLoading(false) }
+  }
+
   /* ── Auto-load when embedded (e.g. MasterTab's "Edit" overlay) ───────────
      `embeddedId` was previously accepted as a prop but never read, so this
      view silently fell back to whatever schedule the URL/store happened to
@@ -920,7 +949,12 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
         loadSchedule(urlId, { force: true })
       } else if (!isSubmittedView && urlName) {
         const decoded = decodeURIComponent(urlName)
-        loadSchedule(decoded, { force: true })
+        const st = location.state
+        if (st && st.isUnsaved && st.scheduleName === decoded) {
+          adoptFreshSchedule(decoded, st)
+        } else {
+          loadSchedule(decoded, { force: true })
+        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1499,6 +1533,17 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
             <div style={{ display:'flex', alignItems:'center', gap:16 }}>
               <div>
                   <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    {!embeddedId && !onClose && !isMasterView && (
+                      <button onClick={() => {
+                        if (hasUnsavedChanges || (dd && dd.pendingOverrides.size > 0)) {
+                          if (!window.confirm('You have unsaved changes. Are you sure you want to discard them?')) return;
+                        }
+                        navigate('/dashboard/schedule')
+                      }} style={{ background: 'transparent', border: `1px solid ${TV.border}`, borderRadius: 6, padding: '4px 10px 4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: TV.muted, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', fontSize: 12, fontWeight: 500, gap: 4, marginRight: 4 }} title="Back to Schedules">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                        Back
+                      </button>
+                    )}
                     <h1 className="page-title" style={{ margin:0, fontSize:18, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'28ch' }}>
                       {isMasterView ? 'Master Schedule' : (activeName || 'Untitled Schedule')}
                     </h1>
@@ -2008,6 +2053,20 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
             
             {/* Left: name + stats + conflict */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
+              {!embeddedId && !onClose && !isMasterView && (
+                <>
+                  <button onClick={() => {
+                    if (hasUnsavedChanges || (dd && dd.pendingOverrides.size > 0)) {
+                      if (!window.confirm('You have unsaved changes. Are you sure you want to discard them?')) return;
+                    }
+                    navigate('/dashboard/schedule')
+                  }} style={{ background: 'transparent', border: `1px solid ${TV.border}`, borderRadius: 6, padding: '4px 10px 4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: TV.muted, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', fontSize: 12, fontWeight: 500, gap: 4 }} title="Back to Schedules">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                    Back
+                  </button>
+                  <div style={{ width: 1, height: 16, background: TV.border }} />
+                </>
+              )}
               <span style={{ fontSize: 13.5, fontWeight: 700, color: TV.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 180 }}>
                 {activeName || 'Schedule'}
               </span>

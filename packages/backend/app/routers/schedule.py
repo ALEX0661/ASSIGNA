@@ -11,6 +11,10 @@ from datetime import datetime
 
 router = APIRouter()
 
+# process_id -> semester that was actually queued, echoed back by /generate and
+# /status so the frontend can confirm what is really running.
+process_semester = {}
+
 # Fields that matter for "did the schedule actually change". Shared by
 # /save and /restore so both can dedupe by real content instead of by
 # the `version` number, which stays frozen across restores (a restore
@@ -223,8 +227,9 @@ def trigger_solve(background_tasks: BackgroundTasks, semester: str = None,
 
     process_id = str(uuid.uuid4())
     progress_state[process_id] = 0
+    process_semester[process_id] = semester
     background_tasks.add_task(generate_schedule, process_id, semester, order_list)
-    return {"process_id": process_id, "status": "started"}
+    return {"process_id": process_id, "status": "started", "semester": semester}
 
 @router.get("/phases")
 def get_phases(user=Depends(admin_only)):
@@ -245,6 +250,11 @@ def get_phases(user=Depends(admin_only)):
 
 @router.get("/status/{process_id}")
 def get_status(process_id: str, user=Depends(admin_only)):
+    payload = _get_status(process_id)
+    payload["semester"] = process_semester.get(process_id)
+    return payload
+
+def _get_status(process_id: str):
     prog = progress_state.get(process_id, 0)
     if prog == -2:
         # Cancellation was requested (progress_state flips to -2 the instant
@@ -308,6 +318,14 @@ def get_diagnostic(semester: str = None, user=Depends(admin_only)):
         else:
             filtered_courses = courses
 
+        untagged = sorted(str(c.get('courseCode', '?')) for c in courses if not c.get('semester'))
+        if untagged and semester and semester != '1st Semester':
+            issues_untagged = (f"{len(untagged)} course(s) have no Semester set and are treated as "
+                               f"'1st Semester', so they are excluded from '{semester}': "
+                               + ", ".join(untagged[:15]) + ("..." if len(untagged) > 15 else ""))
+        else:
+            issues_untagged = None
+
         # Calculate totals
         total_room_count = sum(len(room_list) for room_list in rooms.values()) if rooms else 0
 
@@ -318,6 +336,9 @@ def get_diagnostic(semester: str = None, user=Depends(admin_only)):
                 issues.append(f"No courses found for semester '{semester}' - check semester names in course data")
             else:
                 issues.append("No courses loaded - check course collection in database")
+
+        if issues_untagged:
+            issues.append(issues_untagged)
 
         if not rooms:
             issues.append("No room categories configured - go to Settings > Rooms to configure")
@@ -348,6 +369,7 @@ def get_diagnostic(semester: str = None, user=Depends(admin_only)):
                 "total_courses": len(courses),
                 "filtered_courses": len(filtered_courses),
                 "semester_filter": semester,
+                "untagged_semester_courses": len(untagged),
                 "room_categories": len(rooms) if rooms else 0,
                 "total_rooms": total_room_count,
                 "days_configured": len(days) if days else 0,
@@ -457,8 +479,8 @@ def save_schedule(data: dict, user=Depends(admin_only)):
 
     doc_data = {
         "schedule_name":  name,
-        "academicYear":   data.get("academic_year"),
-        "semester":       data.get("semester"),
+        "academicYear":   data.get("academic_year") or existing_data.get("academicYear"),
+        "semester":       data.get("semester") or existing_data.get("semester"),
         "finalized":      data.get("finalized", existing_data.get("finalized", False)),
         "version":        version,
         "lastModified":   current_time,

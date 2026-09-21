@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from app.core.auth import admin_only
 from app.core.globals import schedule_dict
-from app.core.firebase import get_faculty, get_courses, get_rooms
+from app.core.firebase import get_faculty, get_courses, get_rooms, get_days, get_time
 from app.core.unit_balancing import evaluate_workload
 
 router = APIRouter()

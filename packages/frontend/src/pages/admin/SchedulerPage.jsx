@@ -6,7 +6,7 @@ import {
   triggerSolve, cancelSolve,
   saveSchedule, listSaved, loadSaved, deleteSaved,
   getPreDiagnostic, getDiagnostic,
-  getSchedulePhases,
+  getSchedulePhases, getResult,
 } from '../../services/api'
 import { useScheduleStore, useSolverStore } from '../../store/scheduleStore'
 import ScheduleGeneratorLoader from './ScheduleGeneratorLoader'
@@ -82,6 +82,24 @@ const PRESET_NAMES = [
   `A.Y. ${startYear + 1}-${startYear + 2}, Midyear`,
   'Custom...'
 ]
+
+// ── Generated-term memory ─────────────────────────────────────────────────
+// The term (semester / academic year / name / form selections) that the CURRENT
+// solve was started for. Save + View must use THIS, never whatever the form
+// happens to say at that moment -- the form state is local to this page and is
+// lost when you navigate away and come back, and it flips to "Custom..." after
+// an auto-rename, either of which used to silently relabel a 2nd-semester
+// schedule as 1st Semester (and wipe it).
+const GEN_TERM_KEY = 'assigna.generatedTerm'
+function readGenTerm() {
+  try { return JSON.parse(sessionStorage.getItem(GEN_TERM_KEY) || 'null') } catch { return null }
+}
+function writeGenTerm(t) {
+  try {
+    if (t) sessionStorage.setItem(GEN_TERM_KEY, JSON.stringify(t))
+    else sessionStorage.removeItem(GEN_TERM_KEY)
+  } catch { /* storage unavailable -- in-memory state still works */ }
+}
 
 const VERDICT_META = {
   feasible:        { color: 'var(--meadow-text)', bg: G.meadowSoft, border: G.meadowBorder, label: 'Feasible',           icon: '✓' },
@@ -1790,6 +1808,7 @@ export default function SchedulerPage() {
   const setEvents = useScheduleStore(s => s.setEvents)
   const setName   = useScheduleStore(s => s.setName)
   const currentScheduleName = useScheduleStore(s => s.scheduleName)
+  const storeEvents = useScheduleStore(s => s.events)
   const { progress, status, processId, label, originalName, setProcessId, setStatus, setLabel, setOriginalName, setDismissed, reset } = useSolverStore()
   const { toasts, toast } = useToast()
 
@@ -1883,10 +1902,16 @@ export default function SchedulerPage() {
   
 
   // Solver / Setup states
-  const [scheduleNamePreset, setScheduleNamePreset] = useState(PRESET_NAMES[0])
-  const [scheduleNameCustom, setScheduleNameCustom] = useState('')
-  const [customSemester,     setCustomSemester]     = useState('1st Semester')
-  const [customAcademicYear, setCustomAcademicYear] = useState('')
+  // If a solve is running/finished (the solver store survives navigation but this
+  // component's local state does not), restore the exact form selections it was
+  // started with so the page can't drift back to the default 1st-semester preset.
+  const [initialGen] = useState(() => (status === 'running' || status === 'complete') ? readGenTerm() : null)
+  const [genTerm, setGenTerm] = useState(initialGen)
+  const [scheduleNamePreset, setScheduleNamePreset] = useState(
+    initialGen?.form && (PRESET_NAMES.includes(initialGen.form.preset)) ? initialGen.form.preset : PRESET_NAMES[0])
+  const [scheduleNameCustom, setScheduleNameCustom] = useState(initialGen?.form?.custom ?? '')
+  const [customSemester,     setCustomSemester]     = useState(initialGen?.form?.customSemester ?? '1st Semester')
+  const [customAcademicYear, setCustomAcademicYear] = useState(initialGen?.form?.customAcademicYear ?? '')
   const [solveError,   setSolveError]   = useState(null)
   // True from the moment Stop is clicked until the backend actually confirms
   // the solve has unwound (see handleStop). The solver only checks for a
@@ -1940,6 +1965,14 @@ export default function SchedulerPage() {
   const targetSemester = scheduleNamePreset === 'Custom...'
     ? customSemester
     : semesterFromPreset(scheduleNamePreset)
+  const formAcademicYear = scheduleNamePreset === 'Custom...'
+    ? customAcademicYear.trim()
+    : scheduleNamePreset.replace(/,.*$/, '').replace('A.Y. ', '').trim()
+  // While a solve is running / finished, the term is whatever it was STARTED
+  // for. Otherwise it's whatever the form currently says.
+  const termLocked = !!genTerm && (status === 'running' || status === 'complete')
+  const activeSemester     = termLocked ? genTerm.semester     : targetSemester
+  const activeAcademicYear = termLocked ? genTerm.academicYear : formAcademicYear
 
   // Fetch term stats for Step 1 display
   useEffect(() => {
@@ -1974,15 +2007,26 @@ export default function SchedulerPage() {
       .finally(() => setLoadingList(false))
   }, [])
 
-  // Clear schedule data when semester changes to prevent stale data
-  // But only if we're not currently generating (to preserve progress when navigating)
+  // Clear the generated schedule when the admin picks a DIFFERENT term after
+  // generating, so a stale 1st-semester result can't be labelled/saved as 2nd
+  // semester (and vice-versa). Guards:
+  //  - skip the initial mount (returning to this page is not a "change")
+  //  - never touch a running solve
+  //  - ignore changes that still match the term that was generated (e.g. the
+  //    preset -> "Custom..." switch after an auto-rename)
+  const prevTargetSemester = useRef(targetSemester)
   useEffect(() => {
-    // Only clear if we have existing schedule data, status is complete/failed, AND not currently running
-    if ((status === 'complete' || status === 'failed') && currentScheduleName && status !== 'running') {
+    if (prevTargetSemester.current === targetSemester) return
+    prevTargetSemester.current = targetSemester
+    if (status === 'running') return
+    if (genTerm && genTerm.semester === targetSemester) return
+    if (status === 'complete' || status === 'failed' || genTerm) {
       setEvents([])
       setName(null)
-      reset()
+      reset()          // also clears processId / label / originalName
       setSaved(false)
+      setGenTerm(null)
+      writeGenTerm(null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetSemester])
@@ -2044,9 +2088,11 @@ export default function SchedulerPage() {
       setName(null)
     }
     
-    // Only clear and reset if this is a brand new generation
-    // If resuming (processId exists), preserve the original label
-    if (!processId) {
+    // Anything that isn't an in-flight solve is a brand-new generation. (Keying
+    // this on `!processId` alone let a finished run's stale processId/label
+    // survive into the next run, so Step 2/3 kept showing the old semester.)
+    const isNewGeneration = !processId || status !== 'running'
+    if (isNewGeneration) {
       reset()
       // Don't duplicate the semester if it's already in the schedule name
       const scheduleName = effectiveScheduleName.trim()
@@ -2055,11 +2101,35 @@ export default function SchedulerPage() {
         : `${scheduleName} (${targetSemester})`
       setLabel(generationName)
       setOriginalName(generationName) // Store the original name
+      // Remember exactly what this run is for (used by Save + View).
+      const term = {
+        semester: targetSemester,
+        academicYear: formAcademicYear,
+        name: generationName,
+        form: {
+          preset: scheduleNamePreset,
+          custom: scheduleNameCustom,
+          customSemester,
+          customAcademicYear,
+        },
+      }
+      setGenTerm(term)
+      writeGenTerm(term)
     }
     setStatus('running')
     try {
       const res = await triggerSolve(targetSemester, phaseOrder)
       setProcessId(res.process_id)
+      // The backend echoes the semester it actually queued. If that ever
+      // disagrees with what we asked for, trust the backend and say so.
+      if (res.semester && res.semester !== targetSemester) {
+        toast(`Backend queued "${res.semester}" instead of "${targetSemester}".`, 'error', 6000)
+        setGenTerm(t => {
+          const next = { ...(t || {}), semester: res.semester }
+          writeGenTerm(next)
+          return next
+        })
+      }
     } catch (err) {
       setStatus('failed')
       const parsed = await parseError(err, 'start the solver')
@@ -2081,21 +2151,37 @@ export default function SchedulerPage() {
   async function performSave(finalName, overwrite = false) {
     setSaveLoading(true)
     try {
-      // Pass academicYear and semester so they're stored automatically — no manual entry needed
-      const ayRaw = scheduleNamePreset === 'Custom...'
-        ? customAcademicYear.trim()
-        : scheduleNamePreset.replace(/,.*$/, '').replace('A.Y. ', '').trim()
-      await saveSchedule(finalName, { academicYear: ayRaw, semester: targetSemester })
+      // Save under the term this schedule was GENERATED for (not the form's
+      // current value), and send the events explicitly so the save never
+      // depends on the server's shared in-memory schedule still being ours.
+      let eventsToSave = Array.isArray(storeEvents) && storeEvents.length > 0 ? storeEvents : null
+      if (!eventsToSave) {
+        try {
+          const r = await getResult()
+          eventsToSave = Array.isArray(r?.schedule) && r.schedule.length > 0 ? r.schedule : null
+        } catch { /* fall back to the server's in-memory copy */ }
+      }
+      await saveSchedule(
+        finalName,
+        { academicYear: activeAcademicYear, semester: activeSemester },
+        eventsToSave,
+      )
       
       // Update the displayed name if it was auto-renamed
       if (finalName !== effectiveScheduleName.trim()) {
-        if (scheduleNamePreset === 'Custom...') {
-          setScheduleNameCustom(finalName)
-        } else {
-          // If it was a preset, switch to custom mode with the new name
-          setScheduleNamePreset('Custom...')
-          setScheduleNameCustom(finalName)
-        }
+        // Switching to "Custom..." changes which fields drive targetSemester and
+        // the academic year, so carry the generated term across in the same
+        // update -- otherwise both silently reset to 1st Semester / blank.
+        setCustomSemester(activeSemester)
+        setCustomAcademicYear(activeAcademicYear)
+        setScheduleNameCustom(finalName)
+        if (scheduleNamePreset !== 'Custom...') setScheduleNamePreset('Custom...')
+        setGenTerm(t => {
+          if (!t) return t
+          const next = { ...t, name: finalName, form: { preset: 'Custom...', custom: finalName, customSemester: activeSemester, customAcademicYear: activeAcademicYear } }
+          writeGenTerm(next)
+          return next
+        })
       }
       
       setName(finalName)
@@ -2191,23 +2277,20 @@ export default function SchedulerPage() {
 
   async function handleViewSchedule() {
     // Set metadata in the schedule store before navigating
-    const ayRaw = scheduleNamePreset === 'Custom...'
-      ? customAcademicYear.trim()
-      : scheduleNamePreset.replace(/,.*$/, '').replace('A.Y. ', '').trim()
-    
     // Use the current schedule name (which might have been auto-renamed)
     const currentName = currentScheduleName || effectiveScheduleName
     
-    // Store the metadata temporarily for the view page
+    // Store the metadata temporarily for the view page -- always the term the
+    // schedule was generated for.
     const metadata = {
-      academicYear: ayRaw,
-      semester: targetSemester,
+      academicYear: activeAcademicYear,
+      semester: activeSemester,
       scheduleName: currentName,
       isUnsaved: !saved
     }
     
     // Pass metadata via state
-    navigate('/dashboard/schedule', { state: metadata })
+    navigate(`/dashboard/schedule/${encodeURIComponent(currentName)}`, { state: metadata })
   }
 
   const currentPhaseIdx = Math.floor((progress / 100) * 7)
@@ -2277,11 +2360,11 @@ export default function SchedulerPage() {
               <StepHeader
                 number={2}
                 title="Check Readiness"
-                subtitle={<>Verify structural feasibility and faculty pools for <strong style={{ opacity:.95 }}>{originalName ? originalName.split('(').pop().replace(')', '').trim() : targetSemester}</strong> before solving.</>}
+                subtitle={<>Verify structural feasibility and faculty pools for <strong style={{ opacity:.95 }}>{activeSemester}</strong> before solving.</>}
                 badge={<div style={{ padding:'5px 14px', borderRadius:99, background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', fontSize:12, fontWeight:700, color: '#fff', position:'relative' }}>{originalName ? originalName.replace(/[()]/g, '').trim() : effectiveScheduleName || '—'}</div>}
               />
               <div id="tour-sch-checkpanel">
-                <CheckPanel semester={originalName ? originalName.split('(').pop().replace(')', '').trim() : targetSemester} />
+                <CheckPanel semester={activeSemester} />
               </div>
             </div>
           )}
@@ -2306,7 +2389,7 @@ export default function SchedulerPage() {
                       {/* Show original generation values when status is running/complete, otherwise show current form values */}
                       {(status === 'running' || status === 'complete') && originalName 
                         ? originalName.replace(/[()]/g, '').trim()  // Remove parentheses from stored name
-                        : `${scheduleNamePreset === 'Custom...' ? customAcademicYear : scheduleNamePreset.replace(/,.*$/, '').replace('A.Y. ', '')} - ${targetSemester}`
+                        : `${formAcademicYear} - ${targetSemester}`
                       }
                     </strong>.
                   </>

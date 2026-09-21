@@ -46,15 +46,6 @@ MAJOR_TEMPLATES = {
 MIN_SPLIT_SLOTS = 2   # never create a mirrored half shorter than 1 hour
 MAX_FULL_SLOTS  = 8   # never create a single continuous block longer than 4 hours
 
-# PE soft-preference weights [Plan B]. PE has no hard placement filter
-# anymore (see get_valid_domain) -- these just steer the PE phase's own
-# objective toward placements that are weekend, at the edge of the
-# section's day, or adjacent to that section's NSTP slot. Tune after
-# watching real PE-phase logs (each solve logs the actual hit-rate per tag).
-PE_WEIGHT_WEEKEND = 3
-PE_WEIGHT_EDGE = 2
-PE_WEIGHT_NSTP_ADJACENT = 1
-
 # Relaxation tiers tried in order when a majors phase will not solve.
 #   0 = the four templates above
 #   1 = the four templates + a full-day option on every other active day
@@ -94,6 +85,28 @@ def validate_phase_order(order: list) -> list:
     return [SchedulingPhase[name] for name in order]
 
 
+def _filter_by_semester(courses, semester_filter):
+    """Return only the courses tagged with `semester_filter`.
+
+    Behaviour is unchanged (a course with no `semester` field is treated as
+    "1st Semester"), but untagged courses are now reported loudly: they can
+    never match "2nd Semester"/"Midyear", which used to make a 2nd-semester
+    run silently pull the wrong (or zero) courses.
+    """
+    if not semester_filter:
+        return courses
+    untagged = [c.get('courseCode', '?') for c in courses if not c.get('semester')]
+    if untagged and semester_filter != '1st Semester':
+        logger.warning(
+            "%d course(s) have no 'semester' field and default to '1st Semester', "
+            "so they are EXCLUDED from '%s': %s",
+            len(untagged), semester_filter, ", ".join(sorted(map(str, untagged))[:25]),
+        )
+    filtered = [c for c in courses if c.get('semester', '1st Semester') == semester_filter]
+    logger.info(f"Filtered to {len(filtered)} courses for semester: {semester_filter}")
+    return filtered
+
+
 class HierarchicalScheduler:
     def __init__(self, process_id=None, phase_order=None):
         self.process_id = process_id
@@ -115,35 +128,12 @@ class HierarchicalScheduler:
         
         self.occupied_slots = defaultdict(set)
         self.section_occupied = defaultdict(set)
-        # Which slots are occupied specifically by NSTP, per (program, year,
-        # block). Tracked separately from section_occupied so "is this PE
-        # candidate adjacent to this section's NSTP slot" can check something
-        # real instead of guessing from the merged occupancy set. [Plan B]
-        self.nstp_section_slots = defaultdict(set)
-
-        # GEC/NSTP strict block-start offsets, computed once real start/end
-        # times are known (setup_time_parameters). Defaults here only cover
-        # the window before that runs; always recomputed from clock hours
-        # before any domain lookup happens. [Plan A]
-        self.gec_strict_offsets = []
-        self.nstp_strict_offsets = []
-
-        # Transient per-phase-build state for PE's soft-preference objective.
-        # Reset at the top of every _build_and_solve() call; only populated
-        # (and only consulted) during the PE phase. [Plan B]
-        self._pe_objective_terms = []
-        self._pe_objective_expr_terms = []
         
         # Track Practicum Load for Balancing (Mon-Wed vs Thu-Sat)
         self.practicum_load_early_week = 0 
         self.practicum_load_late_week = 0  
         
         self.schedule_id_counter = 1
-
-        # Populated by _filter_by_semester(): courses that had no 'semester'
-        # field at all and got silently defaulted. Surfaced to callers so
-        # this stops being invisible.
-        self.untagged_semester_courses = []
 
         # Per-phase solver telemetry (before/after comparisons, §5.3 report)
         self.solve_stats = []
@@ -172,38 +162,6 @@ class HierarchicalScheduler:
         loop instead of merely hiding it from the frontend poller."""
         return self.process_id is not None and self.process_id in cancel_flags
 
-    def _filter_by_semester(self, courses, semester_filter):
-        """Filter `courses` down to `semester_filter`, loudly.
-
-        The comparison itself used to be `c.get('semester', '1st Semester')
-        == semester_filter` inline -- meaning any course with NO 'semester'
-        field at all silently counted as '1st Semester' with no trace. That
-        course would then ALWAYS be pulled into a 1st Semester run and NEVER
-        into 2nd Semester or Midyear, regardless of which term it actually
-        belongs to, and nothing would tell you why a run looked short a
-        course. Same filtering behavior, but the gap is now visible.
-        """
-        if not semester_filter:
-            self.untagged_semester_courses = []
-            return courses
-
-        untagged = [c for c in courses if not c.get('semester')]
-        self.untagged_semester_courses = untagged
-        if untagged:
-            codes = ', '.join(c.get('courseCode', '?') for c in untagged[:15])
-            more = f" (+{len(untagged) - 15} more)" if len(untagged) > 15 else ""
-            logger.warning(
-                "%d course(s) have no 'semester' field set and are being "
-                "treated as '1st Semester' by default -- they will NEVER "
-                "match a '2nd Semester' or 'Midyear' filter until tagged. "
-                "Affected: %s%s",
-                len(untagged), codes, more,
-            )
-
-        filtered = [c for c in courses if c.get('semester', '1st Semester') == semester_filter]
-        logger.info(f"Filtered to {len(filtered)} courses for semester: {semester_filter}")
-        return filtered
-
     def load_data(self, semester_filter=None):
         self.update_progress(5)
         # Ensure caches are fresh
@@ -212,7 +170,7 @@ class HierarchicalScheduler:
         courses = get_courses()
         
         self.semester_filter = semester_filter
-        courses = self._filter_by_semester(courses, semester_filter)
+        courses = _filter_by_semester(courses, semester_filter)
         
         self.all_courses = self.prioritize_and_partition_courses(courses)
         
@@ -253,7 +211,7 @@ class HierarchicalScheduler:
         logger.info(f"Coordinator solve: {len(courses)} courses for program {program}")
 
         self.semester_filter = semester_filter
-        courses = self._filter_by_semester(courses, semester_filter)
+        courses = _filter_by_semester(courses, semester_filter)
 
         self.all_courses = self.prioritize_and_partition_courses(courses)
 
@@ -331,50 +289,6 @@ class HierarchicalScheduler:
             self.lunch_slots = {lunch_start_idx, lunch_start_idx + 1} 
         else:
             self.lunch_slots = set()
-
-        # GEC/NSTP strict block-start times, as clock hours rather than raw
-        # slot numbers. Converted to offsets HERE (once, when start_t/end_t/
-        # slots_per_day are actually known) the same way lunch is above,
-        # instead of being baked in as slot numbers that silently assumed a
-        # 7am start. At the 7am-9pm default these reproduce today's hardcoded
-        # [0,3,6,11,14,17,21,24] / [4,12,16] exactly.
-        self.gec_strict_offsets = self._clock_hours_to_offsets(
-            "GEC", [7.0, 8.5, 10.0, 12.5, 14.0, 15.5, 17.5, 19.0])
-        self.nstp_strict_offsets = self._clock_hours_to_offsets(
-            "NSTP", [9.0, 13.0, 15.0])
-
-    def _clock_hours_to_offsets(self, label, clock_hours):
-        """Convert fixed block-start clock hours into slot offsets for the
-        CURRENTLY configured start_t/end_t/slots_per_day.
-
-        A block that no longer fits (off-grid, or outside the configured
-        operating hours) is dropped rather than silently producing a bad
-        offset — loudly, so a narrowed time window doesn't quietly lose a
-        GEC/NSTP placement with no trace of why.
-        """
-        def fmt_hr(h):
-            hh = int(h); mm = int(round((h - hh) * 60))
-            ap = "AM" if hh < 12 else "PM"
-            hh12 = hh % 12 or 12
-            return f"{hh12}:{mm:02d}{ap}"
-
-        offsets = []
-        for hr in clock_hours:
-            raw = (hr - self.start_t) / self.inc_hr
-            off = round(raw)
-            if abs(raw - off) > 1e-6:
-                logger.warning(
-                    "%s %s block excluded — not aligned to the %d-minute grid "
-                    "given start time %s.",
-                    label, fmt_hr(hr), int(self.inc_hr * 60), fmt_hr(self.start_t))
-                continue
-            if off < 0 or off >= self.slots_per_day:
-                logger.warning(
-                    "%s %s block excluded — current operating hours are %s to %s.",
-                    label, fmt_hr(hr), fmt_hr(self.start_t), fmt_hr(self.end_t))
-                continue
-            offsets.append(off)
-        return offsets
 
     def _analyze_phase_failure(self, phase, courses):
         """Analyzes why a specific phase failed to generate and returns a diagnostic payload."""
@@ -478,12 +392,7 @@ class HierarchicalScheduler:
 
             base_timeout = 30 + (len(p_courses) * 2) + int(req_count * 0.75)
             if phase == SchedulingPhase.GEC_MAT: base_timeout += 60
-            # PE now runs an actual objective search (weekend/edge/NSTP-
-            # adjacent preference) instead of pure feasibility, which
-            # generally eats more of its budget than a plain feasibility
-            # check -- +90s total instead of +60s. Tune from the per-tag
-            # hit-rate logged after each PE solve. [Plan B]
-            if phase == SchedulingPhase.PE: base_timeout += 90
+            if phase == SchedulingPhase.PE: base_timeout += 60 
             if phase == SchedulingPhase.MAJORS_Y3: base_timeout += 90
             if ENABLE_MAJOR_TEMPLATES and phase.name.startswith("MAJORS"):
                 base_timeout += 60
@@ -560,11 +469,6 @@ class HierarchicalScheduler:
         phase_sessions = []
         section_intervals = defaultdict(list)
         room_intervals = defaultdict(list)
-        # Reset PE's transient soft-preference state for this build. Only
-        # populated (create_constrained_session/create_shared_session) and
-        # only consulted (below) when phase == PE. [Plan B]
-        self._pe_objective_terms = []
-        self._pe_objective_expr_terms = []
         
         # Add "Blockages" for slots already taken by previous phases
         for (r_type, r_idx), slots in self.occupied_slots.items():
@@ -600,12 +504,6 @@ class HierarchicalScheduler:
         
         self.add_room_consistency(model, phase_sessions)
         self._add_block_symmetry_breaking(model, phase_sessions)
-
-        # PE is the one phase with an objective instead of pure feasibility —
-        # steer toward weekend / day-edge / NSTP-adjacent placements without
-        # making any of them a hard requirement. [Plan B]
-        if phase == SchedulingPhase.PE and self._pe_objective_expr_terms:
-            model.Maximize(sum(self._pe_objective_expr_terms))
         
         solver.parameters.max_time_in_seconds = float(timeout)
         
@@ -617,22 +515,6 @@ class HierarchicalScheduler:
         
         status = solver.Solve(model)
         self._log_solve_stats(phase, tier, model, solver, status)
-
-        if (phase == SchedulingPhase.PE and self._pe_objective_terms
-                and status in (cp_model.OPTIMAL, cp_model.FEASIBLE)):
-            total = len(self._pe_objective_terms)
-            hits = {"weekend": 0, "edge": 0, "nstp_adj": 0}
-            for entry in self._pe_objective_terms:
-                for tag in hits:
-                    if solver.Value(entry[tag]):
-                        hits[tag] += 1
-            logger.info(
-                "PE preference summary: weekend %d/%d, edge %d/%d, NSTP-adjacent %d/%d "
-                "(weights: weekend=%d edge=%d nstp_adj=%d, objective=%s)",
-                hits["weekend"], total, hits["edge"], total, hits["nstp_adj"], total,
-                PE_WEIGHT_WEEKEND, PE_WEIGHT_EDGE, PE_WEIGHT_NSTP_ADJACENT,
-                solver.ObjectiveValue() if status == cp_model.OPTIMAL else "n/a (feasible only)",
-            )
         
         if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
             sched = self.extract_phase_solution(solver, phase_sessions)
@@ -647,6 +529,9 @@ class HierarchicalScheduler:
         primary_domain = []   # Preferred slots (No lunch conflict)
         secondary_domain = [] # Fallback slots
         
+        gec_strict_offsets = [0, 3, 6, 11, 14, 17, 21, 24]
+        nstp_strict_offsets = [4, 12, 16]
+        
         yr = int(course.get('yearLevel', 1))
         is_y3_lab = (yr == 3 and sess_type == 'lab')
 
@@ -660,19 +545,24 @@ class HierarchicalScheduler:
                 if practicum_window == 0 and day_idx > 2: continue
                 if practicum_window == 1 and day_idx < 3: continue
 
-            if is_gec:
-                allowed_offsets = self.gec_strict_offsets
+            if is_pe:
+                day_occupancy = [s - base for s in occupied_slots if base <= s < base + self.slots_per_day]
+                if not day_occupancy:
+                    allowed_offsets = [0]
+                else:
+                    min_slot = min(day_occupancy)
+                    max_slot = max(day_occupancy)
+                    allowed_offsets = []
+                    start_before = min_slot - duration_slots
+                    if start_before >= 0: allowed_offsets.append(start_before)
+                    start_after = max_slot + 1
+                    if start_after + duration_slots <= self.slots_per_day: allowed_offsets.append(start_after)
+            elif is_gec:
+                allowed_offsets = gec_strict_offsets
             elif is_nstp:
-                allowed_offsets = self.nstp_strict_offsets
+                allowed_offsets = nstp_strict_offsets
             else:
-                # PE now shares this same open domain with majors -- any
-                # offset that fits the day and doesn't collide with existing
-                # occupancy. Which of those candidates are actually GOOD for
-                # PE (a weekend day, the edge of the section's day, next to
-                # an NSTP slot) is scored as a soft preference in the PE
-                # phase's objective instead of filtered here. [Plan B]
                 allowed_offsets = range(0, self.slots_per_day - duration_slots + 1)
-
 
             for offset in allowed_offsets:
                 start_slot = base + offset
@@ -698,79 +588,6 @@ class HierarchicalScheduler:
                     secondary_domain.append(start_slot)
         
         return primary_domain + secondary_domain
-
-    def _add_pe_preference_terms(self, model, s_var, sid, duration_slots,
-                                  final_domain, occupied_slots, nstp_slots):
-        """Build 3 reified booleans for one PE session's start var — is it a
-        weekend day, is it at the edge of the section's day, is it adjacent
-        to this section's NSTP slot — and register their weighted sum for
-        this phase build's objective. [Plan B]
-
-        `final_domain` must be the exact candidate list `s_var`'s own domain
-        was built from, so every partition below is a subset of it and the
-        two-sided reification (lit == 1 iff s_var lands in the subset) is
-        exact rather than approximate.
-        """
-        spd = self.slots_per_day
-        by_day = defaultdict(list)
-        for v in final_domain:
-            by_day[v // spd].append(v)
-
-        weekend_vals, edge_vals, nstp_vals = [], [], []
-        for day_idx, day_candidates in by_day.items():
-            base = day_idx * spd
-
-            if day_idx in (4, 5):  # Fri, Sat
-                weekend_vals.extend(day_candidates)
-
-            day_occ_local = sorted(s - base for s in occupied_slots if base <= s < base + spd)
-            if day_occ_local:
-                edge_before = day_occ_local[0] - duration_slots
-                edge_after = day_occ_local[-1] + 1
-                for v in day_candidates:
-                    if (v - base) in (edge_before, edge_after):
-                        edge_vals.append(v)
-            else:
-                # No other class that day yet — matches the old hard filter's
-                # fallback, which only ever allowed offset 0 in this case.
-                edge_vals.extend(v for v in day_candidates if v - base == 0)
-
-            for v in day_candidates:
-                start, end = v, v + duration_slots
-                before_hit = (start - 1 >= base) and ((start - 1) in nstp_slots)
-                after_hit = (end < base + spd) and (end in nstp_slots)
-                if before_hit or after_hit:
-                    nstp_vals.append(v)
-
-        def _reify(tag_name, subset):
-            subset = sorted(set(subset))
-            lit = model.NewBoolVar(f"pe_{tag_name}_{sid}")
-            if not subset:
-                model.Add(lit == 0)
-                return lit
-            complement = sorted(set(final_domain) - set(subset))
-            model.AddLinearExpressionInDomain(
-                s_var, cp_model.Domain.FromValues(subset)).OnlyEnforceIf(lit)
-            if complement:
-                model.AddLinearExpressionInDomain(
-                    s_var, cp_model.Domain.FromValues(complement)).OnlyEnforceIf(lit.Not())
-            else:
-                model.Add(lit == 1)  # subset covers the whole domain
-            return lit
-
-        lit_weekend = _reify("weekend", weekend_vals)
-        lit_edge = _reify("edge", edge_vals)
-        lit_nstp = _reify("nstp_adj", nstp_vals)
-
-        self._pe_objective_terms.append({
-            "weekend": lit_weekend, "edge": lit_edge, "nstp_adj": lit_nstp,
-        })
-        self._pe_objective_expr_terms.append(
-            PE_WEIGHT_WEEKEND * lit_weekend
-            + PE_WEIGHT_EDGE * lit_edge
-            + PE_WEIGHT_NSTP_ADJACENT * lit_nstp
-        )
-
 
     def _resolve_preferred_room_index(self, course: dict, sess_type: str) -> Optional[int]:
         """
@@ -871,8 +688,7 @@ class HierarchicalScheduler:
                     blk_next = block_letters[i+1]
                     merged_sess = self.create_shared_session(
                         model, course, blk, blk_next, 'lecture', count, dur,
-                        section_intervals, room_intervals, is_gec, is_nstp,
-                        is_pe=is_pe
+                        section_intervals, room_intervals, is_gec, is_nstp
                     )
                     if merged_sess:
                         all_sess.extend(merged_sess)
@@ -1008,15 +824,14 @@ class HierarchicalScheduler:
 
     def create_shared_session(self, model, course, blk1, blk2, sess_type, 
                              num_sessions, duration_slots, 
-                             section_intervals, room_intervals, is_gec, is_nstp,
-                             is_pe=False):
+                             section_intervals, room_intervals, is_gec, is_nstp):
         code = course["courseCode"]
         yr = course['yearLevel']
         prog = course["program"]
         sk1 = (prog, yr, blk1); sk2 = (prog, yr, blk2)
         combined_occ = self.section_occupied.get(sk1, set()).union(self.section_occupied.get(sk2, set()))
         
-        valid_domain = self.get_valid_domain(course, sess_type, duration_slots, combined_occ, is_gec, is_nstp, is_pe, False)
+        valid_domain = self.get_valid_domain(course, sess_type, duration_slots, combined_occ, is_gec, is_nstp, False, False)
         if not valid_domain: return None
         
         created = []; day_vars = []
@@ -1037,15 +852,6 @@ class HierarchicalScheduler:
             iv1 = model.NewIntervalVar(s, duration_slots, e, f"iv_sh1_{sid}")
             iv2 = model.NewIntervalVar(s, duration_slots, e, f"iv_sh2_{sid}")
             section_intervals[sk1].append(iv1); section_intervals[sk2].append(iv2)
-
-            if is_pe:
-                # A merged pair serves BOTH blocks at once, so it needs to be
-                # a good placement for either -- union the NSTP-adjacency
-                # tracker the same way combined_occ already unions occupancy.
-                nstp_occ = (self.nstp_section_slots.get(sk1, set())
-                            | self.nstp_section_slots.get(sk2, set()))
-                self._add_pe_preference_terms(
-                    model, s, sid, duration_slots, valid_domain, combined_occ, nstp_occ)
             
             rv = None
             if is_phys and rooms_avail:
@@ -1113,11 +919,6 @@ class HierarchicalScheduler:
             
             iv = model.NewIntervalVar(s, duration_slots, e, f"iv_{sid}")
             section_intervals[sk].append(iv)
-
-            if is_pe:
-                nstp_occ = self.nstp_section_slots.get(sk, set())
-                self._add_pe_preference_terms(
-                    model, s, sid, duration_slots, final_domain, occupied, nstp_occ)
             
             rv = None
             if is_phys and rooms_avail:
@@ -1495,11 +1296,6 @@ class HierarchicalScheduler:
             self.section_occupied[sk].update(slots)
             if e['_room_type'] and e['_room_idx'] != -1:
                 self.occupied_slots[(e['_room_type'], e['_room_idx'])].update(slots)
-            # Checked on the course code itself rather than gated by "which
-            # phase are we in" -- correct regardless of a custom phase_order
-            # that might not run NSTP before PE. [Plan B]
-            if "NSTP" in e.get('courseCode', ''):
-                self.nstp_section_slots[sk].update(slots)
 
 def generate_schedule(process_id=None, semester=None, phase_order=None):
     if process_id:
@@ -1513,43 +1309,20 @@ def generate_schedule(process_id=None, semester=None, phase_order=None):
 
         s.load_data(semester_filter=semester)
         
-        # Add diagnostic logging — explicit about which semester was actually
-        # requested, since that's the thing that's supposed to have been
-        # locked in from the moment /generate was called.
-        logger.info(
-            "Semester requested: %r -> %d course(s) loaded, %d untagged "
-            "course(s) defaulted to '1st Semester', %d room type(s), %d day(s)",
-            semester, len(s.all_courses), len(s.untagged_semester_courses),
-            len(s.rooms), len(s.days),
-        )
+        # Add diagnostic logging
+        logger.info(f"Loaded data: {len(s.all_courses)} courses, {len(s.rooms)} room types, {len(s.days)} days")
         
         # Check for common issues that cause infeasibility
         if not s.all_courses:
-            logger.error(
-                "No courses found for semester=%r - check that courses in the "
-                "database actually carry that 'semester' value (a missing "
-                "'semester' field silently defaults to '1st Semester' and "
-                "will never match '2nd Semester' or 'Midyear')",
-                semester,
-            )
+            logger.error("No courses found - check course data and semester filter")
             if process_id:
                 failure_details[process_id] = {
                     "status": "failed",
-                    "failed_phase": None,
-                    "solver_status": None,
-                    "timed_out": False,
-                    "course_count": 0,
-                    "section_count": 0,
-                    "reasons": [
-                        f"No courses matched semester '{semester}'." if semester
-                        else "No courses were loaded."
-                    ],
+                    "failed_phase": "load",
+                    "reasons": [f"No courses matched semester '{semester}'." if semester else "No courses were loaded."],
                     "suggestions": [
-                        "Check the 'semester' field on your courses — it must match "
-                        f"'{semester}' exactly." if semester else
-                        "Check that the courses collection has data.",
-                        "GET /schedule/diagnostic?semester=... reports how many "
-                        "courses have no 'semester' field set at all.",
+                        "Make sure the courses for this term have their Semester set (e.g. '2nd Semester') in the Courses page.",
+                        "Courses with no semester are treated as '1st Semester' and are skipped for other terms.",
                     ],
                 }
                 progress_state[process_id] = -1
@@ -1667,16 +1440,13 @@ def events_to_pre_bookings(events, rooms_config, days, time_settings):
 
     Returns
     -------
-    tuple of (occupied_slots, section_occupied, nstp_section_slots, faculty_bookings)
+    tuple of (occupied_slots, section_occupied, faculty_bookings)
         occupied_slots: defaultdict(set) — (room_type, room_idx) → set of slot indices
         section_occupied: defaultdict(set) — (program, year, block) → set of slot indices
-        nstp_section_slots: defaultdict(set) — (program, year, block) → set of slot indices
-            occupied specifically by an NSTP course, for PE's NSTP-adjacency preference
         faculty_bookings: defaultdict(list) — faculty_name → list of (start, end) tuples
     """
     occupied_slots = defaultdict(set)
     section_occupied = defaultdict(set)
-    nstp_section_slots = defaultdict(set)
     faculty_bookings = defaultdict(list)
 
     # Build room → (type, index) lookup from global rooms config
@@ -1730,14 +1500,6 @@ def events_to_pre_bookings(events, rooms_config, days, time_settings):
         sk = (ev.get('program', ''), ev.get('year', ''), ev.get('block', ''))
         for s in range(global_start, global_start + duration):
             section_occupied[sk].add(s)
-        # NSTP slots specifically, same detection PE's soft preference in
-        # HierarchicalScheduler.update_occupancy_from_schedule uses -- an
-        # approved schedule from another program can carry NSTP sessions
-        # that this program's later PE phase should still treat as
-        # NSTP-adjacent. [Plan B]
-        if "NSTP" in (ev.get('courseCode') or ev.get('baseCourseCode') or ''):
-            for s in range(global_start, global_start + duration):
-                nstp_section_slots[sk].add(s)
 
         # Faculty booking (don't skip GEC, a person can't be in two rooms at once)
         faculty = ev.get('faculty') or ev.get('assigned_faculty')
@@ -1745,10 +1507,10 @@ def events_to_pre_bookings(events, rooms_config, days, time_settings):
             faculty_bookings[faculty].append((global_start, global_start + duration))
 
     logger.info(
-        "Pre-bookings extracted: %d room keys, %d section keys, %d NSTP section keys, %d faculty",
-        len(occupied_slots), len(section_occupied), len(nstp_section_slots), len(faculty_bookings)
+        "Pre-bookings extracted: %d room keys, %d section keys, %d faculty",
+        len(occupied_slots), len(section_occupied), len(faculty_bookings)
     )
-    return occupied_slots, section_occupied, nstp_section_slots, faculty_bookings
+    return occupied_slots, section_occupied, faculty_bookings
 
 
 def generate_coordinator_schedule(
@@ -1781,30 +1543,6 @@ def generate_coordinator_schedule(
 
         s.load_data_for_program(program, selected_rooms, semester_filter=semester)
 
-        logger.info(
-            "Coordinator solve — program=%r semester requested=%r -> "
-            "%d course(s) loaded, %d untagged course(s) defaulted to '1st Semester'",
-            program, semester, len(s.all_courses), len(s.untagged_semester_courses),
-        )
-        if not s.all_courses:
-            logger.error(
-                "No courses found for program=%r semester=%r — check that "
-                "courses carry that exact 'semester' value (a missing "
-                "'semester' field silently defaults to '1st Semester')",
-                program, semester,
-            )
-            if process_id:
-                failure_details[process_id] = {
-                    "status": "failed",
-                    "failed_phase": None,
-                    "reasons": [f"No courses matched program '{program}' and semester '{semester}'."],
-                    "suggestions": [
-                        "Check the 'semester' field on this program's courses.",
-                    ],
-                }
-                progress_state[process_id] = -1
-            return "impossible"
-
         # --- Inject pre-bookings from approved schedules ---
         if pre_booked_events:
             # BUGFIX: We MUST map room indices using the solver's own shuffled
@@ -1815,7 +1553,7 @@ def generate_coordinator_schedule(
             days = get_days()
             time_cfg = get_time()
 
-            occ_slots, sec_occ, nstp_occ, fac_bookings = events_to_pre_bookings(
+            occ_slots, sec_occ, fac_bookings = events_to_pre_bookings(
                 pre_booked_events, rooms_config, days, time_cfg
             )
 
@@ -1824,8 +1562,6 @@ def generate_coordinator_schedule(
                 s.occupied_slots[key].update(slots)
             for key, slots in sec_occ.items():
                 s.section_occupied[key].update(slots)
-            for key, slots in nstp_occ.items():
-                s.nstp_section_slots[key].update(slots)
 
             logger.info(
                 "Injected %d pre-booked room keys and %d section keys",

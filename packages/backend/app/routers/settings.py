@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from app.core.auth import admin_only
 from app.core.firebase import db, refresh_rooms_cache, refresh_time_cache, refresh_days_cache
 
@@ -17,6 +17,24 @@ def get_rooms(user=Depends(admin_only)):
 
 @router.post("/rooms")
 def save_rooms(data: dict, user=Depends(admin_only)):
+    lecture = data.get("lecture") or []
+    lab = data.get("lab") or []
+
+    # A room can only be one type at a time -- the scheduler treats
+    # "lecture" and "lab" as disjoint pools when it assigns sessions, so a
+    # room listed in both would silently get double-booked (once as
+    # someone's lecture slot, once as someone's lab slot, same room/time).
+    # Catch it here, not just in the UI, since this endpoint can be hit
+    # directly.
+    overlap = sorted(set(lecture) & set(lab))
+    if overlap:
+        rooms_str = ", ".join(overlap)
+        raise HTTPException(
+            status_code=400,
+            detail=f"{rooms_str} {'is' if len(overlap) == 1 else 'are'} listed as both Lecture and Lab. "
+                   f"A room can only be one type — remove {'it' if len(overlap) == 1 else 'them'} from one list."
+        )
+
     db.collection("rooms").document("rooms").set(data)
     refresh_rooms_cache()
     return {"saved": True}

@@ -11,6 +11,7 @@ import RoomsPage        from './pages/admin/RoomsPage'
 import SettingsPage     from './pages/admin/SettingsPage'
 import SchedulerHub     from './pages/admin/SchedulerHub'
 import ScheduleViewPage from './pages/admin/ScheduleViewPage'
+import ScheduleListPage from './pages/admin/ScheduleListPage'
 import AnalyticsPage    from './pages/admin/AnalyticsPage'
 import FacultySchedulePage from './pages/faculty/FacultySchedulePage'
 import FacultyProfilePage  from './pages/faculty/FacultyProfilePage'   // ← new unified profile
@@ -93,7 +94,7 @@ export default function App() {
           <Route path="scheduler"       element={<SchedulerHub />} />
           <Route path="schedule/:name"  element={<ScheduleViewPage />} />
           <Route path="schedule/submitted/:id" element={<ScheduleViewPage isSubmittedView />} />
-          <Route path="schedule"        element={<ScheduleViewPage />} />
+          <Route path="schedule"        element={<ScheduleListPage />} />
           <Route path="analytics"       element={<AnalyticsPage />} />
           <Route path="approval"        element={<Navigate to="/dashboard/scheduler?mode=manage" replace />} />
         </Route>
