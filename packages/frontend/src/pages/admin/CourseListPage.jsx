@@ -85,7 +85,7 @@ const LS_VIEW_PREFS = 'cp-view-prefs'
     .cp-th-sort:hover .cp-sort-arrow { opacity:0.6; }
 
     /* Compact Stats Cards */
-    .cp-stat-card { background: var(--surface); border:1px solid ${G.border}; border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:14px; transition: all .15s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.03); }
+    .cp-stat-card { background: var(--surface); border:1px solid ${G.border}; border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:14px; transition: all .15s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.03); position: relative; overflow: hidden; }
     .cp-stat-card:hover { border-color: ${G.meadowBorder}; box-shadow: 0 4px 12px rgba(0,0,0,0.06); transform: translateY(-1px); }
     .cp-stat-card.warn { border-color:${G.amberBorder}; background:${G.amberSoft}; }
     .cp-stat-card.warn:hover { border-color:${G.amber}; box-shadow: 0 4px 12px rgba(217,119,6,0.1); }
@@ -230,9 +230,8 @@ function DeleteConfirmModal({ name, count, onConfirm, onCancel, deleting }) {
 function CourseModal({ mode, initial, onSave, onClose, saving, error }) {
   const [form, setForm] = useState(initial || EMPTY)
   const isEdit = mode === 'edit'
-  const isDuplicate = mode === 'duplicate'
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
-  const canSave = form.courseCode.trim() && form.title.trim() && form.program
+  const canSave = form.courseCode.trim() && !form.courseCode.includes('-COPY') && form.title.trim() && form.program
 
   function submit() {
     onSave({ ...form, yearLevel: Number(form.yearLevel), blocks: Number(form.blocks), unitsLecture: Number(form.unitsLecture), unitsLab: Number(form.unitsLab), semester: form.semester })
@@ -244,7 +243,7 @@ function CourseModal({ mode, initial, onSave, onClose, saving, error }) {
         <div style={{ padding: '20px 24px', borderBottom: `1px solid ${G.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface)' }}>
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: G.ink, fontFamily: "'Inter',sans-serif" }}>
-              {isEdit ? 'Edit Course' : isDuplicate ? 'Duplicate Course' : 'Add New Course'}
+              {isEdit ? 'Edit Course' : 'Add New Course'}
             </div>
             <div style={{ fontSize: 12, color: G.muted2, marginTop: 4 }}>
               {isEdit ? `Modifying ${initial?.courseCode}` : isDuplicate ? `Copying from ${initial?.courseCode} — adjust the code and save` : 'Fill in the course details below'}
@@ -261,7 +260,7 @@ function CourseModal({ mode, initial, onSave, onClose, saving, error }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <label style={{ fontSize: 11.5, fontWeight: 600, color: G.ink }}>Course Code *</label>
-              <input className="cp-inp" value={form.courseCode} onChange={e => set('courseCode', e.target.value)} placeholder="e.g. CS 101" autoFocus={isDuplicate} />
+              <input className="cp-inp" value={form.courseCode} onChange={e => set('courseCode', e.target.value)} placeholder="e.g. CS 101" />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <label style={{ fontSize: 11.5, fontWeight: 600, color: G.ink }}>Program *</label>
@@ -326,7 +325,7 @@ function CourseModal({ mode, initial, onSave, onClose, saving, error }) {
             onMouseEnter={e => { if(!saving && canSave) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)' } }}
             onMouseLeave={e => { if(!saving && canSave) { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.3)' } }}>
             {saving ? <span style={{ animation: 'cpSpin .8s linear infinite' }}>↻</span> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
-            {isEdit ? 'Save Changes' : isDuplicate ? 'Create Copy' : 'Add Course'}
+            {isEdit ? 'Save Changes' : 'Add Course'}
           </button>
         </div>
       </div>
@@ -399,6 +398,11 @@ function StatsBar({ loading, filtered, isFiltered }) {
               {loading ? <Skel w={40} h={18} r={4} /> : <div style={{ fontSize: 18, fontWeight: 700, color: G.ink, lineHeight: 1.1 }}>{it.value}</div>}
               {it.subtitle && !loading && it.subtitle}
             </div>
+            {it.color && (
+              <svg width="100%" height="40" style={{ position: 'absolute', bottom: 0, right: 0, opacity: 0.12, zIndex: 0, pointerEvents: 'none' }} viewBox="0 0 100 40" preserveAspectRatio="none">
+                <path d="M0 40 Q 25 10, 50 25 T 100 10 L 100 40 Z" fill={it.color} />
+              </svg>
+            )}
           </div>
         ))}
         {!loading && stats.issues > 0 && (
@@ -408,6 +412,9 @@ function StatsBar({ loading, filtered, isFiltered }) {
               <div style={{ fontSize: 11, fontWeight: 600, color: '#F59E0B', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Needs Attention</div>
               <div style={{ fontSize: 18, fontWeight: 700, color: '#F59E0B', lineHeight: 1.1 }}>{stats.issues}</div>
             </div>
+            <svg width="100%" height="40" style={{ position: 'absolute', bottom: 0, right: 0, opacity: 0.12, zIndex: 0, pointerEvents: 'none' }} viewBox="0 0 100 40" preserveAspectRatio="none">
+              <path d="M0 40 Q 25 10, 50 25 T 100 10 L 100 40 Z" fill="#F59E0B" />
+            </svg>
           </div>
         )}
       </div>
@@ -518,7 +525,6 @@ export default function CourseListPage() {
   const [showBlockCfg,  setShowBlockCfg]  = useState(false)
   const [showFilters,   setShowFilters]   = useState(false)
   const [editTarget,    setEditTarget]    = useState(null)
-  const [dupTarget,     setDupTarget]     = useState(null)
   const [saving,        setSaving]        = useState(false)
   const [error,         setError]         = useState('')
   const [selected,      setSelected]      = useState(new Set())
@@ -625,7 +631,6 @@ export default function CourseListPage() {
     try {
       await addCourse(data)
       setShowAdd(false)
-      setDupTarget(null)
       load()
       toast('Course added successfully', 'success')
     }
@@ -648,17 +653,6 @@ export default function CourseListPage() {
   function handleDelete(code, prog) {
     setPendingDelete({ code, prog, name: code })
   }
-
-  function handleDuplicate(course) {
-    setError('')
-    setDupTarget({
-      ...course,
-      courseCode: `${course.courseCode}-COPY`,
-      yearLevel: String(course.yearLevel),
-      id: undefined,
-    })
-  }
-
   function handleBulkDelete() {
     const tgts = filtered.filter(c => selected.has(c.id))
     if (!tgts.length) return
@@ -1107,7 +1101,6 @@ export default function CourseListPage() {
 
       {showAdd && <CourseModal mode="add" initial={{...EMPTY, semester: semesterTab}} onSave={handleAdd} onClose={()=>{setShowAdd(false);setError('')}} saving={saving} error={error} />}
       {editTarget && <CourseModal mode="edit" initial={{...editTarget,yearLevel:String(editTarget.yearLevel), semester:editTarget.semester||'1st Semester'}} onSave={handleEdit} onClose={()=>{setEditTarget(null);setError('')}} saving={saving} error={error} />}
-      {dupTarget && <CourseModal mode="duplicate" initial={dupTarget} onSave={handleAdd} onClose={()=>{setDupTarget(null);setError('')}} saving={saving} error={error} />}
 
       {showImport && (
         <ImportCoursesModal

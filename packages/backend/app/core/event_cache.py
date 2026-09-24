@@ -104,4 +104,4 @@ class EventCache:
 
 
 # Singleton — imported by schedule.py and approval.py
-event_cache = EventCache(ttl_seconds=120, max_entries=30)
+event_cache = EventCache(ttl_seconds=300, max_entries=50)

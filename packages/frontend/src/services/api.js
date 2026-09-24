@@ -84,16 +84,25 @@ export const commitCourses = async (courses) =>
   axios.post(`${BASE}/courses/upload/commit`, { courses }, { headers: await authHeaders() }).then(r => r.data)
 
 // ── Course Room Assignment ────────────────────────────────────────────────────
-export const setCoursePreferredRoom = async (courseCode, program, roomName) =>
-  updateCourse(courseCode, program, { preferredRoom: roomName || null })
+export const setCoursePreferredRoom = async (courseCode, program, prefs) => {
+  if (typeof prefs === 'string' || prefs === null) {
+    // Fallback for old callers if any
+    return updateCourse(courseCode, program, { preferredRoom: prefs || null })
+  }
+  return updateCourse(courseCode, program, { 
+    preferredRoomLec: prefs.lec?.length > 0 ? prefs.lec.join(', ') : null,
+    preferredRoomLab: prefs.lab?.length > 0 ? prefs.lab.join(', ') : null,
+    preferredRoom: null 
+  })
+}
 
 export const bulkSetPreferredRooms = async (assignmentMap) => {
   const entries = Object.entries(assignmentMap)
   const results = await Promise.allSettled(
-    entries.map(([key, roomName]) => {
+    entries.map(([key, prefs]) => {
       const [code, ...progParts] = key.split('_')
       const prog = progParts.join('_')
-      return setCoursePreferredRoom(code, prog, roomName)
+      return setCoursePreferredRoom(code, prog, prefs)
     })
   )
   const committed = results.filter(r => r.status === 'fulfilled').length
@@ -220,6 +229,7 @@ export const coordSaveSchedule    = async (d)    => axios.post(`${BASE}/coordina
 export const coordLoadSchedule    = async (id)   => axios.get(`${BASE}/coordinator/schedule/${id}`,       { headers: await authHeaders() }).then(r => r.data)
 export const coordDeleteSchedule  = async (id)   => axios.delete(`${BASE}/coordinator/schedule/${id}`,    { headers: await authHeaders() }).then(r => r.data)
 export const coordRenameSchedule  = async (id,d) => axios.patch(`${BASE}/coordinator/schedule/${id}/rename`, d, { headers: await authHeaders() }).then(r => r.data)
+export const renameAdminSchedule  = async (name, newName) => axios.patch(`${BASE}/schedule/rename/${encodeURIComponent(name)}`, { newName }, { headers: await authHeaders() }).then(r => r.data)
 export const coordDuplicateSchedule = async (id,d) => axios.post(`${BASE}/coordinator/schedule/${id}/duplicate`, d, { headers: await authHeaders() }).then(r => r.data)
 export const coordSubmitSchedule  = async (id)   => axios.post(`${BASE}/coordinator/schedule/${id}/submit`, {}, { headers: await authHeaders() }).then(r => r.data)
 export const coordUnsubmitSchedule = async (id)  => axios.post(`${BASE}/coordinator/schedule/${id}/unsubmit`, {}, { headers: await authHeaders() }).then(r => r.data)

@@ -83,6 +83,18 @@ def create_queue(req: CreateQueueRequest, user: dict = Depends(admin_only)):
     if active_queues:
         raise HTTPException(status_code=400, detail="An active queue already exists")
 
+    # Prevent creating queue if a finalized schedule for this term already exists
+    published_schedules = db.collection("final_schedules") \
+        .where("semester", "==", req.semester) \
+        .where("academicYear", "==", req.academicYear) \
+        .where("finalized", "==", True) \
+        .limit(1).get()
+    if published_schedules:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"A finalized schedule for {req.semester} {req.academicYear} is already published. Unpublish it first to start a new queue."
+        )
+
     # Prevent creating duplicate queues for the same term
     existing_queues = db.collection("coordinator_queues") \
         .where("semester", "==", req.semester) \
@@ -281,7 +293,7 @@ def delete_queue(queue_id: str, user: dict = Depends(admin_only)):
             }
 
             if old_status in ["submitted", "approved"]:
-                update_data["unfinalizedNote"] = f"Admin deleted the scheduling queue, returning this {old_status} schedule to draft."
+                update_data["unfinalizedNote"] = f"Dean deleted the scheduling queue, returning this {old_status} schedule to draft."
             else:
                 update_data["unfinalizedNote"] = None
 

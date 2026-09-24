@@ -326,6 +326,12 @@ export default function SettingsPage() {
   const hourSpan    = endHour - startHour
   const totalSlots  = hourSpan * 2
 
+  const missingNstpDays = !days.includes('Friday') && !days.includes('Saturday')
+  const fewerDays = days.length > 0 && days.length < 5
+  const daysWarning = []
+  if (missingNstpDays && days.length > 0) daysWarning.push('NSTP requires either Friday or Saturday. Removing both will cause scheduling to fail.')
+  if (fewerDays) daysWarning.push(`Having only ${days.length} active day${days.length === 1 ? '' : 's'} severely limits available slots and will likely cause solver failures.`)
+
   return (
     <div className="page" style={{ padding: '28px 32px', background: G.bg, minHeight: '100%', fontFamily: "'Inter', sans-serif", display: 'flex', flexDirection: 'column' }}>
       {TourElement}
@@ -342,6 +348,11 @@ export default function SettingsPage() {
             <div style={{ flex: 1, minWidth: '200px' }}>
               <div style={{ fontSize: 16, fontWeight: 800, color: G.ink }}>Active Operational Days</div>
               <div style={{ fontSize: 12.5, color: G.muted }}>Select the specific days classes are allowed to be scheduled</div>
+              {daysWarning.length > 0 && (
+                <div style={{ fontSize: 11.5, color: '#F59E0B', marginTop: 4, fontWeight: 600 }}>
+                  Warning: {daysWarning.join(' ')}
+                </div>
+              )}
             </div>
 
             {/* Header Save Bar Logic for Days */}
@@ -410,6 +421,11 @@ export default function SettingsPage() {
             <div style={{ flex: 1, minWidth: '200px' }}>
               <div style={{ fontSize: 16, fontWeight: 800, color: G.ink }}>Daily Time Boundaries</div>
               <div style={{ fontSize: 12.5, color: G.muted }}>Set the earliest start time and latest end time for classes</div>
+              {hourSpan < 11 && (
+                <div style={{ fontSize: 11.5, color: '#F59E0B', marginTop: 4, fontWeight: 600 }}>
+                  Warning: An operational window of only {hourSpan} hours limits available slots and may make it mathematically impossible to fit all classes without conflicts.
+                </div>
+              )}
             </div>
 
             {/* Header Save Bar Logic for Time */}

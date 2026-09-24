@@ -133,7 +133,7 @@ function ActiveFilterChips({
     ...rankFilter.map(v => ({ label: v, onRemove: () => onRemoveRank(v), color: 'var(--meadow-text-hover)' })),
     ...departmentFilter.map(v => ({ label: v, onRemove: () => onRemoveDept(v), color: 'var(--meadow-text-hover)' })),
     ...educationFilter.map(v => ({ label: v, onRemove: () => onRemoveEducation(v), color: 'var(--meadow-text-hover)' })),
-    coordinatorFilter ? { label: coordinatorFilter === 'admin' ? 'Admins only' : coordinatorFilter === 'any' ? 'Coordinators only' : 'Regular faculty', onRemove: onClearCoordinator, color: 'var(--meadow-text-hover)' } : null,
+    coordinatorFilter ? { label: coordinatorFilter === 'admin' ? 'Deans only' : coordinatorFilter === 'any' ? 'Coordinators only' : 'Regular faculty', onRemove: onClearCoordinator, color: 'var(--meadow-text-hover)' } : null,
     ...specializationFilter.map(v => ({ label: v, onRemove: () => onRemoveSpec(v), color: 'var(--meadow-text-hover)' })),
     specMinRating > 0 ? { label: `★${specMinRating}+ rating`, onRemove: onClearRating, color: '#F59E0B' } : null,
   ].filter(Boolean)
@@ -263,7 +263,7 @@ function FacultyCard({ faculty, courseTitleMap, selected, onSelect, onClick, onA
             position: 'relative', zIndex: 1,
           }}>
             <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            System Admin
+            Dean
           </div>
         )}
 
@@ -435,7 +435,7 @@ function FacultyTable({ faculty, selected, selectionMode, viewTab, onSelect, onS
                   {isAdmin(f) && (
                     <div style={{ fontSize: 10, color: 'var(--meadow-text-hover)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
                       <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                      System Admin
+                      Dean
                     </div>
                   )}
                   {f.coordinatorProgram && (
@@ -954,7 +954,7 @@ export default function FacultyListPage() {
         || (f.Educational_attainment || '').toLowerCase().includes(q)
         || (f.coordinatorProgram || '').toLowerCase().includes(q)
         || (f.coordinatorProgram && 'coordinator coord coor'.includes(q))
-        || (isAdmin(f) && 'admin administrator'.includes(q))
+        || (isAdmin(f) && 'dean admin administrator'.includes(q))
         || specs.some(s =>
             (s.code  || '').toLowerCase().includes(q) ||
             (s.title || '').toLowerCase().includes(q) ||
@@ -1054,7 +1054,7 @@ export default function FacultyListPage() {
     ...rankFilter,
     ...departmentFilter,
     ...educationFilter,
-    coordinatorFilter === 'admin' ? 'Admins only' : coordinatorFilter === 'any' ? 'Coordinators only' : coordinatorFilter === 'none' ? 'Regular faculty' : null,
+    coordinatorFilter === 'admin' ? 'Deans only' : coordinatorFilter === 'any' ? 'Coordinators only' : coordinatorFilter === 'none' ? 'Regular faculty' : null,
     ...specializationFilter,
     specMinRating > 0 ? `★${specMinRating}+ rating` : null,
   ].filter(Boolean)
@@ -1081,7 +1081,7 @@ export default function FacultyListPage() {
       filterParts.push(rankFilter.join('-'))
     }
 
-    if (coordinatorFilter === 'admin') filterParts.push('Admins')
+    if (coordinatorFilter === 'admin') filterParts.push('Deans')
     if (coordinatorFilter === 'any') filterParts.push('Coordinators')
 
     // Clean up filename parts and construct final suffix
@@ -1414,7 +1414,7 @@ export default function FacultyListPage() {
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {[
                       { v: '',       label: 'All faculty',        count: tabFaculty.length },
-                      { v: 'admin',  label: 'Admins only',        count: tabFaculty.filter(f => isAdmin(f)).length, icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> },
+                      { v: 'admin',  label: 'Deans only',        count: tabFaculty.filter(f => isAdmin(f)).length, icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> },
                       { v: 'any',    label: 'Coordinators only',  count: tabFaculty.filter(f => f.coordinatorProgram).length, icon: <svg width="10" height="10" viewBox="0 0 24 24" fill='#F59E0B' stroke='#F59E0B'><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> },
                       { v: 'none',   label: 'Regular faculty',    count: tabFaculty.filter(f => !f.coordinatorProgram && !isAdmin(f)).length },
                     ].map(({ v, label, count, icon }) => (

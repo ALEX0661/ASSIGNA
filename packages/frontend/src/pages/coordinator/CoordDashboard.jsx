@@ -119,7 +119,7 @@ if (!document.getElementById(STYLE_TAG_ID)) {
     .cd-analytics-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px; margin-bottom:20px; }
     @media (max-width: 720px) { .cd-analytics-row { grid-template-columns:1fr; } }
     
-    .stat-card { background: var(--surface); border-radius:12px; border:1px solid ${G.border}; box-shadow:0 2px 4px rgba(0,0,0,0.03); padding:16px 20px; display:flex; align-items:center; gap:14px; min-height:80px; transition:all .15s; position:relative; }
+    .stat-card { background: var(--surface); border-radius:12px; border:1px solid ${G.border}; box-shadow:0 2px 4px rgba(0,0,0,0.03); padding:16px 20px; display:flex; align-items:center; gap:14px; min-height:80px; transition:all .15s; position:relative; overflow:hidden; }
     .stat-card:hover { border-color:${G.meadowBorder}; box-shadow:0 4px 12px rgba(0,0,0,0.06); transform:translateY(-1px); }
     .stat-icon-wrap { width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     
@@ -841,7 +841,7 @@ export default function CoordDashboard() {
     const unfinalized = schedules.filter(s => s.status === 'draft' && s.unfinalizedNote && !s.rejectionFeedback);
     if (unfinalized.length > 0) {
       unfinalized.forEach(s => {
-        const isUnapproved = s.unfinalizedNote.includes("Admin unapproved") || s.unfinalizedNote.includes("Admin deleted");
+        const isUnapproved = s.unfinalizedNote.includes("Dean unapproved") || s.unfinalizedNote.includes("Dean deleted");
         out.push({
           id: `unfinalized-${s.id}`,
           type: 'warning',
@@ -1020,6 +1020,11 @@ export default function CoordDashboard() {
                   : null
               }
             </div>
+            {c.color && (
+              <svg width="100%" height="40" style={{ position: 'absolute', bottom: 0, right: 0, opacity: 0.12, zIndex: 0, pointerEvents: 'none' }} viewBox="0 0 100 40" preserveAspectRatio="none">
+                <path d="M0 40 Q 25 10, 50 25 T 100 10 L 100 40 Z" fill={c.color} />
+              </svg>
+            )}
           </div>
         ))}
       </div>

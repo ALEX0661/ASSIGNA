@@ -368,7 +368,7 @@ export default function CoordMySchedulePage() {
         {
           target: '.tour-btn-submit',
           title: 'Submit for Review',
-          content: 'When your draft is perfect, hit the green Submit button! This sends the schedule straight to the Administrator for approval. Make sure you\'re ready — you can\'t edit it again unless you recall it.',
+          content: 'When your draft is perfect, hit the green Submit button! This sends the schedule straight to the Dean for approval. Make sure you\'re ready — you can\'t edit it again unless you recall it.',
           placement: 'left'
         },
         {
@@ -811,7 +811,7 @@ export default function CoordMySchedulePage() {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 {renameId === s.id ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={e => e.stopPropagation()}>
                     <input className="co-input" value={renameName} onChange={e => setRenameName(e.target.value)}
                       style={{ maxWidth: 280 }} onKeyDown={e => e.key === 'Enter' && handleRename(s.id)} autoFocus />
                     <button className="co-btn co-btn-primary" style={{ padding: '5px 12px' }} onClick={() => handleRename(s.id)}>Save</button>

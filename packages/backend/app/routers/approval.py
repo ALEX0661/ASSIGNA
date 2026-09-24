@@ -63,7 +63,7 @@ def _advance_queue(queue_data: dict, queue_id: str):
                     next_index = i
                     break
 
-    now = datetime.utcnow().isoformat()
+    now = (datetime.utcnow().isoformat() + "Z")
     if next_index != -1:
         program_status[queue_list[next_index]] = "active"
         updates = {
@@ -98,76 +98,55 @@ def _get_or_create_master(queue_id: str, semester: str, academic_year: str):
         "academicYear": academic_year,
         "approvedPrograms": [],
         "status": "building",
-        "createdAt": datetime.utcnow().isoformat(),
-        "updatedAt": datetime.utcnow().isoformat(),
+        "createdAt": (datetime.utcnow().isoformat() + "Z"),
+        "updatedAt": (datetime.utcnow().isoformat() + "Z"),
         "finalizedAt": None
     }
     db.collection("master_schedules").document(master_id).set(master_data)
     return master_id, master_data
 
 
-def _replace_all_events(events_ref, events: list):
+def _replace_all_events(events_ref, events: list, known_existing_ids=None):
+    """Replace all events in a subcollection using generic 500-event chunks."""
+    _delete_subcollection(events_ref)
+    
     batch = db.batch()
+    chunk_size = 500
     count = 0
-    existing = events_ref.stream()
-    for doc in existing:
-        batch.delete(doc.reference)
+    
+    for i in range(0, max(1, len(events)), chunk_size):
+        chunk = events[i:i+chunk_size]
+        for ev in chunk:
+            if not ev.get("schedule_id"):
+                ev["schedule_id"] = str(uuid.uuid4())
+        
+        chunk_id = f"chunk_{i//chunk_size}"
+        batch.set(events_ref.document(chunk_id), {"events": chunk})
         count += 1
         if count >= 450:
             batch.commit()
             batch = db.batch()
             count = 0
-    for ev in events:
-        ev_id = str(ev.get("schedule_id") or uuid.uuid4())
-        batch.set(events_ref.document(ev_id), ev)
-        count += 1
-        if count >= 450:
-            batch.commit()
-            batch = db.batch()
-            count = 0
+            
     if count:
         batch.commit()
 
 def _replace_program_events(events_ref, program_code: str, events: list):
-    """Delete a program's existing events from a subcollection, then write
-    the new ones. Batched at 450 ops to stay under Firestore's 500 limit.
-
-    Doc IDs are namespaced with program_code (f"{program_code}_{schedule_id}")
-    rather than the bare schedule_id. Each program's solver numbers its own
-    sessions independently (0, 1, 2, ...), so without the prefix, two
-    programs' events collide on the same doc slot in this shared
-    subcollection -- one program's approve can silently overwrite another
-    program's already-approved events, and an unapprove's delete-by-
-    programCode query then only sees whichever program most recently won
-    that slot. This was causing approved programs to lose most of their
-    sessions after an unapprove/re-approve cycle.
-    """
-    batch = db.batch()
-    count = 0
-
-    existing = events_ref.where("programCode", "==", program_code).stream()
-    for doc in existing:
-        batch.delete(doc.reference)
-        count += 1
-        if count >= 450:
-            batch.commit()
-            batch = db.batch()
-            count = 0
-
+    """Update a specific program's events within the chunked architecture."""
+    master_ref = events_ref.parent
+    all_events = _get_master_events(master_ref)
+    
+    retained_events = [ev for ev in all_events if ev.get("programCode") != program_code]
+    
     for ev in events:
         ev["programCode"] = program_code
-        ev_id = f"{program_code}_{ev.get('schedule_id') or uuid.uuid4()}"
+        ev_id = ev.get('schedule_id') or str(uuid.uuid4())
+        if not str(ev_id).startswith(f"{program_code}_"):
+            ev_id = f"{program_code}_{ev_id}"
         ev["schedule_id"] = ev_id
-        batch.set(events_ref.document(ev_id), ev)
-        count += 1
-        if count >= 450:
-            batch.commit()
-            batch = db.batch()
-            count = 0
-
-    if count:
-        batch.commit()
-
+        retained_events.append(ev)
+        
+    _replace_all_events(events_ref, retained_events)
 
 def _delete_subcollection(coll_ref):
     """Same helper as schedule.py — duplicated here because approval.py
@@ -184,7 +163,6 @@ def _delete_subcollection(coll_ref):
     if count:
         batch.commit()
 
-
 def _get_master_events(master_ref, cache_key: str = None):
     if cache_key:
         cached = event_cache.get(cache_key)
@@ -193,10 +171,15 @@ def _get_master_events(master_ref, cache_key: str = None):
             
     events = []
     for doc in master_ref.collection("events").stream():
-        ev = doc.to_dict()
-        ev["schedule_id"] = doc.id
-        events.append(ev)
-        
+        data = doc.to_dict()
+        if "events" in data:
+            events.extend(data["events"])
+        else:
+            ev = data
+            if "schedule_id" not in ev:
+                ev["schedule_id"] = doc.id
+            events.append(ev)
+            
     if cache_key:
         event_cache.put(cache_key, events)
     return events
@@ -252,7 +235,7 @@ def approve_schedule(schedule_id: str, user: dict = Depends(admin_only)):
     if schedule_data.get("status") != "submitted":
         raise HTTPException(status_code=400, detail="Schedule is not in submitted status")
 
-    now = datetime.utcnow().isoformat()
+    now = (datetime.utcnow().isoformat() + "Z")
     db.collection("coordinator_schedules").document(schedule_id).update({
         "status": "approved",
         "approvedAt": now,
@@ -270,6 +253,11 @@ def approve_schedule(schedule_id: str, user: dict = Depends(admin_only)):
         db.collection("coordinator_schedules").document(schedule_id).update({
             "queueId": queue_id
         })
+
+    # Prevent approval if the master schedule is finalized
+    mdocs = db.collection("master_schedules").where("queueId", "==", queue_id).get()
+    if mdocs and mdocs[0].to_dict().get("status") == "finalized":
+        raise HTTPException(status_code=400, detail="Cannot approve schedule because the master schedule is finalized. Unpublish the master schedule first.")
 
     queue_doc = db.collection("coordinator_queues").document(queue_id).get()
     if not queue_doc.exists:
@@ -338,7 +326,7 @@ def reject_schedule(schedule_id: str, req: RejectRequest, user: dict = Depends(a
         "status": "draft",
         "submittedAt": None,
         "rejectionFeedback": req.feedback,
-        "updatedAt": datetime.utcnow().isoformat()
+        "updatedAt": (datetime.utcnow().isoformat() + "Z")
     })
 
     # Without this, the program stayed marked "submitted" in the queue's
@@ -353,7 +341,7 @@ def reject_schedule(schedule_id: str, req: RejectRequest, user: dict = Depends(a
             queue_ref.update({
                 f"programStatus.{program_code}": "active",
                 "status": "active",
-                "updatedAt": datetime.utcnow().isoformat()
+                "updatedAt": (datetime.utcnow().isoformat() + "Z")
             })
 
     if queue_id and program_code:
@@ -382,13 +370,19 @@ def unapprove_schedule(schedule_id: str, req: RejectRequest, user: dict = Depend
     prog = data.get("programCode")
     queue_id = data.get("queueId")
     
+    # Prevent unapproval if the master schedule is finalized
+    if queue_id:
+        mdocs = db.collection("master_schedules").where("queueId", "==", queue_id).get()
+        if mdocs and mdocs[0].to_dict().get("status") == "finalized":
+            raise HTTPException(status_code=400, detail="Cannot unapprove schedule because the master schedule is finalized. Unpublish the master schedule first.")
+
     doc.reference.update({
         "status": "draft",
         "approvedAt": firestore.DELETE_FIELD,
         "approvedBy": firestore.DELETE_FIELD,
         "submittedAt": firestore.DELETE_FIELD,
-        "unfinalizedNote": f"Admin unapproved this schedule: {req.feedback}",
-        "updatedAt": datetime.utcnow().isoformat()
+        "unfinalizedNote": f"Dean unapproved this schedule: {req.feedback}",
+        "updatedAt": (datetime.utcnow().isoformat() + "Z")
     })
     
     # Update queue status using the stored queueId
@@ -401,7 +395,7 @@ def unapprove_schedule(schedule_id: str, req: RejectRequest, user: dict = Depend
             queue_ref.update({
                 "status": "active",
                 "programStatus": program_status,
-                "updatedAt": datetime.utcnow().isoformat()
+                "updatedAt": (datetime.utcnow().isoformat() + "Z")
             })
             
             # Remove from master schedule
@@ -412,7 +406,7 @@ def unapprove_schedule(schedule_id: str, req: RejectRequest, user: dict = Depend
                 _replace_program_events(mref.collection("events"), prog, [])
                 mref.update({
                     "approvedPrograms": firestore.ArrayRemove([prog]),
-                    "updatedAt": datetime.utcnow().isoformat()
+                    "updatedAt": (datetime.utcnow().isoformat() + "Z")
                 })
                 event_cache.invalidate(f"master:{md.id}")
     
@@ -426,11 +420,14 @@ def admin_edit_master_schedule(queue_id: str, payload: EditScheduleRequest, user
     if not docs:
         raise HTTPException(status_code=404, detail="Master schedule not found")
     master_ref = docs[0].reference
-    old_events = [d.to_dict() for d in master_ref.collection("events").stream()]
+    cache_key = f"master:{docs[0].id}"
+    old_events = _get_master_events(master_ref, cache_key=cache_key)
     
-    _replace_all_events(master_ref.collection("events"), payload.schedule)
+    # Pass known IDs so _replace_all_events can delete by ID (0 reads).
+    old_ids = [str(ev.get("schedule_id")) for ev in old_events if ev.get("schedule_id")]
+    _replace_all_events(master_ref.collection("events"), payload.schedule, known_existing_ids=old_ids)
     master_ref.update({"updatedAt": firestore.SERVER_TIMESTAMP})
-    event_cache.invalidate(f"master:{docs[0].id}")
+    event_cache.invalidate(cache_key)
     
     diff_details = _generate_schedule_diff(old_events, payload.schedule)
     if diff_details and diff_details != "Edited schedule (no class changes)":
@@ -448,7 +445,7 @@ def finalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
     master_id = master_doc.id
     master_data = master_doc.to_dict()
 
-    now = datetime.utcnow().isoformat()
+    now = (datetime.utcnow().isoformat() + "Z")
     master_ref = master_doc.reference
     master_ref.update({
         "status": "finalized",
@@ -486,38 +483,24 @@ def finalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
 
     # Read events before writing metadata so eventCount is accurate --
     # list_saved()/getSchedules() rely on this field.
-    events = [(d.id, d.to_dict()) for d in master_doc.reference.collection("events").stream()]
+    events_data = _get_master_events(master_doc.reference)
 
     final_ref.set({
         "schedule_name": final_name,
         "semester": semester,
         "academicYear": academic_year,
         "finalized": True,
-        "eventCount": len(events),
+        "eventCount": len(events_data),
         "createdAt": existing_final_data.get("createdAt", now),
         "lastModified": now,
         "savedAt": now,
         "createdBy": user.get("uid"),
         "source": "queue",
+        "events": events_data,
     })
 
-    # Copy master's events subcollection into final_schedules/{final_name}/events
-    # instead of writing one giant "schedule" array field. Clear any prior
-    # copy first (re-finalizing the same queue should fully replace it, not
-    # merge with stale event docs from an earlier finalize).
-    events_ref = final_ref.collection("events")
-    _delete_subcollection(events_ref)
-    batch = db.batch()
-    count = 0
-    for original_id, ev in events:
-        batch.set(events_ref.document(original_id), ev)
-        count += 1
-        if count >= 450:
-            batch.commit()
-            batch = db.batch()
-            count = 0
-    if count:
-        batch.commit()
+    # Clean up any old subcollection that might exist from legacy publishes
+    _delete_subcollection(final_ref.collection("events"))
 
     db.collection("coordinator_queues").document(queue_id).update({
         "status": "completed",
@@ -543,7 +526,7 @@ def unfinalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
     if not semester or not academic_year:
         raise HTTPException(status_code=400, detail="Missing semester/academicYear")
 
-    now = datetime.utcnow().isoformat()
+    now = (datetime.utcnow().isoformat() + "Z")
     
     # 1. Mark final schedule as not finalized (if it exists)
     if semester and academic_year:
@@ -686,7 +669,7 @@ def edit_schedule(schedule_id: str, req: EditScheduleRequest, user: dict = Depen
     
     diff_details = _generate_schedule_diff(old_schedule, new_schedule)
 
-    now = datetime.utcnow().isoformat()
+    now = (datetime.utcnow().isoformat() + "Z")
     db.collection("coordinator_schedules").document(schedule_id).update({
         "schedule": req.schedule,
         "updatedAt": now

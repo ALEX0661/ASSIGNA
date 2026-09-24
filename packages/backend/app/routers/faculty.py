@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from firebase_admin import auth as firebase_auth
 from app.core.auth import admin_only, any_authenticated
-from app.core.firebase import db, refresh_faculty_cache
+from app.core.firebase import db, refresh_faculty_cache, get_faculty as get_faculty_cache
 from app.core.globals import schedule_dict
 from app.core.unit_balancing import ( 
     compute_effective_max_units,
@@ -23,7 +23,7 @@ def _require_admin_or_coordinator(user: dict):
         return
     if user.get("coordinatorProgram"):
         return
-    raise HTTPException(403, "Admin or Coordinator access required.")
+    raise HTTPException(403, "Dean or Coordinator access required.")
 
 def _default_password(name: str) -> str:
     last_name = name.strip().split()[-1] if name.strip() else "Faculty"
@@ -187,8 +187,7 @@ def get_all_faculty(include_archived: bool = False, user=Depends(any_authenticat
     role = user.get("role")
 
     if role == "admin":
-        docs   = db.collection("faculty").stream()
-        result = [{**d.to_dict(), "id": d.id} for d in docs]
+        result = list(get_faculty_cache())  # served from in-memory cache (0 reads)
         if not include_archived:
             result = [f for f in result if not f.get("archived", False)]
         return result
@@ -229,11 +228,9 @@ def add_faculty(data: dict, user=Depends(any_authenticated)):
     if not email:
         raise HTTPException(400, "Email is required to create a faculty account.")
         
-    # Check for duplicate names
+    # Check for duplicate names (use in-memory cache — 0 reads)
     norm_name = re.sub(r"[^A-Z0-9]", "", name.upper())
-    docs = db.collection("faculty").stream()
-    for d in docs:
-        d_dict = d.to_dict()
+    for d_dict in get_faculty_cache():
         n = (d_dict.get("name") or "").strip().upper()
         if re.sub(r"[^A-Z0-9]", "", n) == norm_name:
             raise HTTPException(400, f"A faculty member with the name '{name}' already exists.")

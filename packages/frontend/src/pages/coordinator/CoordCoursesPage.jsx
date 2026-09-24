@@ -92,7 +92,7 @@ function markOnboardingCompleted() {
     .cp-th-sort.active .cp-sort-arrow { opacity:1; }
     .cp-th-sort:hover .cp-sort-arrow { opacity:0.6; }
 
-    .cp-stat-card { background: var(--surface); border:1px solid ${G.border}; border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:14px; transition: all .15s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.03); }
+    .cp-stat-card { background: var(--surface); border:1px solid ${G.border}; border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:14px; transition: all .15s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.03); position: relative; overflow: hidden; }
     .cp-stat-card:hover { border-color: ${G.meadowBorder}; box-shadow: 0 4px 12px rgba(0,0,0,0.06); transform: translateY(-1px); }
     .cp-stat-card.warn { border-color:${G.amberBorder}; background:${G.amberSoft}; }
     .cp-stat-card.warn:hover { border-color:${G.amber}; box-shadow: 0 4px 12px rgba(217,119,6,0.1); }
@@ -257,100 +257,125 @@ function DeleteConfirmModal({ name, count, onConfirm, onCancel, deleting }) {
 
 /* Quick room-assignment popup — Updated to match RoomsPage modal */
 function QuickAssignRoomModal({ course, rooms, onSave, onClose, saving }) {
-  const initialRooms = course.preferredRoom ? course.preferredRoom.split(',').map(s => s.trim()).filter(Boolean) : []
-  const [selected, setSelected] = useState(initialRooms)
-
-  const toggle = (r) => {
-    if (selected.includes(r)) setSelected(selected.filter(x => x !== r))
-    else setSelected([...selected, r])
+  const initialLec = course.preferredRoomLec ? course.preferredRoomLec.split(',').map(s => s.trim()).filter(Boolean) : []
+  const initialLab = course.preferredRoomLab ? course.preferredRoomLab.split(',').map(s => s.trim()).filter(Boolean) : []
+  
+  // Legacy upgrade
+  const legacy = course.preferredRoom ? course.preferredRoom.split(',').map(s => s.trim()).filter(Boolean) : []
+  if (initialLec.length === 0 && initialLab.length === 0 && legacy.length > 0) {
+    legacy.forEach(r => {
+      if (rooms.lab?.includes(r)) initialLab.push(r)
+      else initialLec.push(r)
+    })
   }
+
+  const [selectedLec, setSelectedLec] = useState(initialLec)
+  const [selectedLab, setSelectedLab] = useState(initialLab)
+  const [showOverrideInLec, setShowOverrideInLec] = useState(false)
+  const [showOverrideInLab, setShowOverrideInLab] = useState(false)
+
+  const hasLec = parseFloat(course.unitsLecture || 0) > 0
+  const hasLab = parseFloat(course.unitsLab || 0) > 0
+  const showLecSection = hasLec || (!hasLec && !hasLab)
+  const showLabSection = hasLab || (!hasLec && !hasLab)
+
+  const toggleLec = (r) => setSelectedLec(p => p.includes(r) ? p.filter(x => x !== r) : [...p, r])
+  const toggleLab = (r) => setSelectedLab(p => p.includes(r) ? p.filter(x => x !== r) : [...p, r])
 
   return (
     <div className="rm-modal-overlay" onMouseDown={onClose}>
-      <div className="rm-modal-box" onMouseDown={e => e.stopPropagation()}>
+      <div className="rm-modal-box" style={{ width: 600, maxHeight: '90vh' }} onMouseDown={e => e.stopPropagation()}>
         <div className="rm-modal-head">
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: G.ink, fontFamily: "'Inter', sans-serif" }}>Assign Room Pool</div>
-            <div style={{ fontSize: 13, color: G.muted, marginTop: 4, fontWeight: 500 }}>{course.courseCode} — {course.title}</div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <h3 style={{ margin: 0, fontSize: 18, color: 'var(--text-main)', fontWeight: 800 }}>Assign Room Pool</h3>
+            <span style={{ fontSize: 13, color: 'var(--meadow-text)', fontWeight: 600, marginTop: 4 }}>{course.courseCode} — {course.title}</span>
           </div>
-          <button className="modal-close-btn" onClick={onClose} aria-label="Close" disabled={saving}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+          <button className="modal-close-btn" onClick={onClose} disabled={saving}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         
-        <div className="rm-modal-body">
-          <div style={{ background: 'var(--surface)', padding: '16px', borderRadius: 12, border: `1px solid ${G.border}`, boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Selected Rooms ({selected.length})</span>
-              {selected.length > 0 && (
-                <button onClick={() => setSelected([])} disabled={saving} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 11.5, fontWeight: 600, cursor: saving ? 'default' : 'pointer' }}>Clear All</button>
+        <div className="rm-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: '24px 20px' }}>
+          {showLecSection && (
+            <div style={{ background: 'var(--surface)', padding: 16, borderRadius: 12, border: `1px solid ${showOverrideInLec ? '#EAB308' : 'var(--meadow-border)'}`, position: 'relative' }}>
+              <div style={{ position: 'absolute', top: -10, left: 16, background: 'var(--surface)', padding: '0 8px', fontSize: 11.5, fontWeight: 800, color: showOverrideInLec ? '#EAB308' : 'var(--meadow-text)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Lecture Unit Rooms
+              </div>
+              
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                {selectedLec.length === 0 && <span style={{ fontSize: 13, color: 'var(--muted)', fontStyle: 'italic' }}>No rooms selected.</span>}
+                {selectedLec.map(r => (
+                  <span key={r} className="assigned-pill" style={{ padding: '4px 8px', fontSize: 12, background: 'var(--meadow-soft)', border: '1px solid var(--meadow-border)' }}>
+                    {r} <svg onClick={() => toggleLec(r)} style={{ cursor: 'pointer', marginLeft: 4, opacity: 0.7 }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </span>
+                ))}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {(rooms.lecture || []).map(r => (
+                  <div key={r} className={`modal-room-card ${selectedLec.includes(r) ? 'selected' : ''}`} onClick={() => toggleLec(r)}>
+                    <div className="modal-room-card-inner">
+                      <Checkbox checked={selectedLec.includes(r)} onChange={() => {}} /> <span style={{ fontSize: 14, fontWeight: 700 }}>{r}</span>
+                    </div>
+                  </div>
+                ))}
+                {showOverrideInLec && (rooms.lab || []).map(r => (
+                  <div key={r} className={`modal-room-card override ${selectedLec.includes(r) ? 'selected' : ''}`} onClick={() => toggleLec(r)} style={{ borderStyle: 'dashed' }}>
+                    <div className="modal-room-card-inner">
+                      <Checkbox checked={selectedLec.includes(r)} onChange={() => {}} /> <span style={{ fontSize: 14, fontWeight: 700, color: '#EAB308' }}>{r} (Lab)</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {!showOverrideInLec && (rooms.lab || []).length > 0 && (
+                <button onClick={() => setShowOverrideInLec(true)} style={{ marginTop: 12, background: 'none', border: 'none', color: 'var(--meadow-text)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>+ Show Lab Rooms (Override)</button>
               )}
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {selected.length === 0 && <span style={{ fontSize: 13, color: G.muted, fontStyle: 'italic' }}>No rooms assigned to this pool yet.</span>}
-              {selected.map(r => (
-                <span key={r} className="assigned-pill" style={{ padding: '6px 10px', fontSize: 12 }}>
-                  {r} 
-                  <svg onClick={() => { if(!saving) toggle(r) }} style={{ cursor: saving ? 'default' : 'pointer', marginLeft: 4, opacity: 0.7 }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </span>
-              ))}
+          )}
+
+          {showLabSection && (
+            <div style={{ background: 'var(--surface)', padding: 16, borderRadius: 12, border: `1px solid ${showOverrideInLab ? '#EAB308' : 'var(--meadow-border)'}`, position: 'relative' }}>
+              <div style={{ position: 'absolute', top: -10, left: 16, background: 'var(--surface)', padding: '0 8px', fontSize: 11.5, fontWeight: 800, color: showOverrideInLab ? '#EAB308' : 'var(--meadow-text)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Lab Unit Rooms
+              </div>
+              
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                {selectedLab.length === 0 && <span style={{ fontSize: 13, color: 'var(--muted)', fontStyle: 'italic' }}>No rooms selected.</span>}
+                {selectedLab.map(r => (
+                  <span key={r} className="assigned-pill" style={{ padding: '4px 8px', fontSize: 12, background: 'var(--meadow-soft)', border: '1px solid var(--meadow-border)' }}>
+                    {r} <svg onClick={() => toggleLab(r)} style={{ cursor: 'pointer', marginLeft: 4, opacity: 0.7 }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </span>
+                ))}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {(rooms.lab || []).map(r => (
+                  <div key={r} className={`modal-room-card ${selectedLab.includes(r) ? 'selected' : ''}`} onClick={() => toggleLab(r)}>
+                    <div className="modal-room-card-inner">
+                      <Checkbox checked={selectedLab.includes(r)} onChange={() => {}} /> <span style={{ fontSize: 14, fontWeight: 700 }}>{r}</span>
+                    </div>
+                  </div>
+                ))}
+                {showOverrideInLab && (rooms.lecture || []).map(r => (
+                  <div key={r} className={`modal-room-card override ${selectedLab.includes(r) ? 'selected' : ''}`} onClick={() => toggleLab(r)} style={{ borderStyle: 'dashed' }}>
+                    <div className="modal-room-card-inner">
+                      <Checkbox checked={selectedLab.includes(r)} onChange={() => {}} /> <span style={{ fontSize: 14, fontWeight: 700, color: '#EAB308' }}>{r} (Lec)</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {!showOverrideInLab && (rooms.lecture || []).length > 0 && (
+                <button onClick={() => setShowOverrideInLab(true)} style={{ marginTop: 12, background: 'none', border: 'none', color: 'var(--meadow-text)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>+ Show Lecture Rooms (Override)</button>
+              )}
             </div>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {rooms.lecture?.length > 0 && (
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', marginBottom: 10, letterSpacing: '0.5px' }}>Lecture Rooms</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  {rooms.lecture.map(r => {
-                    const isSel = selected.includes(r);
-                    return (
-                      <div key={r} className={`modal-room-card ${isSel ? 'selected' : ''}`} onClick={() => { if(!saving) toggle(r) }}>
-                        <div className="modal-room-card-inner">
-                          <Checkbox checked={isSel} onChange={() => {}} /> 
-                          <span style={{ fontSize: 14, fontWeight: 700 }}>{r}</span>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-            
-            {rooms.lab?.length > 0 && (
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', marginBottom: 10, letterSpacing: '0.5px' }}>Lab Rooms</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  {rooms.lab.map(r => {
-                    const isSel = selected.includes(r);
-                    return (
-                      <div key={r} className={`modal-room-card ${isSel ? 'selected' : ''}`} onClick={() => { if(!saving) toggle(r) }}>
-                        <div className="modal-room-card-inner">
-                          <Checkbox checked={isSel} onChange={() => {}} /> 
-                          <span style={{ fontSize: 14, fontWeight: 700 }}>{r}</span>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {(rooms.lecture?.length === 0 && rooms.lab?.length === 0) && (
-              <div style={{ fontSize: 13, color: G.muted, textAlign: 'center', padding: '30px', background: 'var(--surface)', borderRadius: 12, border: `1px dashed ${G.border}` }}>
-                No rooms selected for {course.program || 'your program'} yet — choose some on the Rooms page first.
-              </div>
-            )}
-          </div>
+          )}
         </div>
-
-        <div className="rm-modal-foot">
-          <button className="btn-outline" disabled={saving} onClick={onClose} style={{ padding: '8px 16px', fontSize: 13 }}>Cancel</button>
-          <button className="btn-primary" disabled={saving} onClick={() => onSave(selected.join(', '))} style={{ padding: '8px 20px', fontSize: 13 }}>
-            {saving ? <span style={{ display: 'inline-block', animation: 'cpSpin .8s linear infinite' }}>↻</span> : 'Confirm Selection'}
+        <div className="rm-modal-footer">
+          <button className="btn-secondary" onClick={onClose} disabled={saving} style={{ padding: '8px 16px', borderRadius: 8 }}>Cancel</button>
+          <button className="btn-primary" onClick={() => onSave({ lec: selectedLec, lab: selectedLab })} disabled={saving} style={{ padding: '8px 16px', borderRadius: 8 }}>
+            {saving ? 'Saving...' : 'Confirm Selection'}
           </button>
         </div>
       </div>
@@ -361,9 +386,8 @@ function QuickAssignRoomModal({ course, rooms, onSave, onClose, saving }) {
 function CourseModal({ mode, initial, program, rooms, onSave, onClose, saving, error }) {
   const [form, setForm] = useState(initial || EMPTY)
   const isEdit = mode === 'edit'
-  const isDuplicate = mode === 'duplicate'
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
-  const canSave = form.courseCode.trim() && form.title.trim()
+  const canSave = form.courseCode.trim() && !form.courseCode.includes('-COPY') && form.title.trim()
 
   function submit() {
     onSave({
@@ -384,10 +408,10 @@ function CourseModal({ mode, initial, program, rooms, onSave, onClose, saving, e
         <div style={{ padding: '20px 24px', borderBottom: `1px solid ${G.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface)' }}>
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: G.ink, fontFamily: "'Inter',sans-serif" }}>
-              {isEdit ? 'Edit Course' : isDuplicate ? 'Duplicate Course' : 'Add New Course'}
+              {isEdit ? 'Edit Course' : 'Add New Course'}
             </div>
             <div style={{ fontSize: 12, color: G.muted2, marginTop: 4 }}>
-              {isEdit ? `Modifying ${initial?.courseCode}` : isDuplicate ? `Copying from ${initial?.courseCode} — adjust the code and save` : `Adding to ${program}`}
+              {isEdit ? `Modifying ${initial?.courseCode}` : isDuplicate ? `Copying from ${initial?.courseCode} ΓÇö adjust the code and save` : `Adding to ${program}`}
             </div>
           </div>
           <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${G.border}`, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, transition: 'all .15s' }}
@@ -401,7 +425,7 @@ function CourseModal({ mode, initial, program, rooms, onSave, onClose, saving, e
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <label style={{ fontSize: 11.5, fontWeight: 600, color: G.ink }}>Course Code *</label>
-              <input className="cp-inp" value={form.courseCode} onChange={e => set('courseCode', e.target.value)} placeholder="e.g. CS 101" autoFocus={isDuplicate} />
+              <input className="cp-inp" value={form.courseCode} onChange={e => set('courseCode', e.target.value)} placeholder="e.g. CS 101" />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <label style={{ fontSize: 11.5, fontWeight: 600, color: G.ink }}>Program</label>
@@ -467,8 +491,8 @@ function CourseModal({ mode, initial, program, rooms, onSave, onClose, saving, e
           <button onClick={submit} disabled={saving || !canSave} style={{ padding: '8px 22px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 8, opacity: (saving || !canSave) ? 0.6 : 1, boxShadow: '0 4px 14px rgba(0,0,0,0.3)' }}
             onMouseEnter={e => { if(!saving && canSave) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)' } }}
             onMouseLeave={e => { if(!saving && canSave) { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.3)' } }}>
-            {saving ? <span style={{ animation: 'cpSpin .8s linear infinite' }}>↻</span> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
-            {isEdit ? 'Save Changes' : isDuplicate ? 'Create Copy' : 'Add Course'}
+            {saving ? <span style={{ animation: 'cpSpin .8s linear infinite' }}>Γå╗</span> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
+            {isEdit ? 'Save Changes' : 'Add Course'}
           </button>
         </div>
       </div>
@@ -476,7 +500,7 @@ function CourseModal({ mode, initial, program, rooms, onSave, onClose, saving, e
   )
 }
 
-/* ─── Stats Bar ──────────────────────────────────────────────────────────── */
+/* ΓöÇΓöÇΓöÇ Stats Bar ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 function StatsBar({ loading, filtered, isFiltered }) {
   const stats = useMemo(() => {
     const totalLec = filtered.reduce((s, c) => s + (c.unitsLecture || 0), 0)
@@ -533,6 +557,11 @@ function StatsBar({ loading, filtered, isFiltered }) {
               {loading ? <Skel w={40} h={18} r={4} /> : <div style={{ fontSize: 18, fontWeight: 700, color: G.ink, lineHeight: 1.1 }}>{it.value}</div>}
               {it.subtitle && !loading && it.subtitle}
             </div>
+            {it.color && (
+              <svg width="100%" height="40" style={{ position: 'absolute', bottom: 0, right: 0, opacity: 0.12, zIndex: 0, pointerEvents: 'none' }} viewBox="0 0 100 40" preserveAspectRatio="none">
+                <path d="M0 40 Q 25 10, 50 25 T 100 10 L 100 40 Z" fill={it.color} />
+              </svg>
+            )}
           </div>
         ))}
         {!loading && stats.issues > 0 && (
@@ -542,6 +571,9 @@ function StatsBar({ loading, filtered, isFiltered }) {
               <div style={{ fontSize: 11, fontWeight: 600, color: '#F59E0B', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Needs Attention</div>
               <div style={{ fontSize: 18, fontWeight: 700, color: '#F59E0B', lineHeight: 1.1 }}>{stats.issues}</div>
             </div>
+            <svg width="100%" height="40" style={{ position: 'absolute', bottom: 0, right: 0, opacity: 0.12, zIndex: 0, pointerEvents: 'none' }} viewBox="0 0 100 40" preserveAspectRatio="none">
+              <path d="M0 40 Q 25 10, 50 25 T 100 10 L 100 40 Z" fill="#F59E0B" />
+            </svg>
           </div>
         )}
       </div>
@@ -555,7 +587,7 @@ function StatsBar({ loading, filtered, isFiltered }) {
   )
 }
 
-/* ─── Sortable column header ─────────────────────────────────────────────── */
+/* ΓöÇΓöÇΓöÇ Sortable column header ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 function SortTh({ label, field, sortBy, sortDir, onSort, center, right, width }) {
   const active = sortBy === field
   return (
@@ -569,12 +601,13 @@ function SortTh({ label, field, sortBy, sortDir, onSort, center, right, width })
       }}
     >
       {label}
-      <span className="cp-sort-arrow">{sortDir === 'asc' ? '↑' : '↓'}</span>
+      <span className="cp-sort-arrow">{sortDir === 'asc' ? 'Γåæ' : 'Γåô'}</span>
     </th>
   )
 }
 
-/* ─── Main Page ───────────────────────────────────────────────────────────── */
+/* ΓöÇΓöÇΓöÇ Main Page ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
+
 export default function CoordCoursesPage() {
   const { coordinatorProgram } = useAuth()
   const { toasts, toast } = useToast()
@@ -598,7 +631,6 @@ export default function CoordCoursesPage() {
   const [showBlockCfg,  setShowBlockCfg]  = useState(false)
   const [showFilters,   setShowFilters]   = useState(false)
   const [editTarget,    setEditTarget]    = useState(null)
-  const [dupTarget,     setDupTarget]     = useState(null)
   const [roomTarget,    setRoomTarget]    = useState(null)
   const [saving,        setSaving]        = useState(false)
   const [error,         setError]         = useState('')
@@ -766,7 +798,6 @@ export default function CoordCoursesPage() {
     try {
       await addCourse(data)
       setShowAdd(false)
-      setDupTarget(null)
       load()
       toast('Course added successfully', 'success')
     }
@@ -786,12 +817,18 @@ export default function CoordCoursesPage() {
     finally { setSaving(false) }
   }
 
-  async function handleAssignRoom(roomString) {
+  async function handleAssignRoom(prefs) {
     if (!roomTarget) return
     setSaving(true)
     try {
-      await updateCourse(roomTarget.courseCode, roomTarget.program || coordinatorProgram, { ...roomTarget, preferredRoom: roomString })
-      setCourses(prev => prev.map(c => c.courseCode === roomTarget.courseCode ? { ...c, preferredRoom: roomString } : c))
+      const updates = { 
+        ...roomTarget, 
+        preferredRoomLec: prefs.lec?.length > 0 ? prefs.lec.join(', ') : null,
+        preferredRoomLab: prefs.lab?.length > 0 ? prefs.lab.join(', ') : null,
+        preferredRoom: null 
+      }
+      await updateCourse(roomTarget.courseCode, roomTarget.program || coordinatorProgram, updates)
+      setCourses(prev => prev.map(c => c.courseCode === roomTarget.courseCode ? { ...c, ...updates } : c))
       toast('Room pool saved', 'success')
       setRoomTarget(null)
     } catch {
@@ -804,17 +841,6 @@ export default function CoordCoursesPage() {
   function handleDelete(code) {
     setPendingDelete({ code, prog: coordinatorProgram, name: code })
   }
-
-  function handleDuplicate(course) {
-    setError('')
-    setDupTarget({
-      ...course,
-      courseCode: `${course.courseCode}-COPY`,
-      yearLevel: String(course.yearLevel),
-      preferredRoom: course.preferredRoom || '',
-    })
-  }
-
   function handleBulkDelete() {
     const tgts = filtered.filter(c => selected.has(c.courseCode))
     if (!tgts.length) return
@@ -1148,8 +1174,17 @@ export default function CoordCoursesPage() {
                 const isSel = selected.has(c.courseCode)
                 const issue = courseIssue(c)
                 
-                // Process comma-separated string back to array to render distinct pills
-                const roomsArr = c.preferredRoom ? c.preferredRoom.split(',').map(s => s.trim()).filter(Boolean) : []
+                const prefs = {
+                  lec: c.preferredRoomLec ? c.preferredRoomLec.split(',').map(s => s.trim()).filter(Boolean) : [],
+                  lab: c.preferredRoomLab ? c.preferredRoomLab.split(',').map(s => s.trim()).filter(Boolean) : []
+                }
+                const legacy = c.preferredRoom ? c.preferredRoom.split(',').map(s => s.trim()).filter(Boolean) : []
+                if (prefs.lec.length === 0 && prefs.lab.length === 0 && legacy.length > 0) {
+                  legacy.forEach(r => {
+                    if (rooms.lab?.includes(r)) prefs.lab.push(r)
+                    else prefs.lec.push(r)
+                  })
+                }
                 
                 return (
                   <tr key={c.courseCode} className="cp-tr-hover" onClick={() => { if(selectionMode) togOne(c.courseCode); else { setEditTarget({ ...c, yearLevel: String(c.yearLevel), preferredRoom: c.preferredRoom || '' }); setError('') } }}
@@ -1176,15 +1211,17 @@ export default function CoordCoursesPage() {
                       </div>
                     </td>
                     <td style={{ padding: '10px 14px' }} onClick={e => e.stopPropagation()}>
-                      {roomsArr.length === 0 ? (
+                      {prefs.lec?.length === 0 && prefs.lab?.length === 0 ? (
                         <button className="assign-trigger" onClick={() => setRoomTarget({ ...c, program: coordinatorProgram })}>
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                           Assign Pool
                         </button>
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                          {roomsArr.slice(0, 3).map(r => <span key={r} className="assigned-pill">{r}</span>)}
-                          {roomsArr.length > 3 && <span style={{ fontSize: 11.5, fontWeight: 800, color: G.muted }}>+{roomsArr.length - 3}</span>}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {prefs.lec?.length > 0 && <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}><span style={{fontSize: 9, fontWeight: 800, color: 'var(--muted)'}}>LEC</span> {prefs.lec.slice(0, 3).map(r => <span key={`lec_${r}`} className="assigned-pill" style={{background: 'var(--surface)', padding: '2px 6px', fontSize: 11}}>{r}</span>)}{prefs.lec.length > 3 && <span style={{fontSize:11, color: 'var(--muted)'}}>+{prefs.lec.length-3}</span>}</div>}
+                            {prefs.lab?.length > 0 && <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}><span style={{fontSize: 9, fontWeight: 800, color: 'var(--muted)'}}>LAB</span> {prefs.lab.slice(0, 3).map(r => <span key={`lab_${r}`} className="assigned-pill" style={{background: 'var(--surface)', padding: '2px 6px', fontSize: 11}}>{r}</span>)}{prefs.lab.length > 3 && <span style={{fontSize:11, color: 'var(--muted)'}}>+{prefs.lab.length-3}</span>}</div>}
+                          </div>
                           <button onClick={() => setRoomTarget({ ...c, program: coordinatorProgram })} style={{ border: '1px solid transparent', background: 'transparent', cursor: 'pointer', color: 'var(--meadow-text-hover)', display: 'flex', alignItems: 'center', padding: '5px', marginLeft: '4px', borderRadius: '6px', transition: 'all 0.15s' }} title="Edit Assigned Rooms" onMouseOver={e => {e.currentTarget.style.background = G.meadowSoft; e.currentTarget.style.borderColor = G.meadowBorder}} onMouseOut={e => {e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'}}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                           </button>
@@ -1193,12 +1230,6 @@ export default function CoordCoursesPage() {
                     </td>
                     <td style={{ padding: '10px 14px', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                       <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                        <button title="Duplicate course" onClick={() => handleDuplicate(c)}
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 7, background: G.hover, border: `1px solid ${G.border}`, color: G.muted, cursor: 'pointer', padding: 0, transition: 'all .14s' }}
-                          onMouseEnter={e => { e.currentTarget.style.background = G.meadow; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = G.meadow }}
-                          onMouseLeave={e => { e.currentTarget.style.background = G.hover; e.currentTarget.style.color = G.muted; e.currentTarget.style.borderColor = G.border }}>
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                        </button>
                         <button title="Edit course" onClick={() => { setEditTarget({ ...c, yearLevel: String(c.yearLevel), preferredRoom: c.preferredRoom || '' }); setError('') }}
                           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 7, background: G.meadowSoft, border: `1px solid ${G.meadowBorder}`, color: 'var(--meadow-text-hover)', cursor: 'pointer', padding: 0, transition: 'all .14s' }}
                           onMouseEnter={e => { e.currentTarget.style.background = G.meadow; e.currentTarget.style.color = '#fff' }}
@@ -1282,7 +1313,6 @@ export default function CoordCoursesPage() {
 
       {showAdd && <CourseModal mode="add" program={coordinatorProgram} rooms={rooms} initial={{...EMPTY, semester: semesterTab}} onSave={handleAdd} onClose={()=>{setShowAdd(false);setError('')}} saving={saving} error={error} />}
       {editTarget && <CourseModal mode="edit" program={coordinatorProgram} rooms={rooms} initial={{...editTarget, semester: editTarget.semester||'1st Semester'}} onSave={handleEdit} onClose={()=>{setEditTarget(null);setError('')}} saving={saving} error={error} />}
-      {dupTarget && <CourseModal mode="duplicate" program={coordinatorProgram} rooms={rooms} initial={dupTarget} onSave={handleAdd} onClose={()=>{setDupTarget(null);setError('')}} saving={saving} error={error} />}
 
       {roomTarget && (
         <QuickAssignRoomModal

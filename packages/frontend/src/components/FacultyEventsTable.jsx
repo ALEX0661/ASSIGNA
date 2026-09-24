@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { splitDayTokens } from '../utils/exportFacultyLoadToPDF'
 
 const isDark = document.documentElement.getAttribute('data-mode') === 'dark';
 
@@ -27,10 +28,17 @@ function progColor(prog) {
 
 // ── Atoms ─────────────────────────────────────────────────────────────────────
 function DayBadge({ day }) {
-  const c = DAY_COLORS[day] || { bg:'var(--hover)', color: 'var(--muted)', border:'var(--border)' }
+  const tokens = splitDayTokens(day)
+  const DAY_TOKENS_REV = { 'M': 'Monday', 'T': 'Tuesday', 'W': 'Wednesday', 'Th': 'Thursday', 'F': 'Friday', 'Sat': 'Saturday', 'Sun': 'Sunday' }
+  const firstDay = DAY_TOKENS_REV[tokens[0]] || day
+  const c = DAY_COLORS[firstDay] || { bg:'var(--hover)', color: 'var(--muted)', border:'var(--border)' }
+  
+  // if it's exactly one of the days, use short form, else use the string itself (like MT)
+  const label = DAY_SHORT[day] || day?.slice(0,4) || '—'
+  
   return (
     <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700, background:c.bg, color:c.color, border:`1px solid ${c.border}`, whiteSpace:'nowrap' }}>
-      {DAY_SHORT[day] || day?.slice(0,3) || '—'}
+      {label}
     </span>
   )
 }
@@ -94,6 +102,17 @@ function toggleSet(prev, val) {
   return next
 }
 
+// Helper to convert time strings (e.g. '8:30 AM', '12:00 PM') to minutes for proper chronological sorting
+function parseTimeToMinutes(t) {
+  if (!t) return 0
+  const m = t.match(/(\d+):(\d+)\s*(AM|PM)?/i)
+  if (!m) return 0
+  let h = parseInt(m[1]), min = parseInt(m[2]), ampm = m[3]?.toUpperCase()
+  if (ampm === 'PM' && h < 12) h += 12
+  if (ampm === 'AM' && h === 12) h = 0
+  return h * 60 + min
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function FacultyEventsTable({ events, computeUnits, fetchError }) {
   const [search,    setSearch]    = useState('')
@@ -119,7 +138,13 @@ export default function FacultyEventsTable({ events, computeUnits, fetchError })
       else                               hasLec = true
     })
     return {
-      days:      DAY_ORDER.filter(dd => d.has(dd)),
+      days:      [...d].sort((a, b) => {
+        const DAY_TOKENS_REV = { 'M': 'Monday', 'T': 'Tuesday', 'W': 'Wednesday', 'Th': 'Thursday', 'F': 'Friday', 'Sat': 'Saturday', 'Sun': 'Sunday' }
+        const aFirst = DAY_TOKENS_REV[splitDayTokens(a)[0]] || ''
+        const bFirst = DAY_TOKENS_REV[splitDayTokens(b)[0]] || ''
+        const dA = DAY_ORDER.indexOf(aFirst), dB = DAY_ORDER.indexOf(bFirst)
+        return (dA<0?99:dA) - (dB<0?99:dB)
+      }),
       programs:  [...p].sort(),
       years:     ['1','2','3','4'].filter(yy => y.has(yy)),
       roomTypes: [...(hasLec?['Lecture']:[]), ...(hasLab?['Lab']:[]), ...(hasTBA?['TBA']:[])],
@@ -153,12 +178,17 @@ export default function FacultyEventsTable({ events, computeUnits, fetchError })
 
     list.sort((a, b) => {
       let cmp = 0
+      const tA = parseTimeToMinutes(a.timeSlot||a.time||a.period||'')
+      const tB = parseTimeToMinutes(b.timeSlot||b.time||b.period||'')
       if (sortKey === 'day') {
-        const dA = DAY_ORDER.indexOf(a.day||''), dB = DAY_ORDER.indexOf(b.day||'')
+        const DAY_TOKENS_REV = { 'M': 'Monday', 'T': 'Tuesday', 'W': 'Wednesday', 'Th': 'Thursday', 'F': 'Friday', 'Sat': 'Saturday', 'Sun': 'Sunday' }
+        const aFirst = DAY_TOKENS_REV[splitDayTokens(a.day||'')[0]] || ''
+        const bFirst = DAY_TOKENS_REV[splitDayTokens(b.day||'')[0]] || ''
+        const dA = DAY_ORDER.indexOf(aFirst), dB = DAY_ORDER.indexOf(bFirst)
         cmp = (dA<0?99:dA)-(dB<0?99:dB)
-        if (cmp===0) cmp = (a.timeSlot||a.time||a.period||'').localeCompare(b.timeSlot||b.time||b.period||'')
+        if (cmp===0) cmp = tA - tB
       } else if (sortKey === 'time') {
-        cmp = (a.timeSlot||a.time||a.period||'').localeCompare(b.timeSlot||b.time||b.period||'')
+        cmp = tA - tB
       } else if (sortKey === 'course') {
         cmp = (a.courseCode||a.course||'').toLowerCase().localeCompare((b.courseCode||b.course||'').toLowerCase())
       } else if (sortKey === 'program') {
@@ -390,6 +420,15 @@ export default function FacultyEventsTable({ events, computeUnits, fetchError })
                 Clear filters
               </button>
             )}
+            <span style={{ fontSize:11.5, color: 'var(--muted2)', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+              Total Units: 
+              <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:28, height:22, padding:'0 8px', borderRadius:99, background:'var(--meadow-soft)', color: 'var(--meadow-text-hover)', fontSize:11.5, fontWeight:700, border:'1px solid var(--meadow-border)' }}>
+                {filtered.reduce((acc, ev) => {
+                  const u = computeUnits ? computeUnits(ev) : (ev.units ?? 0);
+                  return acc + (Number(u) || 0);
+                }, 0).toFixed(1).replace(/\.0$/, '')}
+              </span>
+            </span>
           </div>
         </div>
       )}

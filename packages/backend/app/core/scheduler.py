@@ -569,13 +569,20 @@ class HierarchicalScheduler:
         # Add "Blockages" for slots already taken by previous phases
         for (r_type, r_idx), slots in self.occupied_slots.items():
             if not slots: continue
+            
+            room_name = None
+            try:
+                room_name = self.normalized_rooms[r_type][r_idx]
+            except IndexError:
+                continue
+                
             sorted_slots = sorted(list(slots))
             s_start = sorted_slots[0]
             curr = sorted_slots[0]
             
             def add_blockage(start, length):
                 blk = model.NewFixedSizeIntervalVar(start, length, f"blk_{r_type}_{r_idx}_{start}")
-                room_intervals[(r_type, r_idx)].append(blk)
+                room_intervals[room_name].append(blk)
 
             for slot in sorted_slots[1:]:
                 if slot == curr + 1: 
@@ -772,27 +779,44 @@ class HierarchicalScheduler:
         )
 
 
-    def _resolve_preferred_room_index(self, course: dict, sess_type: str) -> Optional[int]:
+    def _resolve_preferred_room_indices(self, course: dict, sess_type: str) -> Optional[list[int]]:
         """
-        If course has a non-empty preferredRoom value, find which index it sits
-        at inside self.normalized_rooms[sess_type]. Returns the index, or None
-        when the room is not found in that type's list (scheduler falls back to
-        picking freely).
+        Finds preferred rooms from preferredRoomLec or preferredRoomLab.
+        If a room is explicitly requested but not in this sess_type's normalized pool,
+        it dynamically injects it so cross-type assignment works perfectly without double booking!
         """
-        preferred = (course.get("preferredRoom") or "").strip()
+        stype = sess_type.lower()
+        if stype == 'lecture':
+            preferred = (course.get('preferredRoomLec') or course.get('preferredRoom') or '').strip()
+        else:
+            preferred = (course.get('preferredRoomLab') or course.get('preferredRoom') or '').strip()
+            
         if not preferred:
             return None
 
-        rooms_list = self.normalized_rooms.get(sess_type.lower(), [])
-        try:
-            return rooms_list.index(preferred)
-        except ValueError:
-            # Room name not in this type's list - log and fall back gracefully
-            logger.warning(
-                f"Course {course.get('courseCode')} preferredRoom='{preferred}' "
-                f"not found in {sess_type} rooms — assigning freely."
-            )
+        if stype not in self.normalized_rooms:
+            self.normalized_rooms[stype] = []
+        rooms_list = self.normalized_rooms[stype]
+        
+        preferred_names = [p.strip() for p in preferred.split(',') if p.strip()]
+        if not preferred_names:
             return None
+            
+        matched_indices = []
+        for p in preferred_names:
+            if p in rooms_list:
+                matched_indices.append(rooms_list.index(p))
+            else:
+                # Dynamically inject the cross-assigned room into this pool!
+                # Because room_intervals are keyed by room name, this perfectly works
+                # and still prevents double-booking across pools.
+                rooms_list.append(p)
+                matched_indices.append(len(rooms_list) - 1)
+                
+        if not matched_indices:
+            return None
+            
+        return matched_indices
 
     def create_course_sessions(self, model, course, section_intervals, room_intervals):
         code = course["courseCode"]
@@ -991,7 +1015,7 @@ class HierarchicalScheduler:
                             model.Add(rv == rid).OnlyEnforceIf(lit)
                             model.Add(rv != rid).OnlyEnforceIf(lit.Not())
                             
-                            room_intervals[(rtype_to_use, rid)].append(
+                            room_intervals[self.normalized_rooms[rtype_to_use][rid]].append(
                                 model.NewOptionalIntervalVar(s, slots_per_day, e, lit, f"opt_{sid}_{rid}")
                             )
                 
@@ -1050,8 +1074,8 @@ class HierarchicalScheduler:
             rv = None
             if is_phys and rooms_avail:
                 # --- preferredRoom Resolution ---
-                preferred_idx = self._resolve_preferred_room_index(course, sess_type)
-                effective_indices = [preferred_idx] if preferred_idx is not None else r_indices
+                pref_indices = self._resolve_preferred_room_indices(course, sess_type)
+                effective_indices = pref_indices if pref_indices is not None else r_indices
 
                 rv = model.NewIntVarFromDomain(
                     cp_model.Domain.FromValues(effective_indices), f"r_sh_{sid}"
@@ -1060,7 +1084,7 @@ class HierarchicalScheduler:
                     lit = model.NewBoolVar(f"u_sh_{sid}_{rid}")
                     model.Add(rv == rid).OnlyEnforceIf(lit)
                     model.Add(rv != rid).OnlyEnforceIf(lit.Not())
-                    room_intervals[(sess_type.lower(), rid)].append(
+                    room_intervals[rooms_avail[rid]].append(
                         model.NewOptionalIntervalVar(s, duration_slots, e, lit, f"opt_sh_{sid}_{rid}")
                     )
 
@@ -1122,8 +1146,8 @@ class HierarchicalScheduler:
             rv = None
             if is_phys and rooms_avail:
                 # --- preferredRoom Resolution ---
-                preferred_idx = self._resolve_preferred_room_index(course, sess_type)
-                effective_indices = [preferred_idx] if preferred_idx is not None else r_indices
+                pref_indices = self._resolve_preferred_room_indices(course, sess_type)
+                effective_indices = pref_indices if pref_indices is not None else r_indices
 
                 rv = model.NewIntVarFromDomain(
                     cp_model.Domain.FromValues(effective_indices), f"r_{sid}"
@@ -1132,7 +1156,7 @@ class HierarchicalScheduler:
                     lit = model.NewBoolVar(f"u_{sid}_{rid}")
                     model.Add(rv == rid).OnlyEnforceIf(lit)
                     model.Add(rv != rid).OnlyEnforceIf(lit.Not())
-                    room_intervals[(sess_type.lower(), rid)].append(
+                    room_intervals[rooms_avail[rid]].append(
                         model.NewOptionalIntervalVar(s, duration_slots, e, lit, f"opt_{sid}_{rid}")
                     )
             
@@ -1298,8 +1322,8 @@ class HierarchicalScheduler:
         rv = None
         rooms_avail = self.normalized_rooms.get(sess_type.lower(), [])
         if rooms_avail:
-            preferred_idx = self._resolve_preferred_room_index(course, sess_type)
-            r_indices = ([preferred_idx] if preferred_idx is not None
+            pref_indices = self._resolve_preferred_room_indices(course, sess_type)
+            r_indices = (pref_indices if pref_indices is not None
                          else list(range(len(rooms_avail))))
             rv = model.NewIntVarFromDomain(
                 cp_model.Domain.FromValues(r_indices), f"r_{tag}")
@@ -1308,7 +1332,7 @@ class HierarchicalScheduler:
                 model.Add(rv == rid).OnlyEnforceIf(lit)
                 model.Add(rv != rid).OnlyEnforceIf(lit.Not())
                 for k, (sid, s, e, d) in enumerate(parts):
-                    room_intervals[(sess_type.lower(), rid)].append(
+                    room_intervals[rooms_avail[rid]].append(
                         model.NewOptionalIntervalVar(
                             s, part_dur, e, lit, f"opt_{tag}_{rid}_{k}"))
 

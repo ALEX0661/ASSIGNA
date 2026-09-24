@@ -2124,7 +2124,7 @@ function CoordinatorCheckPanel({ semester, masterEvents }) {
                           <div key={sch.id} className="saved-item">
                             <div style={{ flex: 1, minWidth: 0 }}>
                               {isRenaming ? (
-                                <div style={{ display: 'flex', gap: 7, alignItems: 'center', marginBottom: 6 }}>
+                                <div style={{ display: 'flex', gap: 7, alignItems: 'center', marginBottom: 6 }} onClick={e => e.stopPropagation()}>
                                   <input autoFocus value={renameTmp} onChange={e => setRenameTmp(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleRename(sch.id)}
                                     style={{ padding: '6px 10px', borderRadius: 7, border: `1.5px solid ${G.meadow}`, fontSize: 12.5, fontFamily: 'Inter,sans-serif', color: G.ink, outline: 'none', width: '100%' }} />
                                   <button className="btn-primary" onClick={() => handleRename(sch.id)} style={{ padding: '6px 10px', fontSize: 11 }}>Save</button>
@@ -2612,7 +2612,7 @@ function CoordinatorCheckPanel({ semester, masterEvents }) {
 
       {showRoomWarningModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(14,42,32,0.6)", backdropFilter: "blur(4px)", zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => setShowRoomWarningModal(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, boxShadow: "0 20px 40px rgba(0,0,0,0.15)", maxWidth: 450, width: "100%", padding: 24 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "var(--surface)", borderRadius: 16, boxShadow: "0 20px 40px rgba(0,0,0,0.15)", maxWidth: 450, width: "100%", padding: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
               <div style={{ width: 40, height: 40, borderRadius: '50%', background: G.amberSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid #FDE68A' }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -2625,7 +2625,7 @@ function CoordinatorCheckPanel({ semester, masterEvents }) {
             <div style={{ fontSize: 13, color: G.ink, lineHeight: 1.5, background: G.hover, padding: 12, borderRadius: 8, border: `1px solid ${G.border}`, marginBottom: 16 }}>
               <strong>Note:</strong> The solver will automatically assign these courses to any available <em>selected</em> room to ensure they get scheduled.
             </div>
-            <div style={{ maxHeight: 200, overflowY: 'auto', border: `1px solid ${G.border}`, borderRadius: 8, background: '#fff' }}>
+            <div style={{ maxHeight: 200, overflowY: 'auto', border: `1px solid ${G.border}`, borderRadius: 8, background: 'var(--bg)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead style={{ position: 'sticky', top: 0, background: G.hover }}>
                   <tr>

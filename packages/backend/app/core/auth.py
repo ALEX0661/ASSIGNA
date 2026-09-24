@@ -15,7 +15,7 @@ async def admin_only(authorization: str = Header(...)):
     """Only users with role='admin' custom claim can pass."""
     user = await verify_token(authorization)
     if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required.")
+        raise HTTPException(status_code=403, detail="Dean access required.")
     return user
 
 

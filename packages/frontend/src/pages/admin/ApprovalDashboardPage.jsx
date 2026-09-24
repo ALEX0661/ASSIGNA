@@ -366,6 +366,7 @@ export default function ApprovalDashboardPage() {
                   return active ? `${active.academicYear || '—'}||${active.semester || '—'}||${active.id || active.queueId}` : null
                 })()
               }
+              masterFinalized={master?.status === 'finalized'}
             />
           )}
           {tab === 'queue' && (
@@ -421,11 +422,11 @@ export default function ApprovalDashboardPage() {
                 <>
                   {isPending && (
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <button onClick={() => handleApprove(reviewId)} disabled={approvingIds.has(reviewId)} style={{ padding: '6px 14px', fontSize: 11.5, background: 'var(--meadow)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                      <button onClick={() => handleApprove(reviewId)} disabled={approvingIds.has(reviewId) || master?.status === 'finalized'} title={master?.status === 'finalized' ? 'Cannot approve while master schedule is published' : ''} style={{ padding: '6px 14px', fontSize: 11.5, background: 'var(--meadow)', color: '#fff', border: 'none', borderRadius: 8, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, opacity: (approvingIds.has(reviewId) || master?.status === 'finalized') ? 0.4 : 1, cursor: (approvingIds.has(reviewId) || master?.status === 'finalized') ? 'not-allowed' : 'pointer' }}>
                         {approvingIds.has(reviewId) ? <svg className="ap-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg> : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
                         Approve
                       </button>
-                      <button onClick={() => setRejectTarget(reviewSchedule)} disabled={approvingIds.has(reviewId)} style={{ padding: '6px 14px', fontSize: 11.5, background: 'var(--red)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                      <button onClick={() => setRejectTarget(reviewSchedule)} disabled={approvingIds.has(reviewId) || master?.status === 'finalized'} title={master?.status === 'finalized' ? 'Cannot reject while master schedule is published' : ''} style={{ padding: '6px 14px', fontSize: 11.5, background: '#EF4444', color: '#fff', border: 'none', borderRadius: 8, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, opacity: (approvingIds.has(reviewId) || master?.status === 'finalized') ? 0.4 : 1, cursor: (approvingIds.has(reviewId) || master?.status === 'finalized') ? 'not-allowed' : 'pointer' }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                         Reject...
                       </button>
@@ -433,7 +434,7 @@ export default function ApprovalDashboardPage() {
                   )}
                   {isApproved && (
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <button onClick={() => setUnapproveTarget(reviewSchedule)} style={{ padding: '6px 14px', fontSize: 11.5, border: '1.5px solid #F59E0B', background: 'rgba(245, 158, 11, 0.1)', color: '#F59E0B', borderRadius: 8, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                      <button onClick={() => setUnapproveTarget(reviewSchedule)} disabled={master?.status === 'finalized'} title={master?.status === 'finalized' ? 'Cannot unapprove while master schedule is published' : ''} style={{ padding: '6px 14px', fontSize: 11.5, border: '1.5px solid #F59E0B', background: 'rgba(245, 158, 11, 0.1)', color: '#F59E0B', borderRadius: 8, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, opacity: master?.status === 'finalized' ? 0.4 : 1, cursor: master?.status === 'finalized' ? 'not-allowed' : 'pointer' }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                         Unapprove
                       </button>

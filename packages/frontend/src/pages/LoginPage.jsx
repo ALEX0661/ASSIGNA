@@ -444,7 +444,7 @@ export default function LoginPage() {
       const isCoordinator = token.claims.isCoordinator || false
 
       if (selectedRole === 'admin') {
-        if (userRole !== 'admin') { setError('This account is not registered as an Admin.'); await auth.signOut(); setLoading(false); return }
+        if (userRole !== 'admin') { setError('This account is not registered as a Dean.'); await auth.signOut(); setLoading(false); return }
         navigate('/dashboard')
       } else if (selectedRole === 'coordinator') {
         if (userRole !== 'faculty' || !isCoordinator) { setError('Your account does not have coordinator access.'); await auth.signOut(); setLoading(false); return }
@@ -453,7 +453,7 @@ export default function LoginPage() {
         if (userRole !== 'faculty') { setError('Your account is not registered as Faculty.'); await auth.signOut(); setLoading(false); return }
         navigate('/schedule')
       } else {
-        setError('Your account has no role assigned. Contact the admin.')
+        setError('Your account has no role assigned. Contact the dean.')
         await auth.signOut()
       }
     } catch (err) {
@@ -476,7 +476,7 @@ export default function LoginPage() {
   }
 
   const ROLES = [
-    { id: 'admin',       label: 'Admin',
+    { id: 'admin',       label: 'Dean',
       icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
     { id: 'coordinator', label: 'Coordinator',
       icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },

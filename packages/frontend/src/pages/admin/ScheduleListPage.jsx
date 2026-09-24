@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
-import { getSchedules, saveSchedule, deleteSaved, finalizeSchedule, unfinalizeSchedule } from '../../services/api'
+import { getSchedules, saveSchedule, deleteSaved, finalizeSchedule, unfinalizeSchedule, renameAdminSchedule } from '../../services/api'
 import { buildConflictMap } from '../../components/ScheduleView/svHelpers'
 import { exportScheduleToExcel } from '../../utils/exportScheduleToExcel'
 import { exportScheduleToPDF } from '../../utils/exportScheduleToPDF'
@@ -45,7 +45,7 @@ function ExportMenuButton({ onExportExcel, onExportPdf, iconOnly, size = 26 }) {
   const itemStyle = {
     display: 'flex', alignItems: 'center', gap: 8, width: '100%',
     padding: '9px 14px', fontSize: 12.5, fontWeight: 600, color: G.ink,
-    background: 'var(--surface)', border: 'none', cursor: 'pointer',
+    background: 'transparent', border: 'none', cursor: 'pointer',
     fontFamily: 'Inter, sans-serif', textAlign: 'left',
   }
 
@@ -92,7 +92,7 @@ function ExportMenuButton({ onExportExcel, onExportPdf, iconOnly, size = 26 }) {
             <button
               onClick={(e) => { e.stopPropagation(); setOpen(false); onExportExcel() }}
               className="sl-menu-item"
-              style={{ ...itemStyle, borderBottom: `1px solid ${G.borderLight}` }}
+              style={{ ...itemStyle, borderBottom: `1px solid ${G.border}` }}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Schedule (.xlsx)
@@ -110,6 +110,39 @@ function ExportMenuButton({ onExportExcel, onExportPdf, iconOnly, size = 26 }) {
         document.body
       )}
     </div>
+  )
+}
+
+function RenameScheduleModal({ schedule, onConfirm, onCancel, renamingState, error }) {
+  const [tempName, setTempName] = useState(schedule?.name || '')
+  return (
+    <ModalOverlay onClose={renamingState === 'working' ? null : onCancel}>
+      <div style={{ background: 'var(--surface)', width: 400, borderRadius: 16, overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)' }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '24px 24px 20px' }}>
+          <h2 style={{ margin: '0 0 16px', fontSize: 18, color: G.ink, fontWeight: 700, fontFamily: 'Inter,sans-serif' }}>Rename Schedule</h2>
+          <input
+            autoFocus
+            value={tempName}
+            onChange={e => { setTempName(e.target.value) }}
+            disabled={renamingState === 'working'}
+            onKeyDown={e => { if (e.key === 'Enter' && tempName.trim() && tempName.trim() !== schedule?.name && renamingState !== 'working') onConfirm(tempName.trim()) }}
+            style={{ width: '100%', boxSizing: 'border-box', fontSize: 15, padding: '10px 14px', borderRadius: 8, border: error ? `2px solid ${G.red}` : `2px solid ${G.meadow}`, outline: 'none', color: G.ink, fontWeight: 500, fontFamily: 'Inter,sans-serif' }}
+          />
+          {error && (
+            <div style={{ marginTop: 10, fontSize: 13, color: G.red, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              {error}
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 12, padding: '16px 24px', background: G.hover, borderTop: `1px solid ${G.border}`, justifyContent: 'flex-end' }}>
+          <button onClick={onCancel} disabled={renamingState === 'working'} style={{ padding: '8px 16px', borderRadius: 8, border: `1.5px solid ${G.border}`, background: 'var(--surface)', color: G.ink, fontSize: 13, fontWeight: 600, cursor: renamingState === 'working' ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>Cancel</button>
+          <button onClick={() => onConfirm(tempName.trim())} disabled={renamingState === 'working' || !tempName.trim() || tempName.trim() === schedule?.name} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: G.meadow, color: '#fff', fontSize: 13, fontWeight: 600, cursor: renamingState === 'working' || !tempName.trim() || tempName.trim() === schedule?.name ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
+            {renamingState === 'working' ? 'Saving...' : 'Save Name'}
+          </button>
+        </div>
+      </div>
+    </ModalOverlay>
   )
 }
 
@@ -153,9 +186,13 @@ export default function ScheduleListPage() {
       }
     }
     
+    const viewHistory = JSON.parse(localStorage.getItem('scheduleViewHistory') || '{}')
+    
     result.sort((a, b) => {
-      const timeA = new Date(a.lastModified || a.savedAt || a.createdAt || 0).getTime()
-      const timeB = new Date(b.lastModified || b.savedAt || b.createdAt || 0).getTime()
+      const histA = viewHistory[a.id || a.name] || 0
+      const histB = viewHistory[b.id || b.name] || 0
+      const timeA = Math.max(histA, new Date(a.lastModified || a.savedAt || a.createdAt || 0).getTime())
+      const timeB = Math.max(histB, new Date(b.lastModified || b.savedAt || b.createdAt || 0).getTime())
       return sortBy === 'oldest' ? timeA - timeB : timeB - timeA
     })
     
@@ -179,13 +216,8 @@ export default function ScheduleListPage() {
   const allSems = [...new Set(schedules.map(s => s.semester).filter(Boolean))]
 
   const handleRefresh = (hard = false) => {
-    // A hard refresh (the toolbar Refresh button) also drops the cached
-    // per-schedule stats, since the user is explicitly asking for the
-    // latest data. Refreshes triggered internally after duplicate/delete/
-    // publish skip this — those don't change any schedule's actual events,
-    // so there's nothing stale to clear, and clearing anyway would just
-    // reintroduce the 0 -> value flash on every action.
-    if (hard) scheduleStatsCache.clear()
+    // A hard refresh (the toolbar Refresh button) drops the cached schedules
+    // and asks for the latest data.
     setLoading(true)
     getSchedules().then(res => {
       setSchedules(res.schedules || res || [])
@@ -195,6 +227,15 @@ export default function ScheduleListPage() {
       setLoading(false)
     })
   }
+
+  const handleView = (s) => {
+    // Record view time in localStorage so it bumps to the top of "Newest"
+    const viewHistory = JSON.parse(localStorage.getItem('scheduleViewHistory') || '{}')
+    viewHistory[s.id || s.name] = Date.now()
+    localStorage.setItem('scheduleViewHistory', JSON.stringify(viewHistory))
+    navigate(`/dashboard/schedule/${encodeURIComponent(s.id || s.name)}`)
+  }
+
 
   const handleDuplicate = async (schedule, events) => {
     setToastMsg({ type: 'info', message: 'Duplicating schedule...' })
@@ -217,8 +258,35 @@ export default function ScheduleListPage() {
   const [scheduleToDelete, setScheduleToDelete] = useState(null)
   const [deletingState, setDeletingState] = useState('idle')
 
+  const [scheduleToRename, setScheduleToRename] = useState(null)
+  const [renamingState, setRenamingState] = useState('idle')
+
   const handleDelete = (schedule) => {
     setScheduleToDelete(schedule)
+  }
+
+  const [renameError, setRenameError] = useState(null)
+  
+  const handleRename = (schedule) => {
+    setScheduleToRename(schedule)
+    setRenameError(null)
+  }
+
+  const confirmRename = async (newName) => {
+    if (!scheduleToRename) return
+    setRenamingState('working')
+    setRenameError(null)
+    try {
+      await renameAdminSchedule(scheduleToRename.name, newName)
+      setToastMsg({ type: 'success', message: 'Renamed schedule' })
+      setRenamingState('idle')
+      setScheduleToRename(null)
+      handleRefresh()
+    } catch(err) {
+      console.error(err)
+      setRenameError(err?.response?.data?.detail || 'Failed to rename schedule')
+      setRenamingState('idle')
+    }
   }
 
   const confirmDelete = async () => {
@@ -229,7 +297,6 @@ export default function ScheduleListPage() {
       // submissions for this term and deletes the schedule in one call —
       // no extra frontend logic needed here.
       await deleteSaved(scheduleToDelete.name)
-      scheduleStatsCache.delete(scheduleToDelete.id || scheduleToDelete.name)
       setToastMsg({ type: 'success', message: 'Deleted schedule' })
       handleRefresh()
     } catch(err) {
@@ -243,7 +310,13 @@ export default function ScheduleListPage() {
   
   const handleDownloadExcel = async (schedule, events) => {
     try {
-      await exportScheduleToExcel(events || [], schedule.name)
+      let exportEvents = events
+      if (!exportEvents || exportEvents.length === 0) {
+        setToastMsg({ type: 'info', message: 'Fetching data...' })
+        const res = await getSchedules(schedule.name || schedule.id)
+        exportEvents = res.events || []
+      }
+      await exportScheduleToExcel(exportEvents, schedule.name)
       setToastMsg({ type: 'success', message: 'Downloaded as Excel' })
     } catch(err) {
       console.error(err)
@@ -253,7 +326,13 @@ export default function ScheduleListPage() {
 
   const handleDownloadPdf = async (schedule, events) => {
     try {
-      await exportScheduleToPDF(events || [], schedule.name, {
+      let exportEvents = events
+      if (!exportEvents || exportEvents.length === 0) {
+        setToastMsg({ type: 'info', message: 'Fetching data...' })
+        const res = await getSchedules(schedule.name || schedule.id)
+        exportEvents = res.events || []
+      }
+      await exportScheduleToPDF(exportEvents, schedule.name, {
         academicYear: schedule.academic_year || schedule.academicYear,
         semester: schedule.semester,
       })
@@ -394,6 +473,16 @@ export default function ScheduleListPage() {
         />
       )}
 
+      {scheduleToRename && (
+        <RenameScheduleModal
+          schedule={scheduleToRename}
+          onConfirm={confirmRename}
+          onCancel={() => { setScheduleToRename(null); setRenameError(null); }}
+          renamingState={renamingState}
+          error={renameError}
+        />
+      )}
+
       {/* ── Publish confirmation modal ─────────────────────────────────────── */}
       {scheduleToPublish && (
         <ModalOverlay onClose={() => publishingState !== 'working' && setScheduleToPublish(null)}>
@@ -434,10 +523,10 @@ export default function ScheduleListPage() {
       
       {/* Top Stats */}
       <div id="tour-sl-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
-        <StatCard icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)"><rect x="3" y="4" width="18" height="18" rx="2" strokeWidth="2"/><line x1="16" y1="2" x2="16" y2="6" strokeWidth="2"/><line x1="8" y1="2" x2="8" y2="6" strokeWidth="2"/><line x1="3" y1="10" x2="21" y2="10" strokeWidth="2"/></svg>} title="Total Schedules" value={total} trend="2 this month" />
-        <StatCard icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" strokeWidth="2"/><polyline points="22 4 12 14.01 9 11.01" strokeWidth="2"/></svg>} title="Published" value={published} trend="1 this month" />
-        <StatCard icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F59E0B"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeWidth="2"/><polyline points="14 2 14 8 20 8" strokeWidth="2"/><line x1="16" y1="13" x2="8" y2="13" strokeWidth="2"/><line x1="16" y1="17" x2="8" y2="17" strokeWidth="2"/><polyline points="10 9 9 9 8 9" strokeWidth="2"/></svg>} title="Drafts" value={drafts} trend="1 this month" trendColor="#F59E0B" />
-        <StatCard icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6B7280"><polyline points="21 8 21 21 3 21 3 8" strokeWidth="2"/><rect x="1" y="3" width="22" height="5" strokeWidth="2"/><line x1="10" y1="12" x2="14" y2="12" strokeWidth="2"/></svg>} title="Archived" value={archived} trend="no change" trendColor="#6B7280" />
+        <StatCard icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)"><rect x="3" y="4" width="18" height="18" rx="2" strokeWidth="2"/><line x1="16" y1="2" x2="16" y2="6" strokeWidth="2"/><line x1="8" y1="2" x2="8" y2="6" strokeWidth="2"/><line x1="3" y1="10" x2="21" y2="10" strokeWidth="2"/></svg>} title="Total Schedules" value={total} />
+        <StatCard icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" strokeWidth="2"/><polyline points="22 4 12 14.01 9 11.01" strokeWidth="2"/></svg>} title="Published" value={published} />
+        <StatCard icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F59E0B"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeWidth="2"/><polyline points="14 2 14 8 20 8" strokeWidth="2"/><line x1="16" y1="13" x2="8" y2="13" strokeWidth="2"/><line x1="16" y1="17" x2="8" y2="17" strokeWidth="2"/><polyline points="10 9 9 9 8 9" strokeWidth="2"/></svg>} title="Drafts" value={drafts} trendColor="#F59E0B" iconBg="rgba(245,158,11,0.15)" />
+        <StatCard icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6B7280"><polyline points="21 8 21 21 3 21 3 8" strokeWidth="2"/><rect x="1" y="3" width="22" height="5" strokeWidth="2"/><line x1="10" y1="12" x2="14" y2="12" strokeWidth="2"/></svg>} title="Archived" value={archived} trendColor="#6B7280" iconBg="rgba(107,114,128,0.15)" />
       </div>
 
       {/* Filters */}
@@ -536,9 +625,10 @@ export default function ScheduleListPage() {
               <ScheduleCard 
                 key={s.id || s.name} 
                 schedule={s} 
-                onClick={() => navigate(`/dashboard/schedule/${encodeURIComponent(s.id || s.name)}`)} 
+                onClick={() => handleView(s)} 
                 onDuplicate={(events) => handleDuplicate(s, events)}
                 onDelete={() => handleDelete(s)}
+                onRename={() => handleRename(s)}
                 onDownloadExcel={(events) => handleDownloadExcel(s, events)}
                 onDownloadPdf={(events) => handleDownloadPdf(s, events)}
                 onTogglePublish={() => handleTogglePublish(s)}
@@ -548,9 +638,10 @@ export default function ScheduleListPage() {
         ) : (
           <ScheduleListTable
             schedules={paginated}
-            onView={s => navigate(`/dashboard/schedule/${encodeURIComponent(s.id || s.name)}`)}
+            onView={handleView}
             onDuplicate={handleDuplicate}
             onDelete={handleDelete}
+            onRename={handleRename}
             onDownloadExcel={handleDownloadExcel}
             onDownloadPdf={handleDownloadPdf}
             onTogglePublish={handleTogglePublish}
@@ -598,11 +689,11 @@ export default function ScheduleListPage() {
   )
 }
 
-function StatCard({ icon, title, value, trend, trendColor = 'var(--meadow)' }) {
+function StatCard({ icon, title, value, trend, trendColor = 'var(--meadow)', iconBg = 'var(--meadow-soft)' }) {
   return (
     <div style={{ background: 'var(--surface)', borderRadius: 12, padding: 16, border: `1px solid ${G.border}`, display: 'flex', flexDirection: 'column', gap: 10, position: 'relative', overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--meadow-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 40, height: 40, borderRadius: 10, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {icon}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -610,9 +701,11 @@ function StatCard({ icon, title, value, trend, trendColor = 'var(--meadow)' }) {
           <span style={{ fontSize: 20, fontWeight: 700, color: G.ink }}>{value}</span>
         </div>
       </div>
-      <div style={{ fontSize: 11, fontWeight: 600, color: trendColor }}>
-        ↑ {trend}
-      </div>
+      {trend && (
+        <div style={{ fontSize: 11, fontWeight: 600, color: trendColor, zIndex: 1 }}>
+          ↑ {trend}
+        </div>
+      )}
       {/* Decorative wave */}
       <svg width="100%" height="40" style={{ position: 'absolute', bottom: 0, right: 0, opacity: 0.2 }} viewBox="0 0 100 40" preserveAspectRatio="none">
         <path d="M0 40 Q 25 10, 50 25 T 100 10 L 100 40 Z" fill={trendColor} />
@@ -624,69 +717,29 @@ function StatCard({ icon, title, value, trend, trendColor = 'var(--meadow)' }) {
 // Shared by both the grid card and the list row so the "fetch this
 // schedule's events and derive course/faculty/room/conflict counts" logic
 // only lives in one place.
-//
-// Cached at module level, keyed by schedule id/name. Without this, every
-// mount of a card/row re-fetched that schedule's full event list from the
-// backend — including just switching grid <-> list view, or paging back
-// and forth — which is both an avoidable read on every render *and* what
-// caused the visible 0 -> real value flash each time. A cache hit renders
-// the real numbers immediately, no flash, no extra read.
-const scheduleStatsCache = new Map()
 
 function useScheduleStats(schedule) {
-  const key = schedule.id || schedule.name
-
   const [stats, setStats] = useState(() => {
-    if (schedule.stats) return { ...schedule.stats, loading: false, events: null }
-    if (key && scheduleStatsCache.has(key)) return { ...scheduleStatsCache.get(key), loading: false }
-    return { courses: 0, faculty: 0, rooms: 0, conflicts: 0, loading: true, events: null }
+    return {
+      courses: schedule.courseCount || 0,
+      faculty: schedule.facultyCount || 0,
+      rooms: schedule.roomCount || 0,
+      conflicts: schedule.conflictCount || 0,
+      loading: false,
+      events: null
+    }
   })
 
   useEffect(() => {
     if (schedule.stats) {
       setStats({ ...schedule.stats, loading: false, events: null })
-      return
     }
-    if (!key) return
-    if (scheduleStatsCache.has(key)) {
-      setStats({ ...scheduleStatsCache.get(key), loading: false })
-      return
-    }
-
-    let cancelled = false
-    getSchedules(key).then(data => {
-      if (cancelled) return
-      const events = data.events || data.schedule || []
-      const cSet = new Set(), fSet = new Set(), rSet = new Set()
-      events.forEach(e => {
-        if (e.courseCode) cSet.add(e.courseCode)
-        if (e.faculty) fSet.add(e.faculty)
-        if (e.room) rSet.add(e.room)
-      })
-      let totalConflicts = 0
-      const days = [...new Set(events.map(e => e.day).filter(Boolean))]
-      days.forEach(d => {
-        const dayEvents = events.filter(e => e.day === d)
-        totalConflicts += buildConflictMap(dayEvents).size
-      })
-
-      const result = { courses: cSet.size, faculty: fSet.size, rooms: rSet.size, conflicts: totalConflicts, events }
-      scheduleStatsCache.set(key, result)
-      if (!cancelled) setStats({ ...result, loading: false })
-    }).catch(err => {
-      console.error(err)
-      if (!cancelled) setStats(s => ({ ...s, loading: false }))
-    })
-    return () => { cancelled = true }
-    // Keyed on the schedule's id/name, not the whole object — a schedule's
-    // events don't change when its metadata (e.g. finalized) is refetched
-    // with a new object reference, so there's nothing to re-fetch here.
-  }, [key, schedule.stats])
+  }, [schedule.stats])
 
   return stats
 }
 
-function ScheduleCard({ schedule, onClick, onDuplicate, onDelete, onDownloadExcel, onDownloadPdf, onTogglePublish }) {
+function ScheduleCard({ schedule, onClick, onDuplicate, onDelete, onDownloadExcel, onDownloadPdf, onTogglePublish, onRename }) {
   const stats = useScheduleStats(schedule)
 
   const ay = schedule.academicYear || 'No A.Y.'
@@ -694,7 +747,7 @@ function ScheduleCard({ schedule, onClick, onDuplicate, onDelete, onDownloadExce
   const isFinalized = schedule.finalized || false
   const scheduleImage = "data:image/svg+xml;charset=UTF-8,%3Csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='p' width='40' height='40' patternUnits='userSpaceOnUse'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40' fill='%23ffffff' fill-opacity='0.1'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='100%25' height='100%25' fill='url(%23p)'/%3E%3C/svg%3E"
   
-  const courses = stats.courses
+  const classesCount = schedule.eventCount || stats.classes || stats.events?.length || 0
   const faculty = stats.faculty
   const rooms = stats.rooms
   const conflicts = stats.conflicts
@@ -737,7 +790,7 @@ function ScheduleCard({ schedule, onClick, onDuplicate, onDelete, onDownloadExce
         </div>
         
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16, paddingTop: 16, borderTop: `1px solid ${G.borderLight}` }}>
-          <Stat icon={<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>} val={stats.loading ? '—' : courses} label="Courses" />
+          <Stat icon={<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>} val={stats.loading && !schedule.eventCount ? '—' : classesCount} label="Classes" />
           <Stat icon={<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>} val={stats.loading ? '—' : faculty} label="Faculty" />
           <Stat icon={<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>} val={stats.loading ? '—' : rooms} label="Rooms" />
           <Stat icon={<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>} val={stats.loading ? '—' : conflicts} label="Conflicts" />
@@ -750,7 +803,7 @@ function ScheduleCard({ schedule, onClick, onDuplicate, onDelete, onDownloadExce
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            By {schedule.user || schedule.author || 'Admin'}
+            By {schedule.user || schedule.author || 'Dean'}
           </div>
         </div>
         
@@ -768,6 +821,9 @@ function ScheduleCard({ schedule, onClick, onDuplicate, onDelete, onDownloadExce
             onExportExcel={() => onDownloadExcel && onDownloadExcel(stats.events)}
             onExportPdf={() => onDownloadPdf && onDownloadPdf(stats.events)}
           />
+          <button onClick={() => typeof onRename === 'function' && onRename()} style={{ width: 28, height: 28, padding: 0, border: `1px solid ${G.border}`, background: 'transparent', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: G.muted }} title="Rename">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
           <button onClick={() => onDelete && onDelete()} style={{ width: 28, height: 28, padding: 0, border: `1px solid ${G.border}`, background: 'transparent', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: G.muted }} title="Delete">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
           </button>
@@ -825,13 +881,13 @@ function Dropdown({ icon, text, value, onChange, options = [] }) {
    once than the card grid. Uses the same useScheduleStats hook and the
    same action handlers as ScheduleCard so behavior stays identical
    between the two view modes. ── */
-function ScheduleListTable({ schedules, onView, onDuplicate, onDelete, onDownloadExcel, onDownloadPdf, onTogglePublish }) {
+function ScheduleListTable({ schedules, onView, onDuplicate, onDelete, onRename, onDownloadExcel, onDownloadPdf, onTogglePublish }) {
   return (
     <div style={{ background: 'var(--surface)', borderRadius: 12, border: `1px solid ${G.border}`, overflow: 'hidden' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
         <thead>
           <tr style={{ background: G.bg }}>
-            {['Name', 'Term', 'Status', 'Courses', 'Faculty', 'Rooms', 'Conflicts', 'Last Updated', ''].map(h => (
+            {['Name', 'Term', 'Status', 'Classes', 'Faculty', 'Rooms', 'Conflicts', 'Last Updated', ''].map(h => (
               <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 10.5, fontWeight: 700, color: G.muted, textTransform: 'uppercase', letterSpacing: '.5px', borderBottom: `1px solid ${G.border}`, whiteSpace: 'nowrap' }}>
                 {h}
               </th>
@@ -847,6 +903,7 @@ function ScheduleListTable({ schedules, onView, onDuplicate, onDelete, onDownloa
               onView={() => onView(s)}
               onDuplicate={(events) => onDuplicate(s, events)}
               onDelete={() => onDelete(s)}
+              onRename={() => onRename && onRename(s)}
               onDownloadExcel={(events) => onDownloadExcel(s, events)}
               onDownloadPdf={(events) => onDownloadPdf(s, events)}
               onTogglePublish={() => onTogglePublish(s)}
@@ -858,7 +915,7 @@ function ScheduleListTable({ schedules, onView, onDuplicate, onDelete, onDownloa
   )
 }
 
-function ScheduleListRow({ schedule, striped, onView, onDuplicate, onDelete, onDownloadExcel, onDownloadPdf, onTogglePublish }) {
+function ScheduleListRow({ schedule, striped, onView, onDuplicate, onDelete, onRename, onDownloadExcel, onDownloadPdf, onTogglePublish }) {
   const stats = useScheduleStats(schedule)
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -888,7 +945,7 @@ function ScheduleListRow({ schedule, striped, onView, onDuplicate, onDelete, onD
           {isFinalized ? 'Published' : 'Draft'}
         </button>
       </td>
-      <td style={{ padding: '10px 14px', color: G.ink }}>{stats.loading ? '—' : stats.courses}</td>
+      <td style={{ padding: '10px 14px', color: G.ink }}>{(stats.loading && !schedule.eventCount) ? '—' : (schedule.eventCount || stats.classes || stats.events?.length || 0)}</td>
       <td style={{ padding: '10px 14px', color: G.ink }}>{stats.loading ? '—' : stats.faculty}</td>
       <td style={{ padding: '10px 14px', color: G.ink }}>{stats.loading ? '—' : stats.rooms}</td>
       <td style={{ padding: '10px 14px', color: stats.conflicts > 0 ? '#dc2626' : G.ink, fontWeight: stats.conflicts > 0 ? 700 : 400 }}>{stats.loading ? '—' : stats.conflicts}</td>
@@ -911,6 +968,10 @@ function ScheduleListRow({ schedule, striped, onView, onDuplicate, onDelete, onD
             <>
               <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setMenuOpen(false)} />
               <div style={{ position: 'absolute', top: 30, right: 0, background: 'var(--surface)', border: `1px solid ${G.border}`, borderRadius: 8, boxShadow: '0 10px 28px rgba(0,0,0,0.2)', minWidth: 150, zIndex: 20, overflow: 'hidden' }}>
+                <button className="sl-menu-item" onClick={() => { setMenuOpen(false); if(typeof onRename === 'function') onRename() }} style={{ color: G.ink }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  Rename
+                </button>
                 <button className="sl-menu-item" onClick={() => { setMenuOpen(false); onDuplicate(stats.events) }} style={{ color: G.ink }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                   Duplicate

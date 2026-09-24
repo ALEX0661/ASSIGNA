@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from app.core.auth import admin_only, any_authenticated  # admin_only kept for any route that stays admin-exclusive
-from app.core.firebase import db, refresh_courses_cache
+from app.core.firebase import db, refresh_courses_cache, get_courses
 from app.models.course import Course, CourseUpdate
 from google.cloud import firestore as fs
 import pandas as pd
@@ -182,8 +182,10 @@ def _cascade_course_update(old_code: str, new_code: str, new_title: str = None):
     if batch_count > 0:
         batch.commit()
 
-    # Cascade to schedules
-    for coll_name in ["final_schedules", "coordinator_schedules", "master_schedules"]:
+    # Cascade to schedules — only coordinator_schedules stores events in the
+    # parent doc.  final_schedules and master_schedules use subcollections,
+    # so data.get("events", []) is always empty for them (wasted reads).
+    for coll_name in ["coordinator_schedules"]:
         sched_docs = db.collection(coll_name).stream()
         batch = db.batch()
         batch_count = 0
@@ -236,8 +238,9 @@ def _cascade_course_deletion(old_code: str):
     if batch_count > 0:
         batch.commit()
 
-    # Cascade unlinking to schedules
-    for coll_name in ["final_schedules", "coordinator_schedules", "master_schedules"]:
+    # Cascade unlinking to schedules — only coordinator_schedules stores
+    # events in the parent doc (see _cascade_course_update comment).
+    for coll_name in ["coordinator_schedules"]:
         sched_docs = db.collection(coll_name).stream()
         batch = db.batch()
         batch_count = 0
@@ -263,8 +266,7 @@ def _cascade_course_deletion(old_code: str):
 
 @router.get("/")
 def get_all_courses(semester: str = None, user=Depends(any_authenticated)):
-    docs = db.collection("courses").stream()
-    courses = [{**d.to_dict(), "id": d.id} for d in docs]
+    courses = list(get_courses())  # served from in-memory cache (0 reads)
     if semester:
         courses = [c for c in courses if c.get("semester", "1st Semester") == semester]
     return courses
@@ -273,6 +275,8 @@ def get_all_courses(semester: str = None, user=Depends(any_authenticated)):
 @router.post("/add")
 def add_course(data: Course, user=Depends(any_authenticated)):
     _require_program_access(user, data.program)
+    if "-COPY" in data.courseCode.upper():
+        raise HTTPException(400, "Course code cannot contain '-COPY'")
     existing = db.collection("courses").where("courseCode", "==", data.courseCode).get()
     if existing:
         conflict_title = existing[0].to_dict().get("title", "another course")
@@ -288,6 +292,8 @@ def add_course(data: Course, user=Depends(any_authenticated)):
 @router.put("/update/{course_code}/{program}")
 def update_course(course_code: str, program: str, data: CourseUpdate, user=Depends(any_authenticated)):
     _require_program_access(user, program)
+    if getattr(data, "courseCode", None) and "-COPY" in data.courseCode.upper():
+        raise HTTPException(400, "Course code cannot contain '-COPY'")
 
     doc_id  = f"{course_code}_{program}"
     doc_ref = db.collection("courses").document(doc_id)
@@ -360,7 +366,7 @@ def delete_course(course_code: str, program: str, user=Depends(any_authenticated
     # Soft-delete: archive before removing
     from datetime import datetime
     data = doc_ref.get().to_dict()
-    data["archivedAt"] = datetime.utcnow().isoformat()
+    data["archivedAt"] = (datetime.utcnow().isoformat() + "Z")
     db.collection("archived_courses").document(doc_id).set(data)
     doc_ref.delete()
     _cascade_course_deletion(course_code)

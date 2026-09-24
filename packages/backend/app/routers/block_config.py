@@ -16,7 +16,7 @@ def get_block_configs(semester: str = None, user=Depends(any_authenticated)):
     is_admin = user.get("role") == "admin"
     coord_prog = user.get("coordinatorProgram")
     if not is_admin and not coord_prog:
-        raise HTTPException(403, "Admin or Coordinator access required.")
+        raise HTTPException(403, "Dean or Coordinator access required.")
 
     docs = db.collection("block_configs").stream()
     configs = [{**d.to_dict(), "id": d.id} for d in docs]
@@ -36,7 +36,7 @@ def save_block_configs(data: dict, user=Depends(any_authenticated)):
     is_admin = user.get("role") == "admin"
     coord_prog = user.get("coordinatorProgram")
     if not is_admin and not coord_prog:
-        raise HTTPException(403, "Admin or Coordinator access required.")
+        raise HTTPException(403, "Dean or Coordinator access required.")
 
     configs = data.get("configs", [])
     if not configs:
@@ -87,7 +87,7 @@ def apply_block_configs(data: dict, user=Depends(any_authenticated)):
     is_admin = user.get("role") == "admin"
     coord_prog = user.get("coordinatorProgram")
     if not is_admin and not coord_prog:
-        raise HTTPException(403, "Admin or Coordinator access required.")
+        raise HTTPException(403, "Dean or Coordinator access required.")
 
     semester = data.get("semester")
     if not semester:

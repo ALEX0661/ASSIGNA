@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
+from pydantic import BaseModel
 from app.core.auth import admin_only, any_authenticated
 from app.core.firebase import db
 from app.core.globals import schedule_dict, progress_state, running_processes, cancel_flags, failure_details, phase_state
@@ -31,59 +32,51 @@ def _event_fingerprint(events):
     return hashlib.md5(json.dumps(rows, sort_keys=True).encode()).hexdigest()
 
 
-# --- Firestore layout ---------------------------------------------------
-# final_schedules/{name}                     -> metadata only (no "schedule"
-#                                                field, no embedded history
-#                                                snapshots)
-# final_schedules/{name}/events/{event_id}   -> current LIVE schedule events
+# --- Firestore layout (hybrid) ------------------------------------------
+# final_schedules/{name}                     -> metadata + "events" field
+#                                               (embedded array, new format)
+# final_schedules/{name}/events/{event_id}   -> LEGACY only — old schedules
+#                                               before the hybrid migration.
+#                                               Loaded on first read, then
+#                                               re-embedded on first save.
 # final_schedules/{name}/versions/{version}  -> one full snapshot's events,
-#                                                doc id = str(version number)
+#                                               doc id = str(version number)
+#                                               (unchanged — still subcollection)
 #
-# This keeps every document small and bounded regardless of how many
-# versions accumulate, avoiding the 1 MiB Firestore document size limit.
+# Embedding events in the parent doc makes every schedule load cost exactly
+# 1 Firestore read (instead of N reads, one per event).  The 1 MiB document
+# size limit is not a concern: ~284 events × ~500 bytes ≈ 142 KB per schedule.
+# The versions subcollection stays separate so history snapshots never bloat
+# the parent doc.
 
-def _write_events(events_ref, events):
-    """Replace the contents of an events subcollection with `events`,
-    batched at 450 ops to stay under Firestore's 500-per-batch limit."""
-    batch = db.batch()
-    count = 0
+def _read_events_embedded(doc_data: dict, doc_ref, cache_key: str = None):
+    """Read schedule events — checks the embedded 'events' field first (new
+    hybrid format: 1 Firestore read total), falls back to streaming the old
+    'events' subcollection for schedules that haven't been re-saved yet.
 
-    for doc in events_ref.stream():
-        batch.delete(doc.reference)
-        count += 1
-        if count >= 450:
-            batch.commit()
-            batch = db.batch()
-            count = 0
-
-    for ev in events:
-        ev_id = str(ev.get("schedule_id") or uuid.uuid4())
-        batch.set(events_ref.document(ev_id), ev)
-        count += 1
-        if count >= 450:
-            batch.commit()
-            batch = db.batch()
-            count = 0
-
-    if count:
-        batch.commit()
-
-
-def _read_events(events_ref, cache_key: str = None):
-    """Read all docs from an events subcollection.
-    
-    When *cache_key* is provided the result is served from / stored into
-    the in-memory event_cache, so repeated reads of the same schedule
-    within the TTL window cost zero Firestore reads.
+    When *cache_key* is provided, the result is served from / stored into the
+    in-memory event_cache so repeated reads within the TTL window cost zero
+    Firestore reads regardless of format.
     """
     if cache_key:
         cached = event_cache.get(cache_key)
         if cached is not None:
             return cached
-    events = [d.to_dict() for d in events_ref.stream()]
+
+    # ── New hybrid format: events embedded directly in the document ──────────
+    if "events" in doc_data:
+        events = doc_data["events"] or []
+        if cache_key:
+            event_cache.put(cache_key, events)
+        return events
+
+    # ── Legacy fallback: stream from subcollection ───────────────────────────
+    events = [d.to_dict() for d in doc_ref.collection("events").stream()]
     if cache_key:
         event_cache.put(cache_key, events)
     return events
+
+
 
 
 def _delete_subcollection(coll_ref):
@@ -415,8 +408,9 @@ def save_schedule(data: dict, user=Depends(admin_only)):
         # auto-save-after-drag-drop flow), fall back to whatever is
         # currently in the shared in-memory dict.
         current_events = list(schedule_dict.values())
-    # Existing events now live in a subcollection, not a field on the doc.
-    existing_events = _read_events(doc_ref.collection("events")) if existing_doc.exists else []
+
+    # Load existing events — from embedded field (new) or subcollection (legacy).
+    existing_events = _read_events_embedded(existing_data, doc_ref, cache_key=f"final:{name}") if existing_doc.exists else []
 
     # A brand-new schedule (nothing in Firestore yet) always counts as changed
     is_new         = not existing_data
@@ -461,8 +455,8 @@ def save_schedule(data: dict, user=Depends(admin_only)):
         # Persist the full snapshot separately so the parent doc stays small.
         _write_version_snapshot(doc_ref, existing_label, existing_events)
 
-    # Keep last 10 restore points
-    version_history = version_history[-10:]
+    # Keep last 50 restore points (increased from 10)
+    version_history = version_history[-50:]
     _prune_version_snapshots(doc_ref, {v.get("version") for v in version_history})
 
     # Mint a version number that has never been used before. A plain
@@ -489,11 +483,21 @@ def save_schedule(data: dict, user=Depends(admin_only)):
         "createdAt":      existing_data.get("createdAt", current_time),
         "versionHistory": version_history,
         "source":         existing_data.get("source", "admin"),
+        # ── Hybrid: events live in the parent document (1 read/write) ────────
+        "events":         current_events,
     }
 
     doc_ref.set(doc_data)
-    _write_events(doc_ref.collection("events"), current_events)
-    event_cache.invalidate(f"final:{name}")
+    # Warm the cache immediately so the next read is free.
+    event_cache.put(f"final:{name}", current_events)
+
+    # ── Legacy subcollection cleanup ─────────────────────────────────────────
+    # If this schedule previously used the old subcollection layout, clean up
+    # the orphaned event docs now that events are embedded in the parent doc.
+    # We only do this when we *know* the old format was in use (no "events"
+    # field existed before this save).
+    if existing_doc.exists and "events" not in existing_data:
+        _delete_subcollection(doc_ref.collection("events"))
 
     return {
         "saved":        name,
@@ -503,9 +507,79 @@ def save_schedule(data: dict, user=Depends(admin_only)):
         "changed":      events_changed,
     }
 
+class RenameAdminRequest(BaseModel):
+    newName: str
+
+@router.patch("/rename/{name}")
+def rename_admin_schedule(name: str, req: RenameAdminRequest, user=Depends(admin_only)):
+    old_ref = db.collection("final_schedules").document(name)
+    old_doc = old_ref.get()
+    if not old_doc.exists:
+        raise HTTPException(404, "Schedule not found")
+
+    new_name = req.newName.strip()
+    if not new_name:
+        raise HTTPException(400, "New name cannot be empty")
+    if name == new_name:
+        return {"renamed": name}
+
+    new_ref = db.collection("final_schedules").document(new_name)
+    if new_ref.get().exists:
+        raise HTTPException(400, "A schedule with that name already exists")
+
+    # Copy main document (events are already embedded in doc_data for new-format
+    # schedules, so the new doc gets them for free with a single set() call).
+    doc_data = old_doc.to_dict()
+    doc_data["schedule_name"] = new_name
+    doc_data["lastModified"] = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z"
+    new_ref.set(doc_data)
+
+    batch = db.batch()
+    count = 0
+
+    # ── Move events subcollection (legacy format only) ───────────────────────
+    # For new-format schedules the events are embedded in doc_data above —
+    # the subcollection is empty / doesn't exist, so this loop is a no-op.
+    for ev_doc in old_ref.collection("events").stream():
+        batch.set(new_ref.collection("events").document(ev_doc.id), ev_doc.to_dict())
+        batch.delete(ev_doc.reference)
+        count += 2
+        if count >= 450:
+            batch.commit()
+            batch = db.batch()
+            count = 0
+
+    # ── Move versions subcollection (always present) ─────────────────────────
+    for v_doc in old_ref.collection("versions").stream():
+        batch.set(new_ref.collection("versions").document(v_doc.id), v_doc.to_dict())
+        batch.delete(v_doc.reference)
+        count += 2
+        if count >= 450:
+            batch.commit()
+            batch = db.batch()
+            count = 0
+
+    if count > 0:
+        batch.commit()
+
+    old_ref.delete()
+    event_cache.invalidate(f"final:{name}")
+    # Warm cache for the new name immediately.
+    events = doc_data.get("events") or []
+    if events:
+        event_cache.put(f"final:{new_name}", events)
+
+    return {"renamed": new_name}
+
 @router.get("/final")
 def list_saved(user=Depends(any_authenticated)):
-    docs = db.collection("final_schedules").stream()
+    # Use select() to project only metadata, skipping the massive 'events' array
+    # which can take megabytes of bandwidth and severely slow down the list view.
+    docs = db.collection("final_schedules").select([
+        "schedule_name", "academicYear", "semester", "finalized", 
+        "createdAt", "lastModified", "savedAt", "version", "eventCount"
+    ]).stream()
+    
     return [{
         "id": d.id,
         "name": d.to_dict().get("schedule_name", d.id),
@@ -528,7 +602,7 @@ def get_active(academic_year: str, semester: str, user=Depends(any_authenticated
         .stream()
     for d in docs:
         data = d.to_dict()
-        data["schedule"] = _read_events(d.reference.collection("events"), cache_key=f"final:{d.id}")
+        data["schedule"] = _read_events_embedded(data, d.reference, cache_key=f"final:{d.id}")
         return data
     raise HTTPException(404, "Active schedule not found")
 
@@ -540,15 +614,20 @@ def load_saved(name: str, user=Depends(any_authenticated)):
         raise HTTPException(404, "Schedule not found")
     data = doc.to_dict()
 
-    raw_list = _read_events(doc_ref.collection("events"), cache_key=f"final:{name}")
+    # _read_events_embedded: if "events" is in data (new hybrid format) this
+    # costs 0 extra Firestore reads — the events are already in `data`.
+    # Falls back to subcollection stream for legacy schedules.
+    raw_list = _read_events_embedded(data, doc_ref, cache_key=f"final:{name}")
     schedule_dict.clear()
     schedule_dict.update({str(ev.get("schedule_id")): ev for ev in raw_list})
 
+    # Strip embedded events from the metadata payload — the frontend expects
+    # them under the "schedule" key, not "events", and we don't want to send
+    # the array twice in the response.
+    response_data = {k: v for k, v in data.items() if k != "events"}
     return {
-        **data,
+        **response_data,
         "schedule": raw_list,
-        # versionHistory entries no longer carry embedded events, so
-        # there's nothing bulky left to strip out for the UI timeline.
         "versionHistory": data.get("versionHistory", []),
     }
 
@@ -598,7 +677,7 @@ def unfinalize_schedule(name: str, user=Depends(admin_only)):
             .stream()
         batch = db.batch()
         count = 0
-        now = datetime.utcnow().isoformat()
+        now = (datetime.utcnow().isoformat() + "Z")
         for s in schedules:
             batch.update(s.reference, {
                 "status": "draft",
@@ -700,7 +779,7 @@ def restore_version(name: str, version: int, user=Depends(admin_only)):
     # entry with that version number already exists forever, and a
     # number-based check would wrongly treat every later restore's live
     # state as "already archived" and skip archiving it, silently losing it.
-    current_live_events = _read_events(doc_ref.collection("events"))
+    current_live_events = _read_events_embedded(data, doc_ref, cache_key=f"final:{name}")
     # The label for whatever's currently live. If we're already viewing a
     # restored preview, `restoredFromVersion` is what it actually reflects —
     # NOT the frozen `version` field, which never changes across restores
@@ -718,7 +797,7 @@ def restore_version(name: str, version: int, user=Depends(admin_only)):
             "user":        data.get("restoredBy") or "system",
             "fingerprint": current_fp,
         }]
-        version_history = version_history[-10:]
+        version_history = version_history[-50:]
         _write_version_snapshot(doc_ref, current_version, current_live_events)
         _prune_version_snapshots(doc_ref, {v.get("version") for v in version_history})
 
@@ -726,21 +805,19 @@ def restore_version(name: str, version: int, user=Depends(admin_only)):
     schedule_dict.clear()
     schedule_dict.update({str(ev.get("schedule_id")): ev for ev in restored_events})
 
-    # Replace the live events subcollection with the restored events.
-    _write_events(doc_ref.collection("events"), restored_events)
-    event_cache.invalidate(f"final:{name}")
-
-    # Update Firestore metadata: keep the same version number — this is a
-    # preview, not a new save.
+    # Write restored events back into the parent document (hybrid format)
+    # and update metadata in a single doc_ref.update() call.
     doc_ref.update({
-        "versionHistory": version_history,
-        "eventCount": len(restored_events),
-        "lastModified": current_time,
-        # Tag it so the frontend knows it was restored (shown in the UI)
+        "events":              restored_events,
+        "versionHistory":      version_history,
+        "eventCount":          len(restored_events),
+        "lastModified":        current_time,
         "restoredFromVersion": version,
-        "restoredAt": current_time,
-        "restoredBy": user.get("email", "unknown"),
+        "restoredAt":          current_time,
+        "restoredBy":          user.get("email", "unknown"),
     })
+    # Warm the cache with the restored events.
+    event_cache.put(f"final:{name}", restored_events)
 
     return {
         "restored": name,
@@ -779,7 +856,7 @@ def get_version_diff(name: str, version: int, user=Depends(any_authenticated)):
         # Not archived as a snapshot yet — only valid if it's the current
         # live version (the one that hasn't been superseded by a save/restore).
         if data.get("version") == version and not data.get("restoredFromVersion"):
-            target_events = _read_events(doc_ref.collection("events"), cache_key=f"final:{name}")
+            target_events = _read_events_embedded(data, doc_ref, cache_key=f"final:{name}")
         else:
             raise HTTPException(404, f"Version {version} has no stored schedule data")
 
@@ -817,7 +894,7 @@ def delete_saved(name: str, user=Depends(admin_only)):
                 .stream()
             batch = db.batch()
             count = 0
-            now = datetime.utcnow().isoformat()
+            now = (datetime.utcnow().isoformat() + "Z")
             for s in schedules:
                 batch.update(s.reference, {
                     "status": "draft",

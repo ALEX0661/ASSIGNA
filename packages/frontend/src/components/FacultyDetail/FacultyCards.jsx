@@ -79,7 +79,7 @@ export function ProfileCard({ form, isNew, isOverloaded, avInitials, avFg, avBg,
         {/* Status badges */}
         <div style={{ display:'flex', gap:6, flexWrap:'wrap', justifyContent:'center', position:'relative', zIndex:1 }}>
           <span style={{ padding:'3px 10px', borderRadius:'99px', fontSize:10.5, fontWeight:600, background:'rgba(255,255,255,0.16)', color: '#fff', textTransform:'capitalize', border:'1px solid rgba(255,255,255,0.22)' }}>{form.status}</span>
-          {!isNew && form.archived  && <span style={{ padding:'3px 10px', borderRadius:'99px', fontSize:10.5, fontWeight:600, background:'rgba(217, 119, 6, 0.1)', color:'#F59E0B' }}>Archived</span>}
+          {!isNew && form.archived  && <span style={{ padding:'3px 10px', borderRadius:'99px', fontSize:10.5, fontWeight:600, background:'rgba(217, 119, 6, 0.1)', color:'var(--ink)' }}>Archived</span>}
           {!isNew && isOverloaded   && <span style={{ padding:'3px 10px', borderRadius:'99px', fontSize:10.5, fontWeight:600, background:'rgba(220, 38, 38, 0.1)', color:'#EF4444' }}>Overloaded</span>}
         </div>
       </div>
@@ -265,11 +265,11 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
     setRoleSuccess('')
 
     if (!selectedIsAdmin && !selectedIsFaculty) {
-      setRoleError('Select at least one role (Admin or Faculty).')
+      setRoleError('Select at least one role (Dean or Faculty).')
       return
     }
     if (selectedCoordinator && selectedIsAdmin) {
-      setRoleError('Coordinator access cannot be combined with Admin.')
+      setRoleError('Coordinator access cannot be combined with Dean.')
       return
     }
     if (selectedCoordinator && !selectedIsFaculty) {
@@ -300,7 +300,7 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
 
   function formatRoleBadge() {
     const parts = []
-    if (currentIsAdmin) parts.push('Admin')
+    if (currentIsAdmin) parts.push('Dean')
     if (currentIsFaculty) parts.push('Faculty')
     let label = parts.join(' + ') || 'No Role'
     if (isCoordinator && coordinatorProgram) label += ` · ${coordinatorProgram} Coord.`
@@ -378,7 +378,7 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
                   <div style={{ display:'flex', gap:8 }}>
                     {[
                       { key:'faculty', label:'Faculty', active:selectedIsFaculty, onClick:toggleFaculty, icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
-                      { key:'admin',   label:'Admin',   active:selectedIsAdmin,   onClick:toggleAdmin,   icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg> },
+                      { key:'admin',   label:'Dean',   active:selectedIsAdmin,   onClick:toggleAdmin,   icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg> },
                     ].map(opt => (
                         <button key={opt.key} type="button"
                           onClick={opt.onClick}
@@ -388,21 +388,21 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
                         </button>
                       ))}
                   </div>
-                  <div style={{ fontSize:10.5, color:T.textMuted, marginTop:6 }}>Admin and Faculty are mutually exclusive.</div>
+                  <div style={{ fontSize:10.5, color:T.textMuted, marginTop:6 }}>Dean and Faculty are mutually exclusive.</div>
                 </div>
 
                 {/* Rank-based suggestion — never auto-applied, just a one-click nudge */}
                 {rankSuggestsAdmin && !selectedIsAdmin && (
-                  <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:'9px', background:'#FEFBEB', border:'1px solid #FDE68A' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:'9px', background:'var(--amber-soft, rgba(245, 158, 11, 0.1))', border:'1px solid var(--amber-border, rgba(245, 158, 11, 0.25))' }}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2" style={{ flexShrink:0 }}><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>
-                    <div style={{ flex:1, fontSize:11.5, color:'#92400E', lineHeight:1.4 }}><strong>{form.AcademicRank}</strong> usually comes with Admin access.</div>
+                    <div style={{ flex:1, fontSize:11.5, color:'var(--ink)', lineHeight:1.4 }}><strong>{form.AcademicRank}</strong> usually comes with Dean access.</div>
                     <button type="button" onClick={() => setSelectedIsAdmin(true)}
-                      style={{ flexShrink:0, padding:'6px 12px', borderRadius:'7px', border:'1px solid #D97706', background: 'var(--surface)', color:'#F59E0B', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}
+                      style={{ flexShrink:0, padding:'6px 12px', borderRadius:'7px', border:'1px solid rgba(245, 158, 11, 0.5)', background: 'transparent', color:'var(--ink)', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:"'Inter',sans-serif" }}
                     >Apply</button>
                   </div>
                 )}
 
-                {/* Coordinator toggle — only for Faculty, never combined with Admin */}
+                {/* Coordinator toggle — only for Faculty, never combined with Dean */}
                 {selectedIsFaculty && !selectedIsAdmin && (
                   <div>
                     <div style={{ fontSize:11, fontWeight:600, color:T.textMuted, letterSpacing:'.3px', marginBottom:7, textTransform:'uppercase' }}>Coordinator Access</div>
@@ -421,8 +421,8 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
                     <div style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:'9px', background:T.bgAlt, border:`1.5px dashed ${T.border}` }}>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={T.textMuted} strokeWidth="2" style={{ flexShrink:0 }}><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                       <div style={{ flex:1 }}>
-                        <div style={{ fontSize:12.5, fontWeight:600, color:T.textMuted }}>Not available with Admin</div>
-                        <div style={{ fontSize:10.5, color:T.textMuted, marginTop:1 }}>Remove Admin to grant Coordinator access</div>
+                        <div style={{ fontSize:12.5, fontWeight:600, color:T.textMuted }}>Not available with Dean</div>
+                        <div style={{ fontSize:10.5, color:T.textMuted, marginTop:1 }}>Remove Dean to grant Coordinator access</div>
                       </div>
                     </div>
                   </div>
@@ -636,7 +636,7 @@ export function CredentialsCard({ form, credEmail, setCredEmail, credPassword, s
       {!form.email && (
         <div style={{ margin:'20px 20px 0', padding:'12px 16px', borderRadius:'8px', background:'rgba(245, 158, 11, 0.05)', border:'1px solid #FEF3C7', display:'flex', gap:10, alignItems:'flex-start' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2" style={{ flexShrink:0, marginTop:2 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          <span style={{ fontSize:12, color:'#F59E0B', lineHeight:1.5 }}>No login account yet. Set an email and password below to activate.</span>
+          <span style={{ fontSize:12, color:'var(--ink)', lineHeight:1.5 }}>No login account yet. Set an email and password below to activate.</span>
         </div>
       )}
       <div style={{ padding:'24px 20px', display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'20px 24px', alignItems:'start' }}>
@@ -773,11 +773,11 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
     setSuccess('')
 
     if (!selectedIsAdmin && !selectedIsFaculty) {
-      setError('Select at least one role (Admin or Faculty).')
+      setError('Select at least one role (Dean or Faculty).')
       return
     }
     if (selectedCoordinator && selectedIsAdmin) {
-      setError('Coordinator access cannot be combined with Admin.')
+      setError('Coordinator access cannot be combined with Dean.')
       return
     }
     if (selectedCoordinator && !selectedIsFaculty) {
@@ -809,7 +809,7 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
 
   function formatRoleBadge() {
     const parts = []
-    if (currentIsAdmin) parts.push('Admin')
+    if (currentIsAdmin) parts.push('Dean')
     if (currentIsFaculty) parts.push('Faculty')
     let label = parts.join(' + ') || 'No Role'
     if (isCoordinator && coordinatorProgram) label += ` · ${coordinatorProgram} Coord.`
@@ -842,12 +842,12 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
       {!facultyEmail && (
         <div style={{ margin:'20px 20px 0', padding:'12px 16px', borderRadius:'8px', background:'rgba(245, 158, 11, 0.05)', border:'1px solid #FEF3C7', display:'flex', gap:10, alignItems:'flex-start' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke='#F59E0B' strokeWidth="2" style={{ flexShrink:0, marginTop:2 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          <span style={{ fontSize:12, color:'#F59E0B', lineHeight:1.5 }}>No login account yet. Activate credentials first before setting a role.</span>
+          <span style={{ fontSize:12, color:'var(--ink)', lineHeight:1.5 }}>No login account yet. Activate credentials first before setting a role.</span>
         </div>
       )}
 
       <div style={{ padding:'24px 20px', display:'flex', flexDirection:'column', gap:20 }}>
-        <FormField label="System Role" hint="Admin and Faculty are mutually exclusive.">
+        <FormField label="System Role" hint="Dean and Faculty are mutually exclusive.">
           <div style={{ display:'flex', gap:8 }}>
             <button
               type="button"
@@ -884,7 +884,7 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
             >
               <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-                Admin
+                Dean
               </div>
             </button>
           </div>
@@ -936,8 +936,8 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
             <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderRadius:'8px', background:T.bgAlt, border:`1.5px dashed ${T.border}` }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.textMuted} strokeWidth="2" style={{ flexShrink:0 }}><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               <div style={{ flex:1 }}>
-                <div style={{ fontSize:13, fontWeight:600, color:T.textMuted }}>Not available with Admin</div>
-                <div style={{ fontSize:11, color:T.textMuted, marginTop:2 }}>Remove Admin to grant Coordinator access</div>
+                <div style={{ fontSize:13, fontWeight:600, color:T.textMuted }}>Not available with Dean</div>
+                <div style={{ fontSize:11, color:T.textMuted, marginTop:2 }}>Remove Dean to grant Coordinator access</div>
               </div>
             </div>
           </FormField>

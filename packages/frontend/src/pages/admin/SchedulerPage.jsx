@@ -1809,7 +1809,7 @@ export default function SchedulerPage() {
   const setName   = useScheduleStore(s => s.setName)
   const currentScheduleName = useScheduleStore(s => s.scheduleName)
   const storeEvents = useScheduleStore(s => s.events)
-  const { progress, status, processId, label, originalName, setProcessId, setStatus, setLabel, setOriginalName, setDismissed, reset } = useSolverStore()
+  const { progress, status, processId, label, originalName, error, setProcessId, setStatus, setLabel, setOriginalName, setDismissed, reset } = useSolverStore()
   const { toasts, toast } = useToast()
 
   const [wizStep, setWizStep] = useState(1)
@@ -2458,6 +2458,16 @@ export default function SchedulerPage() {
                         <div className="solve-result-body" style={{ background: 'rgba(239, 68, 68, 0.05)' }}>
                           {solveError ? (
                             <ErrorBanner error={solveError} onDismiss={() => setSolveError(null)} />
+                          ) : error ? (
+                            <>
+                              <div style={{ width:44, height:44, borderRadius:'50%', background:'rgba(239, 68, 68, 0.1)', border:'1.5px solid #FCA5A5', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke='#EF4444' strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                              </div>
+                              <div>
+                                <div style={{ fontSize:16, fontWeight:800, color:'#FCA5A5', marginBottom:3 }}>Could Not Generate Schedule</div>
+                                <div style={{ fontSize:13.5, color:'#EF4444', fontWeight:500, whiteSpace:'pre-wrap' }}>{error}</div>
+                              </div>
+                            </>
                           ) : (
                             <>
                               <div style={{ width:44, height:44, borderRadius:'50%', background:'rgba(239, 68, 68, 0.1)', border:'1.5px solid #FCA5A5', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>

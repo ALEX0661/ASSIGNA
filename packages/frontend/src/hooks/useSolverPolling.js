@@ -13,7 +13,7 @@ import { useScheduleStore, useSolverStore } from '../store/scheduleStore'
  * user currently is.
  */
 export function useSolverPolling(toast) {
-  const { processId, status, setProgress, setStatus } = useSolverStore()
+  const { processId, status, setProgress, setStatus, setError } = useSolverStore()
   const setEvents = useScheduleStore(s => s.setEvents)
   const pollRef = useRef(null)
   const notify = toast || (() => {})
@@ -51,8 +51,18 @@ export function useSolverPolling(toast) {
           notify('Schedule generation was cancelled.', 'info', 3000)
         } else if (s.status === 'failed') {
           clearInterval(pollRef.current)
+          let errMsg = 'Solver failed — check eligibility and room settings.'
+          if (s.diagnostic) {
+            if (typeof s.diagnostic === 'string') errMsg = s.diagnostic
+            else if (s.diagnostic.reasons || s.diagnostic.suggestions) {
+              const reasons = (s.diagnostic.reasons || []).join(' ')
+              const suggestions = (s.diagnostic.suggestions || []).join(' ')
+              errMsg = `${reasons}\n\nSuggested Fix: ${suggestions}`
+            }
+          }
+          setError(errMsg)
           setStatus('failed')
-          notify('Solver failed — check eligibility and room settings.', 'error', 5000)
+          notify('Solver failed to find a valid schedule.', 'error', 5000)
         }
       } catch (err) {
         clearInterval(pollRef.current)

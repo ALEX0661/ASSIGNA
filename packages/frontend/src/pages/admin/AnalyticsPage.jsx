@@ -61,6 +61,8 @@ const ANALYTICS_STYLE = `
     transition: box-shadow .18s, transform .18s;
     animation: fadeUp .3s ease both;
     cursor: default;
+    position: relative;
+    overflow: hidden;
   }
   .a-stat-card:hover {
     box-shadow: 0 6px 22px rgba(0,0,0,0.11);
@@ -203,6 +205,12 @@ function StatCard({ label, value, sub, icon, color, bg, loading }) {
           </>
         )}
       </div>
+      {/* Decorative wave */}
+      {(typeof color !== 'undefined' ? color : (typeof status !== 'undefined' ? status?.color : null)) && (
+        <svg width="100%" height="40" style={{ position: 'absolute', bottom: 0, right: 0, opacity: 0.12, zIndex: 0, pointerEvents: 'none' }} viewBox="0 0 100 40" preserveAspectRatio="none">
+          <path d="M0 40 Q 25 10, 50 25 T 100 10 L 100 40 Z" fill={typeof color !== 'undefined' ? color : status?.color} />
+        </svg>
+      )}
     </div>
   );
 }
@@ -275,6 +283,12 @@ function ScoreCard({ loading, autoAssignPct, pctInWindow }) {
           </>
         )}
       </div>
+      {/* Decorative wave */}
+      {(typeof color !== 'undefined' ? color : (typeof status !== 'undefined' ? status?.color : null)) && (
+        <svg width="100%" height="40" style={{ position: 'absolute', bottom: 0, right: 0, opacity: 0.12, zIndex: 0, pointerEvents: 'none' }} viewBox="0 0 100 40" preserveAspectRatio="none">
+          <path d="M0 40 Q 25 10, 50 25 T 100 10 L 100 40 Z" fill={typeof color !== 'undefined' ? color : status?.color} />
+        </svg>
+      )}
     </div>
   );
 }

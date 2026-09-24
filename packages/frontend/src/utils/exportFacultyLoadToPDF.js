@@ -72,7 +72,7 @@ function normalizeDayToken(tok) {
   return DAY_MAP[tok.toLowerCase()] || tok
 }
 
-function splitDayTokens(dayStr) {
+export function splitDayTokens(dayStr) {
   if (!dayStr) return []
   const str = String(dayStr).trim()
   // Comma / slash separated full or short names ("Monday, Wednesday")
@@ -107,17 +107,19 @@ function isLec(session) {
 }
 
 // ASSIGNA course codes carry an A (lecture) / L (laboratory) suffix, e.g.
-// "IT101A" / "IT101L". If a code is missing that suffix, add the right one.
-function formatCourseCode(ev) {
+export function formatCourseCode(ev) {
   const raw = (ev.courseCode || ev.course_code || ev.subject || ev.course || '').toString().trim()
   if (!raw) return ''
+  // Do not append A/L suffixes to minor subjects
+  if (/^(MAT|PE|NSTP|GEC)/i.test(raw)) return raw
+  
   if (/[AL]$/i.test(raw)) return raw.toUpperCase()
   if (isLab(ev.session)) return `${raw}L`
   if (isLec(ev.session)) return `${raw}A`
   return raw
 }
 
-function formatCourseTitle(ev) {
+export function formatCourseTitle(ev) {
   const title = ev.courseTitle || ev.title || ev.course_title || ''
   if (isLab(ev.session)) return title ? `${title} (Lab)` : '(Lab)'
   if (isLec(ev.session)) return title ? `${title} (Lec)` : '(Lec)'
@@ -125,7 +127,7 @@ function formatCourseTitle(ev) {
 }
 
 // "BSCS 4A" style program/year/block section label.
-function formatSection(ev) {
+export function formatSection(ev) {
   const program = ev.program || ''
   const year = ev.year || ''
   const block = ev.block || ''
@@ -137,11 +139,14 @@ function formatSection(ev) {
    Lecture: 1 unit  = 1 hour
    Laboratory: 1 unit = 3 hours  (so 1.5 hrs lab = 0.5 units)              */
 function toMinutes(timeStr) {
-  const [time, meridiem] = timeStr.trim().split(' ')
-  let [hours, minutes] = time.split(':').map(Number)
-  if (/pm/i.test(meridiem) && hours !== 12) hours += 12
-  if (/am/i.test(meridiem) && hours === 12) hours = 0
-  return hours * 60 + minutes
+  const m = (timeStr || '').trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
+  if (!m) return 0
+  let h = parseInt(m[1], 10)
+  const min = parseInt(m[2], 10)
+  const ap = m[3].toUpperCase()
+  if (ap === 'PM' && h !== 12) h += 12
+  if (ap === 'AM' && h === 12) h = 0
+  return h * 60 + min
 }
 
 function getPeriodHours(periodStr) {
@@ -162,43 +167,121 @@ function getEventPeriodStr(ev) {
   return ev.timeSlot || ev.time || ev.period || ''
 }
 
-function computeCorrectUnits(ev) {
+export function computeCorrectUnits(ev) {
   const hours = getPeriodHours(getEventPeriodStr(ev))
-  return isLab(ev.session) ? hours / 3 : hours
+  const multiplier = Math.max(1, splitDayTokens(ev.day).length)
+  // 1 hour = 1 unit regardless of lecture or lab
+  return hours * multiplier
 }
 
-/* ── Merge rows that are identical except for the day they meet ──────────
-   e.g. an "MWF 7:00-8:00" lecture that was stored as 3 separate M / W / F
-   events for the same section, room and time gets combined into one row
-   with day = "MWF".                                                       */
-function mergeEventsBySharedTime(events) {
-  const order = []
-  const map = new Map()
+function minutesToTime(mins) {
+  const h   = Math.floor(mins / 60)
+  const m   = mins % 60
+  const ap  = h >= 12 ? 'PM' : 'AM'
+  const h12 = h % 12 === 0 ? 12 : h % 12
+  return `${h12}:${String(m).padStart(2, '0')} ${ap}`
+}
 
+export function mergeAndSortEvents(events) {
+  // 1. explode into single days
+  const flat = []
   events.forEach(ev => {
+    const days = splitDayTokens(ev.day)
+    if (days.length === 0) flat.push({ ...ev })
+    else days.forEach(d => flat.push({ ...ev, day: d }))
+  })
+
+  // 2. map to start/end min
+  const withTimes = flat.map(ev => {
+    const period = getEventPeriodStr(ev)
+    let startMin = 0, endMin = 0
+    if (period) {
+      const parts = period.split(' - ')
+      if (parts.length === 2) {
+        startMin = toMinutes(parts[0])
+        endMin = toMinutes(parts[1])
+      }
+    }
+    return { ...ev, startMin, endMin }
+  })
+
+  // 3. merge consecutive times
+  const groups = new Map()
+  withTimes.forEach(ev => {
     const key = [
       formatCourseCode(ev),
       formatSection(ev),
       ev.room || 'TBA',
-      getEventPeriodStr(ev),
       ev.session || '',
+      ev.day
     ].join('|')
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push(ev)
+  })
 
-    if (!map.has(key)) {
-      map.set(key, { ...ev, _dayTokens: new Set() })
-      order.push(key)
+  const afterTimeMerge = []
+  groups.forEach(group => {
+    group.sort((a, b) => a.startMin - b.startMin)
+    const merged = [{ ...group[0] }]
+    for (let i = 1; i < group.length; i++) {
+      const last = merged[merged.length - 1]
+      const curr = group[i]
+      if (last.endMin !== 0 && curr.startMin !== 0 && curr.startMin === last.endMin) {
+        last.endMin = curr.endMin
+      } else {
+        merged.push({ ...curr })
+      }
     }
-    const entry = map.get(key)
-    splitDayTokens(ev.day).forEach(d => entry._dayTokens.add(d))
+    afterTimeMerge.push(...merged)
   })
 
-  const dayOrder = ['M', 'T', 'W', 'Th', 'F', 'Sat', 'Sun']
-  return order.map(key => {
-    const entry = map.get(key)
-    const days = dayOrder.filter(d => entry._dayTokens.has(d))
-    const { _dayTokens, ...rest } = entry
-    return { ...rest, day: days.join('') }
+  // 4. merge across days
+  const timeGroups = new Map()
+  afterTimeMerge.forEach(ev => {
+    const key = [
+      formatCourseCode(ev),
+      formatSection(ev),
+      ev.room || 'TBA',
+      ev.session || '',
+      ev.startMin,
+      ev.endMin
+    ].join('|')
+    if (!timeGroups.has(key)) {
+      timeGroups.set(key, { ...ev, _dayTokens: new Set([ev.day]) })
+    } else {
+      timeGroups.get(key)._dayTokens.add(ev.day)
+    }
   })
+
+  // 5. Build final rows and sort
+  const dayOrder = { M: 1, T: 2, W: 3, Th: 4, F: 5, Sat: 6, Sun: 7 }
+  const finalRows = [...timeGroups.values()].map(entry => {
+    const sortedDays = Array.from(entry._dayTokens)
+      .filter(Boolean)
+      .sort((a, b) => (dayOrder[a] || 9) - (dayOrder[b] || 9))
+    
+    let timeSlot = getEventPeriodStr(entry)
+    if (entry.startMin && entry.endMin) {
+      const startStr = minutesToTime(entry.startMin)
+      const endStr = minutesToTime(entry.endMin)
+      timeSlot = `${startStr} - ${endStr}`
+    }
+
+    const { _dayTokens, startMin, endMin, ...rest } = entry
+    return { ...rest, day: sortedDays.join(''), timeSlot, time: timeSlot, period: timeSlot, _startMin: startMin }
+  })
+
+  finalRows.sort((a, b) => {
+    const dayA = splitDayTokens(a.day)[0]
+    const dayB = splitDayTokens(b.day)[0]
+    const ordA = dayOrder[dayA] || 9
+    const ordB = dayOrder[dayB] || 9
+    if (ordA !== ordB) return ordA - ordB
+    
+    return (a._startMin || 0) - (b._startMin || 0)
+  })
+
+  return finalRows
 }
 
 /* ── Logo → data URL, so jsPDF can embed it ─────────────────────────────── */
@@ -246,11 +329,12 @@ export async function exportFacultyLoadToPDF(events, faculty, scheduleMeta = {},
   const semester = rawSem || parsed.semester || ''
   const academicYear = rawAY || parsed.academicYear || ''
 
-  const unitsFor = typeof computeUnits === 'function' ? computeUnits : computeCorrectUnits
+  // Always use our internal computeCorrectUnits for accurate calculation based on merged times and days.
+  const unitsFor = computeCorrectUnits
 
   // Combine rows that share the same course/section/room/time but differ
   // only in which day of the week they occur on.
-  const mergedEvents = mergeEventsBySharedTime(events)
+  const mergedEvents = mergeAndSortEvents(events)
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' })
   const w = doc.internal.pageSize.getWidth()

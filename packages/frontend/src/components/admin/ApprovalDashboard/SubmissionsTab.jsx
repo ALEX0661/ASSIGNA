@@ -6,7 +6,7 @@ import { getProgColor, progShort, timeAgo } from './utils'
 import { Badge, EmptyState, ICONS } from './primitives'
 import RejectModal from './RejectModal'
 
-function SubmissionsTab({ schedules, onOpen, onQuickApprove, onReject, onUnapprove, onBulkApprove, loadingIds, activeTermKey }) {
+function SubmissionsTab({ schedules, onOpen, onQuickApprove, onReject, onUnapprove, onBulkApprove, loadingIds, activeTermKey, masterFinalized }) {
   const [search, setSearch] = useState('')
   const [rejectTarget, setRejectTarget] = useState(null)
   const [unapproveTarget, setUnapproveTarget] = useState(null)
@@ -75,17 +75,17 @@ function SubmissionsTab({ schedules, onOpen, onQuickApprove, onReject, onUnappro
           </button>
           {isPending && !isPastTerm && (
             <>
-              <button onClick={() => setRejectTarget(s)} disabled={isLoading} className="btn-danger" style={{ padding: '7px 10px' }} title="Reject">
+              <button onClick={() => setRejectTarget(s)} disabled={isLoading || masterFinalized} className="btn-danger" style={{ padding: '7px 10px', opacity: (isLoading || masterFinalized) ? 0.4 : 1, cursor: (isLoading || masterFinalized) ? 'not-allowed' : 'pointer' }} title={masterFinalized ? "Cannot reject while master schedule is published" : "Reject"}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
               </button>
-              <button onClick={() => onQuickApprove(id)} disabled={isLoading} className="btn-primary">
+              <button onClick={() => onQuickApprove(id)} disabled={isLoading || masterFinalized} title={masterFinalized ? "Cannot approve while master schedule is published" : ""} className="btn-primary" style={{ opacity: (isLoading || masterFinalized) ? 0.4 : 1, cursor: (isLoading || masterFinalized) ? 'not-allowed' : 'pointer' }}>
                 {isLoading ? <svg className="ap-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg> : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
                 Approve
               </button>
             </>
           )}
           {!isPending && s.status === 'approved' && !isPastTerm && (
-            <button onClick={() => setUnapproveTarget(s)} disabled={isLoading} className="btn-amber" style={{ padding: '7px 10px' }} title="Unapprove">
+            <button onClick={() => setUnapproveTarget(s)} disabled={isLoading || masterFinalized} className="btn-amber" style={{ padding: '7px 10px', opacity: (isLoading || masterFinalized) ? 0.4 : 1, cursor: (isLoading || masterFinalized) ? 'not-allowed' : 'pointer' }} title={masterFinalized ? "Cannot unapprove while master schedule is published" : "Unapprove"}>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             </button>
           )}
@@ -138,7 +138,7 @@ function SubmissionsTab({ schedules, onOpen, onQuickApprove, onReject, onUnappro
             {selected.size > 0 ? `${selected.size} selected` : 'Select all pending'}
           </label>
           {selected.size > 0 && (
-            <button className="btn-primary" style={{ padding: '5px 13px', fontSize: 11.5 }} onClick={runBulkApprove} disabled={bulkBusy}>
+            <button className="btn-primary" style={{ padding: '5px 13px', fontSize: 11.5, opacity: (bulkBusy || masterFinalized) ? 0.4 : 1, cursor: (bulkBusy || masterFinalized) ? 'not-allowed' : 'pointer' }} onClick={runBulkApprove} disabled={bulkBusy || masterFinalized} title={masterFinalized ? "Cannot approve while master schedule is published" : ""}>
               {bulkBusy ? 'Approving…' : `Approve ${selected.size} selected`}
             </button>
           )}

@@ -1133,10 +1133,9 @@ def pre_diagnostic(semester: str = None, user=Depends(admin_only)):
         })
 
     # 4. NSTP slot pool check
-    # NSTP is restricted to Fri/Sat only — 2 days, 3 valid fixed offsets each.
-    # Multiple sections can run in parallel across rooms, so total capacity
-    # = time positions × lecture rooms. Blocks are merged in pairs by the scheduler.
-    nstp_time_positions = 2 * 3  # days × fixed offsets
+    # NSTP is restricted to Fri/Sat only. Multiple sections can run in parallel across rooms.
+    nstp_days = sum(1 for d in (days or []) if d in ('Friday', 'Saturday'))
+    nstp_time_positions = nstp_days * 3  # up to 3 valid fixed offsets per active Fri/Sat
     nstp_available_slots = nstp_time_positions * max(len(lec_rooms), 1)
     nstp_total_blocks = sum(
         int(c.get("blocks", 1) or 1)
@@ -1163,11 +1162,12 @@ def pre_diagnostic(semester: str = None, user=Depends(admin_only)):
 
     # 5. GEC/MAT slot pool check
     # GEC/MAT restricted to Mon–Thu, 8 fixed start offsets per day.
-    # Multiple sections CAN occupy the same time offset in different rooms simultaneously,
-    # so total capacity = time_positions × lecture_rooms.
-    # The scheduler also merges blocks in pairs AND enforces Mon↔Tue / Wed↔Thu pairing
-    # per course (partially modeled — conservative estimate).
-    gec_available = 4 * 8 * max(len(lec_rooms), 1)  # time positions × parallel room capacity
+    # GEC_MAT is restricted to Mon-Thu. Valid offsets are based on specific clock hours.
+    # [7.0, 8.5, 10.0, 12.5, 14.0, 15.5, 17.5, 19.0]
+    gec_days = sum(1 for d in (days or []) if d in ('Monday', 'Tuesday', 'Wednesday', 'Thursday'))
+    gec_offsets = [h for h in [7.0, 8.5, 10.0, 12.5, 14.0, 15.5, 17.5, 19.0] if start_time <= h < end_time]
+    gec_available = gec_days * len(gec_offsets) * max(len(lec_rooms), 1)
+    
     gec_raw_blocks = sum(
         int(c.get("blocks", 1) or 1)
         for c in courses
@@ -1176,18 +1176,18 @@ def pre_diagnostic(semester: str = None, user=Depends(admin_only)):
     # Each pair of blocks shares one slot position (merged in scheduler)
     gec_sessions_needed = math.ceil(gec_raw_blocks / 2) if gec_raw_blocks > 0 else 0
     if gec_sessions_needed > 0:
-        gec_pct = round(gec_sessions_needed / gec_available * 100, 1)
+        gec_pct = round(gec_sessions_needed / max(gec_available, 1) * 100, 1)
         checks.append({
             "id":     "gec_slots",
             "label":  "GEC / MAT slot pool",
-            "status": "fail" if gec_pct > 90 else "warn" if gec_pct > 70 else "pass",
+            "status": "fail" if gec_pct > 90 or gec_available < gec_sessions_needed else "warn" if gec_pct > 70 else "pass",
             "detail": (
-                f"GEC/MAT restricted to Mon–Thu, 8 fixed time patterns × {len(lec_rooms)} lecture room(s) "
-                f"= {gec_available} effective positions. "
+                f"GEC/MAT restricted to Mon–Thu, {len(gec_offsets)} valid time pattern(s) inside your {start_time}:00–{end_time}:00 window × {len(lec_rooms)} lecture room(s) "
+                f"across {gec_days} active Mon-Thu day(s) = {gec_available} effective positions. "
                 f"{gec_raw_blocks} block(s) → {gec_sessions_needed} merged slot(s) needed "
                 f"({gec_pct}% of pool). Note: the solver also enforces Mon↔Tue / Wed↔Thu "
-                f"pairing per course, which may further reduce effective options."
-                + (" Pool nearly exhausted — high risk of failure." if gec_pct > 90
+                f"pairing per course."
+                + (" Pool nearly exhausted or insufficient — high risk of failure." if gec_pct > 90 or gec_available < gec_sessions_needed
                    else " Pool is getting tight." if gec_pct > 70
                    else " Pool has sufficient headroom.")
             ),
@@ -1434,8 +1434,8 @@ def _build_diagnostic_recommendations(checks, courses, faculty, lec_rooms, lab_r
     if check_map.get("nstp_slots", {}).get("status") in ("fail", "warn"):
         recs.append({
             "priority": 3, "type": "warning",
-            "title": "Reduce NSTP sections or allow Saturday scheduling",
-            "body": "NSTP is pinned to Fri/Sat with only 3 time-slot positions. With many sections, some will fail to place. Ensure Saturday is enabled in Settings.",
+            "title": "Reduce NSTP sections or allow Friday/Saturday scheduling",
+            "body": "NSTP is pinned to Friday/Saturday with only 3 time-slot positions per active day. Ensure Friday or Saturday is enabled in Settings, or add more lecture rooms.",
         })
 
     if check_map.get("gec_slots", {}).get("status") in ("fail", "warn"):

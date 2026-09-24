@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { sectionColor, getEventStyle, SLOT_HEIGHT } from './svHelpers'
 import { TV } from './svPrimitives'
 
-export default function SessionCard({
+const SessionCard = memo(function SessionCard({
   event, onClick, conflictInfo, isDragging, isDimmed,
   onDragStart, onDragEnd, compact, slotH = SLOT_HEIGHT, gridStart, overlapIndex = 0,
   spreadOffset = 0,
@@ -192,7 +192,7 @@ export default function SessionCard({
     return (
       <div
         draggable={!locked}
-        onDragStart={locked ? undefined : onDragStart}
+        onDragStart={locked ? undefined : e => onDragStart(e, event)}
         onDragEnd={locked ? undefined : onDragEnd}
         onDragOver={handleDragOverCard}
         onDragLeave={handleDragLeaveCard}
@@ -215,7 +215,7 @@ export default function SessionCard({
           cursor: locked ? 'default' : 'grab', overflow: 'hidden',
           boxShadow: computeShadow(),
           opacity: event._isDragGhost ? 0 : isDimmed ? 0.32 : isDragging ? 0.55 : 1,
-          pointerEvents: event._isDragGhost ? 'none' : 'auto',
+          pointerEvents: (event._isDragGhost || isDimmed || isDragging) ? 'none' : 'auto',
           transform,
           transition: 'all .15s ease-out',
           zIndex,
@@ -281,7 +281,7 @@ export default function SessionCard({
   return (
     <div
       draggable={!locked}
-      onDragStart={locked ? undefined : onDragStart}
+      onDragStart={locked ? undefined : e => onDragStart(e, event)}
       onDragEnd={locked ? undefined : onDragEnd}
       onDragOver={handleDragOverCard}
       onDragLeave={handleDragLeaveCard}
@@ -303,7 +303,7 @@ export default function SessionCard({
         overflow: 'hidden',
         boxShadow: computeShadow(),
         opacity: event._isDragGhost ? 0 : isDimmed ? 0.25 : isDragging ? 0.5 : 1,
-        pointerEvents: event._isDragGhost ? 'none' : 'auto',
+        pointerEvents: (event._isDragGhost || isDimmed || isDragging) ? 'none' : 'auto',
         transform,
         transition: isDragging ? 'opacity .12s ease' : 'all .18s ease-out',
         zIndex,
@@ -467,7 +467,7 @@ export default function SessionCard({
                 )}
                 <span style={{ fontSize: height > 58 ? 8 : 7.5, fontWeight: 600, color: textColor, opacity: height > 58 ? .65 : .6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {height > 58 ? event.faculty : event.faculty?.split(' ').pop()}
-                </span>
+        </span>
               </>
             )}
           </div>
@@ -475,4 +475,6 @@ export default function SessionCard({
       </div>
     </div>
   )
-}
+})
+
+export default SessionCard

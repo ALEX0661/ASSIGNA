@@ -1896,7 +1896,7 @@ export default function CoordScheduleViewPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '0 16px', height: 56, // Slightly taller to comfortably fit day buttons
             borderBottom: `1px solid ${TV.border}`,
-            background: 'linear-gradient(to bottom,#F2F7F4,var(--bg))',
+            background: 'linear-gradient(to bottom,var(--surface),var(--bg))',
           }}>
             
             {/* Left: name + stats + conflict */}

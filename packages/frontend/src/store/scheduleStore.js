@@ -19,16 +19,18 @@ export const useSolverStore = create((set) => ({
   label:     null,     // name of the schedule currently solving — shown in the floating pill
   originalName: null,  // the name that was being generated when solve started — preserved during navigation
   dismissed: false,    // whether the complete pill has been dismissed by user
+  error:     null,     // backend error message/diagnostic when status is 'failed'
   setProcessId: (id)   => set({ processId: id }),
   setProgress:  (p)    => set({ progress: p }),
   setStatus:    (s)    => set({ status: s }),
   setLabel:     (l)    => set({ label: l }),
   setOriginalName: (name) => set({ originalName: name }),
   setDismissed: (dismissed) => set({ dismissed }),
-  reset:        ()     => set({ processId: null, progress: 0, status: 'idle', label: null, originalName: null, dismissed: false }),
+  setError:     (error) => set({ error }),
+  reset:        ()     => set({ processId: null, progress: 0, status: 'idle', label: null, originalName: null, dismissed: false, error: null }),
   // Cancel stops the frontend polling and resets state. The backend task
   // finishes on its own but the result is simply never used.
-  cancelSolve: ()      => set({ processId: null, progress: 0, status: 'idle', label: null, originalName: null, dismissed: false }),
+  cancelSolve: ()      => set({ processId: null, progress: 0, status: 'idle', label: null, originalName: null, dismissed: false, error: null }),
 }))
 
 /**

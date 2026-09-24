@@ -54,6 +54,8 @@ const DASH_STYLE = `
     flex-direction: column;
     gap: 10px;
     min-width: 0;
+    position: relative;
+    overflow: hidden;
   }
   .stat-card:hover {
     box-shadow: 0 4px 18px rgba(0,0,0,0.1);
@@ -727,6 +729,10 @@ export default function DashboardPage() {
                   : null
               }
             </div>
+            {/* Decorative wave */}
+            <svg width="100%" height="40" style={{ position: 'absolute', bottom: 0, right: 0, opacity: 0.12, zIndex: 0, pointerEvents: 'none' }} viewBox="0 0 100 40" preserveAspectRatio="none">
+              <path d="M0 40 Q 25 10, 50 25 T 100 10 L 100 40 Z" fill={c.color} />
+            </svg>
           </div>
         ))}
       </div>

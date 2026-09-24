@@ -46,7 +46,7 @@ export function QueueShoutbox({ queueId, currentProgram, role = "coordinator", u
       const optMsg = {
         id: 'temp-' + Date.now(),
         message: text,
-        sender: role === 'admin' ? 'Admin' : currentProgram || userName || 'Coordinator',
+        sender: role === 'admin' ? 'Dean' : currentProgram || userName || 'Coordinator',
         role: role,
         timestamp: new Date().toISOString()
       }
@@ -76,12 +76,12 @@ export function QueueShoutbox({ queueId, currentProgram, role = "coordinator", u
           <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 13, marginTop: 20 }}>No messages yet. Say hi!</div>
         ) : (
           messages.map(m => {
-            const isMe = m.sender === (role === 'admin' ? 'Admin' : currentProgram || userName || 'Coordinator') || (m.id && m.id.startsWith('temp-'))
-            const isAdmin = m.role === 'admin' || m.sender === 'Admin'
+            const isMe = m.sender === (role === 'admin' ? 'Dean' : currentProgram || userName || 'Coordinator') || (m.id && m.id.startsWith('temp-'))
+            const isAdmin = m.role === 'admin' || m.sender === 'Dean'
             return (
               <div key={m.id} style={{ alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
                 <div style={{ fontSize: 11, color: 'var(--muted2)', marginBottom: 4, textAlign: isMe ? 'right' : 'left', fontWeight: isAdmin ? 700 : 500 }}>
-                  {m.sender} {isAdmin && <span style={{ color: 'var(--blue, #3B82F6)', background: 'var(--blue-soft, #DBEAFE)', padding: '1px 4px', borderRadius: 4, marginLeft: 4 }}>Admin</span>}
+                  {m.sender} {isAdmin && <span style={{ color: 'var(--blue, #3B82F6)', background: 'var(--blue-soft, #DBEAFE)', padding: '1px 4px', borderRadius: 4, marginLeft: 4 }}>Dean</span>}
                 </div>
                 <div style={{ padding: '8px 12px', borderRadius: 12, background: isMe ? 'var(--meadow-soft, #E6F0EB)' : '#fff', border: isMe ? '1px solid var(--meadow-border, #C1D8CD)' : '1px solid var(--border)', color: 'var(--ink)', fontSize: 13.5, lineHeight: 1.4 }}>
                   {m.message}

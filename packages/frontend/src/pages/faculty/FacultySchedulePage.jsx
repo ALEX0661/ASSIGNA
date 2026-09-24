@@ -5,6 +5,7 @@ import { buildConflictMap, isMergedEvent } from '../../components/ScheduleView/s
 import { exportScheduleToExcel } from '../../utils/exportScheduleToExcel'
 import { exportScheduleToICS } from '../../utils/exportScheduleToICS'
 import { useTour } from '../../hooks/useTour'
+import { mergeAndSortEvents, computeCorrectUnits, splitDayTokens, exportFacultyLoadToPDF } from '../../utils/exportFacultyLoadToPDF'
 
 // ─── PNG Icon Imports (stat strip) ────────────────────────────────────────────
 import iconClasses  from '../../assets/CLASSES.png'
@@ -397,8 +398,13 @@ function SessionModal({ event, onClose }) {
 function ListCard({ event, index, conflictMap, onClick }) {
   const isMerged    = isMergedEvent?.(event) ?? false
   const hasConflict = conflictMap?.has(event.schedule_id)
-  const dayIdx      = DAYS.indexOf(event.day)
+  
+  const tokens = splitDayTokens(event.day)
+  const DAY_TOKENS_REV = { 'M': 'Monday', 'T': 'Tuesday', 'W': 'Wednesday', 'Th': 'Thursday', 'F': 'Friday', 'Sat': 'Saturday', 'Sun': 'Sunday' }
+  const firstDay = DAY_TOKENS_REV[tokens[0]] || 'Monday'
+  const dayIdx = DAYS.indexOf(firstDay)
   const accentColor = DAY_COLOR[dayIdx] || T.green
+  
   const timeParts   = formatPeriodCompact(event.period || '')
 
   return (
@@ -485,8 +491,13 @@ function ListCard({ event, index, conflictMap, onClick }) {
 function GridCard({ event, index, conflictMap, onClick }) {
   const isMerged    = isMergedEvent?.(event) ?? false
   const hasConflict = conflictMap?.has(event.schedule_id)
-  const dayIdx      = DAYS.indexOf(event.day)
+  
+  const tokens = splitDayTokens(event.day)
+  const DAY_TOKENS_REV = { 'M': 'Monday', 'T': 'Tuesday', 'W': 'Wednesday', 'Th': 'Thursday', 'F': 'Friday', 'Sat': 'Saturday', 'Sun': 'Sunday' }
+  const firstDay = DAY_TOKENS_REV[tokens[0]] || 'Monday'
+  const dayIdx = DAYS.indexOf(firstDay)
   const accentColor = DAY_COLOR[dayIdx] || T.green
+  
   const isLab       = event.session?.toLowerCase().includes('lab')
   const timeParts   = formatPeriodCompact(event.period || '')
   const classTag    = [event.program, event.year && `Y${event.year}`, event.block].filter(Boolean).join(' ')
@@ -563,7 +574,10 @@ function GridCard({ event, index, conflictMap, onClick }) {
 function WeekHeatmap({ myEvents }) {
   const dayCount = useMemo(() => {
     const map = {}
-    DAYS.forEach(d => { map[d] = myEvents.filter(e => e.day === d).length })
+    const DAY_TOKENS = { Monday: 'M', Tuesday: 'T', Wednesday: 'W', Thursday: 'Th', Friday: 'F', Saturday: 'Sat', Sunday: 'Sun' }
+    DAYS.forEach(d => { 
+      map[d] = myEvents.filter(e => splitDayTokens(e.day).includes(DAY_TOKENS[d])).length 
+    })
     return map
   }, [myEvents])
   const maxCount = Math.max(...Object.values(dayCount), 1)
@@ -602,16 +616,23 @@ function TimetableView({ events, conflictMap, onSelect }) {
     const set = new Set(events.map(e => e.period).filter(Boolean))
     return [...set].sort((a, b) => periodStartMinutes(a) - periodStartMinutes(b))
   }, [events])
-  const activeDays = useMemo(() => DAYS.filter(d => events.some(e => e.day === d)), [events])
+  
+  const DAY_TOKENS = { Monday: 'M', Tuesday: 'T', Wednesday: 'W', Thursday: 'Th', Friday: 'F', Saturday: 'Sat', Sunday: 'Sun' }
+  const activeDays = useMemo(() => DAYS.filter(d => events.some(e => splitDayTokens(e.day).includes(DAY_TOKENS[d]))), [events])
 
   if (activeDays.length === 0 || timeSlots.length === 0) return null
 
   const cellMap = useMemo(() => {
     const m = {}
     for (const e of events) {
-      const key = `${e.day}||${e.period}`
-      if (!m[key]) m[key] = []
-      m[key].push(e)
+      const tokens = splitDayTokens(e.day)
+      for (const d of DAYS) {
+        if (tokens.includes(DAY_TOKENS[d])) {
+          const key = `${d}||${e.period}`
+          if (!m[key]) m[key] = []
+          m[key].push(e)
+        }
+      }
     }
     return m
   }, [events])
@@ -709,6 +730,8 @@ export default function FacultySchedulePage() {
   const [eventsLoading, setEventsLoading] = useState(false)
   const [exporting,     setExporting]     = useState(false)
   const [exportingIcs,  setExportingIcs]  = useState(false)
+  const [exportingPdf,  setExportingPdf]  = useState(false)
+  const [showExportMenu, setShowExportMenu] = useState(false)
   const [error,         setError]         = useState('')
 
   // Derive a stable list — faculty only sees finalized schedules
@@ -728,7 +751,7 @@ export default function FacultySchedulePage() {
     
     let sourceTag = ''
     if (meta.source === 'queue') sourceTag = ' (Official Queue)'
-    else if (meta.source === 'admin') sourceTag = ' (Admin)'
+    else if (meta.source === 'admin') sourceTag = ' (Dean)'
     
     return parts.join(' • ') + sourceTag
   }
@@ -789,17 +812,25 @@ export default function FacultySchedulePage() {
 
   const myEvents = useMemo(() => {
     if (!facultyName && !user?.email) return []
-    return events.filter(e => (facultyName && e.faculty === facultyName) || (user?.email && e.faculty === user.email))
+    const filtered = events.filter(e => (facultyName && e.faculty === facultyName) || (user?.email && e.faculty === user.email))
+    const merged = mergeAndSortEvents(filtered)
+    return merged.map(ev => ({
+      ...ev,
+      units: computeCorrectUnits(ev)
+    }))
   }, [events, facultyName, user])
 
   const conflictMap  = useMemo(() => buildConflictMap?.(myEvents) || new Map(), [myEvents])
-  const teachingDays = useMemo(() => DAYS.filter(d => myEvents.some(e => e.day === d)), [myEvents])
+  const DAY_TOKENS = { Monday: 'M', Tuesday: 'T', Wednesday: 'W', Thursday: 'Th', Friday: 'F', Saturday: 'Sat', Sunday: 'Sun' }
+  const teachingDays = useMemo(() => DAYS.filter(d => myEvents.some(e => splitDayTokens(e.day).includes(DAY_TOKENS[d]))), [myEvents])
   
   const displayedEvents = useMemo(() => {
     let arr = [...myEvents]
     
     // Filter by Day
-    if (activeDay !== 'All') arr = arr.filter(e => e.day === activeDay)
+    if (activeDay !== 'All') {
+      arr = arr.filter(e => splitDayTokens(e.day).includes(DAY_TOKENS[activeDay]))
+    }
     
     // Filter by Session Type
     if (sessionFilter === 'Lecture') arr = arr.filter(e => !e.session?.toLowerCase().includes('lab'))
@@ -815,8 +846,11 @@ export default function FacultySchedulePage() {
       )
     }
 
+    const DAY_TOKENS_REV = { 'M': 'Monday', 'T': 'Tuesday', 'W': 'Wednesday', 'Th': 'Thursday', 'F': 'Friday', 'Sat': 'Saturday', 'Sun': 'Sunday' }
     arr.sort((a, b) => {
-      const da = DAYS.indexOf(a.day), db = DAYS.indexOf(b.day)
+      const aFirst = DAY_TOKENS_REV[splitDayTokens(a.day)[0]] || 'Monday'
+      const bFirst = DAY_TOKENS_REV[splitDayTokens(b.day)[0]] || 'Monday'
+      const da = DAYS.indexOf(aFirst), db = DAYS.indexOf(bFirst)
       if (da !== db) return da - db
       return periodStartMinutes(a.period) - periodStartMinutes(b.period)
     })
@@ -865,6 +899,23 @@ export default function FacultySchedulePage() {
       await exportScheduleToICS(myEvents, `${safeName} - ${schedLabel}`)
     } finally {
       setExportingIcs(false)
+    }
+  }
+
+  async function handleExportPdf() {
+    if (!displayedEvents?.length || exportingPdf || !facultyMeta) return
+    setExportingPdf(true)
+    try {
+      const schedLabel = selectedSchedule || 'Schedule'
+      // Pass the faculty object required by exportFacultyLoadToPDF
+      const facultyObj = {
+        name: facultyName,
+        status: facultyMeta.status,
+        department: facultyMeta.department
+      }
+      await exportFacultyLoadToPDF(displayedEvents, facultyObj, { name: schedLabel, ...finalizedMeta }, computeCorrectUnits)
+    } finally {
+      setExportingPdf(false)
     }
   }
 
@@ -1060,25 +1111,65 @@ export default function FacultySchedulePage() {
               )}
             </div>
 
-            {/* Export Button */}
-            <button onClick={handleExport} disabled={exporting || displayedEvents.length === 0} className="fsp-export-btn" title="Export filtered schedule to Excel">
-              {exporting ? (
-                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'fsp-spin 0.8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-              ) : (
-                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              )}
-              Export
-            </button>
+            {/* Export Dropdown */}
+            <div style={{ position: 'relative' }}>
+              <button 
+                type="button"
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                onBlur={() => setTimeout(() => setShowExportMenu(false), 150)}
+                disabled={exporting || exportingIcs || exportingPdf || myEvents.length === 0} 
+                className="fsp-export-btn" 
+                title="Export options"
+              >
+                {(exporting || exportingIcs || exportingPdf) ? (
+                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'fsp-spin 0.8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                ) : (
+                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                )}
+                {(exporting || exportingIcs || exportingPdf) ? 'Exporting…' : 'Export'}
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 2, transform: showExportMenu ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
 
-            {/* Add to Calendar Button (.ics) */}
-            <button onClick={handleExportIcs} disabled={exportingIcs || myEvents.length === 0} className="fsp-export-btn" title="Download your full schedule as a .ics file to import into Google Calendar, Outlook, or Apple Calendar">
-              {exportingIcs ? (
-                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'fsp-spin 0.8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-              ) : (
-                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
+              {showExportMenu && (
+                <div style={{
+                  position: 'absolute', top: '100%', right: 0, marginTop: 4,
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  zIndex: 50, minWidth: 160, overflow: 'hidden',
+                  display: 'flex', flexDirection: 'column'
+                }}>
+                  <button
+                    onClick={() => { setShowExportMenu(false); handleExport() }}
+                    style={{ padding: '10px 14px', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontSize: 12, color: 'var(--ink)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--hover)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Export XLSX
+                  </button>
+                  
+                  <button
+                    onClick={() => { setShowExportMenu(false); handleExportIcs() }}
+                    style={{ padding: '10px 14px', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontSize: 12, color: 'var(--ink)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--hover)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
+                    Add to Calendar
+                  </button>
+                  
+                  <button
+                    onClick={() => { setShowExportMenu(false); handleExportPdf() }}
+                    style={{ padding: '10px 14px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--ink)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--hover)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/><line x1="9" y1="11" x2="12" y2="11"/></svg>
+                    Export PDF
+                  </button>
+                </div>
               )}
-              Add to Calendar
-            </button>
+            </div>
           </div>
         </div>
       )}

@@ -59,7 +59,7 @@ function MasterTab({ queueId, onFinalize, onUnpublish, programs, onMasterSaved }
             ? (
               <>
                 <Badge label="Published to Faculty" bg="rgba(255,255,255,0.18)" color="#fff" border="rgba(255,255,255,0.4)" />
-                <button onClick={() => setShowUnpublishConfirm(true)} disabled={acting} className="btn-secondary" style={{ padding: '6px 12px', fontSize: 11, background: 'var(--surface-sunken)', color: 'var(--ink)' }}>
+                <button onClick={() => setShowUnpublishConfirm(true)} disabled={acting} className="btn-outline" style={{ background: 'transparent', borderColor: 'rgba(255,255,255,0.4)', color: '#fff' }}>
                   {acting ? 'Unpublishing...' : 'Unpublish'}
                 </button>
               </>
@@ -204,7 +204,7 @@ function MasterTab({ queueId, onFinalize, onUnpublish, programs, onMasterSaved }
                 Finalizing and publishing this schedule will mark the current scheduling queue as complete.
               </p>
               <p style={{ margin: 0, padding: '10px 14px', background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: 8, fontSize: 12.5, fontWeight: 500, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                Note: If there is already another published schedule for this term (like an Admin Generated one), it will be automatically overwritten and unpublished. There can only be one active published schedule per term.
+                Note: If there is already another published schedule for this term (like an Dean Generated one), it will be automatically overwritten and unpublished. There can only be one active published schedule per term.
               </p>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>

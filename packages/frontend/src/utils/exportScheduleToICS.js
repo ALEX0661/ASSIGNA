@@ -13,6 +13,8 @@
  *   await exportScheduleToICS(events, 'My Schedule', { weeks: 18, startDate: new Date('2026-08-10') })
  */
 
+import { splitDayTokens } from './exportFacultyLoadToPDF'
+
 const DAY_TO_ICS = {
   Sunday: 'SU', Monday: 'MO', Tuesday: 'TU', Wednesday: 'WE',
   Thursday: 'TH', Friday: 'FR', Saturday: 'SA',
@@ -98,14 +100,18 @@ export async function exportScheduleToICS(events, name = 'schedule', opts = {}) 
   ]
 
   events.forEach((ev, idx) => {
-    if (!ev.day || !DAY_TO_ICS[ev.day]) return
+    if (!ev.day) return
+    const days = splitDayTokens(ev.day)
+    
+    days.forEach(dayName => {
+      if (!DAY_TO_ICS[dayName]) return
 
     const [rawStart = '', rawEnd = ''] = (ev.period || '').split(' - ')
     const startClock = parseClock(rawStart.trim())
     const endClock   = parseClock(rawEnd.trim())
     if (!startClock || !endClock) return // skip malformed rows (e.g. no period set yet)
 
-    const eventDate = nextWeekday(startDate, ev.day)
+    const eventDate = nextWeekday(startDate, dayName)
     const dtStart = new Date(eventDate); dtStart.setHours(startClock.h, startClock.m, 0, 0)
     const dtEnd   = new Date(eventDate); dtEnd.setHours(endClock.h,   endClock.m,   0, 0)
 
@@ -124,7 +130,7 @@ export async function exportScheduleToICS(events, name = 'schedule', opts = {}) 
     if (ev.faculty && ev.faculty !== 'TBA') descParts.push(`Faculty: ${ev.faculty}`)
     if (ev.session)                        descParts.push(ev.session)
 
-    const uid = `${ev.schedule_id ?? `${ev.courseCode}-${section}-${ev.day}-${idx}`}@schedule-export`
+    const uid = `${ev.schedule_id ?? `${ev.courseCode}-${section}-${dayName}-${idx}`}@schedule-export`
     const room = ev.room && ev.room !== 'TBA' ? ev.room : ''
 
     lines.push(
@@ -133,12 +139,13 @@ export async function exportScheduleToICS(events, name = 'schedule', opts = {}) 
       `DTSTAMP:${dtstamp}`,
       `DTSTART:${fmtDateTimeLocal(dtStart)}`,
       `DTEND:${fmtDateTimeLocal(dtEnd)}`,
-      `RRULE:FREQ=WEEKLY;BYDAY=${DAY_TO_ICS[ev.day]};UNTIL=${untilUTC}`,
+      `RRULE:FREQ=WEEKLY;BYDAY=${DAY_TO_ICS[dayName]};UNTIL=${untilUTC}`,
       `SUMMARY:${escapeText(summary)}`,
       room ? `LOCATION:${escapeText(room)}` : null,
       descParts.length ? `DESCRIPTION:${escapeText(descParts.join(' — '))}` : null,
       'END:VEVENT',
     )
+    })
   })
 
   lines.push('END:VCALENDAR')

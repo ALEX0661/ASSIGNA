@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 
 const isDark = document.documentElement.getAttribute('data-mode') === 'dark';
 import { getRooms, saveRooms, getCourses, bulkSetPreferredRooms } from '../../services/api'
@@ -193,114 +193,133 @@ function Checkbox({ checked, indeterminate, onChange }) {
 
 /* ── Upgraded Modal Component ──────────────────────────────────────────────── */
 
-function RoomAssignModal({ isOpen, onClose, onSave, title, initialRooms = [], lectureRooms = [], labRooms = [] }) {
-  const [selected, setSelected] = useState([])
+function RoomAssignModal({ isOpen, onClose, onSave, title, initialRooms = { lec: [], lab: [] }, lectureRooms = [], labRooms = [], course, isBulk }) {
+  const [selectedLec, setSelectedLec] = useState([...(initialRooms.lec || [])])
+  const [selectedLab, setSelectedLab] = useState([...(initialRooms.lab || [])])
+  const [showOverrideInLec, setShowOverrideInLec] = useState(false)
+  const [showOverrideInLab, setShowOverrideInLab] = useState(false)
 
   useEffect(() => {
-    if (isOpen) setSelected([...initialRooms])
+    if (isOpen) {
+      setSelectedLec([...(initialRooms.lec || [])])
+      setSelectedLab([...(initialRooms.lab || [])])
+      setShowOverrideInLec(false)
+      setShowOverrideInLab(false)
+    }
   }, [isOpen, initialRooms])
 
   if (!isOpen) return null
 
-  const toggle = (r) => {
-    if (selected.includes(r)) setSelected(selected.filter(x => x !== r))
-    else setSelected([...selected, r])
-  }
+  const hasLec = isBulk || (course && parseFloat(course.unitsLecture || 0) > 0)
+  const hasLab = isBulk || (course && parseFloat(course.unitsLab || 0) > 0)
+
+  // Show sections based on course units
+  const showLecSection = hasLec || (!hasLec && !hasLab)
+  const showLabSection = hasLab || (!hasLec && !hasLab)
+
+  const toggleLec = (r) => setSelectedLec(p => p.includes(r) ? p.filter(x => x !== r) : [...p, r])
+  const toggleLab = (r) => setSelectedLab(p => p.includes(r) ? p.filter(x => x !== r) : [...p, r])
 
   return (
     <div className="rm-modal-overlay" onMouseDown={onClose}>
-      <div className="rm-modal-box" onMouseDown={e => e.stopPropagation()}>
+      <div className="rm-modal-box" style={{ width: 600, maxHeight: '90vh' }} onMouseDown={e => e.stopPropagation()}>
         <div className="rm-modal-head">
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: G.ink, fontFamily: "'Inter', sans-serif" }}>Assign Rooms</div>
-            <div style={{ fontSize: 13, color: G.muted, marginTop: 4, fontWeight: 500 }}>{title}</div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <h3 style={{ margin: 0, fontSize: 18, color: 'var(--text-main)', fontWeight: 800 }}>Assign Rooms</h3>
+            {title && <span style={{ fontSize: 13, color: 'var(--meadow-text)', fontWeight: 600, marginTop: 4 }}>{title}</span>}
           </div>
-          <button className="modal-close-btn" onClick={onClose} aria-label="Close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+          <button className="modal-close-btn" onClick={onClose}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         
-        <div className="rm-modal-body">
-          <div style={{ background: 'var(--surface)', padding: '16px', borderRadius: 12, border: `1px solid ${G.border}`, boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Selected Rooms ({selected.length})</span>
-              {selected.length > 0 && (
-                <button onClick={() => setSelected([])} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>Clear All</button>
+        <div className="rm-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: '24px 20px' }}>
+          
+          {showLecSection && (
+            <div style={{ background: 'var(--surface)', padding: 16, borderRadius: 12, border: `1px solid ${showOverrideInLec ? '#EAB308' : 'var(--meadow-border)'}`, position: 'relative' }}>
+              <div style={{ position: 'absolute', top: -10, left: 16, background: 'var(--surface)', padding: '0 8px', fontSize: 11.5, fontWeight: 800, color: showOverrideInLec ? '#EAB308' : 'var(--meadow-text)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Lecture Unit Rooms
+              </div>
+              
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                {selectedLec.length === 0 && <span style={{ fontSize: 13, color: 'var(--muted)', fontStyle: 'italic' }}>No rooms selected.</span>}
+                {selectedLec.map(r => (
+                  <span key={r} className="assigned-pill" style={{ padding: '4px 8px', fontSize: 12, background: 'var(--meadow-soft)', border: '1px solid var(--meadow-border)' }}>
+                    {r} <svg onClick={() => toggleLec(r)} style={{ cursor: 'pointer', marginLeft: 4, opacity: 0.7 }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </span>
+                ))}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {lectureRooms.map(r => (
+                  <div key={r} className={`modal-room-card ${selectedLec.includes(r) ? 'selected' : ''}`} onClick={() => toggleLec(r)}>
+                    <div className="modal-room-card-inner">
+                      <Checkbox checked={selectedLec.includes(r)} onChange={() => {}} /> <span style={{ fontSize: 14, fontWeight: 700 }}>{r}</span>
+                    </div>
+                  </div>
+                ))}
+                {showOverrideInLec && labRooms.map(r => (
+                  <div key={r} className={`modal-room-card override ${selectedLec.includes(r) ? 'selected' : ''}`} onClick={() => toggleLec(r)} style={{ borderStyle: 'dashed' }}>
+                    <div className="modal-room-card-inner">
+                      <Checkbox checked={selectedLec.includes(r)} onChange={() => {}} /> <span style={{ fontSize: 14, fontWeight: 700, color: '#EAB308' }}>{r} (Lab)</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {!showOverrideInLec && labRooms.length > 0 && (
+                <button onClick={() => setShowOverrideInLec(true)} style={{ marginTop: 12, background: 'none', border: 'none', color: 'var(--meadow-text)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>+ Show Lab Rooms (Override)</button>
               )}
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {selected.length === 0 && <span style={{ fontSize: 13, color: G.muted, fontStyle: 'italic' }}>No rooms assigned to this pool yet.</span>}
-              {selected.map(r => (
-                <span key={r} className="assigned-pill" style={{ padding: '6px 10px', fontSize: 12 }}>
-                  {r} 
-                  <svg onClick={() => toggle(r)} style={{ cursor: 'pointer', marginLeft: 4, opacity: 0.7 }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </span>
-              ))}
+          )}
+
+          {showLabSection && (
+            <div style={{ background: 'var(--surface)', padding: 16, borderRadius: 12, border: `1px solid ${showOverrideInLab ? '#EAB308' : 'var(--meadow-border)'}`, position: 'relative' }}>
+              <div style={{ position: 'absolute', top: -10, left: 16, background: 'var(--surface)', padding: '0 8px', fontSize: 11.5, fontWeight: 800, color: showOverrideInLab ? '#EAB308' : 'var(--meadow-text)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Lab Unit Rooms
+              </div>
+              
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                {selectedLab.length === 0 && <span style={{ fontSize: 13, color: 'var(--muted)', fontStyle: 'italic' }}>No rooms selected.</span>}
+                {selectedLab.map(r => (
+                  <span key={r} className="assigned-pill" style={{ padding: '4px 8px', fontSize: 12, background: 'var(--meadow-soft)', border: '1px solid var(--meadow-border)' }}>
+                    {r} <svg onClick={() => toggleLab(r)} style={{ cursor: 'pointer', marginLeft: 4, opacity: 0.7 }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </span>
+                ))}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {labRooms.map(r => (
+                  <div key={r} className={`modal-room-card ${selectedLab.includes(r) ? 'selected' : ''}`} onClick={() => toggleLab(r)}>
+                    <div className="modal-room-card-inner">
+                      <Checkbox checked={selectedLab.includes(r)} onChange={() => {}} /> <span style={{ fontSize: 14, fontWeight: 700 }}>{r}</span>
+                    </div>
+                  </div>
+                ))}
+                {showOverrideInLab && lectureRooms.map(r => (
+                  <div key={r} className={`modal-room-card override ${selectedLab.includes(r) ? 'selected' : ''}`} onClick={() => toggleLab(r)} style={{ borderStyle: 'dashed' }}>
+                    <div className="modal-room-card-inner">
+                      <Checkbox checked={selectedLab.includes(r)} onChange={() => {}} /> <span style={{ fontSize: 14, fontWeight: 700, color: '#EAB308' }}>{r} (Lec)</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {!showOverrideInLab && lectureRooms.length > 0 && (
+                <button onClick={() => setShowOverrideInLab(true)} style={{ marginTop: 12, background: 'none', border: 'none', color: 'var(--meadow-text)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>+ Show Lecture Rooms (Override)</button>
+              )}
             </div>
-          </div>
+          )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {lectureRooms.length > 0 && (
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', marginBottom: 10, letterSpacing: '0.5px' }}>Lecture Rooms</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  {lectureRooms.map(r => {
-                    const isSel = selected.includes(r);
-                    return (
-                      <div key={r} className={`modal-room-card ${isSel ? 'selected' : ''}`} onClick={() => toggle(r)}>
-                        <div className="modal-room-card-inner">
-                          <Checkbox checked={isSel} onChange={() => {}} /> 
-                          <span style={{ fontSize: 14, fontWeight: 700 }}>{r}</span>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-            
-            {labRooms.length > 0 && (
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', marginBottom: 10, letterSpacing: '0.5px' }}>Lab Rooms</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  {labRooms.map(r => {
-                    const isSel = selected.includes(r);
-                    return (
-                      <div key={r} className={`modal-room-card ${isSel ? 'selected' : ''}`} onClick={() => toggle(r)}>
-                        <div className="modal-room-card-inner">
-                          <Checkbox checked={isSel} onChange={() => {}} /> 
-                          <span style={{ fontSize: 14, fontWeight: 700 }}>{r}</span>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {lectureRooms.length === 0 && labRooms.length === 0 && (
-              <div style={{ fontSize: 13, color: G.muted, textAlign: 'center', padding: '30px', background: 'var(--surface)', borderRadius: 12, border: `1px dashed ${G.border}` }}>
-                No rooms configured on campus. Add rooms in the header first.
-              </div>
-            )}
-          </div>
         </div>
-
-        <div className="rm-modal-foot">
-          <button className="btn-outline" onClick={onClose} style={{ padding: '8px 16px', fontSize: 13 }}>Cancel</button>
-          <button className="btn-primary" onClick={() => { onSave(selected); onClose(); }} style={{ padding: '8px 20px', fontSize: 13 }}>
-            Confirm Selection
-          </button>
+        <div className="rm-modal-footer">
+          <button className="btn-secondary" onClick={onClose} style={{ padding: '8px 16px', borderRadius: 8 }}>Cancel</button>
+          <button className="btn-primary" onClick={() => onSave({ lec: selectedLec, lab: selectedLab })} style={{ padding: '8px 16px', borderRadius: 8 }}>Confirm Selection</button>
         </div>
       </div>
     </div>
   )
 }
-
-/* ── Components ──────────────────────────────────────────────────────────── */
 
 function RoomChipList({ rooms, setRooms, type, loading, inputValue, setInputValue, onAdd }) {
   const dragIdx = useRef(null)
@@ -367,6 +386,7 @@ function RoomChipList({ rooms, setRooms, type, loading, inputValue, setInputValu
 
 /* ── Main Page ───────────────────────────────────────────────────────────────── */
 
+
 export default function RoomsPage() {
   const { toasts, toast } = useToast()
   
@@ -389,11 +409,13 @@ export default function RoomsPage() {
   const [savingAssigns, setSavingAssigns] = useState(false)
   const [search, setSearch] = useState('')
   const [progFilter, setProgFilter] = useState('All')
+  const [semFilter, setSemFilter] = useState('All')
+  const semesters = useMemo(() => ['All', ...new Set(courses.map(c => String(c.semester || '')))].filter(x => x), [courses])
   const [statusFilter, setStatusFilter] = useState('All')
   const [selected, setSelected] = useState(new Set())
 
   // Modal State
-  const [modalState, setModalState] = useState({ isOpen: false, targetKey: null, rooms: [], title: '' })
+  const [modalState, setModalState] = useState({ isOpen: false, targetKey: null, rooms: { lec: [], lab: [] }, title: '' })
 
   const { TourElement, startTour } = useTour('adminRooms', [
     {
@@ -501,13 +523,13 @@ export default function RoomsPage() {
   /* ── Assignment Handlers ── */
   const programs = useMemo(() => ['All', ...Array.from(new Set(courses.map(c => c.program).filter(Boolean))).sort()], [courses])
   
-  const dirtyKeys = useMemo(() => Object.keys(assignments).filter(k => assignments[k].join(',') !== original[k].join(',')), [assignments, original])
+  const dirtyKeys = useMemo(() => Object.keys(assignments).filter(k => assignments[k]?.lec?.join(',') !== original[k]?.lec?.join(',') || assignments[k]?.lab?.join(',') !== original[k]?.lab?.join(',')), [assignments, original])
 
   const visibleCourses = useMemo(() => {
     const q = search.toLowerCase().trim()
     return courses.filter(c => {
       const key = `${c.courseCode}_${c.program}`
-      const isAssigned = assignments[key]?.length > 0
+      const isAssigned = assignments[key]?.lec?.length > 0 || assignments[key]?.lab?.length > 0
       
       if (progFilter !== 'All' && c.program !== progFilter) return false
       if (statusFilter === 'Assigned' && !isAssigned) return false
@@ -515,7 +537,7 @@ export default function RoomsPage() {
       if (q && !c.courseCode.toLowerCase().includes(q) && !c.title.toLowerCase().includes(q)) return false
       return true
     })
-  }, [courses, search, progFilter, statusFilter, assignments])
+  }, [courses, search, progFilter, semFilter, statusFilter, assignments])
 
   const visibleKeys = visibleCourses.map(c => `${c.courseCode}_${c.program}`)
   const allSel = visibleKeys.length > 0 && visibleKeys.every(k => selected.has(k))
@@ -527,12 +549,12 @@ export default function RoomsPage() {
   const togOne = k => setSelected(p => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n })
 
   // Modal Openers
-  const openSingleModal = (key, title, currentRooms) => {
-    setModalState({ isOpen: true, targetKey: key, title, rooms: currentRooms })
+  const openSingleModal = (key, title, currentRooms, course) => {
+    setModalState({ isOpen: true, targetKey: key, title, rooms: currentRooms, course, isBulk: false })
   }
 
   const openBulkModal = () => {
-    setModalState({ isOpen: true, targetKey: 'BULK', title: `Bulk assign for ${selected.size} courses`, rooms: [] })
+    setModalState({ isOpen: true, targetKey: 'BULK', title: `Bulk assign for ${selected.size} courses`, rooms: { lec: [], lab: [] } })
   }
 
   const handleModalSave = (selectedRooms) => {
@@ -559,7 +581,7 @@ export default function RoomsPage() {
     const toSave = {}
     
     dirtyKeys.forEach(k => { 
-      toSave[k] = assignments[k].length > 0 ? assignments[k].join(', ') : null 
+      toSave[k] = assignments[k] 
     })
     
     try {
@@ -764,15 +786,15 @@ export default function RoomsPage() {
                 <tr>
                   <td colSpan={4} style={{ padding: '80px 20px', textAlign: 'center' }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: G.muted }}>No courses match your filters</div>
-                    <button onClick={() => { setSearch(''); setProgFilter('All'); setStatusFilter('All') }} style={{ fontSize: 12.5, color: 'var(--meadow-text-hover)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Inter', sans-serif", padding: 0, marginTop: 8, fontWeight: 600 }}>Clear all filters</button>
+                    <button onClick={() => { setSearch(''); setProgFilter('All'); setSemFilter('All'); setStatusFilter('All') }} style={{ fontSize: 12.5, color: 'var(--meadow-text-hover)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Inter', sans-serif", padding: 0, marginTop: 8, fontWeight: 600 }}>Clear all filters</button>
                   </td>
                 </tr>
               ) : (
                 visibleCourses.map((course, i) => {
                   const key = `${course.courseCode}_${course.program}`
                   const isSel = selected.has(key)
-                  const roomsArr = assignments[key] || []
-                  const isDirty = assignments[key].join(',') !== original[key].join(',')
+                  const prefs = assignments[key] || { lec: [], lab: [] }
+                  const isDirty = prefs.lec?.join(',') !== original[key]?.lec?.join(',') || prefs.lab?.join(',') !== original[key]?.lab?.join(',')
 
                   return (
                     <tr key={key} className="cp-tr-hover" onClick={() => togOne(key)} style={{ background: isSel ? G.meadowSoft : 'transparent', borderBottom: i < visibleCourses.length - 1 ? `1px solid ${G.borderLight}` : 'none', cursor: 'pointer', transition: 'background .15s' }}>
@@ -790,6 +812,8 @@ export default function RoomsPage() {
                             <span style={{ color: G.muted }}>{course.program}</span>
                             <span style={{ width: 4, height: 4, borderRadius: '50%', background: G.muted2 }} />
                             <span>Yr {course.yearLevel}</span>
+                            <span style={{ width: 4, height: 4, borderRadius: '50%', background: G.muted2 }} />
+                            <span>{course.semester || '—'}</span>
                           </div>
                         </div>
                       </td>
@@ -799,17 +823,19 @@ export default function RoomsPage() {
                           {course.unitsLab > 0 && <span style={{ color: '#38BDF8', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}><div style={{width:8,height:8,borderRadius:2,background:'rgba(59, 130, 246, 0.1)',border:`1px solid #BAE6FD`}}/> {course.unitsLab}L</span>}
                         </div>
                       </td>
-                      <td style={{ padding: '12px 20px', verticalAlign: 'middle' }} onClick={e => e.stopPropagation()}>
-                        {roomsArr.length === 0 ? (
-                          <button className="assign-trigger" onClick={() => openSingleModal(key, `${course.courseCode} - ${course.title}`, roomsArr)}>
+                                            <td style={{ padding: '12px 20px', verticalAlign: 'middle' }} onClick={e => e.stopPropagation()}>
+                        {prefs.lec?.length === 0 && prefs.lab?.length === 0 ? (
+                          <button className="assign-trigger" onClick={() => openSingleModal(key, `${course.courseCode} - ${course.title}`, prefs, course)}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                             Assign Pool
                           </button>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                            {roomsArr.slice(0, 4).map(r => <span key={r} className="assigned-pill">{r}</span>)}
-                            {roomsArr.length > 4 && <span style={{ fontSize: 11.5, fontWeight: 800, color: G.muted }}>+{roomsArr.length - 4}</span>}
-                            <button onClick={() => openSingleModal(key, `${course.courseCode} - ${course.title}`, roomsArr)} style={{ border: '1px solid transparent', background: 'transparent', cursor: 'pointer', color: 'var(--meadow-text-hover)', display: 'flex', alignItems: 'center', padding: '5px', marginLeft: '4px', borderRadius: '6px', transition: 'all 0.15s' }} onMouseOver={e => {e.currentTarget.style.background = G.meadowSoft; e.currentTarget.style.borderColor = G.meadowBorder}} onMouseOut={e => {e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'}} title="Edit Assigned Rooms">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {prefs.lec?.length > 0 && <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}><span style={{fontSize: 9, fontWeight: 800, color: 'var(--muted)'}}>LEC</span> {prefs.lec.slice(0, 3).map(r => <span key={`lec_${r}`} className="assigned-pill" style={{background: 'var(--surface)', padding: '2px 6px', fontSize: 11}}>{r}</span>)}{prefs.lec.length > 3 && <span style={{fontSize:11, color: 'var(--muted)'}}>+{prefs.lec.length-3}</span>}</div>}
+                              {prefs.lab?.length > 0 && <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}><span style={{fontSize: 9, fontWeight: 800, color: 'var(--muted)'}}>LAB</span> {prefs.lab.slice(0, 3).map(r => <span key={`lab_${r}`} className="assigned-pill" style={{background: 'var(--surface)', padding: '2px 6px', fontSize: 11}}>{r}</span>)}{prefs.lab.length > 3 && <span style={{fontSize:11, color: 'var(--muted)'}}>+{prefs.lab.length-3}</span>}</div>}
+                            </div>
+                            <button onClick={() => openSingleModal(key, `${course.courseCode} - ${course.title}`, prefs, course)} style={{ border: '1px solid transparent', background: 'transparent', cursor: 'pointer', color: 'var(--meadow-text-hover)', display: 'flex', alignItems: 'center', padding: '5px', marginLeft: '4px', borderRadius: '6px', transition: 'all 0.15s' }} onMouseOver={e => {e.currentTarget.style.background = G.meadowSoft; e.currentTarget.style.borderColor = G.meadowBorder}} onMouseOut={e => {e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'}} title="Edit Assigned Rooms">
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             </button>
                           </div>
@@ -832,6 +858,8 @@ export default function RoomsPage() {
         lectureRooms={lecture} 
         labRooms={lab} 
         onSave={handleModalSave} 
+        course={modalState.course}
+        isBulk={modalState.isBulk}
       />
 
       <ToastContainer toasts={toasts} />

@@ -59,7 +59,7 @@ def _set_program_status(queue_id: str, program: str, new_status: str, only_if: s
         return
     doc_ref.update({
         f"programStatus.{program}": new_status,
-        "updatedAt": datetime.utcnow().isoformat()
+        "updatedAt": (datetime.utcnow().isoformat() + "Z")
     })
 
 def _verify_schedule_ownership(schedule_id: str, program: str):
@@ -422,7 +422,7 @@ def save_schedule(req: SaveScheduleRequest, user: dict = Depends(coordinator_onl
     uid = user.get("uid")
     
     schedule_id = str(uuid.uuid4())
-    now = datetime.utcnow().isoformat()
+    now = (datetime.utcnow().isoformat() + "Z")
 
     queue_id, queue_doc = _get_active_queue()
     semester = queue_doc.get("semester") if queue_doc else None
@@ -501,7 +501,7 @@ def save_schedule_inplace(schedule_id: str, user: dict = Depends(coordinator_onl
         v.get("fingerprint") == existing_fp for v in version_history
     )
 
-    now = datetime.utcnow().isoformat()
+    now = (datetime.utcnow().isoformat() + "Z")
 
     # Archive the state being overwritten — only when it actually differs
     # from what's about to replace it, and isn't already sitting in history.
@@ -625,7 +625,7 @@ def restore_schedule_version(schedule_id: str, version: int, user: dict = Depend
     if not restored_events:
         raise HTTPException(422, f"Version {version} has no stored schedule data and cannot be restored")
 
-    now = datetime.utcnow().isoformat()
+    now = (datetime.utcnow().isoformat() + "Z")
 
     # Archive whatever is currently live before clobbering it, deduped by
     # content fingerprint (not version number, which freezes across restores).
@@ -716,7 +716,7 @@ def rename_schedule(schedule_id: str, req: RenameRequest, user: dict = Depends(c
     
     doc_ref.update({
         "name": req.name,
-        "updatedAt": datetime.utcnow().isoformat()
+        "updatedAt": (datetime.utcnow().isoformat() + "Z")
     })
     return {"message": "Schedule renamed successfully"}
 
@@ -726,7 +726,7 @@ def duplicate_schedule(schedule_id: str, req: DuplicateRequest, user: dict = Dep
     _, data = _verify_schedule_ownership(schedule_id, program)
     
     new_id = str(uuid.uuid4())
-    now = datetime.utcnow().isoformat()
+    now = (datetime.utcnow().isoformat() + "Z")
     
     new_data = data.copy()
     new_data["name"] = req.name
@@ -784,8 +784,8 @@ def submit_schedule(schedule_id: str, user: dict = Depends(coordinator_only)):
             raise HTTPException(status_code=400, detail=f"You already have a submitted or approved schedule in the active queue.")
     doc_ref.update({
         "status": "submitted",
-        "submittedAt": datetime.utcnow().isoformat(),
-        "updatedAt": datetime.utcnow().isoformat(),
+        "submittedAt": (datetime.utcnow().isoformat() + "Z"),
+        "updatedAt": (datetime.utcnow().isoformat() + "Z"),
         "queueId": queue_id,
         "rejectionFeedback": firestore.DELETE_FIELD,
         "unfinalizedNote": firestore.DELETE_FIELD
@@ -805,7 +805,7 @@ def unsubmit_schedule(schedule_id: str, user: dict = Depends(coordinator_only)):
     doc_ref.update({
         "status": "draft",
         "submittedAt": None,
-        "updatedAt": datetime.utcnow().isoformat()
+        "updatedAt": (datetime.utcnow().isoformat() + "Z")
     })
     _set_program_status(data.get("queueId"), program, "active", only_if="submitted")
     return {"message": "Schedule unsubmitted successfully"}
@@ -820,7 +820,7 @@ def save_room_selection(req: RoomSelectionRequest, user: dict = Depends(coordina
     doc_data = {
         "lecture": req.lecture,
         "lab": req.lab,
-        "updatedAt": datetime.utcnow().isoformat()
+        "updatedAt": (datetime.utcnow().isoformat() + "Z")
     }
     db.collection("coordinator_room_selections").document(program).set(doc_data)
     return {"message": "Room selection saved successfully"}

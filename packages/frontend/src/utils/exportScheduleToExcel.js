@@ -159,70 +159,25 @@ function applyDataStyle(cell, rowIndex) {
   cell.alignment = { vertical: 'middle', wrapText: false }
 }
 
+import { mergeAndSortEvents, formatCourseCode, formatCourseTitle, formatSection } from './exportFacultyLoadToPDF'
+
 // ── Main export ───────────────────────────────────────────────────────────────
-/**
- * Shared pipeline: raw schedule events → final merged/sorted row objects.
- * Used by both the Excel exporter (below) and the PDF exporter, so both
- * outputs apply the exact same consecutive-time / day / lec-lab-suffix
- * merge rules described at the top of this file.
- *
- * @param {object[]} events – raw schedule events from the Zustand store
- * @returns {object[]} merged row objects: { classcode, courseCode, description, day, startMin, endMin, room, faculty, ... }
- */
 export function computeScheduleRows(events) {
   if (!events?.length) return []
-
-  // ── A. Which sections have BOTH lecture and lab? ───────────────────────────
-  const sectionTypes = {}
-  events.forEach(ev => {
-    const key = `${ev.program ?? ''}${ev.year ?? ''}${ev.block ?? ''}`
-    if (!sectionTypes[key]) sectionTypes[key] = new Set()
-    sectionTypes[key].add(ev.session?.toUpperCase().includes('LAB') ? 'lab' : 'lec')
-  })
-
-  // ── B. Flatten raw events → normalised objects with numeric times ──────────
-  const flat = events.map(ev => {
-    const sectionKey = `${ev.program ?? ''}${ev.year ?? ''}${ev.block ?? ''}`
-    const hasBoth    = sectionTypes[sectionKey]?.size === 2
-    const isLab      = ev.session?.toUpperCase().includes('LAB')
-
-    const courseCode = hasBoth
-      ? `${ev.courseCode || ''}${isLab ? 'L' : 'A'}`
-      : (ev.courseCode || '')
-
-    const [rawStart = '', rawEnd = ''] = (ev.period || '').split(' - ')
-    const startMin = parseTime(rawStart.trim())
-    const endMin   = parseTime(rawEnd.trim())
-
+  
+  // Use the exact same merge logic as the frontend UI and faculty load PDF
+  const merged = mergeAndSortEvents(events)
+  
+  // Map back to the fields expected by the excel export
+  return merged.map(ev => {
     return {
-      classcode:   sectionKey,
-      courseCode,
-      description: ev.title || '',
-      day:         ev.day   || '',
-      startMin,
-      endMin,
-      room:    ev.room    && ev.room    !== 'TBA' ? ev.room    : 'TBA',
-      faculty: ev.faculty && ev.faculty !== 'TBA' ? ev.faculty : '',
-      // Keep the section order key for final sort
-      _sectionKey: sectionKey,
+      ...ev,
+      section: formatSection(ev),
+      courseCode: formatCourseCode(ev),
+      description: formatCourseTitle(ev),
+      session: ev.session || '',
     }
   })
-
-  // ── C. Merge pipeline ─────────────────────────────────────────────────────
-  //  1. consecutive times → 2. collapse matching days
-  const afterTimeMerge = mergeConsecutiveTimes(flat)
-  const afterDayMerge  = mergeSameDayPattern(afterTimeMerge)
-
-  // ── D. Final sort: classcode → first day in group → start time ────────────
-  afterDayMerge.sort((a, b) => {
-    const sk = a._sectionKey.localeCompare(b._sectionKey)
-    if (sk !== 0) return sk
-    const do_ = (a.minDayOrder ?? 9) - (b.minDayOrder ?? 9)
-    if (do_ !== 0) return do_
-    return (a.startMin ?? 0) - (b.startMin ?? 0)
-  })
-
-  return afterDayMerge
 }
 
 /**
@@ -235,16 +190,19 @@ export async function exportScheduleToExcel(events, name = 'schedule') {
   const afterDayMerge = computeScheduleRows(events)
 
   // ── E. Convert to plain row arrays for ExcelJS ────────────────────────────
-  const rows = afterDayMerge.map(ev => [
-    ev.classcode,
-    ev.courseCode,
-    ev.description,
-    ev.day,
-    ev.startMin !== null ? formatTime(ev.startMin) : '',
-    ev.endMin   !== null ? formatTime(ev.endMin)   : '',
-    ev.room,
-    ev.faculty,
-  ])
+  const rows = afterDayMerge.map(ev => {
+    return [
+      ev.courseCode || ev.subject || '',
+      ev.description || '',
+      ev.section || '',
+      ev.session || '',
+      ev.day || '',
+      ev.startMin !== undefined && ev.startMin !== null && ev.startMin !== 0 ? formatTime(ev.startMin) : (ev.period?.split(' - ')[0] || ''),
+      ev.endMin   !== undefined && ev.endMin !== null && ev.endMin !== 0 ? formatTime(ev.endMin)   : (ev.period?.split(' - ')[1] || ''),
+      ev.room || 'TBA',
+      ev.faculty || '',
+    ]
+  })
 
   // ── F. Build workbook ──────────────────────────────────────────────────────
   const wb = new ExcelJS.Workbook()
@@ -256,9 +214,10 @@ export async function exportScheduleToExcel(events, name = 'schedule') {
   })
 
   ws.columns = [
-    { key: 'classcode', width: 13 },
     { key: 'code',      width: 14 },
-    { key: 'desc',      width: 48 },
+    { key: 'desc',      width: 38 },
+    { key: 'section',   width: 18 },
+    { key: 'session',   width: 14 },
     { key: 'day',       width: 10 },
     { key: 'start',     width: 12 },
     { key: 'end',       width: 12 },
@@ -268,13 +227,13 @@ export async function exportScheduleToExcel(events, name = 'schedule') {
 
   // Header row
   const HEADERS = [
-    'Classcode', 'Course Code', 'Course Description',
+    'Course Code', 'Course Description', 'Section', 'Session',
     'Day', 'Start Time', 'End Time', 'Room', 'FACULTY',
   ]
   const headerRow = ws.addRow(HEADERS)
   headerRow.height = 22
   headerRow.eachCell((cell, col) => {
-    applyHeaderStyle(cell, col === 8 ? 'FF' + SUBHDR_FILL : 'FF' + HEADER_FILL)
+    applyHeaderStyle(cell, col === 9 ? 'FF' + SUBHDR_FILL : 'FF' + HEADER_FILL)
   })
 
   // Data rows
@@ -283,19 +242,19 @@ export async function exportScheduleToExcel(events, name = 'schedule') {
     dataRow.height = 16
     dataRow.eachCell({ includeEmpty: true }, cell => applyDataStyle(cell, idx))
 
-    // Classcode — bold + centered
-    const cc = dataRow.getCell(1)
-    cc.font      = { name: 'Arial', size: 10, bold: true }
-    cc.alignment = { horizontal: 'center', vertical: 'middle' }
+    // Section — bold + centered
+    const sectionCell = dataRow.getCell(3)
+    sectionCell.font      = { name: 'Arial', size: 10, bold: true }
+    sectionCell.alignment = { horizontal: 'center', vertical: 'middle' }
 
-    // Day / Start / End / Room — centered
-    ;[4, 5, 6, 7].forEach(col => {
+    // Session / Day / Start / End / Room — centered
+    ;[4, 5, 6, 7, 8].forEach(col => {
       dataRow.getCell(col).alignment = { horizontal: 'center', vertical: 'middle' }
     })
   })
 
   // Auto-filter
-  ws.autoFilter = { from: 'A1', to: 'H1' }
+  ws.autoFilter = { from: 'A1', to: 'I1' }
 
   // ── G. Download ───────────────────────────────────────────────────────────
   const buffer = await wb.xlsx.writeBuffer()

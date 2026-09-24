@@ -248,19 +248,18 @@ const RoomColumnMemo = React.memo(function RoomColumn({
         const isMerged = mergedIds ? mergedIds.has(evId) : false
 
         return (
-          // When another card is being dragged, make this card transparent to
-          // pointer/drag events so the slot-drop-targets underneath are reachable.
-          // The dragged card itself keeps pointer-events so it can be grabbed.
+          // When any card is being dragged, make ALL cards (including the one left behind)
+          // transparent to pointer/drag events so the slot-drop-targets underneath are reachable.
           <div
             key={evId}
-            style={{ pointerEvents: isDimmed ? 'none' : 'auto' }}
+            style={{ pointerEvents: draggedEvent ? 'none' : 'auto' }}
           >
             <SessionCard
               event={event} conflictInfo={conflictInfo}
               isDragging={isDragging} isDimmed={isDimmed}
               compact={compact} slotH={slotH} gridStart={gridStart}
               onClick={onCardClick}
-              onDragStart={e => onDragStart(e, event)} onDragEnd={onDragEnd}
+              onDragStart={onDragStart} onDragEnd={onDragEnd}
               locked={locked || event._isReadonly}
               overlapIndex={overlapIndex}
               spreadOffset={spreadOffset}

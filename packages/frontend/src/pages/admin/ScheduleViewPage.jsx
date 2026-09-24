@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { useScheduleStore } from '../../store/scheduleStore'
-import { getSchedules, getRooms, getFaculty, saveSchedule, finalizeSchedule, unfinalizeSchedule, updateScheduleMeta, getSubmittedSchedule, getMasterSchedule, deleteSaved, getTime, getResult } from '../../services/api'
+import { getSchedules, getRooms, getFaculty, saveSchedule, finalizeSchedule, unfinalizeSchedule, updateScheduleMeta, getSubmittedSchedule, getMasterSchedule, deleteSaved, getTime, getResult, renameAdminSchedule } from '../../services/api'
 import { buildConflictMap, DAYS, getEventId, getMergedIds } from '../../components/ScheduleView/svHelpers'
 import { TV, ConflictSummaryBar, Toast, FilterButton, FilterRow, PendingChangesBar, PendingChangesModal, ProgramLegend, ModalOverlay, ModalHeader } from '../../components/ScheduleView/svPrimitives'
 import { useFilters, useDragDrop } from '../../components/ScheduleView/svHooks'
@@ -374,7 +374,7 @@ function ScheduleDropdown({ names, activeName, loading, initLoading, onChange, s
     if (meta?.source === 'queue') {
       label = `${label} (Official Queue)`
     } else if (meta?.source === 'admin') {
-      label = `${label} (Admin)`
+      label = `${label} (Dean)`
     }
 
     return meta?.finalized ? `${label} ★` : label
@@ -579,7 +579,7 @@ function ExportMenuButton({ onExportSchedule, onExportRooms, onExportSchedulePdf
   const itemStyle = {
     display: 'flex', alignItems: 'center', gap: 8, width: '100%',
     padding: '9px 14px', fontSize: 12.5, fontWeight: 600, color: 'var(--ink)',
-    background: 'var(--surface)', border: 'none', cursor: 'pointer',
+    background: 'transparent', border: 'none', cursor: 'pointer',
     fontFamily: 'Inter, sans-serif', textAlign: 'left',
   }
   return (
@@ -612,9 +612,9 @@ function ExportMenuButton({ onExportSchedule, onExportRooms, onExportSchedulePdf
           }}>
             <button
               onClick={() => { setOpen(false); onExportSchedule() }}
-              style={{ ...itemStyle, borderBottom: '1px solid #EEF3F0' }}
+              style={{ ...itemStyle, borderBottom: '1px solid var(--border)' }}
               onMouseEnter={e => e.currentTarget.style.background = 'var(--meadow-soft)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
@@ -623,9 +623,9 @@ function ExportMenuButton({ onExportSchedule, onExportRooms, onExportSchedulePdf
             </button>
             <button
               onClick={() => { setOpen(false); onExportSchedulePdf() }}
-              style={{ ...itemStyle, borderBottom: '1px solid #EEF3F0' }}
+              style={{ ...itemStyle, borderBottom: '1px solid var(--border)' }}
               onMouseEnter={e => e.currentTarget.style.background = 'var(--meadow-soft)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
@@ -637,7 +637,7 @@ function ExportMenuButton({ onExportSchedule, onExportRooms, onExportSchedulePdf
               onClick={() => { setOpen(false); onExportRooms() }}
               style={itemStyle}
               onMouseEnter={e => e.currentTarget.style.background = 'var(--meadow-soft)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/>
@@ -1161,9 +1161,36 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
   }
 
   /* ── Rename ─────────────────────────────────────────────────────────────── */
-  function handleSaveName() {
-    if (tempName.trim()) { setActiveName(tempName.trim()); setName(tempName.trim()) }
-    setIsEditingName(false)
+  const [renameState, setRenameState] = useState('idle')
+
+  async function handleSaveName() {
+    const next = tempName.trim()
+    if (!next || next === activeName) {
+      setIsEditingName(false)
+      return
+    }
+    
+    setRenameState('saving')
+    try {
+      if (idToMatch) {
+        await renameAdminSchedule(activeName, next)
+      }
+      setActiveName(next)
+      setName(next)
+      setId(next)
+      setIsEditingName(false)
+      setRenameState('idle')
+      // If we are currently on the URL for the old name, we might want to navigate
+      // to the new URL, but for now we'll just let the user stay on the page.
+      // A full refresh or navigate would be ideal but just updating state works.
+      if (idToMatch && idToMatch !== next) {
+        window.history.replaceState(null, '', `/admin/schedule/${encodeURIComponent(next)}`)
+      }
+    } catch (err) {
+      console.error(err)
+      setRenameState('error')
+      setTimeout(() => setRenameState('idle'), 2200)
+    }
   }
 
   /* ── Make a copy ────────────────────────────────────────────────────────── */
@@ -1505,9 +1532,53 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
   /* ════════════════════ RENDER ════════════════════════════════════════════ */
   if (initLoading) {
     return (
-      <div className="sv-page loading" style={{ height:'100dvh', display:'flex', flexDirection:'column', padding: embeddedId ? '20px 24px' : 0 }}>
-        {embeddedId && <ModalHeader title="Loading…" onClose={onClose} />}
-        <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center' }}><div className="co-spinner" /></div>
+      <div className="sv-page loading fadein" style={{ height:'100dvh', display:'flex', flexDirection:'column', padding: embeddedId ? '20px 24px' : '15px 15px 30px', background: 'var(--bg)', boxSizing: 'border-box' }}>
+        <style>{`
+          @keyframes sv-shimmer {
+            0% { opacity: 0.7; }
+            50% { opacity: 0.3; }
+            100% { opacity: 0.7; }
+          }
+          .sv-skel {
+            background: var(--border);
+            border-radius: 8px;
+            animation: sv-shimmer 1.5s ease-in-out infinite;
+          }
+        `}</style>
+        {embeddedId && <ModalHeader title="Loading Schedule…" onClose={onClose} />}
+        
+        {!embeddedId && (
+          <div style={{ display:'flex', justifyContent:'space-between', marginBottom: 20 }}>
+            <div className="sv-skel" style={{ width: 250, height: 32 }} />
+            <div className="sv-skel" style={{ width: 120, height: 32 }} />
+          </div>
+        )}
+
+        {/* Stats Row Skeleton */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 15 }}>
+          {[1,2,3,4,5].map(i => (
+            <div key={i} className="sv-skel" style={{ flex: 1, height: 68, borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)' }} />
+          ))}
+        </div>
+
+        {/* Toolbar Skeleton */}
+        <div className="sv-skel" style={{ height: 50, borderRadius: 12, marginBottom: 15, background: 'var(--surface)', border: '1px solid var(--border)' }} />
+
+        {/* Grid/List Body Skeleton */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ height: 40, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', padding: '0 15px', gap: 10, background: 'var(--hover)' }}>
+             <div className="sv-skel" style={{ width: 60, height: 16 }} />
+             <div className="sv-skel" style={{ width: 100, height: 16 }} />
+             <div className="sv-skel" style={{ width: 100, height: 16 }} />
+          </div>
+          {[1,2,3,4,5,6].map(i => (
+            <div key={i} style={{ height: 65, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', padding: '0 15px', gap: 10 }}>
+               <div className="sv-skel" style={{ width: 50, height: 16 }} />
+               <div className="sv-skel" style={{ flex: 1, height: 40, borderRadius: 8, opacity: 0.5 }} />
+               <div className="sv-skel" style={{ width: 120, height: 40, borderRadius: 8, opacity: 0.5 }} />
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
@@ -1524,10 +1595,14 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
                 autoFocus value={tempName}
                 onChange={e => setTempName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSaveName()}
+                disabled={renameState === 'saving'}
                 style={{ fontSize:20, fontWeight:700, padding:'4px 10px', borderRadius:8, border:`2px solid ${TV.mid}`, outline:'none', width:230, fontFamily:'Inter,sans-serif' }}
               />
-              <button onClick={handleSaveName} style={{ padding:'6px 14px', background:TV.deep, color: '#fff', border:'none', borderRadius:8, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>Save</button>
-              <button onClick={() => setIsEditingName(false)} style={{ padding:'6px 14px', background: 'var(--surface)', border:`1px solid ${TV.border}`, borderRadius:8, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>Cancel</button>
+              <button onClick={handleSaveName} disabled={renameState === 'saving'} style={{ padding:'6px 14px', background:TV.deep, color: '#fff', border:'none', borderRadius:8, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
+                {renameState === 'saving' ? 'Saving…' : 'Save'}
+              </button>
+              <button onClick={() => setIsEditingName(false)} disabled={renameState === 'saving'} style={{ padding:'6px 14px', background: 'var(--surface)', border:`1px solid ${TV.border}`, borderRadius:8, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>Cancel</button>
+              {renameState === 'error' && <span style={{fontSize:11, color:'#EF4444', fontWeight:600}}>Error saving name</span>}
             </div>
           ) : (
             <div style={{ display:'flex', alignItems:'center', gap:16 }}>
@@ -2048,7 +2123,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '0 16px', height: 56, // Slightly taller to comfortably fit day buttons
             borderBottom: `1px solid ${TV.border}`,
-            background: 'linear-gradient(to bottom,#F2F7F4,var(--bg))',
+            background: 'linear-gradient(to bottom,var(--surface),var(--bg))',
           }}>
             
             {/* Left: name + stats + conflict */}

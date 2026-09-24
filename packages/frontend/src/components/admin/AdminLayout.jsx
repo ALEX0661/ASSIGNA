@@ -189,8 +189,8 @@ export default function AdminLayout() {
             {!collapsed && (
               <>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div className="sidebar-user-email">{user?.email ?? 'Admin'}</div>
-                  <div className="sidebar-user-role">Administrator</div>
+                  <div className="sidebar-user-email">{user?.email ?? 'Dean'}</div>
+                  <div className="sidebar-user-role">Dean</div>
                 </div>
                 <button className="sidebar-logout-btn" onClick={() => setShowLogoutModal(true)} title="Log out">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -255,7 +255,7 @@ export default function AdminLayout() {
             </div>
             <span className="topbar-badge" style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:99, background:'var(--hover)', border:'1px solid var(--border)', fontSize:10.5, fontWeight:700, color:'var(--muted)', letterSpacing:'.3px' }}>
               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              Admin
+              Dean
             </span>
           </div>
 

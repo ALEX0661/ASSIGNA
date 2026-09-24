@@ -154,9 +154,12 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
       setToast({ type: 'info', message: 'This schedule is locked and can no longer be edited.' })
       return
     }
-    setDraggedEvent(event)
     e.dataTransfer.effectAllowed = 'move'
     e.dataTransfer.setData('text/plain', getEventId(event))
+    // Defer state update so the browser captures the drag source before we mutate its pointer-events
+    setTimeout(() => {
+      setDraggedEvent(event)
+    }, 0)
   }, [locked])
 
   const handleDragEnd = useCallback(() => {
@@ -167,8 +170,17 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     }, 30)
   }, [])
 
+  const lastDragOverTime = useRef(0)
+
   const handleDragOver = useCallback((e, room, slot) => {
     e.preventDefault(); e.dataTransfer.dropEffect = 'move'
+    const now = Date.now()
+    // Throttle: only update hovered cell at most every 50 ms.
+    // Without this, every pixel of mouse movement triggers setHoveredCell
+    // which re-renders the entire grid (800+ cards) and re-runs four expensive
+    // useMemo conflict-detection loops — the main source of drag lag.
+    if (now - lastDragOverTime.current < 50) return
+    lastDragOverTime.current = now
     setHoveredCell(`${room}|${slot.startMinutes}`)
   }, [])
 

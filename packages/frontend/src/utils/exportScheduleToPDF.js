@@ -87,14 +87,15 @@ export async function exportScheduleToPDF(events, name = 'schedule', meta = {}) 
 
   // ── Schedule table ────────────────────────────────────────────────────
   autoTable(doc, {
-    head: [['Classcode', 'Course Code', 'Course Description', 'Day', 'Start Time', 'End Time', 'Room', 'FACULTY']],
+    head: [['Course Code', 'Course Description', 'Section', 'Session', 'Day', 'Start Time', 'End Time', 'Room', 'FACULTY']],
     body: rows.map(ev => [
-      ev.classcode,
       ev.courseCode,
       ev.description,
+      ev.section,
+      ev.session,
       ev.day,
-      ev.startMin !== null ? formatTime(ev.startMin) : '',
-      ev.endMin   !== null ? formatTime(ev.endMin)   : '',
+      ev.startMin !== undefined && ev.startMin !== null && ev.startMin !== 0 ? formatTime(ev.startMin) : (ev.period?.split(' - ')[0] || ''),
+      ev.endMin   !== undefined && ev.endMin !== null && ev.endMin !== 0 ? formatTime(ev.endMin)   : (ev.period?.split(' - ')[1] || ''),
       ev.room,
       ev.faculty,
     ]),
@@ -111,14 +112,15 @@ export async function exportScheduleToPDF(events, name = 'schedule', meta = {}) 
     margin: { left: m, right: m },
     headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', fontSize: 8.5, overflow: 'visible' },
     columnStyles: {
-      0: { cellWidth: 22 },                    // Classcode
-      1: { cellWidth: 24 },                    // Course Code
-      2: { cellWidth: 'auto' },                 // Course Description — takes remaining space
-      3: { cellWidth: 16, halign: 'center' },   // Day
-      4: { cellWidth: 20, halign: 'center' },   // Start Time
-      5: { cellWidth: 20, halign: 'center' },   // End Time
-      6: { cellWidth: 16, halign: 'center' },   // Room
-      7: { cellWidth: 42 },                     // FACULTY
+      0: { cellWidth: 20 },                    // Course Code
+      1: { cellWidth: 'auto' },                // Course Description — takes remaining space
+      2: { cellWidth: 26 },                    // Section
+      3: { cellWidth: 20, halign: 'center' },  // Session
+      4: { cellWidth: 16, halign: 'center' },  // Day
+      5: { cellWidth: 18, halign: 'center' },  // Start Time
+      6: { cellWidth: 18, halign: 'center' },  // End Time
+      7: { cellWidth: 16, halign: 'center' },  // Room
+      8: { cellWidth: 42 },                    // FACULTY
     },
     didDrawPage: () => {
       doc.setFont('helvetica', 'normal').setFontSize(8)
