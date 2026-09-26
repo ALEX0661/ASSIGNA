@@ -50,7 +50,7 @@ if (!document.getElementById('tg-glow-style')) {
     .tg-row-conflict { animation:tg-row-conflict 1.7s ease-in-out infinite; }
 
     /* Hide link/split buttons from the native HTML5 drag ghost image */
-    .tg-card:active .tg-action-btn { display: none !important; }
+    .tg-card:active .tg-action-btn { opacity: 0 !important; }
   `
   document.head.appendChild(s)
 }
