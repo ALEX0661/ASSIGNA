@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { addFaculty, updateFaculty, deleteFaculty, archiveFaculty, unarchiveFaculty, updateCredentials } from '../../services/api'
 
 import {
@@ -27,6 +27,13 @@ export default function FacultyDetailPage() {
   const { id }   = useParams()
   const isNew    = false
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // Schedule picked on the faculty list page's dropdown, forwarded via
+  // navigate(..., { state: { selectedSchedule } }). This is ONLY the initial
+  // pick for ScheduleSection below — once there, the user can change its
+  // dropdown freely and it will never write back here or affect this value.
+  const incomingSelectedSchedule = location.state?.selectedSchedule || null
 
   const { toasts, toast } = useToast()
 
@@ -349,8 +356,15 @@ export default function FacultyDetailPage() {
       {/* Schedule Section — outside form to prevent accidental form submission */}
       <div style={{ marginTop:16 }}>
         <ScheduleSection
+          // Remount whenever we land here with a (possibly new) pick from the
+          // list page, or on a different faculty entirely. Without this key,
+          // React reuses the same ScheduleSection instance across faculty
+          // profiles and its dropdown gets stuck on whatever schedule was
+          // picked the very first time this page mounted.
+          key={`${id}::${incomingSelectedSchedule || '__current__'}`}
           facultyName={form.name}
           faculty={form}
+          initialSchedule={incomingSelectedSchedule}
           onUnitsLoaded={setScheduleUnits}
           onAssignmentsLoaded={setScheduleAssignments}
         />

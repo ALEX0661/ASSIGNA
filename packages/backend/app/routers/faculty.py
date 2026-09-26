@@ -543,7 +543,32 @@ def commit_faculty_upload(data: dict, user=Depends(any_authenticated)):
 
     saved  = 0
     failed = []
-    
+
+    # Per-record outcome, so the frontend can tell the user exactly what
+    # happened to each row: a brand-new record, an update to an existing
+    # one, or a no-op because the imported data was identical already.
+    created_names   = []
+    updated_names   = []
+    unchanged_names = []
+
+    # Fields we actually write below — comparison is limited to these so an
+    # "unchanged" verdict reflects only what this import controls, not the
+    # whole faculty document (units, overrides, etc. are managed elsewhere).
+    COMPARE_KEYS = [
+        "name", "status", "specializations",
+        "email", "SexAtBirth", "AcademicRank", "Department", "Educational_attainment",
+    ]
+
+    def _normalize(v):
+        # Firestore round-trips ints/floats and dict key order in ways that
+        # can make an otherwise-identical value compare unequal; normalize
+        # just enough to avoid false "updated" verdicts.
+        if isinstance(v, list):
+            return [_normalize(x) for x in v]
+        if isinstance(v, dict):
+            return {k: _normalize(v[k]) for k in sorted(v)}
+        return v
+
     # Pre-fetch existing faculty to prevent duplicates by name
     existing_faculty = {}
     docs = db.collection("faculty").stream()
@@ -580,20 +605,35 @@ def commit_faculty_upload(data: dict, user=Depends(any_authenticated)):
             "specializations":    f.get("specializations", []),
             "archived":           False,
         }
-        
+
         # Only override initial_max if it's not present (preserve existing overrides)
         doc = ref.get()
-        if not doc.exists:
+        is_new = not doc.exists
+        existing_data = doc.to_dict() if doc.exists else {}
+        if is_new:
             update_data["units"] = 0.0
             update_data["initial_max_units"] = compute_effective_max_units(status, 0)
             update_data["max_units_override"] = 0.0
-        
+
         # Merge basic info fields only if they are provided in the import
         if f.get("email"): update_data["email"] = f.get("email")
         if f.get("SexAtBirth"): update_data["SexAtBirth"] = f.get("SexAtBirth")
         if f.get("AcademicRank"): update_data["AcademicRank"] = f.get("AcademicRank")
         if f.get("Department"): update_data["Department"] = f.get("Department")
         if f.get("Educational_attainment"): update_data["Educational_attainment"] = f.get("Educational_attainment")
+
+        if is_new:
+            created_names.append(name)
+        else:
+            changed = any(
+                _normalize(update_data.get(k, existing_data.get(k))) != _normalize(existing_data.get(k))
+                for k in COMPARE_KEYS
+                if k in update_data
+            )
+            if changed:
+                updated_names.append(name)
+            else:
+                unchanged_names.append(name)
 
         batch.set(ref, update_data, merge=True)
         saved += 1
@@ -605,7 +645,17 @@ def commit_faculty_upload(data: dict, user=Depends(any_authenticated)):
         raise HTTPException(500, f"Database error during commit: {exc}")
 
     refresh_faculty_cache()
-    return {"committed": saved, "failed": failed, "total": len(faculty_list)}
+    return {
+        "committed": saved,
+        "failed":    failed,
+        "total":     len(faculty_list),
+        "created":   len(created_names),
+        "updated":   len(updated_names),
+        "unchanged": len(unchanged_names),
+        "created_names":   created_names,
+        "updated_names":   updated_names,
+        "unchanged_names": unchanged_names,
+    }
 
 
 @router.put("/credentials/{faculty_id}")
@@ -684,4 +734,3 @@ def update_faculty_credentials(faculty_id: str, data: dict, user=Depends(any_aut
         "new_id":         new_uid,
         "temp_password":  display_password if auto_generated else None,
     }
-

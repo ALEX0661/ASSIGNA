@@ -181,11 +181,16 @@ export function computeScheduleRows(events) {
 }
 
 /**
+ * Builds the schedule .xlsx workbook and returns it as a blob instead of
+ * downloading it. Used directly by the single-schedule export (via
+ * exportScheduleToExcel below) and by the batch/zip export.
+ *
  * @param {object[]} events  – raw schedule events from the Zustand store
- * @param {string}   name    – schedule name used for the downloaded file name
+ * @param {string}   name    – schedule name used for the returned file's name
+ * @returns {Promise<{ blob: Blob, filename: string }|null>}
  */
-export async function exportScheduleToExcel(events, name = 'schedule') {
-  if (!events?.length) return
+export async function buildScheduleExcelBlob(events, name = 'schedule') {
+  if (!events?.length) return null
 
   const afterDayMerge = computeScheduleRows(events)
 
@@ -256,16 +261,25 @@ export async function exportScheduleToExcel(events, name = 'schedule') {
   // Auto-filter
   ws.autoFilter = { from: 'A1', to: 'I1' }
 
-  // ── G. Download ───────────────────────────────────────────────────────────
+  // ── G. Return as a blob ────────────────────────────────────────────────────
   const buffer = await wb.xlsx.writeBuffer()
   const blob   = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   })
+
+  return { blob, filename: `${name}_export.xlsx` }
+}
+
+/**
+ * Single-schedule export — builds the workbook and immediately downloads it.
+ * Batch/zip export should call buildScheduleExcelBlob directly instead.
+ */
+export async function exportScheduleToExcel(events, name = 'schedule') {
+  const built = await buildScheduleExcelBlob(events, name)
+  if (!built) return
+  const { blob, filename } = built
   const url = URL.createObjectURL(blob)
-  const a   = Object.assign(document.createElement('a'), {
-    href:     url,
-    download: `${name}_export.xlsx`,
-  })
+  const a   = Object.assign(document.createElement('a'), { href: url, download: filename })
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)

@@ -163,6 +163,10 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
   // ── Assigned tab state
   const [currentQ,   setCurrentQ]    = useState('')
   const [sortBy,     setSortBy]      = useState('rating-desc')
+  // True the moment any rating gets edited on the Assigned tab; blocks
+  // re-sorting (and gets called out in the toolbar) until Save is clicked,
+  // so a batch of edits can't get scattered across the list mid-edit.
+  const [ratingsDirty, setRatingsDirty] = useState(false)
 
   // ── Browse tab state
   const [browseQ,    setBrowseQ]     = useState('')
@@ -249,19 +253,43 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
   const validSpecs = useMemo(() => specs.filter(s => !s.isUnmatched || courseTitleMap[(s.courseCode || '').toLowerCase().replace(/\s+/g, '')]), [specs, courseTitleMap])
   const unmatchedList = useMemo(() => specs.filter(s => s.isUnmatched && !courseTitleMap[(s.courseCode || '').toLowerCase().replace(/\s+/g, '')]), [specs, courseTitleMap])
 
+  // Row order for the Assigned list is frozen while you're just editing
+  // ratings — it's only recomputed when the sort mode changes or when a
+  // course is added/removed (via validCodesSignature), never as a side
+  // effect of clicking a rating pip. Without this, every rating edit
+  // instantly re-sorts the whole list out from under you.
+  const specKey = s => s.courseCode || s.title || ''
+  const sortSpecs = (list, mode) => {
+    const src = [...list]
+    if (mode === 'code-asc')    src.sort((a, b) => (a.courseCode || '').localeCompare(b.courseCode || ''))
+    if (mode === 'rating-desc') src.sort((a, b) => (b.rating || 3) - (a.rating || 3))
+    if (mode === 'rating-asc')  src.sort((a, b) => (a.rating || 3) - (b.rating || 3))
+    return src
+  }
+  const validCodesSignature = useMemo(() => validSpecs.map(specKey).slice().sort().join('|'), [validSpecs])
+  const [orderKeys, setOrderKeys] = useState(() => sortSpecs(validSpecs, sortBy).map(specKey))
+
+  useEffect(() => {
+    setOrderKeys(sortSpecs(validSpecs, sortBy).map(specKey))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortBy, validCodesSignature])
+
   const filteredSpecs = useMemo(() => {
-    const q   = currentQ.toLowerCase()
-    const src = [...validSpecs]
-    if (sortBy === 'code-asc')    src.sort((a, b) => (a.courseCode || '').localeCompare(b.courseCode || ''))
-    if (sortBy === 'rating-desc') src.sort((a, b) => (b.rating || 3) - (a.rating || 3))
-    if (sortBy === 'rating-asc')  src.sort((a, b) => (a.rating || 3) - (b.rating || 3))
-    if (!q) return src
-    return src.filter(s => {
+    const q     = currentQ.toLowerCase()
+    const byKey = new Map(validSpecs.map(s => [specKey(s), s]))
+    // Follow the frozen order; append anything not yet folded into it
+    // (e.g. the first render, before the effect above runs) so nothing
+    // is ever silently hidden.
+    const ordered = orderKeys.map(k => byKey.get(k)).filter(Boolean)
+    const seen = new Set(orderKeys)
+    validSpecs.forEach(s => { if (!seen.has(specKey(s))) ordered.push(s) })
+    if (!q) return ordered
+    return ordered.filter(s => {
       const code  = (s.courseCode || '').toLowerCase()
       const title = (s.title || courseTitleMap[code] || '').toLowerCase()
       return code.includes(q) || title.includes(q)
     })
-  }, [validSpecs, sortBy, currentQ, courseTitleMap])
+  }, [validSpecs, orderKeys, currentQ, courseTitleMap])
 
   const unmatchedSpecs = useMemo(() => {
     const q   = currentQ.toLowerCase()
@@ -456,11 +484,18 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
                     <span style={{ fontSize: 11, color: 'var(--muted2)', fontWeight: 600, marginRight: 4 }}>Sort</span>
                     {[{ key: 'rating-desc', label: 'Best' }, { key: 'code-asc', label: 'A–Z' }, { key: 'rating-asc', label: 'Lowest' }].map(o => (
-                      <button key={o.key} type="button" onClick={() => setSortBy(o.key)}
-                        style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11.5, fontWeight: sortBy === o.key ? 700 : 500, background: sortBy === o.key ? 'var(--meadow-soft)' : 'transparent', color: sortBy === o.key ? ('var(--meadow-text-hover)') : 'var(--muted)', border: sortBy === o.key ? '1px solid var(--meadow-border)' : '1px solid transparent', cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}>
+                      <button key={o.key} type="button" disabled={ratingsDirty} onClick={() => setSortBy(o.key)}
+                        title={ratingsDirty ? 'Sorting is locked until you save your changes' : undefined}
+                        style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11.5, fontWeight: sortBy === o.key ? 700 : 500, background: sortBy === o.key ? 'var(--meadow-soft)' : 'transparent', color: ratingsDirty ? 'var(--muted2)' : (sortBy === o.key ? ('var(--meadow-text-hover)') : 'var(--muted)'), border: sortBy === o.key ? '1px solid var(--meadow-border)' : '1px solid transparent', cursor: ratingsDirty ? 'not-allowed' : 'pointer', opacity: ratingsDirty ? 0.5 : 1, fontFamily: "'Inter', sans-serif" }}>
                         {o.label}
                       </button>
                     ))}
+                    {ratingsDirty && (
+                      <span title="Sorting is locked until you save your changes" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 6, padding: '3px 8px', borderRadius: 99, background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#B45309', fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                        Locked — save to re-sort
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -488,7 +523,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                         const rating  = spec.rating || 3
                         const lvl     = getLvl(rating)
                         return (
-                          <div key={visIdx} style={{
+                          <div key={spec.courseCode || `spec-${origIdx}`} style={{
                             display: 'flex', alignItems: 'center', gap: 12,
                             padding: '11px 14px', borderRadius: 11,
                             border: '1.5px solid var(--border)', background: 'var(--bg)',
@@ -511,7 +546,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                               </div>
                             </div>
                             {/* Rating pips */}
-                            <RatingPips size="sm" value={rating} onChange={r => setSpecs(p => p.map((s, i) => i === origIdx ? { ...s, rating: r } : s))} />
+                            <RatingPips size="sm" value={rating} onChange={r => { setRatingsDirty(true); setSpecs(p => p.map((s, i) => i === origIdx ? { ...s, rating: r } : s)) }} />
                             {/* Remove */}
                             <button onClick={() => setSpecs(p => p.filter((_, i) => i !== origIdx))}
                               style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid rgba(239, 68, 68, 0.25)', background: 'rgba(220, 38, 38, 0.05)', color: '#EF4444', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
@@ -800,6 +835,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                 }
                 return s
               })
+              setRatingsDirty(false)
               onSave(cleaned)
             }} disabled={isSaving}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 20px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize: 13, fontWeight: 600, cursor: isSaving ? 'default' : 'pointer', fontFamily: "'Inter', sans-serif", opacity: isSaving ? 0.65 : 1, boxShadow: '0 4px 14px rgba(0,0,0,0.28)' }}>

@@ -6,14 +6,23 @@ import { exportScheduleToICS } from '../../utils/exportScheduleToICS'
 import { exportFacultyLoadToPDF, mergeAndSortEvents } from '../../utils/exportFacultyLoadToPDF'
 import FacultyEventsTable from '../../components/FacultyEventsTable'
 
-export default function ScheduleSection({ facultyName, faculty, onUnitsLoaded, onAssignmentsLoaded }) {
+export default function ScheduleSection({ facultyName, faculty, initialSchedule, onUnitsLoaded, onAssignmentsLoaded }) {
   const storeEvents      = useScheduleStore(s => s.events)
   const scheduleName     = useScheduleStore(s => s.scheduleName)
   const storeAcademicYear = useScheduleStore(s => s.academicYear)
   const storeSemester     = useScheduleStore(s => s.semester)
 
   const [scheduleNames,    setScheduleNames]    = useState([])
-  const [selectedSchedule, setSelectedSchedule] = useState('__current__')
+  // Opens on whatever schedule was picked on the faculty list page, if any.
+  // This is only the INITIAL value — changing the dropdown below only ever
+  // touches this component's own state, so it never leaks back to the list
+  // page or to any other faculty's page.
+  // NOTE: relies on the parent giving this component a fresh `key` whenever
+  // `initialSchedule` should change (different faculty, or a new pick made on
+  // the faculty list page) — see FacultyDetailPage.jsx. useState's initial
+  // value only runs once per mount, so without that key this would get stuck
+  // on the very first `initialSchedule` it ever saw.
+  const [selectedSchedule, setSelectedSchedule] = useState(initialSchedule || '__current__')
   const [allEvents,        setAllEvents]        = useState([])
   const [scheduleMeta,     setScheduleMeta]     = useState({ academicYear: '', semester: '' })
   const [listLoading,      setListLoading]      = useState(true)

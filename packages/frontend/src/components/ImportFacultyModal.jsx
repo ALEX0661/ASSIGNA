@@ -707,6 +707,34 @@ function EditPreviewStep({ initialFaculty, onSave, onBack }) {
   )
 }
 
+// Summarizes what an import actually did to the database: how many rows
+// were brand-new, how many changed an existing record, and how many were
+// skipped because the imported data was identical to what's already saved.
+function ImportBreakdown({ results, itemLabel = 'record' }) {
+  const created   = results?.created   ?? 0
+  const updated   = results?.updated   ?? 0
+  const unchanged = results?.unchanged ?? 0
+  if (!created && !updated && !unchanged) return null
+
+  const pill = (label, count, color) => count > 0 && (
+    <span style={{
+      display:'inline-flex', alignItems:'center', gap:5,
+      padding:'4px 10px', borderRadius:99, fontSize:12, fontWeight:600,
+      background: color.bg, color: color.fg, border:`1px solid ${color.border}`,
+    }}>
+      <strong>{count}</strong> {label}
+    </span>
+  )
+
+  return (
+    <div style={{ display:'flex', flexWrap:'wrap', gap:8, justifyContent:'center' }}>
+      {pill(`new ${itemLabel}${created !== 1 ? 's' : ''}`, created, { bg:'var(--meadow-soft)', fg:'var(--meadow-text-hover)', border:'var(--meadow-border)' })}
+      {pill('updated', updated, { bg:'rgba(217, 119, 6, 0.1)', fg:'#B45309', border:'#F0C040' })}
+      {pill('unchanged (no changes needed)', unchanged, { bg:'var(--hover)', fg:'var(--muted)', border:'var(--border)' })}
+    </div>
+  )
+}
+
 function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
   const [saving,  setSaving]  = useState(false)
   const [results, setResults] = useState(null)
@@ -758,12 +786,13 @@ function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
             </div>
             <div>
               <p style={{ fontWeight:700, fontSize:17, color:'var(--ink)', marginBottom:5 }}>
-                {results.committed} {results.committed !== 1 ? 'faculty records' : 'faculty record'} imported!
+                {results.committed} {results.committed !== 1 ? 'faculty records' : 'faculty record'} processed!
               </p>
               <p style={{ color:'var(--muted)', fontSize:13, margin:0 }}>
                 Specializations saved. Add emails to each profile to enable faculty login.
               </p>
             </div>
+            <ImportBreakdown results={results} itemLabel="faculty" />
           </div>
         ) : (
           <>
@@ -771,6 +800,7 @@ function ReviewStep({ faculty, setFaculty, onBack, onImported }) {
               <p style={{ fontWeight:700, fontSize:13, color:'var(--ink)', marginBottom:3 }}>{results.committed} saved · {results.failed.length} failed</p>
               <p style={{ fontSize:12, color:'var(--muted)', margin:0 }}>Some records could not be saved.</p>
             </div>
+            <ImportBreakdown results={results} itemLabel="faculty" />
             <div style={{ maxHeight:200, overflowY:'auto', border:'1px solid var(--meadow-border)', borderRadius:10 }}>
               {results.failed.map((f, i) => (
                 <div key={i} style={{ padding:'10px 14px', borderBottom: i < results.failed.length - 1 ? '1px solid var(--meadow-soft)' : 'none', fontSize:12 }}>

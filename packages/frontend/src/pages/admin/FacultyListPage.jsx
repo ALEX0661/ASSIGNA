@@ -5,9 +5,10 @@ import AddFacultyModal from '../../components/AddFacultyModal'
 import { generateExportWorkbook, downloadWorkbook } from '../../components/facultyExcelTemplate'
 import { getFaculty, getArchivedFaculty, deleteFaculty, archiveFaculty, unarchiveFaculty, getCourses, listSaved, loadSaved } from '../../services/api'
 import { useScheduleStore } from '../../store/scheduleStore'
-import { exportScheduleToExcel } from '../../utils/exportScheduleToExcel'
-import { exportScheduleToICS } from '../../utils/exportScheduleToICS'
-import { exportFacultyLoadToPDF } from '../../utils/exportFacultyLoadToPDF'
+import JSZip from 'jszip'
+import { exportScheduleToExcel, buildScheduleExcelBlob } from '../../utils/exportScheduleToExcel'
+import { exportScheduleToICS, buildScheduleICSBlob } from '../../utils/exportScheduleToICS'
+import { exportFacultyLoadToPDF, buildFacultyLoadPDFBlob } from '../../utils/exportFacultyLoadToPDF'
 
 /* ── Design tokens ── */
 const G = {
@@ -114,6 +115,18 @@ function facultySpecs(faculty, courseTitleMap = {}) {
 }
 function specKey(s) { return (s.title || s.code || '').toLowerCase().trim() }
 
+function facultyUnits(f) {
+  const u = Number(f.units)
+  return Number.isFinite(u) ? u : 0
+}
+
+const UNIT_BUCKETS = [
+  { key: '0-8',   label: '0–8 units',   test: u => u >= 0  && u <= 8 },
+  { key: '9-15',  label: '9–15 units',  test: u => u >= 9  && u <= 15 },
+  { key: '16-21', label: '16–21 units', test: u => u >= 16 && u <= 21 },
+  { key: '22+',   label: '22+ units',   test: u => u >= 22 },
+]
+
 function isAdmin(f) {
   if (typeof f.isAdmin === 'boolean') return f.isAdmin;
   const r = f.role;
@@ -125,15 +138,16 @@ function isAdmin(f) {
 
 function ActiveFilterChips({
   statusFilter, rankFilter, departmentFilter, educationFilter,
-  coordinatorFilter, specializationFilter, specMinRating,
+  coordinatorFilter, specializationFilter, specMinRating, unitFilter,
   onRemoveStatus, onRemoveRank, onRemoveDept, onRemoveEducation,
-  onClearCoordinator, onRemoveSpec, onClearRating,
+  onClearCoordinator, onRemoveSpec, onClearRating, onRemoveUnit,
 }) {
   const chips = [
     ...statusFilter.map(v => ({ label: v === 'full-time' ? 'Full-time' : 'Part-time', onRemove: () => onRemoveStatus(v), color: 'var(--meadow-text-hover)' })),
     ...rankFilter.map(v => ({ label: v, onRemove: () => onRemoveRank(v), color: 'var(--meadow-text-hover)' })),
     ...departmentFilter.map(v => ({ label: v, onRemove: () => onRemoveDept(v), color: 'var(--meadow-text-hover)' })),
     ...educationFilter.map(v => ({ label: v, onRemove: () => onRemoveEducation(v), color: 'var(--meadow-text-hover)' })),
+    ...unitFilter.map(v => ({ label: UNIT_BUCKETS.find(b => b.key === v)?.label || v, onRemove: () => onRemoveUnit(v), color: 'var(--meadow-text-hover)' })),
     coordinatorFilter ? { label: coordinatorFilter === 'admin' ? 'Deans only' : coordinatorFilter === 'any' ? 'Coordinators only' : 'Regular faculty', onRemove: onClearCoordinator, color: 'var(--meadow-text-hover)' } : null,
     ...specializationFilter.map(v => ({ label: v, onRemove: () => onRemoveSpec(v), color: 'var(--meadow-text-hover)' })),
     specMinRating > 0 ? { label: `★${specMinRating}+ rating`, onRemove: onClearRating, color: '#F59E0B' } : null,
@@ -224,6 +238,7 @@ function FacultyCard({ faculty, courseTitleMap, selected, onSelect, onClick, onA
   const specs      = useMemo(() => facultySpecs(faculty, courseTitleMap), [faculty, courseTitleMap])
   const specCount  = specs.length
   const isCoord    = !!faculty.coordinatorProgram
+  const unitCount  = facultyUnits(faculty)
 
   const headerBg = isArchived
     ? 'linear-gradient(135deg, #7A9488, #5A7268)'
@@ -250,20 +265,20 @@ function FacultyCard({ faculty, courseTitleMap, selected, onSelect, onClick, onA
       }}
     >
       {/* ── Green header ── */}
-      <div style={{ background: headerBg, padding: '14px 14px 12px', position: 'relative', overflow: 'hidden', flex: 1 }}>
+      <div style={{ background: headerBg, padding: '10px 11px 9px', position: 'relative', overflow: 'hidden', flex: 1 }}>
         <div style={{ position: 'absolute', top: -20, right: -20, width: 70, height: 70, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', pointerEvents: 'none' }}/>
         <div style={{ position: 'absolute', bottom: -12, left: -8, width: 48, height: 48, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', pointerEvents: 'none' }}/>
 
         {/* System Admin badge */}
         {isAdmin(faculty) && (
           <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 3, marginBottom: 6, marginRight: 6,
-            padding: '2px 7px', borderRadius: 99,
-            background: 'rgba(255,255,255,0.2)', fontSize: 9, fontWeight: 700,
+            display: 'inline-flex', alignItems: 'center', gap: 3, marginBottom: 5, marginRight: 6,
+            padding: '2px 6px', borderRadius: 99,
+            background: 'rgba(255,255,255,0.2)', fontSize: 8.5, fontWeight: 700,
             color: '#fff', textTransform: 'uppercase', letterSpacing: '.5px',
             position: 'relative', zIndex: 1,
           }}>
-            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             Dean
           </div>
         )}
@@ -271,13 +286,13 @@ function FacultyCard({ faculty, courseTitleMap, selected, onSelect, onClick, onA
         {/* Coordinator badge */}
         {isCoord && (
           <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 3, marginBottom: 6,
-            padding: '2px 7px', borderRadius: 99,
-            background: 'rgba(255,215,0,0.22)', fontSize: 9, fontWeight: 700,
+            display: 'inline-flex', alignItems: 'center', gap: 3, marginBottom: 5,
+            padding: '2px 6px', borderRadius: 99,
+            background: 'rgba(255,215,0,0.22)', fontSize: 8.5, fontWeight: 700,
             color: '#FFD700', textTransform: 'uppercase', letterSpacing: '.5px',
             position: 'relative', zIndex: 1,
           }}>
-            <svg width="8" height="8" viewBox="0 0 24 24" fill="#FFD700" stroke="#FFD700" strokeWidth="1">
+            <svg width="7" height="7" viewBox="0 0 24 24" fill="#FFD700" stroke="#FFD700" strokeWidth="1">
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
             </svg>
             Coord · {faculty.coordinatorProgram}
@@ -285,70 +300,78 @@ function FacultyCard({ faculty, courseTitleMap, selected, onSelect, onClick, onA
         )}
 
         {/* Name */}
-        <div style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', lineHeight: 1.3, paddingRight: 28, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', position: 'relative', zIndex: 1 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: '#fff', lineHeight: 1.25, paddingRight: 26, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', position: 'relative', zIndex: 1 }}>
           {faculty.name}
         </div>
 
         {/* Rank */}
         {faculty.AcademicRank && (
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', fontWeight: 500, marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', position: 'relative', zIndex: 1 }}>
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', fontWeight: 500, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', position: 'relative', zIndex: 1 }}>
             {faculty.AcademicRank}
           </div>
         )}
 
         {/* Department */}
         {faculty.Department && (
-          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: 400, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', position: 'relative', zIndex: 1 }}>
+          <div style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.55)', fontWeight: 400, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', position: 'relative', zIndex: 1 }}>
             {faculty.Department}
           </div>
         )}
 
-        {/* Status pill */}
-        <div style={{ marginTop: 10, position: 'relative', zIndex: 1 }}>
+        {/* Status pill + unit counter */}
+        <div style={{ marginTop: 8, position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 4,
-            padding: '3px 9px', borderRadius: 99, fontSize: 9.5, fontWeight: 700,
+            padding: '2.5px 8px', borderRadius: 99, fontSize: 9, fontWeight: 700,
             background: 'rgba(255,255,255,0.18)', color: '#fff',
-            textTransform: 'uppercase', letterSpacing: '0.7px',
+            textTransform: 'uppercase', letterSpacing: '0.6px',
           }}>
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', flexShrink: 0 }}/>
             {statusLabel}
             {isArchived && faculty.status && <> · <span style={{ textTransform: 'uppercase', opacity: .7 }}>{faculty.status}</span></>}
           </span>
+          <span title="Assigned units" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 3,
+            padding: '2.5px 7px', borderRadius: 99, fontSize: 9, fontWeight: 700,
+            background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.92)',
+          }}>
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
+            {unitCount}u
+          </span>
         </div>
 
         {/* Checkbox */}
         <div onClick={e => { e.stopPropagation(); onSelect() }}
-          style={{ position: 'absolute', top: 12, right: 12, opacity: selected ? 1 : hovered || selectionMode ? 0.9 : 0.22, transition: 'opacity 0.15s', zIndex: 2 }}>
+          style={{ position: 'absolute', top: 10, right: 10, opacity: selected ? 1 : hovered || selectionMode ? 0.9 : 0.22, transition: 'opacity 0.15s', zIndex: 2 }}>
           <Checkbox checked={selected}/>
         </div>
       </div>
 
       {/* ── White bottom ── */}
-      <div style={{ padding: '9px 14px 0', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+      <div style={{ padding: '7px 11px 0', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
           {specCount > 0 ? (
-            <span style={{ fontSize: 11, fontWeight: 600, color: G.muted2, display: 'flex', alignItems: 'center', gap: 4 }}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            <span style={{ fontSize: 10.5, fontWeight: 600, color: G.muted2, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
               {specCount} {specCount === 1 ? 'course' : 'courses'}
             </span>
           ) : (
-            <span style={{ fontSize: 10.5, color: G.border, fontStyle: 'italic' }}>No specializations</span>
+            <span style={{ fontSize: 10, color: G.border, fontStyle: 'italic' }}>No specializations</span>
           )}
         </div>
       </div>
-      <div style={{ height: 8 }}/>
+      <div style={{ height: 6 }}/>
 
       {/* ── Hover action bar ── */}
       {hovered && !selectionMode && (
         <div style={{
           position: 'absolute', bottom: 0, left: 0, right: 0,
           background: 'var(--surface)',
-          borderTop: `1px solid ${G.borderLight}`, height: 36,
+          borderTop: `1px solid ${G.borderLight}`, height: 32,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '0 14px', animation: 'fadeIn 0.13s ease',
+          padding: '0 11px', animation: 'fadeIn 0.13s ease',
         }}>
-          <span style={{ fontSize: 10.5, color: 'var(--meadow-text-hover)', fontWeight: 600 }}>View &amp; edit</span>
+          <span style={{ fontSize: 10, color: 'var(--meadow-text-hover)', fontWeight: 600 }}>View &amp; edit</span>
           <div style={{ display: 'flex', gap: 4 }}>
             {viewTab === 'active' && (
               <button onClick={e => { e.stopPropagation(); onArchive() }} title="Archive"
@@ -382,7 +405,7 @@ function FacultyCard({ faculty, courseTitleMap, selected, onSelect, onClick, onA
 }
 
 /* ── Faculty Table (list view) ── */
-function FacultyTable({ faculty, selected, selectionMode, viewTab, onSelect, onSelectAll, allSelected, someSelected, onArchive, onUnarchive, onDelete, navigate }) {
+function FacultyTable({ faculty, selected, selectionMode, viewTab, onSelect, onSelectAll, allSelected, someSelected, onArchive, onUnarchive, onDelete, navigate, globalSelectedSchedule }) {
   return (
     <div style={{ background: 'var(--surface)', borderRadius: 12, border: `1.5px solid ${G.border}`, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
@@ -590,16 +613,16 @@ function Dropdown({ value, onChange, options, disabled }) {
   const current = options.find(o => o.value === value)
 
   return (
-    <div ref={ref} style={{ position: 'relative', flex: 1 }}>
+    <div ref={ref} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
       <button type="button" disabled={disabled} onClick={() => setOpen(o => !o)}
         style={{
-          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+          width: '100%', minWidth: 0, boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
           padding: '8px 10px', borderRadius: 8, border: `1.5px solid ${open ? G.meadow : G.border}`,
           background: 'var(--surface)', color: G.ink, fontSize: 12.5, fontWeight: 500,
           fontFamily: "'Inter',sans-serif", cursor: disabled ? 'default' : 'pointer',
           opacity: disabled ? 0.6 : 1, transition: 'border-color .15s',
         }}>
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{current?.label ?? ''}</span>
+        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{current?.label ?? ''}</span>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
           style={{ flexShrink: 0, color: G.muted2, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}>
           <polyline points="6 9 12 15 18 9"/>
@@ -691,6 +714,8 @@ function BatchScheduleExportModal({ facultyList, preselectedIds, wasManuallySele
       const targets = facultyList.filter(f => checked.has(f.id))
       let exported = 0
       const skipped = []
+      const zip = new JSZip()
+      const usedNames = new Set() // guards against two faculty producing the same filename inside the zip
 
       for (let i = 0; i < targets.length; i++) {
         const f = targets[i]
@@ -698,21 +723,42 @@ function BatchScheduleExportModal({ facultyList, preselectedIds, wasManuallySele
         const fEvents = events.filter(e => (e.faculty || '').toLowerCase() === (f.name || '').toLowerCase())
         if (!fEvents.length) { skipped.push(f.name); continue }
         const safeName = (f.name || 'Faculty').replace(/[^a-zA-Z0-9\s-]/g, '').trim()
+
+        let built = null
         if (format === 'pdf') {
-          await exportFacultyLoadToPDF(fEvents, f, meta, computeUnits)
+          built = await buildFacultyLoadPDFBlob(fEvents, f, meta, computeUnits)
         } else if (format === 'excel') {
-          await exportScheduleToExcel(fEvents, `${safeName} - ${meta.name}`)
+          built = await buildScheduleExcelBlob(fEvents, `${safeName} - ${meta.name}`)
         } else if (format === 'ics') {
-          await exportScheduleToICS(fEvents, `${safeName} - ${meta.name}`)
+          built = await buildScheduleICSBlob(fEvents, `${safeName} - ${meta.name}`)
         }
+        if (!built) { skipped.push(f.name); continue }
+
+        let { filename } = built
+        if (usedNames.has(filename)) {
+          const dot = filename.lastIndexOf('.')
+          filename = dot === -1 ? `${filename}_${f.id}` : `${filename.slice(0, dot)}_${f.id}${filename.slice(dot)}`
+        }
+        usedNames.add(filename)
+        zip.file(filename, built.blob)
         exported++
-        // small gap so the browser doesn't choke on many simultaneous downloads
-        await new Promise(res => setTimeout(res, 350))
       }
 
       setProgress({ done: targets.length, total: targets.length, label: '' })
+
+      if (exported > 0) {
+        const zipBlob = await zip.generateAsync({ type: 'blob' })
+        const safeSched = (meta.name || 'schedule').replace(/[^a-zA-Z0-9\s-]/g, '').trim()
+        const url = URL.createObjectURL(zipBlob)
+        const a = Object.assign(document.createElement('a'), { href: url, download: `${safeSched}_schedules.zip` })
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      }
+
       setResult({ exported, skipped })
-      if (exported > 0) toast(`Exported ${exported} schedule${exported !== 1 ? 's' : ''}`, 'success')
+      if (exported > 0) toast(`Exported ${exported} schedule${exported !== 1 ? 's' : ''} as a zip`, 'success')
       if (skipped.length) toast(`${skipped.length} faculty had no classes in that schedule`, 'info')
     } catch {
       toast('Batch export failed', 'error')
@@ -873,11 +919,26 @@ export default function FacultyListPage() {
   const [educationFilter,   setEducationFilter]   = useState([])
   const [coordinatorFilter, setCoordinatorFilter] = useState('') // '' | 'any' | 'none'
   const [specializationFilter, setSpecializationFilter] = useState([])
+  const [unitFilter,        setUnitFilter]        = useState([])
   const [sortBy,            setSortBy]            = useState('name')
   const [courseTitleMap,    setCourseTitleMap]    = useState({})
   const [globalScheduleNames, setGlobalScheduleNames] = useState([])
-  const [globalSelectedSchedule, setGlobalSelectedSchedule] = useState('__current__')
+  // Lives in scheduleStore (see facultyListDefaultSchedule) so the pick
+  // survives leaving this page (e.g. into a faculty profile) and coming
+  // back — plain useState here gets reset every time this page remounts.
+  const globalSelectedSchedule    = useScheduleStore(s => s.facultyListDefaultSchedule)
+  const setGlobalSelectedSchedule = useScheduleStore(s => s.setFacultyListDefaultSchedule)
+  const currentScheduleName = useScheduleStore(s => s.scheduleName)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    listSaved()
+      .then(res => {
+        const list = Array.isArray(res) ? res : []
+        setGlobalScheduleNames(list.map(item => (typeof item === 'string' ? item : item?.name)).filter(Boolean))
+      })
+      .catch(() => {})
+  }, [])
 
   async function load() {
     setLoading(true)
@@ -988,13 +1049,18 @@ export default function FacultyListPage() {
         })
       })()
 
-      return matchSearch && matchStatus && matchRank && matchDept && matchEducation && matchCoordinator && matchSpec
+      const matchUnit = unitFilter.length === 0
+        || unitFilter.some(k => UNIT_BUCKETS.find(b => b.key === k)?.test(facultyUnits(f)))
+
+      return matchSearch && matchStatus && matchRank && matchDept && matchEducation && matchCoordinator && matchSpec && matchUnit
     })
 
-    if (sortBy === 'name')        list = [...list].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-    else if (sortBy === 'specs-desc') list = [...list].sort((a, b) => facultySpecs(b).length - facultySpecs(a).length)
+    if (sortBy === 'name')             list = [...list].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    else if (sortBy === 'specs-desc')  list = [...list].sort((a, b) => facultySpecs(b).length - facultySpecs(a).length)
+    else if (sortBy === 'units-desc')  list = [...list].sort((a, b) => facultyUnits(b) - facultyUnits(a))
+    else if (sortBy === 'units-asc')   list = [...list].sort((a, b) => facultyUnits(a) - facultyUnits(b))
     return list
-  }, [tabFaculty, search, statusFilter, rankFilter, departmentFilter, educationFilter, coordinatorFilter, specializationFilter, specMinRating, sortBy, courseTitleMap])
+  }, [tabFaculty, search, statusFilter, rankFilter, departmentFilter, educationFilter, coordinatorFilter, specializationFilter, specMinRating, unitFilter, sortBy, courseTitleMap])
 
   /* ── Selection ── */
   const filteredIds  = filtered.map(f => f.id)
@@ -1043,11 +1109,13 @@ export default function FacultyListPage() {
     setDepartmentFilter([]); setEducationFilter([])
     setCoordinatorFilter('')
     setSpecializationFilter([]); setSpecQuery(''); setSpecMinRating(0)
+    setUnitFilter([])
   }
 
   const activeModalFilterCount =
     rankFilter.length + departmentFilter.length + educationFilter.length +
-    specializationFilter.length + (coordinatorFilter ? 1 : 0) + (specMinRating > 0 ? 1 : 0)
+    specializationFilter.length + (coordinatorFilter ? 1 : 0) + (specMinRating > 0 ? 1 : 0) +
+    unitFilter.length
 
   const hasAnyFilter = search || statusFilter.length > 0 || activeModalFilterCount > 0
 
@@ -1062,6 +1130,7 @@ export default function FacultyListPage() {
     coordinatorFilter === 'admin' ? 'Deans only' : coordinatorFilter === 'any' ? 'Coordinators only' : coordinatorFilter === 'none' ? 'Regular faculty' : null,
     ...specializationFilter,
     specMinRating > 0 ? `★${specMinRating}+ rating` : null,
+    ...unitFilter.map(k => UNIT_BUCKETS.find(b => b.key === k)?.label).filter(Boolean),
   ].filter(Boolean)
 
   /* ── Export ── */
@@ -1121,38 +1190,74 @@ export default function FacultyListPage() {
         /* ── Segmented Button Styles (Unified with ScheduleView) ── */
         .fac-view-group { display:flex; border:1px solid ${G.border}; border-radius:8px; overflow:hidden; background: var(--surface); }
         .fac-view-btn {
-          display:flex; align-items:center; gap:5px; padding:5px 11px;
-          font-size:11.5px; font-family:'Inter',sans-serif;
+          display:flex; align-items:center; gap:5px; padding:4px 9px;
+          font-size:11px; font-family:'Inter',sans-serif;
           border:none; cursor:pointer; transition:all .15s; white-space:nowrap;
         }
         .fac-view-btn.active { background:${G.meadowSoft}; color: var(--meadow-text); font-weight:700; }
         .fac-view-btn:not(.active) { background:transparent; color:${G.muted2}; font-weight:400; }
         .fac-view-btn:not(.active):hover { background:${G.hover}; color: var(--meadow-text-hover); }
+
+        /* ── Header row: keeps every action on one line without wrapping,
+           but hides the scrollbar itself — the row still scrolls with a
+           trackpad/shift-wheel if the window is narrow, it just doesn't
+           show the ugly native scrollbar track. ── */
+        .fac-header-row { scrollbar-width: none; -ms-overflow-style: none; }
+        .fac-header-row::-webkit-scrollbar { display: none; height: 0; }
       `}</style>
 
       {/* ── Header row ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
-        {/* Tab switcher */}
-        <div id="tour-faculty-tabs" style={{ display: 'flex', gap: 3, background: 'var(--surface)', borderRadius: 10, padding: 3, border: `1px solid ${G.border}`, flexShrink: 0 }}>
-          {[
-            { key: 'active',   label: loading ? 'Active'   : `Active (${activeFaculty.length})` },
-            { key: 'archived', label: loading ? 'Archived' : `Archived (${archivedFaculty.length})` },
-          ].map(({ key, label }) => {
-            const isActive = viewTab === key
-            return (
-              <button key={key} onClick={() => { setViewTab(key); setSelected(new Set()) }} style={{
-                padding: '5px 16px', borderRadius: 7, fontSize: 12, fontWeight: isActive ? 700 : 500,
-                background: isActive ? G.meadow : 'transparent',
-                color: isActive ? '#fff' : G.muted,
-                border: isActive ? 'none' : '1px solid transparent',
-                cursor: 'pointer', transition: 'all 0.15s', fontFamily: "'Inter',sans-serif",
-                boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.28)' : 'none',
-              }}>{label}</button>
-            )
-          })}
+      <div className="fac-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 8, flexWrap: 'nowrap' }}>
+        {/* Tab switcher + schedule picker, grouped so the picker sits right
+            next to the tabs instead of drifting to the row's center (which
+            is what plain space-between across 3 siblings would do). */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <div id="tour-faculty-tabs" style={{ display: 'flex', gap: 3, background: 'var(--surface)', borderRadius: 10, padding: 3, border: `1px solid ${G.border}`, flexShrink: 0 }}>
+            {[
+              { key: 'active',   label: loading ? 'Active'   : `Active (${activeFaculty.length})` },
+              { key: 'archived', label: loading ? 'Archived' : `Archived (${archivedFaculty.length})` },
+            ].map(({ key, label }) => {
+              const isActive = viewTab === key
+              return (
+                <button key={key} onClick={() => { setViewTab(key); setSelected(new Set()) }} style={{
+                  padding: '5px 12px', borderRadius: 7, fontSize: 12, fontWeight: isActive ? 700 : 500,
+                  background: isActive ? G.meadow : 'transparent',
+                  color: isActive ? '#fff' : G.muted,
+                  border: isActive ? 'none' : '1px solid transparent',
+                  cursor: 'pointer', transition: 'all 0.15s', fontFamily: "'Inter',sans-serif",
+                  boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.28)' : 'none',
+                }}>{label}</button>
+              )
+            })}
+          </div>
+
+          {/* Global schedule picker — sets which saved schedule opens when you click into a faculty profile.
+              Purely a default: changing it on one faculty's own page only affects that page.
+              Capped at maxWidth so a very long name still ellipsizes instead of pushing
+              everything else off the row. */}
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <select
+              value={globalSelectedSchedule}
+              onChange={e => setGlobalSelectedSchedule(e.target.value)}
+              title={globalSelectedSchedule === '__current__' ? (currentScheduleName ? `Current · ${currentScheduleName}` : 'Current Schedule') : globalSelectedSchedule}
+              style={{
+                appearance: 'none', padding: '6px 26px 6px 10px', borderRadius: 8,
+                border: `1px solid ${G.border}`, background: 'var(--surface)', color: G.muted2,
+                fontSize: 11, fontWeight: 500, cursor: 'pointer', outline: 'none',
+                fontFamily: "'Inter',sans-serif",
+                width: 320, maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}
+            >
+              <option value="__current__">{currentScheduleName ? `Current · ${currentScheduleName}` : 'Current Schedule'}</option>
+              {globalScheduleNames.map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <div style={{ position: 'absolute', right: 9, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: G.muted2 }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
           {/* View mode toggle (Updated to match ScheduleView logic) */}
           <div id="tour-faculty-view-toggle" className="fac-view-group">
             {[
@@ -1178,10 +1283,11 @@ export default function FacultyListPage() {
             ))}
           </div>
 
-          <div id="tour-faculty-actions" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {/* Export */}
+          <div id="tour-faculty-actions" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            {/* Export — icon-only here; the label was the widest thing costing us space,
+                and the tooltip still says exactly what it does. */}
             <button onClick={handleExport} disabled={!filtered.length} title="Export specialization matrix to Excel"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: `1px solid ${G.border}`, background: 'var(--surface)', color: G.muted2, fontSize: 11.5, fontWeight: 500, cursor: filtered.length ? 'pointer' : 'not-allowed', opacity: filtered.length ? 1 : 0.45, transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, padding: 0, flexShrink: 0, borderRadius: 8, border: `1px solid ${G.border}`, background: 'var(--surface)', color: G.muted2, cursor: filtered.length ? 'pointer' : 'not-allowed', opacity: filtered.length ? 1 : 0.45, transition: 'all .15s' }}
               onMouseEnter={e => { if (filtered.length) { e.currentTarget.style.background = G.hover; e.currentTarget.style.color = 'var(--meadow-text-hover)' }}}
               onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.color = G.muted2 }}>
              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -1189,23 +1295,26 @@ export default function FacultyListPage() {
                 <polyline points="7 10 12 15 17 10"/>
                 <line x1="12" y1="15" x2="12" y2="3"/>
               </svg>
-              Export
             </button>
 
             {/* Batch export schedules */}
             <button onClick={() => setShowBatchExport(true)} disabled={!filtered.length} title="Batch export faculty schedules (PDF or Excel)"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: `1px solid ${G.border}`, background: 'var(--surface)', color: G.muted2, fontSize: 11.5, fontWeight: 500, cursor: filtered.length ? 'pointer' : 'not-allowed', opacity: filtered.length ? 1 : 0.45, transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
+              style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, padding: 0, flexShrink: 0, borderRadius: 8, border: `1px solid ${G.border}`, background: 'var(--surface)', color: G.muted2, cursor: filtered.length ? 'pointer' : 'not-allowed', opacity: filtered.length ? 1 : 0.45, transition: 'all .15s' }}
               onMouseEnter={e => { if (filtered.length) { e.currentTarget.style.background = G.hover; e.currentTarget.style.color = 'var(--meadow-text-hover)' }}}
               onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.color = G.muted2 }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                 <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
               </svg>
-              Export Schedules{selectionMode ? ` (${selectedCount})` : ''}
+              {selectionMode && selectedCount > 0 && (
+                <span style={{ position: 'absolute', top: -5, right: -5, minWidth: 15, height: 15, borderRadius: 99, background: G.meadow, color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px', fontFamily: "'Inter',sans-serif" }}>
+                  {selectedCount}
+                </span>
+              )}
             </button>
 
             {/* Upload Faculty List */}
-            <button onClick={() => setShowImport(true)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 16px', borderRadius: 10, border: `1px solid ${G.border}`, fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: 'var(--surface)', color: G.muted }}
+            <button onClick={() => setShowImport(true)} title="Upload Faculty List"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, padding: 0, flexShrink: 0, borderRadius: 8, border: `1px solid ${G.border}`, cursor: 'pointer', transition: 'all .15s', background: 'var(--surface)', color: G.muted }}
               onMouseEnter={e => { e.currentTarget.style.background = G.hover; e.currentTarget.style.borderColor = G.meadowBorder; e.currentTarget.style.color = 'var(--meadow-text-hover)' }}
               onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -1213,12 +1322,11 @@ export default function FacultyListPage() {
                 <polyline points="17 8 12 3 7 8"/>
                 <line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
-              Upload Faculty List
             </button>
           </div>
 
           <button id="tour-add-faculty-btn" onClick={() => setShowAddModal(true)}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 18px', borderRadius: 10, border: 'none', fontFamily: "'Inter',sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: '#fff', boxShadow: '0 3px 12px rgba(0,0,0,0.32)' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, border: 'none', fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer', transition: 'all .15s', background: `linear-gradient(135deg,${G.meadow},${G.meadowDeep})`, color: '#fff', boxShadow: '0 3px 12px rgba(0,0,0,0.32)' }}
             onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 5px 18px rgba(0,0,0,0.42)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
             onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 3px 12px rgba(0,0,0,0.32)'; e.currentTarget.style.transform = 'none' }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -1274,6 +1382,8 @@ export default function FacultyListPage() {
         <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ fontSize: 11.5, fontWeight: 500, color: G.ink, background: G.hover, border: `1.5px solid ${G.border}`, borderRadius: 8, padding: '5px 8px', fontFamily: "'Inter',sans-serif", cursor: 'pointer', outline: 'none' }}>
           <option value="name">Name (A–Z)</option>
           <option value="specs-desc">Most specializations</option>
+          <option value="units-desc">Units (high–low)</option>
+          <option value="units-asc">Units (low–high)</option>
         </select>
 
         {/* Select all */}
@@ -1305,6 +1415,7 @@ export default function FacultyListPage() {
         departmentFilter={departmentFilter} educationFilter={educationFilter}
         coordinatorFilter={coordinatorFilter}
         specializationFilter={specializationFilter} specMinRating={specMinRating}
+        unitFilter={unitFilter}
         onRemoveStatus={v => setStatusFilter(p => p.filter(x => x !== v))}
         onRemoveRank={v => setRankFilter(p => p.filter(x => x !== v))}
         onRemoveDept={v => setDepartmentFilter(p => p.filter(x => x !== v))}
@@ -1312,6 +1423,7 @@ export default function FacultyListPage() {
         onClearCoordinator={() => setCoordinatorFilter('')}
         onRemoveSpec={v => setSpecializationFilter(p => p.filter(x => x !== v))}
         onClearRating={() => setSpecMinRating(0)}
+        onRemoveUnit={v => setUnitFilter(p => p.filter(x => x !== v))}
       />
 
       {/* ════════════════════════════════════════════
@@ -1432,6 +1544,26 @@ export default function FacultyListPage() {
 
               <div style={{ height: 1, background: G.borderLight, margin: '24px 0' }} />
 
+              {/* ── Unit Load ── */}
+              <div>
+                <SectionLabel
+                  label="Unit Load" count={unitFilter.length} onClear={() => setUnitFilter([])}
+                  icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>}
+                />
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {UNIT_BUCKETS.map(b => {
+                    const cnt = tabFaculty.filter(f => b.test(facultyUnits(f))).length
+                    if (cnt === 0) return null
+                    return (
+                      <FilterPill key={b.key} label={b.label} count={cnt} active={unitFilter.includes(b.key)}
+                        onClick={() => setUnitFilter(p => p.includes(b.key) ? p.filter(k => k !== b.key) : [...p, b.key])}/>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div style={{ height: 1, background: G.borderLight, margin: '24px 0' }} />
+
               {/* ── Course Specializations & Ratings (Full Width) ── */}
               <div>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -1513,7 +1645,7 @@ export default function FacultyListPage() {
                 })()}
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={() => { setRankFilter([]); setDepartmentFilter([]); setEducationFilter([]); setCoordinatorFilter(''); setSpecializationFilter([]); setSpecQuery(''); setSpecMinRating(0) }}
+                <button onClick={() => { setRankFilter([]); setDepartmentFilter([]); setEducationFilter([]); setCoordinatorFilter(''); setSpecializationFilter([]); setSpecQuery(''); setSpecMinRating(0); setUnitFilter([]) }}
                   style={{ padding: '8px 18px', borderRadius: 10, border: `1.5px solid ${G.border}`, background: 'var(--surface)', color: G.muted, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", transition: 'all .15s' }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220, 38, 38, 0.05)'; e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.25)'; e.currentTarget.style.color = '#EF4444' }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
@@ -1570,7 +1702,7 @@ export default function FacultyListPage() {
       <div id="tour-faculty-list-anchor" style={{ position: 'relative' }}>
         <div id="tour-faculty-list">
           {loading ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14, animation: 'fadeIn 0.25s ease' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 12, animation: 'fadeIn 0.25s ease' }}>
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} style={{ background: 'var(--surface)', borderRadius: 12, border: `1.5px solid ${G.border}`, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                   {/* Header — mirrors the green card header */}
@@ -1631,9 +1763,10 @@ export default function FacultyListPage() {
               onUnarchive={handleCardUnarchive}
               onDelete={handleCardDelete}
               navigate={navigate}
+              globalSelectedSchedule={globalSelectedSchedule}
             />
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14, animation: 'fadeIn 0.25s ease' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 12, animation: 'fadeIn 0.25s ease' }}>
               {filtered.map(f => (
                 <FacultyCard key={f.id} faculty={f} courseTitleMap={courseTitleMap} selected={selected.has(f.id)} selectionMode={selectionMode}
                   viewTab={viewTab}

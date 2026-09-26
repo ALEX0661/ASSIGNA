@@ -6,10 +6,25 @@ export const useScheduleStore = create((set) => ({
   scheduleId:   null,
   loading:      false,
   setEvents:    (events) => set({ events }),
-  setName:      (name)   => set({ scheduleName: name }),
+  // Loading a schedule anywhere in the app (Dashboard, View Schedule, etc.)
+  // calls this. Snapping facultyListDefaultSchedule back to '__current__'
+  // here means the faculty list's picker automatically follows whatever was
+  // just loaded, the same way Dashboard's display does — no per-page wiring
+  // needed, it just falls out of reading the store reactively.
+  setName:      (name)   => set({ scheduleName: name, facultyListDefaultSchedule: '__current__' }),
   setId:        (id)     => set({ scheduleId: id }),
   setLoading:   (v)      => set({ loading: v }),
-  clearSchedule: ()      => set({ events: [], scheduleName: null, scheduleId: null }),
+  clearSchedule: ()      => set({ events: [], scheduleName: null, scheduleId: null, facultyListDefaultSchedule: '__current__' }),
+  // Which saved schedule the faculty list page's global dropdown has picked
+  // as the DEFAULT to open a faculty's ScheduleSection with. Lives here (not
+  // component state) so it survives navigating into a faculty profile and
+  // back — the list page unmounts on that navigation, which would otherwise
+  // reset a plain useState. Changing the dropdown inside a faculty's own
+  // ScheduleSection is local to that page and never writes back to this.
+  // Gets reset to '__current__' automatically by setName/clearSchedule above
+  // whenever a fresh schedule is loaded elsewhere in the app.
+  facultyListDefaultSchedule: '__current__',
+  setFacultyListDefaultSchedule: (name) => set({ facultyListDefaultSchedule: name }),
 }))
 
 export const useSolverStore = create((set) => ({

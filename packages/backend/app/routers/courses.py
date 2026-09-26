@@ -481,6 +481,10 @@ def commit_uploaded_courses(data: dict, user=Depends(any_authenticated)):
     saved  = 0
     failed = []
 
+    created_names   = []
+    updated_names   = []
+    unchanged_names = []
+
     batch = db.batch()
     for c in courses:
         code    = c.get("courseCode", "").strip()
@@ -496,9 +500,9 @@ def commit_uploaded_courses(data: dict, user=Depends(any_authenticated)):
             failed.append({"course": c, "reason": f"Not authorized for program {program}"})
             continue
 
-        doc_id = f"{code}_{program}"
-        ref    = db.collection("courses").document(doc_id)
-        batch.set(ref, {
+        doc_id  = f"{code}_{program}"
+        ref     = db.collection("courses").document(doc_id)
+        new_doc = {
             "courseCode":   code,
             "title":        c.get("title",        ""),
             "program":      program,
@@ -507,7 +511,21 @@ def commit_uploaded_courses(data: dict, user=Depends(any_authenticated)):
             "unitsLecture": _safe_int(c.get("unitsLecture"), 0),
             "unitsLab":     _safe_int(c.get("unitsLab"),     0),
             "semester":     _safe_str(c.get("semester"), "1st Semester"),
-        })
+        }
+
+        # commit() fully replaces the document (no merge=True below), so
+        # "unchanged" means every one of these fields already matched —
+        # not just the ones the sheet happened to include.
+        existing_snap = ref.get()
+        label = f"{code} ({program})"
+        if not existing_snap.exists:
+            created_names.append(label)
+        elif existing_snap.to_dict() == new_doc:
+            unchanged_names.append(label)
+        else:
+            updated_names.append(label)
+
+        batch.set(ref, new_doc)
         saved += 1
 
     try:
@@ -521,4 +539,10 @@ def commit_uploaded_courses(data: dict, user=Depends(any_authenticated)):
         "committed": saved,
         "failed":    failed,
         "total":     len(courses),
+        "created":   len(created_names),
+        "updated":   len(updated_names),
+        "unchanged": len(unchanged_names),
+        "created_names":   created_names,
+        "updated_names":   updated_names,
+        "unchanged_names": unchanged_names,
     }

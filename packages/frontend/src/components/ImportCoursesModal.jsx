@@ -682,6 +682,34 @@ function EditableRow({ course, invalid, lockedProgram, onEdit, onRemove }) {
   )
 }
 
+// Summarizes what an import actually did to the database: how many rows
+// were brand-new, how many changed an existing course, and how many were
+// skipped because the imported data was identical to what's already saved.
+function ImportBreakdown({ results, itemLabel = 'record' }) {
+  const created   = results?.created   ?? 0
+  const updated   = results?.updated   ?? 0
+  const unchanged = results?.unchanged ?? 0
+  if (!created && !updated && !unchanged) return null
+
+  const pill = (label, count, color) => count > 0 && (
+    <span style={{
+      display:'inline-flex', alignItems:'center', gap:5,
+      padding:'4px 10px', borderRadius:99, fontSize:12, fontWeight:600,
+      background: color.bg, color: color.fg, border:`1px solid ${color.border}`,
+    }}>
+      <strong>{count}</strong> {label}
+    </span>
+  )
+
+  return (
+    <div style={{ display:'flex', flexWrap:'wrap', gap:8, justifyContent:'center' }}>
+      {pill(`new ${itemLabel}${created !== 1 ? 's' : ''}`, created, { bg:'var(--meadow-soft)', fg:'var(--meadow-text-hover)', border:'var(--meadow-border)' })}
+      {pill('updated', updated, { bg:'rgba(217, 119, 6, 0.1)', fg:'#B45309', border:'#F0C040' })}
+      {pill('unchanged (no changes needed)', unchanged, { bg:'var(--hover)', fg:'var(--muted)', border:'var(--border)' })}
+    </div>
+  )
+}
+
 /* ─── Step 4: Review ────────────────────────────────────────────────────── */
 function ReviewStep({ courses, lockedProgram, onBack, onCommit, onRemove, onEdit, onImported }) {
   const [saving,  setSaving]  = useState(false)
@@ -713,10 +741,11 @@ function ReviewStep({ courses, lockedProgram, onBack, onCommit, onRemove, onEdit
             </div>
             <div>
               <p style={{ fontWeight:700, fontSize:17, color:'var(--ink)', marginBottom:5 }}>
-                {results.saved} course{results.saved!==1?'s':''} imported!
+                {results.saved} course{results.saved!==1?'s':''} processed!
               </p>
               <p style={{ color:'var(--muted)', fontSize:13, margin:0 }}>You can now use these courses in the scheduler.</p>
             </div>
+            <ImportBreakdown results={results} itemLabel="course" />
           </div>
         ) : (
           <>
@@ -724,6 +753,7 @@ function ReviewStep({ courses, lockedProgram, onBack, onCommit, onRemove, onEdit
               <p style={{ fontWeight:700, fontSize:13, color:'var(--ink)', marginBottom:3 }}>{results.saved} saved · {results.failed.length} failed</p>
               <p style={{ fontSize:12, color:'var(--muted)', margin:0 }}>These courses couldn't be saved — they may already exist or have invalid data.</p>
             </div>
+            <ImportBreakdown results={results} itemLabel="course" />
             <div style={{ maxHeight:320, overflowY:'auto', overflowX:'auto', border:'1px solid var(--meadow-border)', borderRadius:10 }}>
                <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead style={{ position:'sticky', top:0, background:'var(--bg)', zIndex:1 }}>
@@ -882,7 +912,11 @@ export default function ImportCoursesModal({ onClose, onImported, lockedProgram 
     const failed  = invalid.map(c => ({course:c,reason:'Missing required field(s)'}))
     try {
       const res = await commitCourses(valid)
-      return { saved: res.committed??valid.length, failed }
+      return {
+        saved: res.committed ?? valid.length,
+        created: res.created, updated: res.updated, unchanged: res.unchanged,
+        failed,
+      }
     } catch(err) {
       const reason = err.response?.data?.detail || 'Server error'
       return { saved:0, failed:[...rows.map(c=>({course:c,reason}))] }

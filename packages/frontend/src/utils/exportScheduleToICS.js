@@ -79,14 +79,19 @@ function foldLine(line) {
 }
 
 /**
+ * Builds the .ics calendar body and returns it as a blob instead of
+ * downloading it. Used directly by the single-schedule export (via
+ * exportScheduleToICS below) and by the batch/zip export.
+ *
  * @param {object[]} events  – flat schedule events (day, period, courseCode, title, room, faculty, program, year, block, session)
- * @param {string}   name    – used as the downloaded file name
+ * @param {string}   name    – used as the returned file's name
  * @param {object}   [opts]
  * @param {Date}     [opts.startDate] – anchor date; defaults to today
  * @param {number}   [opts.weeks]     – weeks to repeat; defaults to 15 (~1 semester)
+ * @returns {Promise<{ blob: Blob, filename: string }|null>}
  */
-export async function exportScheduleToICS(events, name = 'schedule', opts = {}) {
-  if (!events?.length) return
+export async function buildScheduleICSBlob(events, name = 'schedule', opts = {}) {
+  if (!events?.length) return null
 
   const startDate = opts.startDate ?? new Date()
   const weeks     = opts.weeks ?? 15
@@ -151,13 +156,21 @@ export async function exportScheduleToICS(events, name = 'schedule', opts = {}) 
   lines.push('END:VCALENDAR')
 
   const icsBody = lines.filter(Boolean).map(foldLine).join('\r\n')
-
   const blob = new Blob([icsBody], { type: 'text/calendar;charset=utf-8' })
-  const url  = URL.createObjectURL(blob)
-  const a    = Object.assign(document.createElement('a'), {
-    href: url,
-    download: `${name}.ics`,
-  })
+
+  return { blob, filename: `${name}.ics` }
+}
+
+/**
+ * Single-schedule export — builds the .ics file and immediately downloads it.
+ * Batch/zip export should call buildScheduleICSBlob directly instead.
+ */
+export async function exportScheduleToICS(events, name = 'schedule', opts = {}) {
+  const built = await buildScheduleICSBlob(events, name, opts)
+  if (!built) return
+  const { blob, filename } = built
+  const url = URL.createObjectURL(blob)
+  const a   = Object.assign(document.createElement('a'), { href: url, download: filename })
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)

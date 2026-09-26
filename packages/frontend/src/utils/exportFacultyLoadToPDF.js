@@ -305,15 +305,21 @@ function loadImage(src) {
 }
 
 /**
+ * Builds the "Individual Faculty Load and Schedule" PDF and returns it as a
+ * blob instead of downloading it. Used directly by the single-faculty export
+ * (via exportFacultyLoadToPDF below) and by the batch/zip export, which needs
+ * the raw bytes rather than a triggered download per faculty.
+ *
  * @param {object[]} events        - this faculty member's schedule events
  * @param {object}   faculty       - faculty record (name, SexAtBirth, specializations, status, Educational_attainment, AcademicRank, Department)
  * @param {object}   scheduleMeta  - { name, academicYear, semester } — the real fields ASSIGNA tracks per saved schedule
  * @param {function} [computeUnits] - optional (event) => number override. When omitted, units are
  *                                     computed correctly in-house: 1 hr = 1 unit for Lecture,
  *                                     3 hrs = 1 unit for Laboratory.
+ * @returns {Promise<{ blob: Blob, filename: string }|null>}
  */
-export async function exportFacultyLoadToPDF(events, faculty, scheduleMeta = {}, computeUnits) {
-  if (!faculty || !events?.length) return
+export async function buildFacultyLoadPDFBlob(events, faculty, scheduleMeta = {}, computeUnits) {
+  if (!faculty || !events?.length) return null
   const {
     name: scheduleName = '',
     academicYear: metaAY = '',
@@ -450,5 +456,23 @@ export async function exportFacultyLoadToPDF(events, faculty, scheduleMeta = {},
   const safeSem  = (semester || 'schedule').toString().replace(/[^a-zA-Z0-9]+/g, '_')
   const safeAY   = (academicYear || '').toString().replace(/[^a-zA-Z0-9]+/g, '_')
   const safeName = (faculty.name || 'Faculty').replace(/[^a-zA-Z0-9\s-]/g, '').trim()
-  doc.save(`Faculty_Load_${safeName}_${safeSem}${safeAY ? `_${safeAY}` : ''}.pdf`)
+  const filename = `Faculty_Load_${safeName}_${safeSem}${safeAY ? `_${safeAY}` : ''}.pdf`
+
+  return { blob: doc.output('blob'), filename }
+}
+
+/**
+ * Single-faculty export — builds the PDF and immediately downloads it.
+ * Batch/zip export should call buildFacultyLoadPDFBlob directly instead.
+ */
+export async function exportFacultyLoadToPDF(events, faculty, scheduleMeta = {}, computeUnits) {
+  const built = await buildFacultyLoadPDFBlob(events, faculty, scheduleMeta, computeUnits)
+  if (!built) return
+  const { blob, filename } = built
+  const url = URL.createObjectURL(blob)
+  const a   = Object.assign(document.createElement('a'), { href: url, download: filename })
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
