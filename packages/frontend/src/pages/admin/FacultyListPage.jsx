@@ -6,6 +6,7 @@ import { generateExportWorkbook, downloadWorkbook } from '../../components/facul
 import { getFaculty, getArchivedFaculty, deleteFaculty, archiveFaculty, unarchiveFaculty, getCourses, listSaved, loadSaved } from '../../services/api'
 import { useScheduleStore } from '../../store/scheduleStore'
 import { exportScheduleToExcel } from '../../utils/exportScheduleToExcel'
+import { exportScheduleToICS } from '../../utils/exportScheduleToICS'
 import { exportFacultyLoadToPDF } from '../../utils/exportFacultyLoadToPDF'
 
 /* ── Design tokens ── */
@@ -415,7 +416,7 @@ function FacultyTable({ faculty, selected, selectionMode, viewTab, onSelect, onS
 
             return (
               <tr key={f.id}
-                onClick={() => navigate(`/dashboard/faculty/${f.id}`)}
+                onClick={() => navigate(`/dashboard/faculty/${f.id}`, { state: { selectedSchedule: globalSelectedSchedule } })}
                 onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = G.hover }}
                 onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = 'transparent' }}
                 style={{
@@ -699,8 +700,10 @@ function BatchScheduleExportModal({ facultyList, preselectedIds, wasManuallySele
         const safeName = (f.name || 'Faculty').replace(/[^a-zA-Z0-9\s-]/g, '').trim()
         if (format === 'pdf') {
           await exportFacultyLoadToPDF(fEvents, f, meta, computeUnits)
-        } else {
+        } else if (format === 'excel') {
           await exportScheduleToExcel(fEvents, `${safeName} - ${meta.name}`)
+        } else if (format === 'ics') {
+          await exportScheduleToICS(fEvents, `${safeName} - ${meta.name}`)
         }
         exported++
         // small gap so the browser doesn't choke on many simultaneous downloads
@@ -754,7 +757,7 @@ function BatchScheduleExportModal({ facultyList, preselectedIds, wasManuallySele
             value={format}
             onChange={setFormat}
             disabled={exporting}
-            options={[{ value: 'pdf', label: 'PDF (Load & Schedule)' }, { value: 'excel', label: 'Excel' }]}
+            options={[{ value: 'pdf', label: 'PDF (Load & Schedule)' }, { value: 'excel', label: 'Excel' }, { value: 'ics', label: 'ICS (Calendar)' }]}
           />
         </div>
 
@@ -872,6 +875,8 @@ export default function FacultyListPage() {
   const [specializationFilter, setSpecializationFilter] = useState([])
   const [sortBy,            setSortBy]            = useState('name')
   const [courseTitleMap,    setCourseTitleMap]    = useState({})
+  const [globalScheduleNames, setGlobalScheduleNames] = useState([])
+  const [globalSelectedSchedule, setGlobalSelectedSchedule] = useState('__current__')
   const navigate = useNavigate()
 
   async function load() {
@@ -1636,7 +1641,7 @@ export default function FacultyListPage() {
                   onArchive={() => handleCardArchive(f.id, f.name)}
                   onUnarchive={() => handleCardUnarchive(f.id, f.name)}
                   onDelete={() => handleCardDelete(f.id, f.name)}
-                  onClick={() => { if (selectionMode) { toggleOne(f.id); return } navigate(`/dashboard/faculty/${f.id}`) }}
+                  onClick={() => { if (selectionMode) { toggleOne(f.id); return } navigate(`/dashboard/faculty/${f.id}`, { state: { selectedSchedule: globalSelectedSchedule } }) }}
                 />
               ))}
             </div>
