@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { getCourses } from '../../services/api'
 import { dedupeSpecs } from './fdShared'
 import { useTour } from '../../hooks/useTour.jsx'
@@ -16,6 +16,19 @@ const LEVELS = [
 const getLvl = r => LEVELS.find(l => l.rating === (r || 3)) || LEVELS[2]
 
 const SEMESTERS = ['All', '1st Semester', '2nd Semester', 'Midyear']
+
+// ─── General-ed / non-specialization course codes ─────────────────────────────
+// These are excluded from the Browse Catalog (and the blank import template)
+// since faculty aren't rated on them as a "specialization". Matched as a
+// prefix immediately followed by a digit, so e.g. "GEC101", "NSTP2", "PE1",
+// and "MAT101" all match, but a code that merely contains one of these
+// letters somewhere else (e.g. "COMPE101") does not.
+// Adjust this list to match your school's actual course-code scheme.
+const EXCLUDED_COURSE_PREFIXES = ['GEC', 'NSTP', 'PE', 'MAT']
+function isExcludedCourse(code) {
+  const c = (code || '').toUpperCase().replace(/\s+/g, '')
+  return EXCLUDED_COURSE_PREFIXES.some(p => new RegExp(`^${p}\\d`).test(c))
+}
 
 // ─── Tiny building blocks ─────────────────────────────────────────────────────
 
@@ -132,13 +145,13 @@ function SemesterTab({ label, active, count, onClick }) {
   return (
     <button type="button" onClick={onClick}
       style={{
-        padding: '6px 14px', borderRadius: 8,
+        padding: '5px 10px', borderRadius: 7,
         border: active ? '1.5px solid var(--meadow-border)' : '1.5px solid transparent',
         background: active ? 'var(--meadow-soft)' : 'transparent',
         color: active ? ('var(--meadow-text-hover)') : 'var(--muted2)',
-        fontSize: 12, fontWeight: active ? 700 : 500,
+        fontSize: 11.5, fontWeight: active ? 700 : 500,
         cursor: 'pointer', fontFamily: "'Inter', sans-serif",
-        display: 'flex', alignItems: 'center', gap: 6,
+        display: 'flex', alignItems: 'center', gap: 5,
         transition: 'all 0.12s', whiteSpace: 'nowrap',
       }}>
       {label}
@@ -160,9 +173,28 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
   const [specs,       setSpecs]       = useState(() => dedupeSpecs(specializations))
   const [tab,         setTab]         = useState('current')
 
+  // Snapshot of what was last saved (or what we started with). Compared
+  // against the live `specs` (plus any not-yet-committed staged courses)
+  // to know whether there's anything the Save button hasn't captured yet.
+  // Snapshot of what was last saved (or what we started with) — kept as the
+  // actual array (not just a string) so individual rows can be compared
+  // against it to show exactly which one changed, not just "something did".
+  const [savedBaseline, setSavedBaseline] = useState(() => dedupeSpecs(specializations))
+  // Bumped only when Save actually commits, so caches below know when it's
+  // safe to forget an unsaved edit's place in a filter (see levelMatchKeys).
+  const [saveVersion, setSaveVersion] = useState(0)
+  const baselineMap = useMemo(() => {
+    const m = new Map()
+    savedBaseline.forEach(s => m.set((s.courseCode || '').toLowerCase().trim(), s))
+    return m
+  }, [savedBaseline])
+
   // ── Assigned tab state
   const [currentQ,   setCurrentQ]    = useState('')
   const [sortBy,     setSortBy]      = useState('rating-desc')
+  const [assignedProgram, setAssignedProgram] = useState('All')
+  const [assignedLevel,   setAssignedLevel]   = useState('All')
+  const [editedOnly,      setEditedOnly]      = useState(false) // show only rows changed (or added) but not yet saved, for review
   // True the moment any rating gets edited on the Assigned tab; blocks
   // re-sorting (and gets called out in the toolbar) until Save is clicked,
   // so a batch of edits can't get scattered across the list mid-edit.
@@ -171,8 +203,11 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
   // ── Browse tab state
   const [browseQ,    setBrowseQ]     = useState('')
   const [activeSem,  setActiveSem]   = useState('All')
+  const [activeProgram, setActiveProgram] = useState('All')
+  const [hideAssigned, setHideAssigned] = useState(false)
+  const [stagedOnly,  setStagedOnly]   = useState(false) // show only courses you've rated but not yet added, for review before committing
   const [pending,    setPending]     = useState({}) // { courseCode: { rating, title } }
-  const [courses,    setCourses]     = useState([])
+  const [allCourses, setAllCourses]  = useState([]) // full catalog, incl. gen-ed — used for title lookups
   const [loadingCrs, setLoadingCrs]  = useState(false)
 
   // ── Manual tab state (removed — only catalog-based adding allowed)
@@ -205,26 +240,48 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
           program:    c.program || c.dept || '',
         })).filter(c => c.courseCode || c.title)
         const seen = new Set()
-        setCourses(norm.filter(c => {
+        setAllCourses(norm.filter(c => {
           const k = (c.courseCode || c.title).toLowerCase()
           if (seen.has(k)) return false; seen.add(k); return true
         }))
       })
-      .catch(() => setCourses([]))
+      .catch(() => setAllCourses([]))
       .finally(() => setLoadingCrs(false))
   }, [])
+
+  // Browsable/assignable courses — excludes GEC/NSTP/PE/MATH-type courses.
+  // Anything already assigned before this exclusion existed still shows
+  // fine in the Assigned tab (its title is resolved below from the full,
+  // unfiltered catalog).
+  const courses = useMemo(() => allCourses.filter(c => !isExcludedCourse(c.courseCode)), [allCourses])
 
   const existingCodes  = useMemo(() => new Set(specs.map(s => (s.courseCode || '').toLowerCase().trim())), [specs])
   const courseTitleMap = useMemo(() => {
     const m = {}
-    courses.forEach(c => { 
+    allCourses.forEach(c => { 
       if (c.courseCode) {
         const normalized = c.courseCode.toLowerCase().replace(/\s+/g, '')
         m[normalized] = c.title || '' 
       }
     })
     return m
+  }, [allCourses])
+
+  const programs = useMemo(() => {
+    const set = new Set(courses.map(c => c.program).filter(Boolean))
+    return Array.from(set).sort()
   }, [courses])
+
+  // Course code → program, for filtering the Assigned list by program too
+  // (a spec only stores courseCode/title/rating, not program, so this looks
+  // it up from the full catalog).
+  const courseProgramMap = useMemo(() => {
+    const m = {}
+    allCourses.forEach(c => {
+      if (c.courseCode) m[c.courseCode.toLowerCase().replace(/\s+/g, '')] = c.program || ''
+    })
+    return m
+  }, [allCourses])
 
   // Semester → courses map
   const coursesBySemester = useMemo(() => {
@@ -236,7 +293,10 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
   }, [courses])
 
   const filteredBrowse = useMemo(() => {
-    const base = coursesBySemester[activeSem] || []
+    let base = coursesBySemester[activeSem] || []
+    if (activeProgram !== 'All') base = base.filter(c => c.program === activeProgram)
+    if (hideAssigned) base = base.filter(c => !existingCodes.has(c.courseCode.toLowerCase()))
+    if (stagedOnly) base = base.filter(c => pending[c.courseCode] != null)
     const q    = browseQ.toLowerCase()
     const list = q ? base.filter(c => c.courseCode.toLowerCase().includes(q) || c.title.toLowerCase().includes(q)) : base
     return list.sort((a, b) => {
@@ -248,7 +308,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
       if (aA && !bA) return 1;  if (!aA && bA) return -1
       return a.courseCode.localeCompare(b.courseCode)
     })
-  }, [coursesBySemester, activeSem, browseQ, existingCodes, pending])
+  }, [coursesBySemester, activeSem, activeProgram, hideAssigned, stagedOnly, browseQ, existingCodes, pending])
 
   const validSpecs = useMemo(() => specs.filter(s => !s.isUnmatched || courseTitleMap[(s.courseCode || '').toLowerCase().replace(/\s+/g, '')]), [specs, courseTitleMap])
   const unmatchedList = useMemo(() => specs.filter(s => s.isUnmatched && !courseTitleMap[(s.courseCode || '').toLowerCase().replace(/\s+/g, '')]), [specs, courseTitleMap])
@@ -274,6 +334,43 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortBy, validCodesSignature])
 
+  // Same freezing idea, applied to the Level filter: which rows match a given
+  // level is computed once per level and cached, not recalculated every time
+  // you land on that level. Without the cache, filtering Beginner → editing a
+  // row's rating → switching to another filter → switching back to Beginner
+  // would recompute from the now-changed rating and the edited row would
+  // vanish. The cache is only thrown out when courses are added/removed or
+  // when Save actually commits (saveVersion) — never just from switching
+  // filters — so an edited-but-unsaved row stays visible under whichever
+  // level filter it matched when you started editing it.
+  const levelMatchCacheRef = useRef({ signature: null, map: new Map() })
+  const [levelMatchKeys, setLevelMatchKeys] = useState(null) // null = 'All', no filtering
+  useEffect(() => {
+    if (assignedLevel === 'All') { setLevelMatchKeys(null); return }
+    const cacheSignature = `${validCodesSignature}::${saveVersion}`
+    const cache = levelMatchCacheRef.current
+    if (cache.signature !== cacheSignature) {
+      cache.signature = cacheSignature
+      cache.map = new Map()
+    }
+    if (!cache.map.has(assignedLevel)) {
+      cache.map.set(assignedLevel, new Set(validSpecs.filter(s => (s.rating || 3) === assignedLevel).map(specKey)))
+    }
+    setLevelMatchKeys(cache.map.get(assignedLevel))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignedLevel, validCodesSignature, saveVersion])
+
+  // Programs represented among the currently assigned courses (looked up
+  // from the catalog since a spec itself doesn't carry a program field).
+  const assignedPrograms = useMemo(() => {
+    const set = new Set()
+    validSpecs.forEach(s => {
+      const p = courseProgramMap[(s.courseCode || '').toLowerCase().replace(/\s+/g, '')]
+      if (p) set.add(p)
+    })
+    return Array.from(set).sort()
+  }, [validSpecs, courseProgramMap])
+
   const filteredSpecs = useMemo(() => {
     const q     = currentQ.toLowerCase()
     const byKey = new Map(validSpecs.map(s => [specKey(s), s]))
@@ -283,13 +380,26 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
     const ordered = orderKeys.map(k => byKey.get(k)).filter(Boolean)
     const seen = new Set(orderKeys)
     validSpecs.forEach(s => { if (!seen.has(specKey(s))) ordered.push(s) })
-    if (!q) return ordered
-    return ordered.filter(s => {
+    let list = ordered
+    if (assignedProgram !== 'All') {
+      list = list.filter(s => courseProgramMap[(s.courseCode || '').toLowerCase().replace(/\s+/g, '')] === assignedProgram)
+    }
+    if (levelMatchKeys) {
+      list = list.filter(s => levelMatchKeys.has(specKey(s)))
+    }
+    if (editedOnly) {
+      list = list.filter(s => {
+        const b = baselineMap.get((s.courseCode || '').toLowerCase().trim())
+        return !b || (b.rating || 3) !== (s.rating || 3)
+      })
+    }
+    if (!q) return list
+    return list.filter(s => {
       const code  = (s.courseCode || '').toLowerCase()
       const title = (s.title || courseTitleMap[code] || '').toLowerCase()
       return code.includes(q) || title.includes(q)
     })
-  }, [validSpecs, orderKeys, currentQ, courseTitleMap])
+  }, [validSpecs, orderKeys, currentQ, courseTitleMap, assignedProgram, levelMatchKeys, editedOnly, baselineMap, courseProgramMap])
 
   const unmatchedSpecs = useMemo(() => {
     const q   = currentQ.toLowerCase()
@@ -309,6 +419,32 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
   const pendingCount  = pendingList.length
   const specCount     = validSpecs.length
   const unmatchedCount = unmatchedList.length
+
+  // True whenever there's something Save hasn't captured yet — an edited/
+  // added/removed spec, or courses staged in Browse Catalog that haven't
+  // been committed with "Add N Courses" yet.
+  const hasUnsavedChanges = useMemo(
+    () => JSON.stringify(specs) !== JSON.stringify(savedBaseline) || pendingCount > 0,
+    [specs, savedBaseline, pendingCount]
+  )
+
+  // Breakdown of what's not yet saved, for the toolbar counter — how many
+  // ratings were edited, how many rows were removed, how many are new.
+  const editedCount = useMemo(() => validSpecs.reduce((n, s) => {
+    const b = baselineMap.get((s.courseCode || '').toLowerCase().trim())
+    return n + (b && (b.rating || 3) !== (s.rating || 3) ? 1 : 0)
+  }, 0), [validSpecs, baselineMap])
+  const newCount = useMemo(
+    () => validSpecs.filter(s => !baselineMap.has((s.courseCode || '').toLowerCase().trim())).length,
+    [validSpecs, baselineMap]
+  )
+  useEffect(() => {
+    if (editedOnly && editedCount === 0 && newCount === 0) setEditedOnly(false)
+  }, [editedOnly, editedCount, newCount])
+  const removedCount = useMemo(() => {
+    const currentCodes = new Set(specs.map(s => (s.courseCode || '').toLowerCase().trim()))
+    return savedBaseline.filter(s => !currentCodes.has((s.courseCode || '').toLowerCase().trim())).length
+  }, [specs, savedBaseline])
 
   const { TourElement, startTour } = useTour('facultySpecModal', [
     {
@@ -390,6 +526,12 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
         .spec-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px }
         @keyframes spin { to { transform: rotate(360deg) } }
         @keyframes fadeUp { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:translateY(0) } }
+        @keyframes pulseGlow {
+          0%, 100% { box-shadow: 0 4px 14px rgba(0,0,0,0.28), 0 0 0 0 rgba(245,158,11,0.55); }
+          50%      { box-shadow: 0 4px 14px rgba(0,0,0,0.28), 0 0 0 6px rgba(245,158,11,0); }
+        }
+        .spec-save-glow { animation: pulseGlow 1.6s ease-in-out infinite; }
+        @keyframes dotPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
       `}</style>
 
       <div style={{
@@ -421,6 +563,12 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
           {specCount > 0 && (
             <div style={{ padding: '3px 11px', borderRadius: 99, background: 'var(--meadow-soft)', border: '1px solid var(--meadow-border)' }}>
               <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--meadow-text-hover)' }}>{specCount} assigned</span>
+            </div>
+          )}
+          {hasUnsavedChanges && (
+            <div title="You have changes that haven't been saved yet" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 11px', borderRadius: 99, background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.35)' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#F59E0B', animation: 'dotPulse 1.4s ease-in-out infinite' }} />
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: '#B45309' }}>Unsaved changes</span>
             </div>
           )}
           <button type="button" onClick={() => startTour()} title="Take the tour"
@@ -477,23 +625,75 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
             {/* ── Assigned Courses ──────────────────────────────────────── */}
             {tab === 'current' && (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }} id="tour-spec-current-toolbar">
-                  <div style={{ flex: 1 }}>
-                    <SearchBox value={currentQ} onChange={setCurrentQ} placeholder="Filter by code or title…" />
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-                    <span style={{ fontSize: 11, color: 'var(--muted2)', fontWeight: 600, marginRight: 4 }}>Sort</span>
-                    {[{ key: 'rating-desc', label: 'Best' }, { key: 'code-asc', label: 'A–Z' }, { key: 'rating-asc', label: 'Lowest' }].map(o => (
-                      <button key={o.key} type="button" disabled={ratingsDirty} onClick={() => setSortBy(o.key)}
-                        title={ratingsDirty ? 'Sorting is locked until you save your changes' : undefined}
-                        style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11.5, fontWeight: sortBy === o.key ? 700 : 500, background: sortBy === o.key ? 'var(--meadow-soft)' : 'transparent', color: ratingsDirty ? 'var(--muted2)' : (sortBy === o.key ? ('var(--meadow-text-hover)') : 'var(--muted)'), border: sortBy === o.key ? '1px solid var(--meadow-border)' : '1px solid transparent', cursor: ratingsDirty ? 'not-allowed' : 'pointer', opacity: ratingsDirty ? 0.5 : 1, fontFamily: "'Inter', sans-serif" }}>
-                        {o.label}
-                      </button>
-                    ))}
-                    {ratingsDirty && (
-                      <span title="Sorting is locked until you save your changes" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 6, padding: '3px 8px', borderRadius: 99, background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#B45309', fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                <div style={{ padding: '12px 18px 10px', borderBottom: '1px solid var(--border)', flexShrink: 0 }} id="tour-spec-current-toolbar">
+                  {/* Everything — search, program, level, sort — in one wrapping row. Each
+                      control is sized to its content (no flex:1 search box hogging space) so
+                      they pack tightly instead of forcing filters onto their own line. */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', rowGap: 8 }}>
+                    <div style={{ width: 180, flexShrink: 0 }}>
+                      <SearchBox value={currentQ} onChange={setCurrentQ} placeholder="Filter by code or title…" />
+                    </div>
+
+                    {assignedPrograms.length > 1 && (
+                      <select value={assignedProgram} onChange={e => setAssignedProgram(e.target.value)}
+                        style={{ padding: '6px 8px', borderRadius: 7, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--ink)', fontSize: 11.5, fontWeight: 500, fontFamily: "'Inter', sans-serif", cursor: 'pointer', flexShrink: 0 }}>
+                        <option value="All">All Programs</option>
+                        {assignedPrograms.map(p => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                    )}
+
+                    <select value={assignedLevel === 'All' ? 'All' : String(assignedLevel)}
+                      onChange={e => setAssignedLevel(e.target.value === 'All' ? 'All' : Number(e.target.value))}
+                      style={{ padding: '6px 8px', borderRadius: 7, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--ink)', fontSize: 11.5, fontWeight: 500, fontFamily: "'Inter', sans-serif", cursor: 'pointer', flexShrink: 0 }}>
+                      <option value="All">All Levels</option>
+                      {LEVELS.map(l => <option key={l.rating} value={l.rating}>{l.label}</option>)}
+                    </select>
+
+                    <span style={{ width: 1, alignSelf: 'stretch', minHeight: 20, background: 'var(--border)', margin: '0 2px', flexShrink: 0 }} />
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+                      <span style={{ fontSize: 11, color: 'var(--muted2)', fontWeight: 600, marginRight: 4 }}>Sort</span>
+                      {[{ key: 'rating-desc', label: 'Best' }, { key: 'code-asc', label: 'A–Z' }, { key: 'rating-asc', label: 'Lowest' }].map(o => (
+                        <button key={o.key} type="button" disabled={ratingsDirty} onClick={() => setSortBy(o.key)}
+                          title={ratingsDirty ? 'Sorting is locked until you save your changes' : undefined}
+                          style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11.5, fontWeight: sortBy === o.key ? 700 : 500, background: sortBy === o.key ? 'var(--meadow-soft)' : 'transparent', color: ratingsDirty ? 'var(--muted2)' : (sortBy === o.key ? ('var(--meadow-text-hover)') : 'var(--muted)'), border: sortBy === o.key ? '1px solid var(--meadow-border)' : '1px solid transparent', cursor: ratingsDirty ? 'not-allowed' : 'pointer', opacity: ratingsDirty ? 0.5 : 1, fontFamily: "'Inter', sans-serif" }}>
+                          {o.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Review filter: show only rows changed or added but not yet saved */}
+                    <button type="button" disabled={editedCount === 0 && newCount === 0} onClick={() => setEditedOnly(v => !v)}
+                      title={editedCount === 0 && newCount === 0 ? 'Edit a rating or add a course to review it here' : undefined}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0,
+                        padding: '5px 10px', borderRadius: 99, cursor: (editedCount === 0 && newCount === 0) ? 'not-allowed' : 'pointer',
+                        border: `1px solid ${editedOnly ? 'rgba(245, 158, 11, 0.35)' : 'var(--border)'}`,
+                        background: editedOnly ? 'rgba(245, 158, 11, 0.1)' : 'transparent',
+                        color: (editedCount === 0 && newCount === 0) ? 'var(--muted2)' : (editedOnly ? '#B45309' : 'var(--muted)'),
+                        opacity: (editedCount === 0 && newCount === 0) ? 0.55 : 1,
+                        fontSize: 11, fontWeight: 600, fontFamily: "'Inter', sans-serif", whiteSpace: 'nowrap',
+                      }}>
+                      <span style={{
+                        width: 12, height: 12, borderRadius: 3.5, flexShrink: 0,
+                        border: `1.5px solid ${editedOnly ? '#B45309' : 'var(--muted2)'}`,
+                        background: editedOnly ? '#B45309' : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {editedOnly && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5"><polyline points="20 6 9 17 4 12" /></svg>}
+                      </span>
+                      Edited only{(editedCount + newCount) > 0 ? ` (${editedCount + newCount})` : ''}
+                    </button>
+
+                    {/* Pending-changes counter — what Save will apply, at a glance */}
+                    {(editedCount > 0 || removedCount > 0 || newCount > 0) && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 'auto', padding: '3px 8px', borderRadius: 99, background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#B45309', fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-                        Locked — save to re-sort
+                        {[
+                          newCount > 0 && `${newCount} new`,
+                          editedCount > 0 && `${editedCount} edited`,
+                          removedCount > 0 && `${removedCount} removed`,
+                        ].filter(Boolean).join(' · ')} — unsaved
                       </span>
                     )}
                   </div>
@@ -522,15 +722,21 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                         const title   = spec.title || courseTitleMap[(spec.courseCode || '').toLowerCase().trim()] || ''
                         const rating  = spec.rating || 3
                         const lvl     = getLvl(rating)
+                        const baselineSpec = baselineMap.get((spec.courseCode || '').toLowerCase().trim())
+                        const isNewRow     = !baselineSpec
+                        const isEditedRow  = !!baselineSpec && (baselineSpec.rating || 3) !== rating
+                        const changed      = isNewRow || isEditedRow
                         return (
                           <div key={spec.courseCode || `spec-${origIdx}`} style={{
                             display: 'flex', alignItems: 'center', gap: 12,
                             padding: '11px 14px', borderRadius: 11,
-                            border: '1.5px solid var(--border)', background: 'var(--bg)',
+                            border: changed ? '1.5px solid rgba(245, 158, 11, 0.45)' : '1.5px solid var(--border)',
+                            background: changed ? 'rgba(245, 158, 11, 0.06)' : 'var(--bg)',
                             animation: 'fadeUp 0.15s ease',
+                            position: 'relative',
                           }}>
                             {/* Color accent strip */}
-                            <div style={{ width: 3, borderRadius: 99, background: lvl.dot, alignSelf: 'stretch', flexShrink: 0, minHeight: 32 }} />
+                            <div style={{ width: 3, borderRadius: 99, background: changed ? '#F59E0B' : lvl.dot, alignSelf: 'stretch', flexShrink: 0, minHeight: 32 }} />
                             {/* Info */}
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 2 }}>
@@ -540,6 +746,19 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                                   <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)', letterSpacing: '0.2px' }}>{spec.courseCode}</span>
                                 )}
                                 <LevelBadge rating={rating} />
+                                {isNewRow && (
+                                  <span title="Not yet saved" style={{ fontSize: 9.5, fontWeight: 700, color: '#B45309', background: 'rgba(245, 158, 11, 0.12)', padding: '1px 7px', borderRadius: 99, border: '1px solid rgba(245, 158, 11, 0.35)', flexShrink: 0, whiteSpace: 'nowrap' }}>New</span>
+                                )}
+                                {isEditedRow && (
+                                  <span title="Not yet saved" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9.5, fontWeight: 700, color: '#B45309', background: 'rgba(245, 158, 11, 0.12)', padding: '1px 7px', borderRadius: 99, border: '1px solid rgba(245, 158, 11, 0.35)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                                    Edited
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontWeight: 500, opacity: 0.85 }}>
+                                      <span style={{ textDecoration: 'line-through', textDecorationColor: 'rgba(180, 83, 9, 0.55)' }}>{getLvl(baselineSpec.rating || 3).short}</span>
+                                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                                      <span>{lvl.short}</span>
+                                    </span>
+                                  </span>
+                                )}
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <span style={{ fontFamily: 'monospace', fontSize: 10.5, fontWeight: 600, color: 'var(--meadow-text-hover)', background: 'var(--meadow-soft)', padding: '1px 7px', borderRadius: 5, border: '1px solid var(--meadow-border)', flexShrink: 0 }}>{spec.courseCode}</span>
@@ -616,27 +835,80 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
             {tab === 'browse' && (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-                {/* Toolbar */}
+                {/* Toolbar — search, semester, program, and both review toggles packed
+                    into one wrapping row (dropdowns instead of tab strips keep it tight
+                    even with many programs), plus a slim status/count line underneath. */}
                 <div style={{ padding: '12px 18px 10px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-                  <SearchBox value={browseQ} onChange={setBrowseQ} placeholder="Search by course code or title…" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', rowGap: 8 }}>
+                    <div style={{ width: 180, flexShrink: 0 }}>
+                      <SearchBox value={browseQ} onChange={setBrowseQ} placeholder="Search code or title…" />
+                    </div>
 
-                  {/* Semester tabs */}
-                  <div style={{ display: 'flex', gap: 5, marginTop: 10, flexWrap: 'wrap' }}>
-                    {SEMESTERS.map(sem => {
-                      const list = coursesBySemester[sem] || []
-                      return (
-                        <SemesterTab
-                          key={sem} label={sem === 'All' ? 'All Semesters' : sem}
-                          active={activeSem === sem}
-                          count={sem === 'All' ? null : list.length}
-                          onClick={() => setActiveSem(sem)}
-                        />
-                      )
-                    })}
+                    <select value={activeSem} onChange={e => setActiveSem(e.target.value)}
+                      style={{ padding: '6px 8px', borderRadius: 7, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--ink)', fontSize: 11.5, fontWeight: 500, fontFamily: "'Inter', sans-serif", cursor: 'pointer', flexShrink: 0 }}>
+                      {SEMESTERS.map(sem => (
+                        <option key={sem} value={sem}>{sem === 'All' ? 'All Semesters' : sem} ({sem === 'All' ? courses.length : (coursesBySemester[sem] || []).length})</option>
+                      ))}
+                    </select>
+
+                    {programs.length > 1 && (
+                      <select value={activeProgram} onChange={e => setActiveProgram(e.target.value)}
+                        style={{ padding: '6px 8px', borderRadius: 7, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--ink)', fontSize: 11.5, fontWeight: 500, fontFamily: "'Inter', sans-serif", cursor: 'pointer', flexShrink: 0 }}>
+                        <option value="All">All Programs</option>
+                        {programs.map(p => <option key={p} value={p}>{p} ({courses.filter(c => c.program === p).length})</option>)}
+                      </select>
+                    )}
+
+                    <span style={{ width: 1, alignSelf: 'stretch', minHeight: 20, background: 'var(--border)', margin: '0 2px', flexShrink: 0 }} />
+
+                    <button type="button" onClick={() => setHideAssigned(v => !v)}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0,
+                        padding: '5px 10px', borderRadius: 99, cursor: 'pointer',
+                        border: `1px solid ${hideAssigned ? 'var(--meadow-border)' : 'var(--border)'}`,
+                        background: hideAssigned ? 'var(--meadow-soft)' : 'transparent',
+                        color: hideAssigned ? 'var(--meadow-text-hover)' : 'var(--muted)',
+                        fontSize: 11, fontWeight: 600, fontFamily: "'Inter', sans-serif", whiteSpace: 'nowrap',
+                      }}>
+                      <span style={{
+                        width: 12, height: 12, borderRadius: 3.5, flexShrink: 0,
+                        border: `1.5px solid ${hideAssigned ? 'var(--meadow-text-hover)' : 'var(--muted2)'}`,
+                        background: hideAssigned ? 'var(--meadow-text-hover)' : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {hideAssigned && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5"><polyline points="20 6 9 17 4 12" /></svg>}
+                      </span>
+                      Hide assigned
+                    </button>
+
+                    {/* Review filter: show only courses rated in this session but not
+                        yet committed with "Add N Courses", so edits can be double-checked
+                        before they're folded into specs. */}
+                    <button type="button" disabled={pendingCount === 0} onClick={() => setStagedOnly(v => !v)}
+                      title={pendingCount === 0 ? 'Rate a course to stage it, then use this to review staged ratings' : undefined}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0,
+                        padding: '5px 10px', borderRadius: 99, cursor: pendingCount === 0 ? 'not-allowed' : 'pointer',
+                        border: `1px solid ${stagedOnly ? 'rgba(124, 58, 237, 0.35)' : 'var(--border)'}`,
+                        background: stagedOnly ? 'color-mix(in srgb, #6D28D9 10%, transparent)' : 'transparent',
+                        color: pendingCount === 0 ? 'var(--muted2)' : (stagedOnly ? '#7C3AED' : 'var(--muted)'),
+                        opacity: pendingCount === 0 ? 0.55 : 1,
+                        fontSize: 11, fontWeight: 600, fontFamily: "'Inter', sans-serif", whiteSpace: 'nowrap',
+                      }}>
+                      <span style={{
+                        width: 12, height: 12, borderRadius: 3.5, flexShrink: 0,
+                        border: `1.5px solid ${stagedOnly ? '#7C3AED' : 'var(--muted2)'}`,
+                        background: stagedOnly ? '#7C3AED' : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {stagedOnly && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5"><polyline points="20 6 9 17 4 12" /></svg>}
+                      </span>
+                      Edited only{pendingCount > 0 ? ` (${pendingCount})` : ''}
+                    </button>
                   </div>
 
                   {/* Status row */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 11.5, color: 'var(--muted2)' }}>
                       {loadingCrs ? 'Loading…' : `${filteredBrowse.length} course${filteredBrowse.length === 1 ? '' : 's'}`}
                     </span>
@@ -836,8 +1108,11 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                 return s
               })
               setRatingsDirty(false)
+              setSavedBaseline(cleaned)
+              setSaveVersion(v => v + 1)
               onSave(cleaned)
             }} disabled={isSaving}
+              className={hasUnsavedChanges && !isSaving ? 'spec-save-glow' : undefined}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 20px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize: 13, fontWeight: 600, cursor: isSaving ? 'default' : 'pointer', fontFamily: "'Inter', sans-serif", opacity: isSaving ? 0.65 : 1, boxShadow: '0 4px 14px rgba(0,0,0,0.28)' }}>
               {isSaving
                 ? <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'spin 0.8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>Saving…</>

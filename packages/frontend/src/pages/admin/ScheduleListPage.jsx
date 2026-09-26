@@ -236,17 +236,21 @@ export default function ScheduleListPage() {
     navigate(`/dashboard/schedule/${encodeURIComponent(s.id || s.name)}`)
   }
 
-
   const handleDuplicate = async (schedule, events) => {
     setToastMsg({ type: 'info', message: 'Duplicating schedule...' })
     try {
+      let dupEvents = events
+      if (!dupEvents || dupEvents.length === 0) {
+        const res = await getSchedules(schedule.name || schedule.id)
+        dupEvents = res.events || []
+      }
       const finalName = `${schedule.name} - Copy ${Math.floor(Math.random() * 1000)}`
       await saveSchedule(finalName, {
         academicYear: schedule.academic_year || schedule.academicYear,
         semester: schedule.semester,
         finalized: false,
         source: 'admin'
-      }, events || [])
+      }, dupEvents)
       setToastMsg({ type: 'success', message: `Duplicated to ${finalName}` })
       handleRefresh()
     } catch(err) {
@@ -718,23 +722,109 @@ function StatCard({ icon, title, value, trend, trendColor = 'var(--meadow)', ico
 // schedule's events and derive course/faculty/room/conflict counts" logic
 // only lives in one place.
 
+function computeStatsFromEvents(events = []) {
+  const isAssigned = (val) => {
+    if (!val) return false
+    const v = String(val).trim().toUpperCase()
+    return v !== '' && v !== 'TBA' && v !== 'UNASSIGNED' && v !== 'NONE' && v !== 'N/A'
+  }
+
+  const facultySet = new Set()
+  const roomSet = new Set()
+
+  for (const ev of events) {
+    const fac = ev.faculty || ev.facultyName || ev.instructor || ev.teacher
+    const rm = ev.room || ev.roomName || ev.venue
+    if (isAssigned(fac)) facultySet.add(String(fac).trim())
+    if (isAssigned(rm)) roomSet.add(String(rm).trim())
+  }
+
+  const conflictMap = buildConflictMap ? buildConflictMap(events) : null
+  const conflicts =
+    conflictMap instanceof Map
+      ? conflictMap.size
+      : conflictMap && typeof conflictMap === 'object'
+      ? Object.keys(conflictMap).length
+      : 0
+
+  return {
+    classes: events.length,
+    courses: events.length,
+    faculty: facultySet.size,
+    rooms: roomSet.size,
+    conflicts,
+  }
+}
+
 function useScheduleStats(schedule) {
+  const hasPrecomputedStats =
+    schedule.stats != null ||
+    schedule.facultyCount != null ||
+    schedule.roomCount != null ||
+    schedule.conflictCount != null
+
   const [stats, setStats] = useState(() => {
+    if (schedule.stats) {
+      return { ...schedule.stats, loading: false, events: schedule.events || null }
+    }
+    if (Array.isArray(schedule.events) && schedule.events.length > 0) {
+      return {
+        ...computeStatsFromEvents(schedule.events),
+        loading: false,
+        events: schedule.events,
+      }
+    }
     return {
-      courses: schedule.courseCount || 0,
+      classes: schedule.eventCount || schedule.courseCount || 0,
+      courses: schedule.courseCount || schedule.eventCount || 0,
       faculty: schedule.facultyCount || 0,
       rooms: schedule.roomCount || 0,
       conflicts: schedule.conflictCount || 0,
-      loading: false,
-      events: null
+      loading: !hasPrecomputedStats,
+      events: null,
     }
   })
 
   useEffect(() => {
+    let cancelled = false
+
     if (schedule.stats) {
-      setStats({ ...schedule.stats, loading: false, events: null })
+      setStats({ ...schedule.stats, loading: false, events: schedule.events || null })
+      return
     }
-  }, [schedule.stats])
+
+    if (Array.isArray(schedule.events) && schedule.events.length > 0) {
+      setStats({
+        ...computeStatsFromEvents(schedule.events),
+        loading: false,
+        events: schedule.events,
+      })
+      return
+    }
+
+    const idOrName = schedule.name || schedule.id
+    if (!idOrName) return
+
+    setStats(prev => ({ ...prev, loading: true }))
+    getSchedules(idOrName)
+      .then(res => {
+        if (cancelled) return
+        const events = res?.events || (Array.isArray(res) ? res : [])
+        setStats({
+          ...computeStatsFromEvents(events),
+          loading: false,
+          events,
+        })
+      })
+      .catch(err => {
+        console.error('Failed to load schedule metadata:', err)
+        if (!cancelled) setStats(prev => ({ ...prev, loading: false }))
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [schedule.id, schedule.name, schedule.lastModified, schedule.savedAt, schedule.stats, schedule.events])
 
   return stats
 }

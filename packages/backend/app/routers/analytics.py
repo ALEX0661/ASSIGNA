@@ -73,7 +73,53 @@ def _is_other_dept(course_code: str) -> bool:
     return any(upper.startswith(p) for p in _OTHER_DEPT_PREFIXES)
 
 
+def _compute_specialization_coverage(courses: list, active_faculty: list) -> list[dict]:
+    """
+    For every major course (GEC/MAT/MATH/NSTP/PATHFIT/PE excluded — those
+    aren't gated on specialization the same way, see faculty_assigner._is_eligible),
+    count how many active faculty list it as a specialization.
+
+    Matched by courseTitle (stable key) with courseCode fallback for legacy
+    faculty specialization entries that predate the title-based system.
+
+    Returns one row per course (courseCode kept distinct even when titles
+    collide, e.g. lecture/lab split records), sorted worst-coverage first
+    so zero-match courses surface at the top.
+    """
+    from collections import defaultdict as _dd
+    title_index: dict[str, int] = _dd(int)
+    for f in active_faculty:
+        for s in (f.get("specializations", []) or []):
+            ct = (s.get("courseTitle") or "").strip().lower() if isinstance(s, dict) else ""
+            cc = (s.get("courseCode",  "") if isinstance(s, dict) else str(s)).strip().lower()
+            key = ct if ct else cc
+            if key:
+                title_index[key] += 1
+
+    rows = []
+    seen_codes: set[str] = set()
+    for c in courses:
+        code = (c.get("courseCode") or "").strip()
+        if not code or code in seen_codes:
+            continue
+        if _is_other_dept(code):
+            continue
+        seen_codes.add(code)
+        title = (c.get("title") or "").strip()
+        ct, cc = title.lower(), code.lower()
+        count = title_index.get(ct) or title_index.get(cc) or 0
+        rows.append({
+            "courseCode":   code,
+            "title":        title or code,
+            "facultyCount": count,
+        })
+
+    rows.sort(key=lambda r: (r["facultyCount"], r["title"]))
+    return rows
+
+
 def _parse_time(raw: str):
+
     import re
     if not raw:
         return None
@@ -701,12 +747,17 @@ def dashboard_stats(user=Depends(admin_only)):
         courses         = courses,
     )
 
+    # Full per-course specialization coverage, worst-covered first — powers
+    # the "Course Specialization Coverage" chart on the dashboard.
+    specialization_coverage = _compute_specialization_coverage(courses, active_faculty)
+
     return {
-        "faculty":         faculty_stats,
-        "courses":         course_stats,
-        "rooms":           room_stats,
-        "scheduleHealth":  schedule_health,
-        "suggestions":     suggestions,
+        "faculty":                 faculty_stats,
+        "courses":                 course_stats,
+        "rooms":                   room_stats,
+        "scheduleHealth":          schedule_health,
+        "suggestions":             suggestions,
+        "specializationCoverage":  specialization_coverage,
     }
 
 
@@ -888,36 +939,27 @@ def _build_suggestions(
             })
 
     # ── Specialization coverage check ─────────────────────────────────────────
-    # Match by courseTitle (stable) with courseCode fallback for legacy entries.
-    from collections import defaultdict as _dd
-    title_index: dict[str, int] = _dd(int)
-    for f in active_faculty:
-        for s in (f.get("specializations", []) or []):
-            ct = (s.get("courseTitle") or "").strip().lower() if isinstance(s, dict) else ""
-            cc = (s.get("courseCode",  "") if isinstance(s, dict) else str(s)).strip().lower()
-            key = ct if ct else cc
-            if key:
-                title_index[key] += 1
-
-    def _spec_count(course) -> int:
-        ct = (course.get("title") or "").strip().lower()
-        cc = (course.get("courseCode") or "").strip().lower()
-        return title_index.get(ct) or title_index.get(cc) or 0
-
-    orphan_courses = [
-        c for c in courses[:200]
-        if _spec_count(c) == 0
-        and not _is_other_dept(c.get("courseCode", ""))
-    ]
+    coverage_rows  = _compute_specialization_coverage(courses[:200], active_faculty)
+    orphan_courses = [r for r in coverage_rows if r["facultyCount"] == 0]
     if orphan_courses:
         n = len(orphan_courses)
-        sample = ", ".join((c.get("title") or c.get("courseCode", "")) for c in orphan_courses[:3])
+        sample = ", ".join(c["title"] for c in orphan_courses[:3])
         suffix = "…" if n > 3 else ""
+        course_list = [{"courseCode": c["courseCode"], "title": c["title"]} for c in orphan_courses]
         tips.append({
             "id": "orphan-courses", "type": "warning", "category": "faculty", "priority": 12,
             "title": f"{n} course{'s' if n > 1 else ''} have no faculty with matching specializations",
-            "body":  f"{sample}{suffix} — these will be marked TBA after auto-assignment. You can still assign faculty manually after scheduling.",
+            # NOTE: these are all "major" courses by construction (_is_other_dept
+            # already filters out GEC/MAT/MATH/NSTP/PATHFIT/PE). The assigner's
+            # specialization gate (_is_eligible in faculty_assigner.py) is only
+            # a hard block for that minor-course set — for majors, a faculty
+            # member with no matching specialization is still eligible, just
+            # heavily penalized in scoring. So these will NOT reliably end up
+            # TBA; they'll likely be auto-assigned to a mismatched instructor
+            # instead. Do not claim guaranteed TBA here.
+            "body":  f"{sample}{suffix} — auto-assignment will likely still fill these with the least-loaded available faculty member even without a matching specialization, since the specialization requirement is only a hard rule for GEC/MAT/PE/NSTP courses. Add specializations so the right instructors get matched instead of a fallback pick.",
             "action": {"label": "Update Specializations", "href": "/dashboard/faculty"},
+            "courses": course_list,
         })
 
     # Sort by priority (ascending) and cap at 6 visible suggestions

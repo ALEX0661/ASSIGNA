@@ -8,6 +8,17 @@ import { ACADEMIC_RANKS, DEPARTMENTS } from './FacultyDetail/fdShared'
 export const STATUS_OPTIONS    = ['Full-time', 'Part-time']
 export const SEX_OPTIONS       = ['Male', 'Female', 'Other']
 
+// Courses excluded from the blank specialization-matrix template — general-ed
+// courses faculty aren't rated on as a "specialization". Matched as a prefix
+// immediately followed by a digit (e.g. "GEC101", "NSTP2", "PE1", "MAT101").
+// Keep this in sync with the same list in SpecializationModal.jsx, and
+// adjust it to match your school's actual course-code scheme.
+const EXCLUDED_COURSE_PREFIXES = ['GEC', 'NSTP', 'PE', 'MAT']
+function isExcludedCourse(code) {
+  const c = (code || '').toString().toUpperCase().replace(/\s+/g, '')
+  return EXCLUDED_COURSE_PREFIXES.some(p => new RegExp(`^${p}\\d`).test(c))
+}
+
 const BRAND = {
   headerFill:     'FF1F7A45',
   headerFont:     'FFFFFFFF',
@@ -263,9 +274,11 @@ export async function generateBlankTemplateWorkbook(courseList = []) {
   
   const wsF = wb.getWorksheet('Full-time')
   const wsP = wb.getWorksheet('Part-time')
-  
-  if (courseList && courseList.length > 0) {
-    courseList.forEach((c, idx) => {
+
+  const filteredCourseList = (courseList || []).filter(c => !isExcludedCourse(c.courseCode))
+
+  if (filteredCourseList.length > 0) {
+    filteredCourseList.forEach((c, idx) => {
       const r = idx + 3
       wsF.getCell(r, 1).value = c.courseCode
       wsF.getCell(r, 2).value = c.title

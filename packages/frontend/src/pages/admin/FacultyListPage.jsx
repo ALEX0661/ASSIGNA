@@ -2,13 +2,14 @@ import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ImportFacultyModal from '../../components/ImportFacultyModal'
 import AddFacultyModal from '../../components/AddFacultyModal'
+import { getEffectiveMaxUnits } from '../../components/FacultyDetail/fdShared'
 import { generateExportWorkbook, downloadWorkbook } from '../../components/facultyExcelTemplate'
 import { getFaculty, getArchivedFaculty, deleteFaculty, archiveFaculty, unarchiveFaculty, getCourses, listSaved, loadSaved } from '../../services/api'
 import { useScheduleStore } from '../../store/scheduleStore'
 import JSZip from 'jszip'
 import { exportScheduleToExcel, buildScheduleExcelBlob } from '../../utils/exportScheduleToExcel'
 import { exportScheduleToICS, buildScheduleICSBlob } from '../../utils/exportScheduleToICS'
-import { exportFacultyLoadToPDF, buildFacultyLoadPDFBlob } from '../../utils/exportFacultyLoadToPDF'
+import { exportFacultyLoadToPDF, buildFacultyLoadPDFBlob, mergeAndSortEvents } from '../../utils/exportFacultyLoadToPDF'
 
 /* ── Design tokens ── */
 const G = {
@@ -120,12 +121,178 @@ function facultyUnits(f) {
   return Number.isFinite(u) ? u : 0
 }
 
-const UNIT_BUCKETS = [
-  { key: '0-8',   label: '0–8 units',   test: u => u >= 0  && u <= 8 },
-  { key: '9-15',  label: '9–15 units',  test: u => u >= 9  && u <= 15 },
-  { key: '16-21', label: '16–21 units', test: u => u >= 16 && u <= 21 },
-  { key: '22+',   label: '22+ units',   test: u => u >= 22 },
-]
+/* Mirrors ScheduleSection's computeUnits — time-span × day-multiplier,
+   falling back to an explicit ev.units. */
+function computeEventUnits(ev) {
+  let hours = 0
+  if (ev.period) {
+    const m = ev.period.match(/(\d+):(\d+)\s*(AM|PM)?\s*-\s*(\d+):(\d+)\s*(AM|PM)?/i)
+    if (m) {
+      let h1 = parseInt(m[1]), m1 = parseInt(m[2]), ap1 = (m[3] || '').toUpperCase()
+      let h2 = parseInt(m[4]), m2 = parseInt(m[5]), ap2 = (m[6] || '').toUpperCase()
+      if (ap1 === 'PM' && h1 !== 12) h1 += 12
+      if (ap1 === 'AM' && h1 === 12) h1 = 0
+      if (ap2 === 'PM' && h2 !== 12) h2 += 12
+      if (ap2 === 'AM' && h2 === 12) h2 = 0
+      hours = Math.max(0, (h2 * 60 + m2 - h1 * 60 - m1) / 60)
+    }
+  }
+  const days = ev.day ? String(ev.day).trim().match(/Th|Sat|Sun|M|T|W|F/gi) : null
+  const multiplier = days ? days.length : 1
+  return hours > 0 ? hours * multiplier : (ev.units || 0)
+}
+
+/* Builds a lower-cased-name → { units, courseCount } map from a flat
+   events list, deduped the same way ScheduleSection/FacultyDetailPage
+   do it, so the numbers on the list page match the profile page. */
+function buildFacultyLoadMap(events) {
+  const map = new Map()
+  const byFaculty = new Map()
+  ;(events || []).forEach(ev => {
+    const name = (ev.faculty || '').trim().toLowerCase()
+    if (!name) return
+    if (!byFaculty.has(name)) byFaculty.set(name, [])
+    byFaculty.get(name).push(ev)
+  })
+  byFaculty.forEach((evs, name) => {
+    const merged = mergeAndSortEvents(evs)
+    const seen = new Set()
+    const codes = new Set()
+    let units = 0
+    merged.forEach(ev => {
+      const room = (ev.room || '').trim(), ts = (ev.timeSlot || ev.time || ev.period || '').trim()
+      const code = (ev.courseCode || ev.course_code || ev.subject || ev.course || '').trim(), day = (ev.day || '').trim()
+      if (room && room.toUpperCase() !== 'TBA') {
+        const key = `${day}|${room}|${ts}|${code}`
+        if (seen.has(key)) return
+        seen.add(key)
+      }
+      units += computeEventUnits(ev)
+      if (code) codes.add(code.toLowerCase())
+    })
+    map.set(name, { units, courseCount: codes.size || merged.length })
+  })
+  return map
+}
+
+/* ── Unit Load filter — a simple two-handle drag slider.
+   Built from plain divs (not two overlapping native <input type=range>),
+   so there's no thumb stacking/z-index guessing to get wrong. Each handle
+   tracks its own drag via pointer capture, and tapping anywhere on the
+   track just moves whichever handle is closest. ── */
+function UnitRangeSlider({ min, max, value, onChange, matchCount, totalCount }) {
+  const hasRange = max > min
+  const [lo, hi] = value || [min, max]
+  const trackRef = useRef(null)
+  const [dragging, setDragging] = useState(null) // 'lo' | 'hi' | null
+  const span = Math.max(1, max - min)
+  const pct = v => hasRange ? ((v - min) / span) * 100 : 0
+
+  const valueFromClientX = useCallback(clientX => {
+    const el = trackRef.current
+    if (!el) return min
+    const rect = el.getBoundingClientRect()
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
+    return Math.round(min + ratio * span)
+  }, [min, span])
+
+  const moveHandle = useCallback((handle, v) => {
+    if (handle === 'lo') {
+      const clamped = Math.min(v, hi)
+      onChange(clamped <= min && hi >= max ? null : [clamped, hi])
+    } else {
+      const clamped = Math.max(v, lo)
+      onChange(lo <= min && clamped >= max ? null : [lo, clamped])
+    }
+  }, [lo, hi, min, max, onChange])
+
+  useEffect(() => {
+    if (!dragging) return
+    const onMove = e => {
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX
+      moveHandle(dragging, valueFromClientX(clientX))
+    }
+    const onUp = () => setDragging(null)
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('touchmove', onMove, { passive: false })
+    window.addEventListener('touchend', onUp)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('touchmove', onMove)
+      window.removeEventListener('touchend', onUp)
+    }
+  }, [dragging, moveHandle, valueFromClientX])
+
+  // Nothing to filter on — every faculty member currently shown has the same load.
+  if (!hasRange) {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+        background: G.bg, border: `1px dashed ${G.borderLight}`, borderRadius: 10,
+      }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={G.muted2} strokeWidth="2" style={{ flexShrink: 0 }}>
+          <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+        </svg>
+        <span style={{ fontSize: 12, color: G.muted2, fontWeight: 500 }}>
+          All {totalCount} faculty currently carry <strong style={{ color: G.ink }}>{min}</strong> unit{min !== 1 ? 's' : ''} — nothing to narrow down yet.
+        </span>
+      </div>
+    )
+  }
+
+  const handleStyle = left => ({
+    position: 'absolute', top: '50%', left: `${left}%`, width: 18, height: 18,
+    transform: 'translate(-50%, -50%)', borderRadius: '50%', background: '#fff',
+    border: `2.5px solid ${G.meadow}`, boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+    cursor: 'grab', touchAction: 'none',
+  })
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
+        <span style={{ fontSize: 15, fontWeight: 800, color: G.ink }}>
+          {lo}<span style={{ fontSize: 11, fontWeight: 600, opacity: .5 }}> – </span>{hi}
+          <span style={{ fontSize: 10.5, fontWeight: 600, opacity: .55, marginLeft: 4 }}>units</span>
+        </span>
+        <span style={{ fontSize: 10.5, fontWeight: 600, color: G.muted2 }}>
+          {value ? <>{matchCount} of {totalCount} match</> : `Full range · ${totalCount} faculty`}
+        </span>
+      </div>
+
+      <div
+        ref={trackRef}
+        style={{ position: 'relative', height: 22, display: 'flex', alignItems: 'center', touchAction: 'none', cursor: 'pointer' }}
+        onPointerDown={e => {
+          const v = valueFromClientX(e.clientX)
+          const handle = Math.abs(v - lo) <= Math.abs(v - hi) ? 'lo' : 'hi'
+          setDragging(handle)
+          moveHandle(handle, v)
+        }}
+      >
+        <div style={{ position: 'absolute', left: 0, right: 0, height: 4, borderRadius: 99, background: G.borderLight }}/>
+        <div style={{
+          position: 'absolute', height: 4, borderRadius: 99, background: G.meadow,
+          left: `${pct(lo)}%`, width: `${Math.max(0, pct(hi) - pct(lo))}%`,
+        }}/>
+        <div
+          style={handleStyle(pct(lo))}
+          onPointerDown={e => { e.stopPropagation(); setDragging('lo') }}
+        />
+        <div
+          style={handleStyle(pct(hi))}
+          onPointerDown={e => { e.stopPropagation(); setDragging('hi') }}
+        />
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, fontWeight: 600, color: G.muted2, opacity: .7, marginTop: 4 }}>
+        <span>{min}</span>
+        <span>{max}</span>
+      </div>
+    </div>
+  )
+}
 
 function isAdmin(f) {
   if (typeof f.isAdmin === 'boolean') return f.isAdmin;
@@ -137,17 +304,16 @@ function isAdmin(f) {
 
 
 function ActiveFilterChips({
-  statusFilter, rankFilter, departmentFilter, educationFilter,
-  coordinatorFilter, specializationFilter, specMinRating, unitFilter,
-  onRemoveStatus, onRemoveRank, onRemoveDept, onRemoveEducation,
-  onClearCoordinator, onRemoveSpec, onClearRating, onRemoveUnit,
+  statusFilter, rankFilter, educationFilter,
+  coordinatorFilter, specializationFilter, specMinRating, unitRange,
+  onRemoveStatus, onRemoveRank, onRemoveEducation,
+  onClearCoordinator, onRemoveSpec, onClearRating, onClearUnit,
 }) {
   const chips = [
     ...statusFilter.map(v => ({ label: v === 'full-time' ? 'Full-time' : 'Part-time', onRemove: () => onRemoveStatus(v), color: 'var(--meadow-text-hover)' })),
     ...rankFilter.map(v => ({ label: v, onRemove: () => onRemoveRank(v), color: 'var(--meadow-text-hover)' })),
-    ...departmentFilter.map(v => ({ label: v, onRemove: () => onRemoveDept(v), color: 'var(--meadow-text-hover)' })),
     ...educationFilter.map(v => ({ label: v, onRemove: () => onRemoveEducation(v), color: 'var(--meadow-text-hover)' })),
-    ...unitFilter.map(v => ({ label: UNIT_BUCKETS.find(b => b.key === v)?.label || v, onRemove: () => onRemoveUnit(v), color: 'var(--meadow-text-hover)' })),
+    unitRange ? { label: `${unitRange[0]}–${unitRange[1]} units`, onRemove: onClearUnit, color: 'var(--meadow-text-hover)' } : null,
     coordinatorFilter ? { label: coordinatorFilter === 'admin' ? 'Deans only' : coordinatorFilter === 'any' ? 'Coordinators only' : 'Regular faculty', onRemove: onClearCoordinator, color: 'var(--meadow-text-hover)' } : null,
     ...specializationFilter.map(v => ({ label: v, onRemove: () => onRemoveSpec(v), color: 'var(--meadow-text-hover)' })),
     specMinRating > 0 ? { label: `★${specMinRating}+ rating`, onRemove: onClearRating, color: '#F59E0B' } : null,
@@ -231,14 +397,17 @@ function ActionModal({ mode, name, count, onConfirm, onCancel, busy }) {
 }
 
 /* ── Faculty Card (enhanced) ── */
-function FacultyCard({ faculty, courseTitleMap, selected, onSelect, onClick, onArchive, onUnarchive, onDelete, selectionMode, viewTab }) {
+function FacultyCard({ faculty, courseTitleMap, selected, onSelect, onClick, onArchive, onUnarchive, onDelete, selectionMode, viewTab, load }) {
   const [hovered, setHovered] = useState(false)
   const isArchived = !!faculty.archived
   const isFullTime = faculty.status === 'full-time'
   const specs      = useMemo(() => facultySpecs(faculty, courseTitleMap), [faculty, courseTitleMap])
   const specCount  = specs.length
   const isCoord    = !!faculty.coordinatorProgram
-  const unitCount  = facultyUnits(faculty)
+  const unitCount  = load ? load.units : facultyUnits(faculty)
+  const unitCap    = getEffectiveMaxUnits(faculty.status, load ? load.courseCount : 0)
+  const unitPct    = unitCap > 0 ? Math.min(100, (unitCount / unitCap) * 100) : 0
+  const unitOver   = unitCount > unitCap
 
   const headerBg = isArchived
     ? 'linear-gradient(135deg, #7A9488, #5A7268)'
@@ -265,37 +434,38 @@ function FacultyCard({ faculty, courseTitleMap, selected, onSelect, onClick, onA
       }}
     >
       {/* ── Green header ── */}
-      <div style={{ background: headerBg, padding: '10px 11px 9px', position: 'relative', overflow: 'hidden', flex: 1 }}>
+      <div style={{ background: headerBg, padding: '10px 11px 9px', position: 'relative', overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
         <div style={{ position: 'absolute', top: -20, right: -20, width: 70, height: 70, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', pointerEvents: 'none' }}/>
         <div style={{ position: 'absolute', bottom: -12, left: -8, width: 48, height: 48, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', pointerEvents: 'none' }}/>
 
-        {/* System Admin badge */}
-        {isAdmin(faculty) && (
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 3, marginBottom: 5, marginRight: 6,
-            padding: '2px 6px', borderRadius: 99,
-            background: 'rgba(255,255,255,0.2)', fontSize: 8.5, fontWeight: 700,
-            color: '#fff', textTransform: 'uppercase', letterSpacing: '.5px',
-            position: 'relative', zIndex: 1,
-          }}>
-            <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            Dean
-          </div>
-        )}
+        {/* Dean / Coordinator badges — wrapped together so both sit in one tidy row */}
+        {(isAdmin(faculty) || isCoord) && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 5, position: 'relative', zIndex: 1 }}>
+            {isAdmin(faculty) && (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 3,
+                padding: '2px 6px', borderRadius: 99,
+                background: 'rgba(255,255,255,0.2)', fontSize: 8.5, fontWeight: 700,
+                color: '#fff', textTransform: 'uppercase', letterSpacing: '.5px', maxWidth: '100%',
+              }}>
+                <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                Dean
+              </div>
+            )}
 
-        {/* Coordinator badge */}
-        {isCoord && (
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 3, marginBottom: 5,
-            padding: '2px 6px', borderRadius: 99,
-            background: 'rgba(255,215,0,0.22)', fontSize: 8.5, fontWeight: 700,
-            color: '#FFD700', textTransform: 'uppercase', letterSpacing: '.5px',
-            position: 'relative', zIndex: 1,
-          }}>
-            <svg width="7" height="7" viewBox="0 0 24 24" fill="#FFD700" stroke="#FFD700" strokeWidth="1">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-            Coord · {faculty.coordinatorProgram}
+            {isCoord && (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 3,
+                padding: '2px 6px', borderRadius: 99,
+                background: 'rgba(255,215,0,0.22)', fontSize: 8.5, fontWeight: 700,
+                color: '#FFD700', textTransform: 'uppercase', letterSpacing: '.5px', maxWidth: '100%', overflow: 'hidden',
+              }}>
+                <svg width="7" height="7" viewBox="0 0 24 24" fill="#FFD700" stroke="#FFD700" strokeWidth="1" style={{ flexShrink: 0 }}>
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Coord · {faculty.coordinatorProgram}</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -318,26 +488,35 @@ function FacultyCard({ faculty, courseTitleMap, selected, onSelect, onClick, onA
           </div>
         )}
 
-        {/* Status pill + unit counter */}
-        <div style={{ marginTop: 8, position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            padding: '2.5px 8px', borderRadius: 99, fontSize: 9, fontWeight: 700,
-            background: 'rgba(255,255,255,0.18)', color: '#fff',
-            textTransform: 'uppercase', letterSpacing: '0.6px',
-          }}>
-            <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', flexShrink: 0 }}/>
-            {statusLabel}
-            {isArchived && faculty.status && <> · <span style={{ textTransform: 'uppercase', opacity: .7 }}>{faculty.status}</span></>}
-          </span>
-          <span title="Assigned units" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 3,
-            padding: '2.5px 7px', borderRadius: 99, fontSize: 9, fontWeight: 700,
-            background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.92)',
-          }}>
-            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
-            {unitCount}u
-          </span>
+        {/* Status pill + unit load — pinned to the bottom of the header
+            regardless of how much (or little) sits above it */}
+        <div style={{ marginTop: 'auto', paddingTop: 8, position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 5 }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              padding: '2.5px 8px', borderRadius: 99, fontSize: 9, fontWeight: 700,
+              background: 'rgba(255,255,255,0.18)', color: '#fff',
+              textTransform: 'uppercase', letterSpacing: '0.6px', flexShrink: 0,
+            }}>
+              <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', flexShrink: 0 }}/>
+              {statusLabel}
+              {isArchived && faculty.status && <> · <span style={{ textTransform: 'uppercase', opacity: .7 }}>{faculty.status}</span></>}
+            </span>
+            <span title={`${unitCount} / ${unitCap} units`} style={{
+              fontSize: 10.5, fontWeight: 800, flexShrink: 0, letterSpacing: '.2px',
+              color: unitOver ? '#FFDCDC' : '#fff',
+            }}>
+              {unitCount}<span style={{ opacity: .65, fontWeight: 600, fontSize: 9.5 }}>/{unitCap} units</span>
+            </span>
+          </div>
+          <div style={{ height: 6, borderRadius: 99, background: 'rgba(0,0,0,0.28)', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
+            <div style={{
+              height: '100%', borderRadius: 99, width: `${Math.max(unitPct, unitCount > 0 ? 4 : 0)}%`,
+              background: unitOver ? '#EF4444' : '#fff',
+              boxShadow: unitOver ? '0 0 6px rgba(239,68,68,0.6)' : '0 0 4px rgba(255,255,255,0.5)',
+              transition: 'width .2s',
+            }}/>
+          </div>
         </div>
 
         {/* Checkbox */}
@@ -535,6 +714,21 @@ function FacultyTable({ faculty, selected, selectionMode, viewTab, onSelect, onS
           })}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+/* ── Filter modal section card wrapper — gives every filter group a
+   consistent bordered container so the modal reads as clear sections
+   instead of loosely spread-out chip rows ── */
+function FilterSectionCard({ children, style }) {
+  return (
+    <div style={{
+      border: `1px solid ${G.borderLight}`, borderRadius: 14,
+      background: 'var(--surface)', padding: '14px 16px',
+      ...style,
+    }}>
+      {children}
     </div>
   )
 }
@@ -915,11 +1109,10 @@ export default function FacultyListPage() {
   const [specQuery,         setSpecQuery]         = useState('')
   const [specMinRating,     setSpecMinRating]     = useState(0)
   const [rankFilter,        setRankFilter]        = useState([])
-  const [departmentFilter,  setDepartmentFilter]  = useState([])
   const [educationFilter,   setEducationFilter]   = useState([])
   const [coordinatorFilter, setCoordinatorFilter] = useState('') // '' | 'any' | 'none'
   const [specializationFilter, setSpecializationFilter] = useState([])
-  const [unitFilter,        setUnitFilter]        = useState([])
+  const [unitRange,         setUnitRange]         = useState(null) // [lo, hi] or null = full range
   const [sortBy,            setSortBy]            = useState('name')
   const [courseTitleMap,    setCourseTitleMap]    = useState({})
   const [globalScheduleNames, setGlobalScheduleNames] = useState([])
@@ -929,7 +1122,33 @@ export default function FacultyListPage() {
   const globalSelectedSchedule    = useScheduleStore(s => s.facultyListDefaultSchedule)
   const setGlobalSelectedSchedule = useScheduleStore(s => s.setFacultyListDefaultSchedule)
   const currentScheduleName = useScheduleStore(s => s.scheduleName)
+  const storeEvents         = useScheduleStore(s => s.events)
   const navigate = useNavigate()
+
+  /* ── Live unit load (mirrors FacultyDetailPage) ──
+     Pulls events from whichever schedule the picker above has selected,
+     so the unit numbers on each card match what you'd see on their
+     profile page. */
+  const [externalScheduleEvents, setExternalScheduleEvents] = useState(null)
+  useEffect(() => {
+    if (globalSelectedSchedule === '__current__') { setExternalScheduleEvents(null); return }
+    let cancelled = false
+    loadSaved(globalSelectedSchedule)
+      .then(data => {
+        if (cancelled) return
+        const raw = Array.isArray(data.schedule) ? data.schedule : (Array.isArray(data.events) ? data.events : [])
+        setExternalScheduleEvents(raw)
+      })
+      .catch(() => { if (!cancelled) setExternalScheduleEvents([]) })
+    return () => { cancelled = true }
+  }, [globalSelectedSchedule])
+
+  const activeScheduleEvents = globalSelectedSchedule === '__current__' ? (storeEvents || []) : (externalScheduleEvents || [])
+  const facultyLoadMap = useMemo(() => buildFacultyLoadMap(activeScheduleEvents), [activeScheduleEvents])
+  const unitsFor = useCallback(
+    f => facultyLoadMap.get((f.name || '').trim().toLowerCase())?.units ?? facultyUnits(f),
+    [facultyLoadMap]
+  )
 
   useEffect(() => {
     listSaved()
@@ -964,13 +1183,30 @@ export default function FacultyListPage() {
 
   const tabFaculty = viewTab === 'active' ? activeFaculty : archivedFaculty
 
-  /* ── Derived option lists ── */
-  const allDepartments = useMemo(() => {
-    const s = new Set()
-    tabFaculty.forEach(f => { if (f.Department) s.add(f.Department) })
-    return [...s].sort()
-  }, [tabFaculty])
+  /* Dynamic bounds for the Unit Load slider — always reflects what's
+     actually rendered in the current tab/schedule, not a hardcoded range. */
+  const unitExtent = useMemo(() => {
+    if (!tabFaculty.length) return [0, 24]
+    const vals = tabFaculty.map(unitsFor)
+    const hi = Math.max(...vals)
+    // Load data (schedule fetch) hasn't landed yet — everyone reads as 0 units.
+    // Fall back to a sane placeholder range instead of collapsing to 0–1.
+    if (!Number.isFinite(hi) || hi <= 0) return [0, 24]
+    return [Math.min(...vals), hi]
+  }, [tabFaculty, unitsFor])
 
+  // Clamp/clear a stale range if the underlying data shrank (e.g. switched schedules)
+  useEffect(() => {
+    if (!unitRange) return
+    const [emin, emax] = unitExtent
+    if (unitRange[0] <= emin && unitRange[1] >= emax) { setUnitRange(null); return }
+    if (unitRange[0] < emin || unitRange[1] > emax) {
+      setUnitRange([Math.max(unitRange[0], emin), Math.min(unitRange[1], emax)])
+    }
+  }, [unitExtent]) // eslint-disable-line react-hooks/exhaustive-deps
+
+
+  /* ── Derived option lists ── */
   const allEducations = useMemo(() => {
     const s = new Set()
     tabFaculty.forEach(f => { if (f.Educational_attainment) s.add(f.Educational_attainment) })
@@ -1029,7 +1265,6 @@ export default function FacultyListPage() {
 
       const matchStatus      = statusFilter.length === 0 || statusFilter.includes(f.status)
       const matchRank        = rankFilter.length === 0 || rankFilter.includes(f.AcademicRank || '')
-      const matchDept        = departmentFilter.length === 0 || departmentFilter.includes(f.Department || '')
       const matchEducation   = educationFilter.length === 0 || educationFilter.includes(f.Educational_attainment || '')
       const matchCoordinator = !coordinatorFilter
         || (coordinatorFilter === 'admin' && isAdmin(f))
@@ -1049,18 +1284,17 @@ export default function FacultyListPage() {
         })
       })()
 
-      const matchUnit = unitFilter.length === 0
-        || unitFilter.some(k => UNIT_BUCKETS.find(b => b.key === k)?.test(facultyUnits(f)))
+      const matchUnit = !unitRange || (unitsFor(f) >= unitRange[0] && unitsFor(f) <= unitRange[1])
 
-      return matchSearch && matchStatus && matchRank && matchDept && matchEducation && matchCoordinator && matchSpec && matchUnit
+      return matchSearch && matchStatus && matchRank && matchEducation && matchCoordinator && matchSpec && matchUnit
     })
 
     if (sortBy === 'name')             list = [...list].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
     else if (sortBy === 'specs-desc')  list = [...list].sort((a, b) => facultySpecs(b).length - facultySpecs(a).length)
-    else if (sortBy === 'units-desc')  list = [...list].sort((a, b) => facultyUnits(b) - facultyUnits(a))
-    else if (sortBy === 'units-asc')   list = [...list].sort((a, b) => facultyUnits(a) - facultyUnits(b))
+    else if (sortBy === 'units-desc')  list = [...list].sort((a, b) => unitsFor(b) - unitsFor(a))
+    else if (sortBy === 'units-asc')   list = [...list].sort((a, b) => unitsFor(a) - unitsFor(b))
     return list
-  }, [tabFaculty, search, statusFilter, rankFilter, departmentFilter, educationFilter, coordinatorFilter, specializationFilter, specMinRating, unitFilter, sortBy, courseTitleMap])
+  }, [tabFaculty, search, statusFilter, rankFilter, educationFilter, coordinatorFilter, specializationFilter, specMinRating, unitRange, sortBy, courseTitleMap, unitsFor])
 
   /* ── Selection ── */
   const filteredIds  = filtered.map(f => f.id)
@@ -1106,16 +1340,16 @@ export default function FacultyListPage() {
   /* ── Reset all filters ── */
   function resetAllFilters() {
     setSearch(''); setStatusFilter([]); setRankFilter([])
-    setDepartmentFilter([]); setEducationFilter([])
+    setEducationFilter([])
     setCoordinatorFilter('')
     setSpecializationFilter([]); setSpecQuery(''); setSpecMinRating(0)
-    setUnitFilter([])
+    setUnitRange(null)
   }
 
   const activeModalFilterCount =
-    rankFilter.length + departmentFilter.length + educationFilter.length +
+    rankFilter.length + educationFilter.length +
     specializationFilter.length + (coordinatorFilter ? 1 : 0) + (specMinRating > 0 ? 1 : 0) +
-    unitFilter.length
+    (unitRange ? 1 : 0)
 
   const hasAnyFilter = search || statusFilter.length > 0 || activeModalFilterCount > 0
 
@@ -1125,12 +1359,11 @@ export default function FacultyListPage() {
     search ? `Search: "${search}"` : null,
     ...statusFilter.map(v => v === 'full-time' ? 'Full-time' : 'Part-time'),
     ...rankFilter,
-    ...departmentFilter,
     ...educationFilter,
     coordinatorFilter === 'admin' ? 'Deans only' : coordinatorFilter === 'any' ? 'Coordinators only' : coordinatorFilter === 'none' ? 'Regular faculty' : null,
     ...specializationFilter,
     specMinRating > 0 ? `★${specMinRating}+ rating` : null,
-    ...unitFilter.map(k => UNIT_BUCKETS.find(b => b.key === k)?.label).filter(Boolean),
+    unitRange ? `${unitRange[0]}–${unitRange[1]} units` : null,
   ].filter(Boolean)
 
   /* ── Export ── */
@@ -1145,10 +1378,6 @@ export default function FacultyListPage() {
 
     if (statusFilter.length > 0) {
       filterParts.push(statusFilter.map(s => s === 'full-time' ? 'FullTime' : 'PartTime').join('-'))
-    }
-
-    if (departmentFilter.length > 0) {
-      filterParts.push(departmentFilter.join('-'))
     }
 
     if (rankFilter.length > 0) {
@@ -1412,18 +1641,17 @@ export default function FacultyListPage() {
       {/* ── Active filter chips ── */}
       <ActiveFilterChips
         statusFilter={statusFilter} rankFilter={rankFilter}
-        departmentFilter={departmentFilter} educationFilter={educationFilter}
+        educationFilter={educationFilter}
         coordinatorFilter={coordinatorFilter}
         specializationFilter={specializationFilter} specMinRating={specMinRating}
-        unitFilter={unitFilter}
+        unitRange={unitRange}
         onRemoveStatus={v => setStatusFilter(p => p.filter(x => x !== v))}
         onRemoveRank={v => setRankFilter(p => p.filter(x => x !== v))}
-        onRemoveDept={v => setDepartmentFilter(p => p.filter(x => x !== v))}
         onRemoveEducation={v => setEducationFilter(p => p.filter(x => x !== v))}
         onClearCoordinator={() => setCoordinatorFilter('')}
         onRemoveSpec={v => setSpecializationFilter(p => p.filter(x => x !== v))}
         onClearRating={() => setSpecMinRating(0)}
-        onRemoveUnit={v => setUnitFilter(p => p.filter(x => x !== v))}
+        onClearUnit={() => setUnitRange(null)}
       />
 
       {/* ════════════════════════════════════════════
@@ -1448,15 +1676,15 @@ export default function FacultyListPage() {
               </button>
             </div>
 
-            {/* Modal body — scrollable grid layout */}
-            <div style={{ overflowY: 'auto', flex: 1, padding: '24px', display: 'flex', flexDirection: 'column' }}>
+            {/* Modal body — scrollable, organized into clear sections */}
+            <div style={{ overflowY: 'auto', flex: 1, padding: '24px', background: 'var(--bg)' }}>
 
-              {/* Grid Group 1: Identity & Education */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
-                
-                {/* ── Academic Rank / Position ── */}
-                <div>
-                  <SectionLabel 
+              {/* Row 1 — who they are. Flex (not grid) so cards sharing a row match height. */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 14 }}>
+
+                {/* ── Academic Position ── */}
+                <FilterSectionCard style={{ flex: '1 1 260px' }}>
+                  <SectionLabel
                     label="Academic Position" count={rankFilter.length} onClear={() => setRankFilter([])}
                     icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>}
                   />
@@ -1476,55 +1704,11 @@ export default function FacultyListPage() {
                       )
                     })}
                   </div>
-                </div>
-
-                {/* ── Educational Attainment ── */}
-                {allEducations.length > 0 && (
-                  <div>
-                    <SectionLabel 
-                      label="Education" count={educationFilter.length} onClear={() => setEducationFilter([])}
-                      icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>}
-                    />
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {allEducations.map(edu => {
-                        const cnt = tabFaculty.filter(f => f.Educational_attainment === edu).length
-                        return (
-                          <FilterPill key={edu} label={edu} count={cnt} active={educationFilter.includes(edu)}
-                            onClick={() => setEducationFilter(p => p.includes(edu) ? p.filter(e => e !== edu) : [...p, edu])}/>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ height: 1, background: G.borderLight, margin: '24px 0' }} />
-
-              {/* Grid Group 2: Department & Role */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
-                
-                {/* ── Department ── */}
-                {allDepartments.length > 0 && (
-                  <div>
-                    <SectionLabel 
-                      label="Department" count={departmentFilter.length} onClear={() => setDepartmentFilter([])}
-                      icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>}
-                    />
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {allDepartments.map(dept => {
-                        const cnt = tabFaculty.filter(f => f.Department === dept).length
-                        return (
-                          <FilterPill key={dept} label={dept} count={cnt} active={departmentFilter.includes(dept)}
-                            onClick={() => setDepartmentFilter(p => p.includes(dept) ? p.filter(d => d !== dept) : [...p, dept])}/>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
+                </FilterSectionCard>
 
                 {/* ── System Role ── */}
-                <div>
-                  <SectionLabel 
+                <FilterSectionCard style={{ flex: '1 1 260px' }}>
+                  <SectionLabel
                     label="System Role" count={coordinatorFilter ? 1 : 0} onClear={() => setCoordinatorFilter('')}
                     icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>}
                   />
@@ -1539,34 +1723,51 @@ export default function FacultyListPage() {
                         onClick={() => setCoordinatorFilter(v)}/>
                     ))}
                   </div>
-                </div>
+                </FilterSectionCard>
               </div>
 
-              <div style={{ height: 1, background: G.borderLight, margin: '24px 0' }} />
+              {/* Row 2 — Education */}
+              {allEducations.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 14 }}>
 
-              {/* ── Unit Load ── */}
-              <div>
+                {/* ── Educational Attainment ── */}
+                {allEducations.length > 0 && (
+                  <FilterSectionCard style={{ flex: '1 1 260px' }}>
+                    <SectionLabel
+                      label="Education" count={educationFilter.length} onClear={() => setEducationFilter([])}
+                      icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>}
+                    />
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {allEducations.map(edu => {
+                        const cnt = tabFaculty.filter(f => f.Educational_attainment === edu).length
+                        return (
+                          <FilterPill key={edu} label={edu} count={cnt} active={educationFilter.includes(edu)}
+                            onClick={() => setEducationFilter(p => p.includes(edu) ? p.filter(e => e !== edu) : [...p, edu])}/>
+                        )
+                      })}
+                    </div>
+                  </FilterSectionCard>
+                )}
+              </div>
+              )}
+
+              {/* Unit Load gets its own full-width block */}
+              <FilterSectionCard style={{ marginBottom: 14 }}>
                 <SectionLabel
-                  label="Unit Load" count={unitFilter.length} onClear={() => setUnitFilter([])}
+                  label="Unit Load" count={unitRange ? 1 : 0} onClear={() => setUnitRange(null)}
                   icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>}
                 />
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {UNIT_BUCKETS.map(b => {
-                    const cnt = tabFaculty.filter(f => b.test(facultyUnits(f))).length
-                    if (cnt === 0) return null
-                    return (
-                      <FilterPill key={b.key} label={b.label} count={cnt} active={unitFilter.includes(b.key)}
-                        onClick={() => setUnitFilter(p => p.includes(b.key) ? p.filter(k => k !== b.key) : [...p, b.key])}/>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <div style={{ height: 1, background: G.borderLight, margin: '24px 0' }} />
+                <UnitRangeSlider
+                  min={unitExtent[0]} max={unitExtent[1]} value={unitRange}
+                  onChange={setUnitRange}
+                  matchCount={tabFaculty.filter(f => !unitRange || (unitsFor(f) >= unitRange[0] && unitsFor(f) <= unitRange[1])).length}
+                  totalCount={tabFaculty.length}
+                />
+              </FilterSectionCard>
 
               {/* ── Course Specializations & Ratings (Full Width) ── */}
-              <div>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
+              <FilterSectionCard>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
                   <SectionLabel 
                     label="Course Specializations" count={specializationFilter.length} onClear={() => setSpecializationFilter([])}
                     icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>}
@@ -1631,7 +1832,7 @@ export default function FacultyListPage() {
                     })}
                   </div>
                 )}
-              </div>
+              </FilterSectionCard>
             </div>
 
             {/* Modal footer */}
@@ -1645,7 +1846,7 @@ export default function FacultyListPage() {
                 })()}
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={() => { setRankFilter([]); setDepartmentFilter([]); setEducationFilter([]); setCoordinatorFilter(''); setSpecializationFilter([]); setSpecQuery(''); setSpecMinRating(0); setUnitFilter([]) }}
+                <button onClick={() => { setRankFilter([]); setEducationFilter([]); setCoordinatorFilter(''); setSpecializationFilter([]); setSpecQuery(''); setSpecMinRating(0); setUnitRange(null) }}
                   style={{ padding: '8px 18px', borderRadius: 10, border: `1.5px solid ${G.border}`, background: 'var(--surface)', color: G.muted, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", transition: 'all .15s' }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220, 38, 38, 0.05)'; e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.25)'; e.currentTarget.style.color = '#EF4444' }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = G.border; e.currentTarget.style.color = G.muted }}>
@@ -1770,6 +1971,7 @@ export default function FacultyListPage() {
               {filtered.map(f => (
                 <FacultyCard key={f.id} faculty={f} courseTitleMap={courseTitleMap} selected={selected.has(f.id)} selectionMode={selectionMode}
                   viewTab={viewTab}
+                  load={facultyLoadMap.get((f.name || '').trim().toLowerCase())}
                   onSelect={() => toggleOne(f.id)}
                   onArchive={() => handleCardArchive(f.id, f.name)}
                   onUnarchive={() => handleCardUnarchive(f.id, f.name)}

@@ -516,7 +516,6 @@ export default function CourseListPage() {
   const [progFilter,    setProgFilter]    = useState([])
   const [yearFilter,    setYearFilter]    = useState([])
   const [typeFilter,    setTypeFilter]    = useState('')
-  const [issuesOnly,    setIssuesOnly]    = useState(false)
   const [semesterTab,   setSemesterTab]   = useState('1st Semester')
   const [sortBy,        setSortBy]        = useState(initialPrefs.sortBy || 'code')
   const [sortDir,       setSortDir]       = useState(initialPrefs.sortDir || 'asc')
@@ -571,8 +570,7 @@ export default function CourseListPage() {
       const q = search.toLowerCase()
       const matchSem = c.semester === semesterTab || (semesterTab === 'all')
       const matchType = typeFilter === 'lab' ? (c.unitsLab > 0) : typeFilter === 'lec' ? (c.unitsLab === 0) : true
-      const matchIssue = !issuesOnly || courseIssue(c)
-      return matchSem && matchType && matchIssue
+      return matchSem && matchType
         && (!q || `${c.courseCode} ${c.title}`.toLowerCase().includes(q))
         && (progFilter.length === 0 || progFilter.includes(c.program))
         && (yearFilter.length === 0 || yearFilter.includes(String(c.yearLevel)))
@@ -590,7 +588,7 @@ export default function CourseListPage() {
 
     list.sort((a, b) => cmp(a, b) * dir)
     return list
-  }, [courses, search, progFilter, yearFilter, semesterTab, typeFilter, issuesOnly, sortBy, sortDir])
+  }, [courses, search, progFilter, yearFilter, semesterTab, typeFilter, sortBy, sortDir])
 
   function handleSort(field) {
     if (sortBy === field) {
@@ -607,7 +605,7 @@ export default function CourseListPage() {
     return counts
   }, [courses])
 
-  const activeModalFilterCount = progFilter.length + yearFilter.length + (typeFilter ? 1 : 0) + (issuesOnly ? 1 : 0)
+  const activeModalFilterCount = progFilter.length + yearFilter.length + (typeFilter ? 1 : 0)
   const hasFilter   = search || activeModalFilterCount > 0
   const filteredIds = filtered.map(c => c.id)
   const allSel      = filteredIds.length > 0 && filteredIds.every(id => selected.has(id))
@@ -623,7 +621,7 @@ export default function CourseListPage() {
   const togOne  = id => setSelected(p => { const n=new Set(p); n.has(id)?n.delete(id):n.add(id); return n })
 
   function resetFilters() {
-    setSearch(''); setProgFilter([]); setYearFilter([]); setTypeFilter(''); setIssuesOnly(false)
+    setSearch(''); setProgFilter([]); setYearFilter([]); setTypeFilter('')
   }
 
   async function handleAdd(data) {
@@ -725,7 +723,6 @@ export default function CourseListPage() {
     
     if (typeFilter === 'lec') filterParts.push('Lec-Only')
     if (typeFilter === 'lab') filterParts.push('Has-Lab')
-    if (issuesOnly) filterParts.push('Needs-Attention')
     
     const filterSuffix = filterParts.length > 0 ? `-${filterParts.join('_')}` : ''
     const date = new Date().toISOString().slice(0, 10)
@@ -882,7 +879,6 @@ export default function CourseListPage() {
             ...progFilter.map(p => ({ label: p, onRemove: () => togProg(p), color: 'var(--meadow-text-hover)' })),
             ...yearFilter.map(y => ({ label: `Year ${y}`, onRemove: () => togYear(y), color: 'var(--meadow-text-hover)' })),
             typeFilter ? { label: typeFilter === 'lab' ? 'Has Laboratory' : 'Lecture Only', onRemove: () => setTypeFilter(''), color: 'var(--meadow-text-hover)' } : null,
-            issuesOnly ? { label: 'Needs attention', onRemove: () => setIssuesOnly(false), color: '#F59E0B' } : null,
           ].filter(Boolean).map((chip, i) => (
             <span key={i} style={{
               display: 'inline-flex', alignItems: 'center', gap: 5,
@@ -1066,17 +1062,6 @@ export default function CourseListPage() {
                   <FilterPill label="Any" active={typeFilter === ''} onClick={() => setTypeFilter('')} />
                   <FilterPill label="Lecture Only" active={typeFilter === 'lec'} onClick={() => setTypeFilter('lec')} icon={<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>} />
                   <FilterPill label="Has Laboratory" active={typeFilter === 'lab'} onClick={() => setTypeFilter('lab')} icon={<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 2v2"/><path d="M15 2v2"/><path d="M9 22v-4h6v4"/><path d="M16 6h-8"/><path d="M8 6h.01"/><path d="M16 10h.01"/><path d="M8 10h.01"/></svg>} />
-                </div>
-              </div>
-              <div>
-                <SectionLabel label="Data Quality" count={issuesOnly ? 1 : 0} onClear={() => setIssuesOnly(false)} />
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  <FilterPill
-                    label="Needs attention only"
-                    active={issuesOnly}
-                    onClick={() => setIssuesOnly(v => !v)}
-                    icon={<WarnIcon size={12} />}
-                  />
                 </div>
               </div>
             </div>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+﻿import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 
 const isDark = document.documentElement.getAttribute('data-mode') === 'dark';
 import { getRooms, saveRooms, getCourses, bulkSetPreferredRooms } from '../../services/api'
@@ -106,6 +106,14 @@ if (!document.getElementById('rooms-page-style')) {
     /* Compact Data Table */
     .cp-search { flex: 1; padding: 8px 14px 8px 36px; border-radius: 8px; border: 1px solid ${G.border}; font-family: 'Inter', sans-serif; font-size: 13px; color: ${G.ink}; background: var(--surface); outline: none; transition: all 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
     .cp-search:focus { border-color: var(--meadow-text-hover); box-shadow: 0 0 0 2px rgba(0,0,0,0.1); }
+
+    /* Compact single-row filter select */
+    .cp-select { appearance: none; -webkit-appearance: none; padding: 8px 30px 8px 12px; border-radius: 8px; border: 1px solid ${G.border}; font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 600; color: ${G.ink}; background: var(--surface); outline: none; cursor: pointer; transition: all 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236B8C7A' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center; background-size: 14px;
+    }
+    .cp-select:focus { border-color: var(--meadow-text-hover); box-shadow: 0 0 0 2px rgba(0,0,0,0.1); }
+    .cp-select.active { border-color: ${G.meadowBorder}; background-color: ${G.meadowSoft}; color: var(--meadow-text); }
     
     .cp-tr-hover:hover td { background: ${G.hover}; }
 
@@ -711,49 +719,39 @@ export default function RoomsPage() {
           )}
         </div>
 
-        {/* Filters */}
-        <div id="tour-course-filters" style={{ padding: '14px 20px', borderBottom: `1px solid ${G.borderLight}`, display: 'flex', flexDirection: 'column', gap: 12, background: 'var(--surface)' }}>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 160 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={G.muted2} strokeWidth="2.5" style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              {loading ? <Skel w="100%" h={36} r={8} /> : <input className="cp-search" placeholder="Search course code or title…" value={search} onChange={e => setSearch(e.target.value)} />}
-            </div>
-            
-            {!loading && (
-              <div style={{ display: 'flex', gap: 4, background: G.hover, padding: 4, borderRadius: 9, border: `1px solid ${G.border}` }}>
-                {['All', 'Assigned', 'Unassigned'].map(status => (
-                  <button key={status} onClick={() => { setStatusFilter(status); setSelected(new Set()) }} 
-                    style={{ padding: '6px 14px', borderRadius: 7, fontSize: 12, fontWeight: statusFilter === status ? 700 : 600, background: statusFilter === status ? 'var(--surface)' : 'transparent', color: statusFilter === status ? (isDark ? 'var(--mint)' : 'var(--meadow-text)') : G.muted, border: 'none', cursor: 'pointer', boxShadow: statusFilter === status ? '0 1px 3px rgba(0,0,0,0.04)' : 'none', transition: 'all .15s', fontFamily: "'Inter', sans-serif" }}>
-                    {status}
-                  </button>
-                ))}
-              </div>
-            )}
+        {/* Filters — single row */}
+        <div id="tour-course-filters" style={{ padding: '12px 20px', borderBottom: `1px solid ${G.borderLight}`, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', background: 'var(--surface)' }}>
+          <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 160 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={G.muted2} strokeWidth="2.5" style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            {loading ? <Skel w="100%" h={36} r={8} /> : <input className="cp-search" placeholder="Search course code or title…" value={search} onChange={e => setSearch(e.target.value)} />}
           </div>
-          
+
           {!loading && programs.length > 1 && (
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems: 'center' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', marginRight: 4 }}>Program Filter:</span>
-              {programs.map(p => (
-                <button key={p} 
-                  onClick={() => { setProgFilter(p); setSelected(new Set()) }}
-                  style={{ padding: '5px 12px', borderRadius: 99, fontSize: 11.5, fontWeight: progFilter === p ? 700 : 600, background: progFilter === p ? G.meadowSoft : 'var(--surface)', color: progFilter === p ? (isDark ? 'var(--mint)' : 'var(--meadow-text)') : G.muted, border: `1px solid ${progFilter === p ? G.meadowBorder : G.border}`, cursor: 'pointer', transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
+            <select
+              className={`cp-select${progFilter !== 'All' ? ' active' : ''}`}
+              value={progFilter}
+              onChange={e => { setProgFilter(e.target.value); setSelected(new Set()) }}
+            >
+              {programs.map(p => <option key={p} value={p}>{p === 'All' ? 'All Programs' : p}</option>)}
+            </select>
           )}
 
           {!loading && semesters.length > 1 && (
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems: 'center', paddingTop: 12 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', marginRight: 4 }}>Semester Filter:</span>
-              {semesters.map(s => (
-                <button key={s} 
-                  onClick={() => { setSemFilter(s); setSelected(new Set()) }}
-                  style={{ padding: '5px 12px', borderRadius: 99, fontSize: 11.5, fontWeight: semFilter === s ? 700 : 600, background: semFilter === s ? G.meadowSoft : 'var(--surface)', color: semFilter === s ? (isDark ? 'var(--mint)' : 'var(--meadow-text)') : G.muted, border: `1px solid ${semFilter === s ? G.meadowBorder : G.border}`, cursor: 'pointer', transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
-                >
-                  {s}
+            <select
+              className={`cp-select${semFilter !== 'All' ? ' active' : ''}`}
+              value={semFilter}
+              onChange={e => { setSemFilter(e.target.value); setSelected(new Set()) }}
+            >
+              {semesters.map(s => <option key={s} value={s}>{s === 'All' ? 'All Semesters' : s}</option>)}
+            </select>
+          )}
+
+          {!loading && (
+            <div style={{ display: 'flex', gap: 4, background: G.hover, padding: 4, borderRadius: 9, border: `1px solid ${G.border}`, flexShrink: 0 }}>
+              {['All', 'Assigned', 'Unassigned'].map(status => (
+                <button key={status} onClick={() => { setStatusFilter(status); setSelected(new Set()) }}
+                  style={{ padding: '6px 14px', borderRadius: 7, fontSize: 12, fontWeight: statusFilter === status ? 700 : 600, background: statusFilter === status ? 'var(--surface)' : 'transparent', color: statusFilter === status ? (isDark ? 'var(--mint)' : 'var(--meadow-text)') : G.muted, border: 'none', cursor: 'pointer', boxShadow: statusFilter === status ? '0 1px 3px rgba(0,0,0,0.04)' : 'none', transition: 'all .15s', fontFamily: "'Inter', sans-serif" }}>
+                  {status}
                 </button>
               ))}
             </div>
@@ -880,6 +878,3 @@ export default function RoomsPage() {
     </div>
   )
 }
-
-
-

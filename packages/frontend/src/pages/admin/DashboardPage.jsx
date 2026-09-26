@@ -285,6 +285,9 @@ const SUGGESTION_ICONS = {
 function SuggestionCard({ suggestion, onAction, delay = 0 }) {
   const navigate = useNavigate()
   const s = SUGGESTION_STYLES[suggestion.type] || SUGGESTION_STYLES.info
+  const [showList, setShowList] = useState(false)
+  const courseList = suggestion.courses || null
+
   return (
     <div className="suggestion-card"
       style={{ background:s.bg, borderColor:s.border, animationDelay:`${delay}s` }}>
@@ -298,6 +301,26 @@ function SuggestionCard({ suggestion, onAction, delay = 0 }) {
           <span style={{ fontSize:9.5, fontWeight:700, padding:'1px 7px', borderRadius:99, background:s.dot, color: '#fff' }}>{s.label}</span>
         </div>
         <p style={{ fontSize:11, color:'var(--muted)', margin:0, lineHeight:1.5 }}>{suggestion.body}</p>
+
+        {courseList && courseList.length > 0 && (
+          <>
+            <button onClick={() => setShowList(v => !v)}
+              style={{ marginTop:6, marginRight:6, padding:'4px 11px', borderRadius:7, border:`1px solid ${s.border}`, fontSize:10.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif',
+                background:'transparent', color:'var(--ink)' }}>
+              {showList ? 'Hide list' : `View all ${courseList.length} →`}
+            </button>
+            {showList && (
+              <ul style={{ margin:'8px 0 0', padding:'8px 10px', listStyle:'none', borderRadius:7, background:'rgba(0,0,0,0.15)', maxHeight:180, overflowY:'auto' }}>
+                {courseList.map((c, i) => (
+                  <li key={c.courseCode || i} style={{ fontSize:11, color:'var(--muted)', padding:'3px 0', borderBottom: i < courseList.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                    <span style={{ fontWeight:600, color:'var(--ink)' }}>{c.courseCode}</span>{c.title ? ` — ${c.title}` : ''}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+
         {suggestion.action && (
           <button onClick={() => navigate(suggestion.action.href)}
             style={{ marginTop:6, padding:'4px 11px', borderRadius:7, border:'none', fontSize:10.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif',
@@ -449,6 +472,7 @@ export default function DashboardPage() {
   const [wlLoading,    setWlLoading]    = useState(true)
   const [distLoading,  setDistLoading]  = useState(true)
   const [showAllWl,    setShowAllWl]    = useState(false)
+  const [showAllCoverage, setShowAllCoverage] = useState(false)
   const [error,        setError]        = useState(null)
 
   const { TourElement, startTour } = useTour('adminDashboard', [
@@ -607,6 +631,7 @@ export default function DashboardPage() {
   const fac  = dashStats?.faculty  || {}
   const rms  = dashStats?.rooms    || {}
   const sch  = dashStats?.scheduleHealth || {}
+  const specCoverage = dashStats?.specializationCoverage || []
 
   // Stat cards — redesigned with icons instead of left border
   const STAT_CARDS = [
@@ -761,7 +786,7 @@ export default function DashboardPage() {
             </span>
           </div>
         ) : (
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }}>
             {[
               {
                 label: 'Coverage',
@@ -786,14 +811,6 @@ export default function DashboardPage() {
                 color: overList.length === 0 ? 'var(--meadow)' : '#EF4444',
                 bg: overList.length === 0 ? 'var(--meadow-soft)' : 'rgba(220, 38, 38, 0.05)',
                 icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>,
-              },
-              {
-                label: 'Near Cap',
-                value: wlLoading ? '…' : atRisk.length,
-                sub: atRisk.length === 0 ? 'No one near limit' : 'At ≥85% capacity',
-                color: atRisk.length === 0 ? 'var(--meadow)' : '#F59E0B',
-                bg: atRisk.length === 0 ? 'var(--meadow-soft)' : 'rgba(245, 158, 11, 0.05)',
-                icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>,
               },
             ].map(item => (
               <div key={item.label} style={{ padding:'12px 13px', borderRadius:10, background:item.bg, border:`1px solid ${item.bg === 'var(--meadow-soft)' ? 'var(--meadow-border)' : item.bg === 'rgba(245, 158, 11, 0.05)' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(220, 38, 38, 0.25)'}`, display:'flex', flexDirection:'column', gap:6 }}>
@@ -959,6 +976,74 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* ── Row 4b: Course Specialization Coverage ── */}
+      <div id="tour-admin-coverage" className="d-card" style={{ padding:'18px', animationDelay:'.19s' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:2, flexWrap:'wrap', gap:8 }}>
+          <div>
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--ink)' }}>Course Specialization Coverage</div>
+            <div style={{ fontSize:11, color:'var(--muted2)', marginTop:1 }}>
+              How many active faculty specialize in each course — worst-covered first
+            </div>
+          </div>
+          {!statsLoading && specCoverage.length > 0 && (
+            <button onClick={() => navigate('/dashboard/faculty')}
+              style={{ padding:'5px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--hover)', color:'var(--muted)', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
+              Update Specializations →
+            </button>
+          )}
+        </div>
+        {statsLoading ? (
+          <div style={{ display:'flex', flexDirection:'column', gap:10, marginTop:14 }}>
+            {[1,2,3,4,5].map(i=><div key={i}><Skel w={220} h={10} r={4} style={{ marginBottom:5 }}/><Skel w='100%' h={8} r={99}/></div>)}
+          </div>
+        ) : specCoverage.length === 0 ? (
+          <div style={{ textAlign:'center', color:'var(--muted2)', fontSize:12, padding:'16px 0' }}>No course data loaded yet.</div>
+        ) : (
+          <>
+            <div style={{ display:'flex', gap:16, marginTop:12, marginBottom:14 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                <div style={{ width:9, height:9, borderRadius:2, background:'#EF4444' }}/>
+                <span style={{ fontSize:11, color:'var(--muted2)' }}>No matching faculty ({specCoverage.filter(c=>c.facultyCount===0).length})</span>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                <div style={{ width:9, height:9, borderRadius:2, background:'#F59E0B' }}/>
+                <span style={{ fontSize:11, color:'var(--muted2)' }}>Only 1 ({specCoverage.filter(c=>c.facultyCount===1).length})</span>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                <div style={{ width:9, height:9, borderRadius:2, background:'var(--meadow-text)' }}/>
+                <span style={{ fontSize:11, color:'var(--muted2)' }}>2+ ({specCoverage.filter(c=>c.facultyCount>=2).length})</span>
+              </div>
+            </div>
+            {(showAllCoverage ? specCoverage : specCoverage.slice(0, 10)).map(c => {
+              const color = c.facultyCount === 0 ? '#EF4444' : c.facultyCount === 1 ? '#F59E0B' : 'var(--meadow-text)'
+              const maxBar = Math.max(1, ...specCoverage.map(x => x.facultyCount))
+              const pct = Math.round((c.facultyCount / maxBar) * 100)
+              return (
+                <div key={c.courseCode} style={{ marginBottom:10 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4, gap:8 }}>
+                    <span style={{ fontSize:11.5, fontWeight:600, color:'var(--ink)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                      {c.title} <span style={{ fontWeight:500, color:'var(--muted2)' }}>({c.courseCode})</span>
+                    </span>
+                    <span style={{ fontSize:11, fontWeight:700, color, flexShrink:0 }}>
+                      {c.facultyCount === 0 ? 'No match' : `${c.facultyCount} faculty`}
+                    </span>
+                  </div>
+                  <div style={{ height:8, borderRadius:99, background:'var(--hover)', overflow:'hidden' }}>
+                    <div style={{ height:'100%', borderRadius:99, width:`${pct}%`, background:color, animation:'barIn .8s cubic-bezier(.4,0,.15,1) both' }}/>
+                  </div>
+                </div>
+              )
+            })}
+            {specCoverage.length > 10 && (
+              <button onClick={() => setShowAllCoverage(v => !v)}
+                style={{ marginTop:6, padding:'5px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--hover)', color:'var(--muted)', fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
+                {showAllCoverage ? 'Show fewer' : `Show all ${specCoverage.length} courses →`}
+              </button>
+            )}
+          </>
+        )}
       </div>
 
       {/* ── Row 5: Data snapshot (year level + faculty composition) ── */}
