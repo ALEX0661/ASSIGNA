@@ -122,6 +122,11 @@ s.textContent = `
 
 /* ── Reusable SVG icons ───────────────────────────────────────────────────── */
 const Ic = {
+  Layers: ({ size=14, color='currentColor', style={} }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0, ...style}}>
+      <polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>
+    </svg>
+  ),
   Warning: ({ size=14, color='currentColor' }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
       <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
@@ -132,6 +137,15 @@ const Ic = {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
       <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
       <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+    </svg>
+  ),
+  Scissors: ({ size=14, color='currentColor' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
+      <circle cx="6" cy="6" r="3"></circle>
+      <circle cx="6" cy="18" r="3"></circle>
+      <line x1="20" y1="4" x2="8.12" y2="15.88"></line>
+      <line x1="14.47" y1="14.48" x2="20" y2="20"></line>
+      <line x1="8.12" y1="8.12" x2="12" y2="12"></line>
     </svg>
   ),
   MapPin: ({ size=14, color='currentColor' }) => (
@@ -256,7 +270,7 @@ export function OverrideConfirmDialog({ event, newDay, newPeriod, newRoom, newFa
 /* ════════════════════════════════════════════════════════════════════════════
    Main component
    ════════════════════════════════════════════════════════════════════════════ */
-export default function SessionModal({ event, allEvents, onClose, onSaved, masterRooms, masterFacultyList, readOnly = false, overrideFn = overrideSession }) {
+export default function SessionModal({ event, allEvents, onClose, onSaved, masterRooms, masterFacultyList, readOnly = false, overrideFn = overrideSession, onSplitEvent, onMergeEvent }) {
   const isDark = document.documentElement.getAttribute('data-mode') === 'dark'
   const originalRange = parsePeriodRange(event.period)
   const duration      = originalRange?.duration ?? 60
@@ -264,6 +278,8 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
   const merged        = !!findMergePartner(event, allEvents)
   const mergePartner  = findMergePartner(event, allEvents)
   const progColor     = programColor(event.program)
+
+  const prevEventToMerge = !readOnly ? allEvents.find(e => e.courseCode === event.courseCode && e.program === event.program && String(e.year) === String(event.year) && e.block === event.block && e.day === event.day && e.room === event.room && getEventId(e) !== evId && parsePeriodRange(e.period)?.end === originalRange?.start) : null; const canMergeNext = !readOnly && !!allEvents.find(e => e.courseCode === event.courseCode && e.program === event.program && String(e.year) === String(event.year) && e.block === event.block && e.day === event.day && e.room === event.room && getEventId(e) !== evId && parsePeriodRange(e.period)?.start === originalRange?.end); const splitKey = `${event.courseCode}|${event.program}|${event.year}|${event.block}|${event.session}`; let splitCount = 0; for (const e of allEvents) { if (`${e.courseCode}|${e.program}|${e.year}|${e.block}|${e.session}` === splitKey) splitCount++; }; const canSplit = !readOnly && duration > 30 && splitCount === 1
   const isLab         = event.session?.toUpperCase().includes('LAB')
 
   // ── Single-session state ──────────────────────────────────────────────────
@@ -784,29 +800,29 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                       onMouseLeave={e => { const t = e.currentTarget.querySelector('.sm-merge-tip'); if(t) t.style.display='none' }}
                     >
                       <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:10, fontWeight:700, color:TV.deep, background:TV.pale, border:`1px solid ${TV.light}`, padding:'2px 8px', borderRadius:6, cursor:'default' }}>
-                        <Ic.Link size={9} color={TV.deep} /> Merged Block
+                        <Ic.Layers size={9} color={TV.deep} /> Merged Block
                       </span>
                       <div className="sm-merge-tip" style={{
                         display:'none', position:'absolute', top:'calc(100% + 6px)', left:0, zIndex:20,
                         width:260, padding:'11px 13px', borderRadius:10,
-                        background:'var(--ink)', color: '#fff', fontSize:11, lineHeight:1.65,
+                        background:'#1e293b', color: '#fff', fontSize:11, lineHeight:1.65,
                         boxShadow:'0 8px 28px rgba(0,0,0,.22)', whiteSpace:'normal',
                       }}>
                         <div style={{ fontWeight:700, color: '#fff', marginBottom:4, display:'flex', alignItems:'center', gap:5 }}>
-                          <Ic.Link size={10} color={TV.deep} style={{ filter:'brightness(2)' }} />
+                          <Ic.Layers size={10} color='#fff' />
                           Merged with {mergePartner.program} {mergePartner.year}-{mergePartner.block}
                         </div>
                         <div style={{ color:'#a5b4fc', fontSize:10.5 }}>
                           Both sections share the same room, day, and time.
                           Drag either card to a different slot to unmerge.
                         </div>
-                        <div style={{ width:8, height:8, background:'var(--ink)', transform:'rotate(45deg)', position:'absolute', top:-4, left:16 }} />
+                        <div style={{ width:8, height:8, background:'#1e293b', transform:'rotate(45deg)', position:'absolute', top:-4, left:16 }} />
                       </div>
                     </span>
                   )}
                   {merged && !mergePartner && (
                     <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:10, fontWeight:700, color:TV.deep, background:TV.pale, border:`1px solid ${TV.light}`, padding:'2px 8px', borderRadius:6 }}>
-                      <Ic.Link size={9} color={TV.deep} /> Merged Block
+                      <Ic.Layers size={9} color={TV.deep} /> Merged Block
                     </span>
                   )}
                 </div>
@@ -838,6 +854,25 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
 
               {/* Right: faculty chip + close button */}
               <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+                {onSplitEvent && canSplit && (
+                  <button
+                    onClick={() => { onSplitEvent(event); onClose() }}
+                    style={{ background:'var(--surface)', border:`1px solid ${TV.border}`, borderRadius:9, padding:'6px 12px', display:'flex', alignItems:'center', gap:5, cursor:'pointer', color:TV.text, fontSize:12, fontWeight:600 }}
+                    title="Split into two sessions"
+                  >
+                    <Ic.Scissors size={13} color={TV.muted} /> Split
+                  </button>
+                )}
+                {onMergeEvent && (canMergeNext || prevEventToMerge) && (
+                  <button
+                    onClick={() => { onMergeEvent(prevEventToMerge || event); onClose() }}
+                    style={{ background:'var(--surface)', border:`1px solid ${TV.border}`, borderRadius:9, padding:'6px 12px', display:'flex', alignItems:'center', gap:5, cursor:'pointer', color:TV.text, fontSize:12, fontWeight:600 }}
+                    title="Link with next adjacent session"
+                  >
+                    <Ic.Link size={13} color={TV.muted} /> Link
+                  </button>
+                )}
+
                 {newFaculty && newFaculty !== 'TBA' ? (
                   <span style={{
                     display:'inline-flex', alignItems:'center', gap:5,
@@ -927,9 +962,6 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
             {tab === 'details' && (
               <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
 
-
-
-
                 <div>
                   <p className="sm-field-label"><Ic.Calendar size={10} color={TV.muted} /> Day</p>
                   <select className="sm-select" value={newDay} onChange={e => setNewDay(e.target.value)} disabled={readOnly}>
@@ -991,7 +1023,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                           </div>
                           {mergePartnerAtSlot && !isSelected && (
                             <span style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:9, background:'rgba(59, 130, 246, 0.1)', color:'#60A5FA', borderRadius:4, padding:'1px 6px', fontWeight:700, flexShrink:0 }}>
-                              <Ic.Link size={9} color='#60A5FA' /> Would merge · {mergePartnerAtSlot.program} {mergePartnerAtSlot.year}-{mergePartnerAtSlot.block}
+                              <Ic.Layers size={9} color='#60A5FA' /> Would merge · {mergePartnerAtSlot.program} {mergePartnerAtSlot.year}-{mergePartnerAtSlot.block}
                             </span>
                           )}
                           {hasAny && !isSelected && (
@@ -1034,7 +1066,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                   )}
                   {mergePreviewRooms.has(newRoom) && newRoom !== 'TBA' && !roomConflictSet.has(newRoom) && (
                     <span style={{ display:'inline-flex', alignItems:'center', gap:5, marginLeft:'auto', fontSize:10.5, fontWeight:700, color:'#60A5FA', background:'rgba(59, 130, 246, 0.1)', border:'1px solid #93c5fd', padding:'3px 9px', borderRadius:6 }}>
-                      <Ic.Link size={10} color='#60A5FA' /> Would merge at current time
+                      <Ic.Layers size={10} color='#60A5FA' /> Would merge at current time
                     </span>
                   )}
                 </div>
@@ -1109,7 +1141,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                       {/* ── Merge-partner overlaps (current) ── */}
                       {currentMerge.length > 0 && (
                         <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background:TV.pale, border:`1px solid ${TV.light}`, borderRadius:8, fontSize:11, color:TV.muted }}>
-                          <Ic.Link size={11} color={TV.deep} />
+                          <Ic.Layers size={11} color={TV.deep} />
                           <span>Shares room with merged partner <strong style={{color:TV.deep}}>{mergePartner?.program} {mergePartner?.year}-{mergePartner?.block}</strong> — expected, not a real conflict.</span>
                         </div>
                       )}
@@ -1133,7 +1165,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                       {/* ── Merge-partner overlaps (preview) ── */}
                       {previewMerge.length > 0 && (
                         <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background:TV.pale, border:`1px solid ${TV.light}`, borderRadius:8, fontSize:11, color:TV.muted }}>
-                          <Ic.Link size={11} color={TV.deep} />
+                          <Ic.Layers size={11} color={TV.deep} />
                           <span>Moving here would <strong style={{color:TV.deep}}>merge</strong> this session with its block partner — both share the same room and time.</span>
                         </div>
                       )}
@@ -1579,7 +1611,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                     <>
                       {mergePreviewConflicts.length > 0 && realPreviewConflicts.length === 0 && (
                         <div style={{ display:'flex', alignItems:'center', gap:8, background:TV.pale, border:`1px solid ${TV.light}`, borderRadius:9, padding:'7px 12px', marginBottom:10, fontSize:11.5 }}>
-                          <Ic.Link size={12} color={TV.deep} />
+                          <Ic.Layers size={12} color={TV.deep} />
                           <span style={{ color:TV.deep, fontWeight:600 }}>
                             This slot would merge with {mergePreviewConflicts.length} partner section{mergePreviewConflicts.length > 1 ? 's' : ''}
                           </span>
@@ -1653,3 +1685,6 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
     </>
   )
 }
+
+
+

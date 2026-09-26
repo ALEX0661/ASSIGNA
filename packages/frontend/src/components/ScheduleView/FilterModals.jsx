@@ -25,11 +25,11 @@ function ModalSearch({ value, onChange, placeholder = 'Search…' }) {
           width: '100%', padding: '7px 12px 7px 30px',
           border: `1px solid ${TV.border}`, borderRadius: 8,
           fontSize: 12.5, fontFamily: 'Inter, sans-serif',
-          color: TV.text, background: '#fafafa', outline: 'none',
+          color: TV.text, background: 'var(--bg)', outline: 'none',
           boxSizing: 'border-box', transition: 'border-color .15s, background .15s',
         }}
         onFocus={e => { e.target.style.borderColor = TV.mid; e.target.style.background = 'var(--surface)' }}
-        onBlur={e  => { e.target.style.borderColor = TV.border; e.target.style.background = '#fafafa' }}
+        onBlur={e  => { e.target.style.borderColor = TV.border; e.target.style.background = 'var(--bg)' }}
       />
       {value && (
         <button onClick={() => onChange('')}
@@ -341,8 +341,8 @@ export function FacultyFilterModal({
                           fontSize: 8.5, fontWeight: 700, flexShrink: 0,
                           padding: '1px 6px', borderRadius: 4,
                           textTransform: 'uppercase', letterSpacing: '.5px',
-                          background: info.status === 'part-time' ? '#fef9c3' : '#f0f9ff',
-                          color:      info.status === 'part-time' ? '#854d0e' : '#38BDF8',
+                          background: info.status === 'part-time' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(56, 189, 248, 0.15)',
+                          color:      info.status === 'part-time' ? '#F59E0B' : '#38BDF8',
                           border:     `1px solid ${info.status === 'part-time' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(59, 130, 246, 0.25)'}`,
                         }}>
                           {info.status === 'part-time' ? 'PT' : 'FT'}
@@ -372,7 +372,7 @@ export function FacultyFilterModal({
                         </div>
                         <span style={{
                           fontSize: 9.5, fontWeight: 700, flexShrink: 0, minWidth: 80, textAlign: 'right',
-                          color: isActive ? TV.deep : info.isOver ? '#EF4444' : info.pct >= 80 ? '#92400e' : TV.muted,
+                          color: isActive ? TV.deep : info.isOver ? '#EF4444' : info.pct >= 80 ? '#F59E0B' : TV.muted,
                         }}>
                           {info.usedUnits} / {info.maxUnits} units
                         </span>
@@ -426,7 +426,7 @@ function LabIcon({ color }) {
 // ── Room-type accent palettes ──────────────────────────────────────────────────
 const ROOM_ACCENTS = {
   lecture: { color: TV.deep,   bg: TV.pale,   border: TV.light,   solid: TV.deep   },
-  lab:     { color: '#7C3AED', bg: '#F3E8FF', border: 'color-mix(in srgb, #6D28D9 30%, transparent)',  solid: '#7C3AED' },
+  lab:     { color: '#8B5CF6', bg: 'color-mix(in srgb, #8B5CF6 15%, var(--surface))', border: 'color-mix(in srgb, #8B5CF6 25%, var(--surface))',  solid: '#8B5CF6' },
 }
 
 // ── Room-type group header ──────────────────────────────────────────────────────
@@ -468,7 +468,7 @@ function RoomButton({ label, active, available, sessionCount, accent, onClick })
         transition: 'all .15s', width: '100%', boxSizing: 'border-box',
         textAlign: 'left', outline: 'none',
       }}
-      onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = accent.border; e.currentTarget.style.background = '#FAFAFA' } }}
+      onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = accent.border; e.currentTarget.style.background = 'var(--bg)' } }}
       onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = TV.border;      e.currentTarget.style.background = 'var(--surface)' } }}
     >
       {/* Label */}
@@ -486,7 +486,7 @@ function RoomButton({ label, active, available, sessionCount, accent, onClick })
         fontSize: 9.5, fontWeight: 700, flexShrink: 0,
         padding: '1px 6px', borderRadius: 10,
         color:      active ? accent.color : TV.muted,
-        background: active ? 'var(--surface)' : '#F3F4F6',
+        background: active ? 'var(--surface)' : 'var(--bg)',
         border: `1px solid ${active ? accent.border : TV.border}`,
       }}>
         {sessionCount}
@@ -600,7 +600,7 @@ export function RoomFilterModal({ title, options, selectedSet, onToggle, onClose
         <ModalSearch value={q} onChange={setQ} placeholder="Search rooms…" />
 
         {/* ── Type tabs ── */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 12, background: 'var(--surface)', border: `1px solid ${TV.border}`, borderRadius: 9, padding: 3, width: 'fit-content' }}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 12, background: 'var(--bg)', border: `1px solid `, borderRadius: 9, padding: 3, width: 'fit-content' }}>
           {TABS.map(([val, lbl, count]) => (
             <button key={val} onClick={() => setTypeTab(val)} style={{
               fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 7, cursor: 'pointer',
@@ -647,18 +647,16 @@ export function SessionFilterModal({ title, options, selectedSet, onToggle, onCl
   const SessionGroup = ({ groupTitle, sessions, accent }) => {
     const visible = filterGroup(sessions)
     if (visible.length === 0) return null
-    const isLab = accent === 'lab'
+    const theme = accent === 'lab' ? ROOM_ACCENTS.lab : ROOM_ACCENTS.lecture
     return (
       <div style={{ marginBottom: 18 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
           <span style={{
             fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.8px',
-            color:      isLab ? TV.deep  : TV.muted,
-            background: isLab ? TV.pale  : 'rgba(0,0,0,.04)',
-            border:     `1px solid ${isLab ? TV.light : TV.border}`,
+            color: theme.color, background: theme.bg, border: `1px solid ${theme.border}`,
             borderRadius: 4, padding: '2px 7px',
           }}>
-            {isLab ? 'LAB' : 'LEC'}
+            {accent === 'lab' ? 'LAB' : 'LEC'}
           </span>
           <span style={{ fontSize: 10, fontWeight: 700, color: TV.muted, textTransform: 'uppercase', letterSpacing: '.8px' }}>
             {groupTitle}
@@ -893,7 +891,7 @@ export function StackConfirmModal({ pendingStack, onConfirm, onCancel }) {
             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
             <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
           </svg>
-          <p style={{ fontSize: 11, color: '#92400e', margin: 0, lineHeight: 1.55 }}>
+          <p style={{ fontSize: 11, color: '#D97706', margin: 0, lineHeight: 1.55 }}>
             Stacked sessions share the same room and timeslot. This will appear as a{' '}
             <strong>Room Conflict</strong> unless your system treats overlapping sections as merged.
             The change is queued locally — use <strong>Save Changes</strong> to persist.
@@ -1006,7 +1004,7 @@ export function DeleteScheduleModal({ scheduleName, isMaster, onConfirm, onCance
                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                Important Note
             </div>
-            <div style={{ color: '#92400E', fontSize: 12, lineHeight: 1.5 }}>
+            <div style={{ color: '#D97706', fontSize: 12, lineHeight: 1.5 }}>
               Deleting this Final Master Schedule will automatically revert all associated coordinator submissions for this term back to <strong>Draft</strong> status, requiring them to be re-approved.
             </div>
           </div>

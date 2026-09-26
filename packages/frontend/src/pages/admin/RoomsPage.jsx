@@ -532,6 +532,7 @@ export default function RoomsPage() {
       const isAssigned = assignments[key]?.lec?.length > 0 || assignments[key]?.lab?.length > 0
       
       if (progFilter !== 'All' && c.program !== progFilter) return false
+        if (semFilter !== 'All' && String(c.semester || '') !== semFilter) return false
       if (statusFilter === 'Assigned' && !isAssigned) return false
       if (statusFilter === 'Unassigned' && isAssigned) return false
       if (q && !c.courseCode.toLowerCase().includes(q) && !c.title.toLowerCase().includes(q)) return false
@@ -743,8 +744,21 @@ export default function RoomsPage() {
               ))}
             </div>
           )}
-        </div>
 
+          {!loading && semesters.length > 1 && (
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems: 'center', paddingTop: 12 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', marginRight: 4 }}>Semester Filter:</span>
+              {semesters.map(s => (
+                <button key={s} 
+                  onClick={() => { setSemFilter(s); setSelected(new Set()) }}
+                  style={{ padding: '5px 12px', borderRadius: 99, fontSize: 11.5, fontWeight: semFilter === s ? 700 : 600, background: semFilter === s ? G.meadowSoft : 'var(--surface)', color: semFilter === s ? (isDark ? 'var(--mint)' : 'var(--meadow-text)') : G.muted, border: `1px solid ${semFilter === s ? G.meadowBorder : G.border}`, cursor: 'pointer', transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         {/* Bulk Action Bar */}
         {selected.size > 0 && (
           <div style={{ background: `linear-gradient(135deg,${G.meadowDeep},${G.inkMid})`, padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 14, animation: 'fadeIn 0.15s ease' }}>
@@ -866,3 +880,6 @@ export default function RoomsPage() {
     </div>
   )
 }
+
+
+

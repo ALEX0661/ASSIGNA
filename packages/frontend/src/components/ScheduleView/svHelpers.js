@@ -170,13 +170,28 @@ export function parseTimeToMinutes(timeStr) {
   return h * 60 + min
 }
 
+// Period strings repeat heavily across a schedule (dozens of sections share the
+// same "8:00 AM - 9:30 AM" slot), but this function used to be called tens of
+// thousands of times per drag interaction (once per event in every overlap /
+// conflict / pre-glow loop), re-running the same regex parse every time.
+// Caching by the exact string turns all repeat calls into a Map lookup.
+// NOTE: the returned object is shared across callers for the same period
+// string — treat it as read-only, never mutate a parsePeriodRange() result.
+const _periodRangeCache = new Map()
 export function parsePeriodRange(period) {
   if (!period) return null
+  const cached = _periodRangeCache.get(period)
+  if (cached !== undefined) return cached
   const parts = period.split(' - ')
-  if (parts.length < 2) return null
+  if (parts.length < 2) {
+    _periodRangeCache.set(period, null)
+    return null
+  }
   const start = parseTimeToMinutes(parts[0].trim())
   const end   = parseTimeToMinutes(parts[1].trim())
-  return { start, end, duration: end - start }
+  const result = { start, end, duration: end - start }
+  _periodRangeCache.set(period, result)
+  return result
 }
 
 export function minutesToTimeLabel(minutes) {

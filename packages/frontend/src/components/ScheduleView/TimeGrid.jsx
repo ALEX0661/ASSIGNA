@@ -12,26 +12,45 @@ if (!document.getElementById('tg-glow-style')) {
   const s = document.createElement('style')
   s.id = 'tg-glow-style'
   s.textContent = `
-    @keyframes tg-conflict-glow {
-      0%,100% { background:rgba(239,68,68,.05); box-shadow:inset 0 0 0 1px rgba(239,68,68,.14); }
-      50%      { background:rgba(239,68,68,.13); box-shadow:inset 0 0 0 1px rgba(239,68,68,.32); }
+    /* tg-cell-conflict / tg-cell-merge / tg-cell-available used to animate
+       background + box-shadow directly. Those force a repaint every frame,
+       and while dragging there can be 50-100+ of these lit up at once across
+       the grid — real, sustained main-thread cost for the whole drag. Fixed
+       by keeping the resting ("low") glow static on a ::before layer and
+       only animating a ::after layer's opacity for the pulse to "high" —
+       opacity is compositor-only, so any number of these animate for free.
+       Same colors, same timing, same look — just a cheaper property. */
+    @keyframes tg-pulse-opacity { 0%,100% { opacity:0 } 50% { opacity:1 } }
+
+    .tg-cell-conflict::before, .tg-cell-merge::before, .tg-cell-available::before {
+      content:''; position:absolute; inset:0; pointer-events:none;
     }
-    @keyframes tg-merge-glow {
-      0%,100% { background:rgba(0,0,0,.04); box-shadow:inset 0 0 0 1px rgba(0,0,0,.12); }
-      50%      { background:rgba(0,0,0,.10); box-shadow:inset 0 0 0 1px rgba(0,0,0,.26); }
+    .tg-cell-conflict::before  { background:rgba(239,68,68,.05);   box-shadow:inset 0 0 0 1px rgba(239,68,68,.14); }
+    .tg-cell-merge::before     { background:rgba(0,0,0,.04);       box-shadow:inset 0 0 0 1px rgba(0,0,0,.12); }
+    .tg-cell-available::before { background:rgba(0,0,0,.05);       box-shadow:inset 0 0 0 1px rgba(0,0,0,.15); }
+
+    .tg-cell-conflict::after, .tg-cell-merge::after, .tg-cell-available::after {
+      content:''; position:absolute; inset:0; pointer-events:none;
+      opacity:0; animation:tg-pulse-opacity 1.7s ease-in-out infinite;
     }
+    .tg-cell-conflict::after  { background:rgba(239,68,68,.13);    box-shadow:inset 0 0 0 1px rgba(239,68,68,.32); }
+    .tg-cell-merge::after     { background:rgba(59,130,246,.13);   box-shadow:inset 0 0 0 1px rgba(59,130,246,.32); }
+    .tg-cell-available::after {
+      background:rgba(110,231,183,.20); box-shadow:inset 0 0 0 1px rgba(0,0,0,.34);
+      animation-duration:2.4s;
+    }
+
+    /* Row-label glow (time column, left edge) — one instance per conflicting
+       time slot, not multiplied per room, so its cost is far smaller. Left
+       as a direct color animation. */
     @keyframes tg-row-conflict {
       0%,100% { background:rgba(239,68,68,.04); border-right-color:rgba(239,68,68,.28); }
       50%      { background:rgba(239,68,68,.10); border-right-color:rgba(239,68,68,.50); }
     }
-    @keyframes tg-available-glow {
-      0%,100% { background:rgba(0,0,0,.05);  box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
-      50%      { background:rgba(110,231,183,.20); box-shadow: inset 0 0 0 1px rgba(0,0,0,.34); }
-    }
-    .tg-cell-conflict  { animation:tg-conflict-glow  1.7s ease-in-out infinite; }
-    .tg-cell-merge     { animation:tg-merge-glow     1.7s ease-in-out infinite; }
-    .tg-row-conflict   { animation:tg-row-conflict   1.7s ease-in-out infinite; }
-    .tg-cell-available { animation:tg-available-glow 2.4s ease-in-out infinite; }
+    .tg-row-conflict { animation:tg-row-conflict 1.7s ease-in-out infinite; }
+
+    /* Hide link/split buttons from the native HTML5 drag ghost image */
+    .tg-card:active .tg-action-btn { display: none !important; }
   `
   document.head.appendChild(s)
 }
@@ -53,7 +72,7 @@ function resolveDims(gridSize) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 const RoomColumnMemo = React.memo(function RoomColumn({
-  room, dayEvents, conflictMap, draggedEvent, hoveredSlot, getDropConflict,
+  room, dayEvents, conflictMap, draggedEvent, onMergeEvent, onSplitEvent, splitCounts, hoveredSlot, getDropConflict,
   onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop, onCardClick,
   gridSize, slotH, locked,
   conflictingDragIds,
@@ -67,8 +86,21 @@ const RoomColumnMemo = React.memo(function RoomColumn({
   gridStart,
 }) {
   const compact    = gridSize === 'compact'
-  const roomEvents = dayEvents.filter(e => e.room === room)
+  const roomEvents = useMemo(() => dayEvents.filter(e => e.room === room), [dayEvents, room])
   const [hoveredId, setHoveredId] = useState(null)
+  // Stable per-event hover callbacks: without this, SessionCard's onHoverChange
+  // prop was a brand-new arrow function on every render of this column, which
+  // silently defeated SessionCard's React.memo() for every card in it.
+  const hoverCallbacksRef = useRef(new Map())
+  const getHoverCallback = (id) => {
+    const cache = hoverCallbacksRef.current
+    let fn = cache.get(id)
+    if (!fn) {
+      fn = (hov) => setHoveredId(hov ? id : null)
+      cache.set(id, fn)
+    }
+    return fn
+  }
 
   // Slots that are genuinely free for this room, computed from the room's
   // real (unfiltered) free ranges — never from the filtered dayEvents/roomEvents
@@ -180,7 +212,7 @@ const RoomColumnMemo = React.memo(function RoomColumn({
                 : `1px dashed rgba(180,220,195,.38)`,
               background: isHov
                 ? isHovMergeOnly
-                   ? 'rgba(0,0,0,.07)'   // merge hover → green
+                   ? 'rgba(59,130,246,.15)'   // merge hover → green
                   : dropConf
                     ? 'rgba(239,68,68,.07)'   // conflict hover → red
                      : 'rgba(0,0,0,.05)' // clean hover → soft green
@@ -246,6 +278,29 @@ const RoomColumnMemo = React.memo(function RoomColumn({
         // isMerged comes from the top-level mergedIds set (computed from ALL events,
         // never filtered) so it always reflects current state immediately after a drag
         const isMerged = mergedIds ? mergedIds.has(evId) : false
+        
+        const range = parsePeriodRange(event.period)
+        
+        const isMatch = (e) => (
+          e.courseCode === event.courseCode &&
+          e.program === event.program &&
+          String(e.year) === String(event.year) &&
+          e.block === event.block &&
+          e.day === event.day &&
+          e.room === event.room &&
+          getEventId(e) !== evId
+        )
+
+        const canMergeNext = !locked && !event._isReadonly && range && !!dayEvents.find(e => 
+          isMatch(e) && parsePeriodRange(e.period)?.start === range.end
+        )
+
+        const prevEventToMerge = (!locked && !event._isReadonly && range) ? dayEvents.find(e => 
+          isMatch(e) && parsePeriodRange(e.period)?.end === range.start
+        ) : null
+
+        const splitKey = `${event.courseCode}|${event.program}|${event.year}|${event.block}|${event.session}`
+        const canSplit = !locked && !event._isReadonly && range && range.duration > 30 && splitCounts && splitCounts[splitKey] === 1
 
         return (
           // When any card is being dragged, make ALL cards (including the one left behind)
@@ -264,11 +319,16 @@ const RoomColumnMemo = React.memo(function RoomColumn({
               overlapIndex={overlapIndex}
               spreadOffset={spreadOffset}
               isInHoveredGroup={isInHoveredGroup}
-              onHoverChange={hov => setHoveredId(hov ? evId : null)}
+              onHoverChange={getHoverCallback(evId)}
               isConflictTarget={isConflictTarget}
               isPotentialConflict={isPotentialConflict}
               isPotentialMerge={isPotentialMerge}
               isMerged={isMerged}
+              canMergeNext={canMergeNext}
+              prevEventToMerge={prevEventToMerge}
+              onMergeEvent={onMergeEvent}
+              canSplit={canSplit}
+              onSplitEvent={onSplitEvent}
             />
           </div>
         )
@@ -280,6 +340,7 @@ const RoomColumnMemo = React.memo(function RoomColumn({
 // ─────────────────────────────────────────────────────────────────────────────
 export default function TimeGrid({
   rooms, dayEvents, conflictMap,
+  onMergeEvent, onSplitEvent,
   draggedEvent, hoveredCell, getDropConflict,
   onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop,
   onCardClick,
@@ -299,6 +360,15 @@ export default function TimeGrid({
   propEndHour,
   activeDay, // The day this grid is rendering for
 }) {
+  const splitCounts = useMemo(() => {
+    const counts = {}
+    for (const ev of allEvents || []) {
+      const key = `${ev.courseCode}|${ev.program}|${ev.year}|${ev.block}|${ev.session}`
+      counts[key] = (counts[key] || 0) + 1
+    }
+    return counts
+  }, [allEvents])
+
   const { finalStartHour, finalEndHour } = useMemo(() => {
     let minH = propStartHour ?? 7
     let maxH = propEndHour ?? 21
@@ -458,7 +528,7 @@ export default function TimeGrid({
 
           if (roomC) roomEventsAtSlot.push(ev)
 
-          const isMergePartner = ambientMergeIds.has(getEventId(ev))
+          const isMergePartner = ambientMergeIds.has(getEventId(ev)) && r.start === proposed.start && r.end === proposed.end
 
           if (sectionC || facultyC || (roomC && !isMergePartner)) {
             isConflict = true
@@ -588,6 +658,7 @@ export default function TimeGrid({
                 onDragStart={onDragStart} onDragEnd={onDragEnd}
                 onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
                 onCardClick={onCardClick}
+                onMergeEvent={onMergeEvent} onSplitEvent={onSplitEvent} splitCounts={splitCounts}
                 gridSize={resolvedSize} slotH={slotH} locked={locked}
                 conflictingDragIds={conflictingDragIds}
                 ambientConflictIds={ambientConflictIds}

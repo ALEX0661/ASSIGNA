@@ -685,6 +685,7 @@ export default function CoordScheduleViewPage() {
   const initialName   = storeId === id ? storeName : null
 
   const [localEvents,       setLocalEvents]   = useState(initialEvents)
+  const [pristineEvents,    setPristineEvents]  = useState([])
   const [past,              setPast]          = useState([])
   const [future,            setFuture]        = useState([])
   const [masterRooms,       setMasterRooms]   = useState({ lecture:[], lab:[] })
@@ -824,7 +825,7 @@ export default function CoordScheduleViewPage() {
         if (requestId !== id) return
         const evs = data?.schedule || []
         setLocalEvents(evs)
-        setEvents(evs)
+        setEvents(evs); setPristineEvents(evs);
         setId(id)
         setPast([]); setFuture([])
         
@@ -895,7 +896,7 @@ export default function CoordScheduleViewPage() {
         
         const events = [...qEvents, ...myApprEvents, ...overEvents]
         if (requestId !== id) return // superseded by a newer navigation — drop this stale response
-        setLocalEvents(events); setEvents(events); setId(id)
+        setLocalEvents(events); setEvents(events); setPristineEvents(events); setId(id)
         setPast([]); setFuture([])
         
         const finalName = overlayId ? 'Combined Schedule (with Draft Overlay)' : 'Combined Schedule (Approved So Far)'
@@ -914,7 +915,7 @@ export default function CoordScheduleViewPage() {
         ])
         if (requestId !== id) return // superseded by a newer navigation — drop this stale response
         const evs = data?.schedule || []
-        setLocalEvents(evs); setEvents(evs); setId(id)
+        setLocalEvents(evs); setEvents(evs); setPristineEvents(evs); setId(id)
         setPast([]); setFuture([])
         setMasterEvents(masterData?.schedule || [])
         setActiveName(data.name || 'Schedule'); setName(data.name || 'Schedule')
@@ -972,7 +973,7 @@ export default function CoordScheduleViewPage() {
           return
         }
       }
-      const response = await coordSaveScheduleInPlace(targetId)
+      const response = await coordSaveScheduleInPlace(targetId, allEvents)
       // Reload so versionHistory reflects the authoritative backend copy.
       const fresh = await coordLoadSchedule(targetId)
       setScheduleMeta({
@@ -984,7 +985,7 @@ export default function CoordScheduleViewPage() {
         restoredAt:          null,
       })
       setSaveState('saved')
-      setHasUnsavedChanges(false)
+      setHasUnsavedChanges(false); setPristineEvents(allEvents);
       setTimeout(() => setSaveState('idle'), 2500)
     } catch {
       setSaveState('error')
@@ -1008,7 +1009,7 @@ export default function CoordScheduleViewPage() {
         }
       }
       // Make sure what gets submitted for review matches what's on screen.
-      if (hasUnsavedChanges) await coordSaveScheduleInPlace(id)
+      if (hasUnsavedChanges) await coordSaveScheduleInPlace(id, allEvents)
       await coordSubmitSchedule(id)
       setStatus('submitted')
       setActionState('done')
@@ -1562,9 +1563,13 @@ export default function CoordScheduleViewPage() {
           pendingOverrides={dd.pendingOverrides}
           onSave={handleSave}
           onRevertAll={() => {
-            dd.revertAllOverrides()
-            setHasUnsavedChanges(false)
-          }}
+              dd.revertAllOverrides()
+              setLocalEvents(pristineEvents)
+              setEvents(pristineEvents)
+              setPast([])
+              setFuture([])
+              setHasUnsavedChanges(false)
+            }}
           onViewAll={() => setShowPendingModal(true)}
           saving={dd.saving}
         />
@@ -1575,6 +1580,10 @@ export default function CoordScheduleViewPage() {
             onSave={handleSave}
             onRevertAll={() => {
               dd.revertAllOverrides()
+              setLocalEvents(pristineEvents)
+              setEvents(pristineEvents)
+              setPast([])
+              setFuture([])
               setHasUnsavedChanges(false)
             }}
             saving={dd.saving}
@@ -1672,10 +1681,7 @@ export default function CoordScheduleViewPage() {
               color: filterMerged ? TV.deep : TV.muted,
             }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-              </svg>
-              Merged
+                <polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg> Merged
             </button>
             <button onClick={toggles.unassigned} style={{
               display:'inline-flex', alignItems:'center', gap:4,
@@ -1750,8 +1756,8 @@ export default function CoordScheduleViewPage() {
           <div style={{ display:'flex', alignItems:'center', gap:14, paddingTop:10, borderTop:`1px solid ${TV.border}` }}>
             {[
               { bg: 'var(--surface)', border:TV.border, label:'Normal', color:'var(--muted2)' },
-              { bg:TV.pale, border:TV.light, label:'Merge', color:TV.deep,
-                icon: <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> },
+              { bg:TV.pale, border:TV.light, label:'Merged Block', color:TV.deep,
+                icon: <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg> },
               { bg:'rgba(239, 68, 68, 0.05)', border:'rgba(220, 38, 38, 0.25)', label:'Conflict', color:'#EF4444',
                 icon: <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> },
               { bg:'rgba(245, 158, 11, 0.05)', border:'rgba(245, 158, 11, 0.35)', label:'Unassigned', color:'#92400e',
@@ -1878,7 +1884,7 @@ export default function CoordScheduleViewPage() {
           conflictMap={conflictMap}
           hasFilters={localHasFilters} 
           clearFilters={handleClearAll}
-          onCardClick={setSelectedEvent}
+          onCardClick={setSelectedEvent} onMergeEvent={dd.mergeWithNext} onSplitEvent={dd.splitEvent}
           mergedIds={mergedIds}
         />
       ) : gridSize === 'maximize' ? (
@@ -2018,7 +2024,7 @@ export default function CoordScheduleViewPage() {
                   rooms={visibleRooms} dayEvents={activeDayEvents} conflictMap={conflictMap}
                   draggedEvent={dd.draggedEvent} hoveredCell={dd.hoveredCell} getDropConflict={dd.getDropConflict}
                   onDragStart={dd.handleDragStart} onDragEnd={dd.handleDragEnd} onDragOver={dd.handleDragOver}
-                  onDragLeave={dd.handleDragLeave} onDrop={dd.handleDrop} onCardClick={setSelectedEvent}
+                  onDragLeave={dd.handleDragLeave} onDrop={dd.handleDrop} onCardClick={setSelectedEvent} onMergeEvent={dd.mergeWithNext} onSplitEvent={dd.splitEvent}
                   locked={locked}
                   gridSize={maximizeDensity} fullscreen={true} conflictingDragIds={dd.conflictingDragIds}
                   ambientConflictIds={dd.ambientConflictIds}
@@ -2028,6 +2034,7 @@ export default function CoordScheduleViewPage() {
                   allEvents={allEvents}
                   availabilityMap={availabilityMap}
                   highlightAvailable={showAvailableOnly}
+                  onMergeEvent={dd.mergeWithNext}
                 />
               )
             }
@@ -2081,8 +2088,7 @@ export default function CoordScheduleViewPage() {
                           display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'Inter,sans-serif', transition: 'all .15s',
                           fontWeight: filterMerged ? 700 : 400, border: `1px solid ${filterMerged ? TV.light : TV.border}`, background: filterMerged ? TV.pale : 'var(--surface)', color: filterMerged ? TV.deep : TV.muted,
                         }}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                          Merged only
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg> Merged only
                         </button>
                         <button onClick={toggles.unassigned} style={{
                           display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'Inter,sans-serif', transition: 'all .15s',
@@ -2205,7 +2211,7 @@ export default function CoordScheduleViewPage() {
                 onDragOver={dd.handleDragOver}
                 onDragLeave={dd.handleDragLeave}
                 onDrop={dd.handleDrop}
-                onCardClick={setSelectedEvent}
+                onCardClick={setSelectedEvent} onMergeEvent={dd.mergeWithNext} onSplitEvent={dd.splitEvent}
                 locked={locked}
                 gridSize={gridSize}
                 conflictingDragIds={dd.conflictingDragIds}
@@ -2216,6 +2222,7 @@ export default function CoordScheduleViewPage() {
                 allEvents={allEvents}
                 availabilityMap={availabilityMap}
                 highlightAvailable={showAvailableOnly}
+                onMergeEvent={dd.mergeWithNext}
               />
             )
           }
@@ -2232,6 +2239,8 @@ export default function CoordScheduleViewPage() {
           masterFacultyList={masterFacultyList}
           readOnly={locked || selectedEvent._isReadonly}
           overrideFn={overrideFn}
+          onSplitEvent={dd.splitEvent}
+          onMergeEvent={dd.mergeWithNext}
           onSaved={(updates) => {
             setSelectedEvent(null)
             if (!updates) return
@@ -2393,7 +2402,7 @@ function ListView({ dayEvents, conflictMap, hasFilters, clearFilters, onCardClic
                     {merged && (
                       <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:9.5, fontWeight:700, background:TV.pale, color:TV.deep, border:`1px solid ${TV.light}`, borderRadius:4, padding:'2px 6px' }}>
                         <svg width={9} height={9} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                        Merge
+                        Link
                       </span>
                     )}
                     {isExtManaged && <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:9.5, fontWeight:600, background:'var(--meadow-soft)', color: 'var(--meadow-text)', border:'1px solid var(--meadow-border)', borderRadius:4, padding:'2px 6px' }}>Ext. managed</span>}
@@ -2414,3 +2423,8 @@ function ListView({ dayEvents, conflictMap, hasFilters, clearFilters, onCardClic
     </div>
   )
 }
+
+
+
+
+

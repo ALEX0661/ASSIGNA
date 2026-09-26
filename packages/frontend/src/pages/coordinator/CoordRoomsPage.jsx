@@ -394,6 +394,8 @@ export default function CoordRoomsPage() {
   const [savingAssigns, setSavingAssigns] = useState(false)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
+  const [semFilter, setSemFilter] = useState('All')
+  const semesters = useMemo(() => ['All', ...new Set(courses.map(c => String(c.semester || '')))].filter(x => x), [courses])
   const [selectedCourses, setSelectedCourses] = useState(new Set())
 
   // Modal State
@@ -495,12 +497,13 @@ export default function CoordRoomsPage() {
     return courses.filter(c => {
       const isAssigned = assignments[c.courseCode]?.lec?.length > 0 || assignments[c.courseCode]?.lab?.length > 0
       
-      if (statusFilter === 'Assigned' && !isAssigned) return false
+      if (semFilter !== 'All' && String(c.semester || '') !== semFilter) return false
+        if (statusFilter === 'Assigned' && !isAssigned) return false
       if (statusFilter === 'Unassigned' && isAssigned) return false
       if (q && !c.courseCode.toLowerCase().includes(q) && !(c.courseTitle || c.title || '').toLowerCase().includes(q)) return false
       return true
     })
-  }, [courses, search, statusFilter, assignments])
+  }, [courses, search, statusFilter, assignments, semFilter])
 
   const visibleKeys = visibleCourses.map(c => c.courseCode)
   const allSel = visibleKeys.length > 0 && visibleKeys.every(k => selectedCourses.has(k))
@@ -700,9 +703,24 @@ export default function CoordRoomsPage() {
               </div>
             )}
           </div>
-        </div>
 
-        {/* Bulk Action Bar */}
+
+        
+            {!loading && semesters.length > 1 && (
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems: 'center', paddingTop: 12 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: G.muted2, textTransform: 'uppercase', marginRight: 4 }}>Semester Filter:</span>
+                {semesters.map(s => (
+                  <button key={s} 
+                    onClick={() => { setSemFilter(s); setSelectedCourses(new Set()) }}
+                    style={{ padding: '5px 12px', borderRadius: 99, fontSize: 11.5, fontWeight: semFilter === s ? 700 : 600, background: semFilter === s ? G.meadowSoft : 'var(--surface)', color: semFilter === s ? 'var(--meadow-text)' : G.muted, border: `1px solid ${semFilter === s ? G.meadowBorder : G.border}`, cursor: 'pointer', transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+        </div>
+          {/* Bulk Action Bar */}
         {selectedCourses.size > 0 && (
           <div style={{ background: `linear-gradient(135deg,${G.meadowDeep},${G.inkMid})`, padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 14, animation: 'fadeIn 0.15s ease' }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: '#fff', flex: 1 }}>{selectedCourses.size} course{selectedCourses.size !== 1 ? 's' : ''} selected</span>
@@ -743,7 +761,7 @@ export default function CoordRoomsPage() {
                 <tr>
                   <td colSpan={4} style={{ padding: '80px 20px', textAlign: 'center' }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: G.muted }}>No courses match your filters</div>
-                    <button onClick={() => { setSearch(''); setStatusFilter('All') }} style={{ fontSize: 12.5, color: 'var(--meadow-text-hover)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Inter', sans-serif", padding: 0, marginTop: 8, fontWeight: 600 }}>Clear all filters</button>
+                    <button onClick={() => { setSearch(''); setStatusFilter('All'); setSemFilter('All') }} style={{ fontSize: 12.5, color: 'var(--meadow-text-hover)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Inter', sans-serif", padding: 0, marginTop: 8, fontWeight: 600 }}>Clear all filters</button>
                   </td>
                 </tr>
               ) : (
@@ -822,3 +840,13 @@ export default function CoordRoomsPage() {
     </div>
   )
 }
+
+
+
+
+
+
+
+
+
+

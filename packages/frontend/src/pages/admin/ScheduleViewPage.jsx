@@ -685,6 +685,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
   const initialName   = storeId === idToMatch ? storeName : null
 
   const [localEvents,       setLocalEvents]   = useState(initialEvents)
+  const [pristineEvents,    setPristineEvents]  = useState([])
   const [past,              setPast]          = useState([])
   const [future,            setFuture]        = useState([])
   const [masterRooms,       setMasterRooms]   = useState({ lecture:[], lab:[] })
@@ -918,7 +919,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
         const r = await getResult()
         evs = Array.isArray(r?.schedule) ? r.schedule : []
       }
-      setLocalEvents(evs); setEvents(evs); setId(name)
+      setLocalEvents(evs); setEvents(evs); setPristineEvents(evs); setId(name)
       setPast([]); setFuture([])
       setActiveName(name); setName(name)
       setSchedAY(st.academicYear || ''); setSchedSem(st.semester || '')
@@ -1016,7 +1017,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
         // wrote another copy of the master schedule into the submission.
         await onSaveOverride(localEvents)
         setSaveState('saved')
-        setHasUnsavedChanges(false)
+        setHasUnsavedChanges(false); setPristineEvents(allEvents);
         setTimeout(() => setSaveState('idle'), 2500)
         return
       }
@@ -1060,7 +1061,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
       }
 
       setSaveState('saved')
-      setHasUnsavedChanges(false)
+      setHasUnsavedChanges(false); setPristineEvents(allEvents);
       setTimeout(() => setSaveState('idle'), 2500)
     } catch {
       setSaveState('error')
@@ -1512,6 +1513,44 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
     return m
   }, [allEvents])
 
+  const [currentFindIndex, setCurrentFindIndex] = useState(0)
+
+  const findMatches = useMemo(() => {
+    if (!localHasFilters) return []
+    return activeDayEvents.map(e => getEventId(e))
+  }, [localHasFilters, activeDayEvents])
+
+  useEffect(() => {
+    if (findMatches.length === 0) setCurrentFindIndex(0)
+    else if (currentFindIndex >= findMatches.length) setCurrentFindIndex(0)
+  }, [findMatches, currentFindIndex])
+
+  const scrollToMatch = useCallback((index) => {
+    if (!findMatches[index]) return
+    const id = findMatches[index]
+    const el = document.getElementById(`card-${id}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
+      el.style.transition = 'box-shadow 0.2s'
+      el.style.boxShadow = '0 0 0 4px var(--mint)'
+      setTimeout(() => { el.style.boxShadow = '' }, 1500)
+    }
+  }, [findMatches])
+
+  const nextFind = useCallback(() => {
+    if (!findMatches.length) return
+    const nextIdx = (currentFindIndex + 1) % findMatches.length
+    setCurrentFindIndex(nextIdx)
+    scrollToMatch(nextIdx)
+  }, [findMatches, currentFindIndex, scrollToMatch])
+
+  const prevFind = useCallback(() => {
+    if (!findMatches.length) return
+    const prevIdx = (currentFindIndex - 1 + findMatches.length) % findMatches.length
+    setCurrentFindIndex(prevIdx)
+    scrollToMatch(prevIdx)
+  }, [findMatches, currentFindIndex, scrollToMatch])
+
   // FIX: exclude GEC/MAT/NSTP/PATHFIT/PE — always TBA, managed externally
   const unassignedCount = dayEvents.filter(e => (!e.faculty || e.faculty === 'TBA') && !svIsOtherDept(e.courseCode)).length
   const hasNoSchedule   = allEvents.length === 0 && !loading
@@ -1792,9 +1831,13 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
           pendingOverrides={dd.pendingOverrides}
           onSave={handleSave}
           onRevertAll={() => {
-            dd.revertAllOverrides()
-            setHasUnsavedChanges(false)
-          }}
+              dd.revertAllOverrides()
+              setLocalEvents(pristineEvents)
+              setEvents(pristineEvents)
+              setPast([])
+              setFuture([])
+              setHasUnsavedChanges(false)
+            }}
           onViewAll={() => setShowPendingModal(true)}
           saving={dd.saving}
         />
@@ -1805,6 +1848,10 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
             onSave={handleSave}
             onRevertAll={() => {
               dd.revertAllOverrides()
+              setLocalEvents(pristineEvents)
+              setEvents(pristineEvents)
+              setPast([])
+              setFuture([])
               setHasUnsavedChanges(false)
             }}
             saving={dd.saving}
@@ -1830,11 +1877,31 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
               </svg>
               <input
                 className="sv-search"
-                placeholder="Course, block, faculty…"
+                placeholder="Filter grid..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
             </div>
+
+            {localHasFilters && (
+              <div style={{ display:'flex', alignItems:'center', background: 'var(--surface)', border:`1px solid ${TV.border}`, borderRadius:20, overflow: 'hidden', height: 31, padding: '0 4px 0 12px' }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: TV.deep, marginRight: 8 }}>
+                  {activeDayEvents.length} found
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <span style={{ fontSize: 11, color: TV.muted, minWidth: 28, textAlign: 'center', opacity: 0.8 }}>
+                     {activeDayEvents.length > 0 ? `${currentFindIndex + 1}/${activeDayEvents.length}` : '0/0'}
+                  </span>
+                  <button onClick={prevFind} disabled={!activeDayEvents.length} style={{ border: 'none', background: 'transparent', cursor: activeDayEvents.length ? 'pointer' : 'default', opacity: activeDayEvents.length ? 1 : 0.4, padding: 2, display: 'flex', color: TV.deep }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                  </button>
+                  <button onClick={nextFind} disabled={!activeDayEvents.length} style={{ border: 'none', background: 'transparent', cursor: activeDayEvents.length ? 'pointer' : 'default', opacity: activeDayEvents.length ? 1 : 0.4, padding: 2, display: 'flex', color: TV.deep }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                </div>
+              </div>
+            )}
+
             <Sep />
             <FilterRow label="Program">
               <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
@@ -1902,10 +1969,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
               color: filterMerged ? TV.deep : TV.muted,
             }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-              </svg>
-              Merged
+                <polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg> Merged
             </button>
             <button onClick={toggles.unassigned} style={{
               display:'inline-flex', alignItems:'center', gap:4,
@@ -1976,7 +2040,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
             {[
               { bg: 'var(--surface)', border:TV.border, label:'Normal', color:'var(--muted2)' },
               { bg:TV.pale, border:TV.light, label:'Merge', color:TV.deep,
-                icon: <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> },
+                icon: <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg> },
               { bg:'rgba(239, 68, 68, 0.05)', border:'rgba(220, 38, 38, 0.25)', label:'Conflict', color:'#EF4444',
                 icon: <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> },
               { bg:'rgba(245, 158, 11, 0.05)', border:'rgba(245, 158, 11, 0.35)', label:'Unassigned', color:'#92400e',
@@ -2105,7 +2169,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
           conflictMap={conflictMap}
           hasFilters={localHasFilters} 
           clearFilters={handleClearAll}
-          onCardClick={setSelectedEvent}
+          onCardClick={setSelectedEvent} onMergeEvent={dd.mergeWithNext} onSplitEvent={dd.splitEvent}
           mergedIds={mergedIds}
         />
       ) : gridSize === 'maximize' ? (
@@ -2210,6 +2274,25 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
                 ))}
               </div>
 
+              {localHasFilters && (
+                <div style={{ transform: 'scale(0.85)', transformOrigin: 'right center', display:'flex', alignItems:'center', background: 'var(--surface)', border:`1px solid ${TV.border}`, borderRadius:20, overflow: 'hidden', height: 31, padding: '0 4px 0 12px' }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: TV.deep, marginRight: 8, whiteSpace: 'nowrap' }}>
+                    {activeDayEvents.length} found
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <span style={{ fontSize: 11, color: TV.muted, minWidth: 28, textAlign: 'center', opacity: 0.8 }}>
+                       {activeDayEvents.length > 0 ? `${currentFindIndex + 1}/${activeDayEvents.length}` : '0/0'}
+                    </span>
+                    <button onClick={prevFind} disabled={!activeDayEvents.length} style={{ border: 'none', background: 'transparent', cursor: activeDayEvents.length ? 'pointer' : 'default', opacity: activeDayEvents.length ? 1 : 0.4, padding: 2, display: 'flex', color: TV.deep }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                    <button onClick={nextFind} disabled={!activeDayEvents.length} style={{ border: 'none', background: 'transparent', cursor: activeDayEvents.length ? 'pointer' : 'default', opacity: activeDayEvents.length ? 1 : 0.4, padding: 2, display: 'flex', color: TV.deep }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <button onClick={() => setMaximizeFilterOpen(true)} style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   padding: '5px 12px', borderRadius: 8,
@@ -2259,7 +2342,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
                   rooms={visibleRooms} dayEvents={activeDayEvents} conflictMap={conflictMap}
                   draggedEvent={dd.draggedEvent} hoveredCell={dd.hoveredCell} getDropConflict={dd.getDropConflict}
                   onDragStart={dd.handleDragStart} onDragEnd={dd.handleDragEnd} onDragOver={dd.handleDragOver}
-                  onDragLeave={dd.handleDragLeave} onDrop={dd.handleDrop} onCardClick={setSelectedEvent}
+                  onDragLeave={dd.handleDragLeave} onDrop={dd.handleDrop} onCardClick={setSelectedEvent} onMergeEvent={dd.mergeWithNext} onSplitEvent={dd.splitEvent}
                   locked={schedFinalized}
                   gridSize={maximizeDensity} fullscreen={true} conflictingDragIds={dd.conflictingDragIds}
                   ambientConflictIds={dd.ambientConflictIds}
@@ -2300,11 +2383,11 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: 20 }}>
                     <div>
                       <p style={{ fontSize: 9.5, fontWeight: 700, color: TV.muted, textTransform: 'uppercase', letterSpacing: '.7px', marginBottom: 6 }}>Search</p>
-                      <div style={{ position: 'relative' }}>
+                      <div style={{ position: 'relative', marginBottom: 12 }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={TV.muted} strokeWidth="2" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
                           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                         </svg>
-                        <input className="sv-search" placeholder="Course, block, faculty…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={{ width: '100%', boxSizing: 'border-box' }} />
+                        <input className="sv-search" placeholder="Search & filter grid..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={{ width: '100%', boxSizing: 'border-box' }} />
                       </div>
                     </div>
 
@@ -2322,8 +2405,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
                           display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'Inter,sans-serif', transition: 'all .15s',
                           fontWeight: filterMerged ? 700 : 400, border: `1px solid ${filterMerged ? TV.light : TV.border}`, background: filterMerged ? TV.pale : 'var(--surface)', color: filterMerged ? TV.deep : TV.muted,
                         }}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                          Merged only
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg> Merged only
                         </button>
                         <button onClick={toggles.unassigned} style={{
                           display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'Inter,sans-serif', transition: 'all .15s',
@@ -2446,7 +2528,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
                 onDragOver={dd.handleDragOver}
                 onDragLeave={dd.handleDragLeave}
                 onDrop={dd.handleDrop}
-                onCardClick={setSelectedEvent}
+                onCardClick={setSelectedEvent} onMergeEvent={dd.mergeWithNext} onSplitEvent={dd.splitEvent}
                 locked={schedFinalized}
                 gridSize={gridSize}
                 conflictingDragIds={dd.conflictingDragIds}
@@ -2472,7 +2554,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
           masterRooms={masterRooms}
           masterFacultyList={masterFacultyList}
           readOnly={schedFinalized}
-          overrideFn={overrideFn}
+          overrideFn={overrideFn} onMergeEvent={dd.mergeWithNext} onSplitEvent={dd.splitEvent}
           onSaved={(updates) => {
             setSelectedEvent(null)
             if (!updates) return
@@ -2642,6 +2724,7 @@ function ListView({ dayEvents, conflictMap, hasFilters, clearFilters, onCardClic
             const sessionType = isLab ? 'LAB' : 'LEC'
             return (
               <tr key={evId}
+                id={`card-${evId}`}
                 onClick={() => onCardClick(ev)}
                 style={{ borderBottom:`1px solid ${TV.border}`, cursor:'pointer', background:i%2===0? 'var(--surface)':'var(--bg)', transition:'background .12s' }}
                 onMouseEnter={e => e.currentTarget.style.background = TV.pale}

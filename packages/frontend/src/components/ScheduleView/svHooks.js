@@ -36,10 +36,15 @@ export function useFilters(events, masterFacultyList, masterRooms, activeDay) {
     const roomsSet = new Set([...masterRooms.lecture, ...masterRooms.lab])
     events.forEach(e => {
       if (e.program) programs.add(e.program)
-      if (e.year)    years.add(e.year)
+      
+      const progOk = filterPrograms.size === 0 || filterPrograms.has(e.program)
+      const yearOk = filterYears.size === 0 || filterYears.has(e.year)
+      
+      if (progOk && e.year) years.add(e.year)
+      if (progOk && yearOk && e.block) blocksSet.add(e.block)
+      
       if (e.faculty && e.faculty !== 'TBA') faculty.add(e.faculty)
       if (e.room)    roomsSet.add(e.room)
-      if (e.block)   blocksSet.add(e.block)
       if (e.session) sessSet.add(e.session)
     })
     return {
@@ -50,7 +55,21 @@ export function useFilters(events, masterFacultyList, masterRooms, activeDay) {
       allBlocks:   [...blocksSet].sort(),
       allSessions: [...sessSet].sort(),
     }
-  }, [events, masterFacultyList, masterRooms])
+  }, [events, masterFacultyList, masterRooms, filterPrograms, filterYears])
+
+  // Cleanup orphaned years/blocks when options change
+  useEffect(() => {
+    const validYears = new Set(options.allYears)
+    setFilterYears(prev => {
+      const next = new Set([...prev].filter(y => validYears.has(y)))
+      return next.size === prev.size ? prev : next
+    })
+    const validBlocks = new Set(options.allBlocks)
+    setFilterBlocks(prev => {
+      const next = new Set([...prev].filter(b => validBlocks.has(b)))
+      return next.size === prev.size ? prev : next
+    })
+  }, [options.allYears, options.allBlocks])
 
   const dayEvents = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
@@ -170,6 +189,15 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     }, 30)
   }, [])
 
+  // events is the full week (all days); the conflict-preview computations below
+  // only ever care about activeDay, and several of them re-run on every throttled
+  // dragover tick — so scope to the active day once here instead of each of them
+  // separately looping over the full week and skipping non-matching days inline.
+  const dayScopedEvents = useMemo(
+    () => events.filter(e => e.day === activeDay),
+    [events, activeDay]
+  )
+
   const lastDragOverTime = useRef(0)
 
   const handleDragOver = useCallback((e, room, slot) => {
@@ -193,8 +221,7 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     if (!draggedEvent) return new Set()
     const ids = new Set()
     const dragId = getEventId(draggedEvent)
-    for (const ev of events) {
-      if (ev.day !== activeDay) continue
+    for (const ev of dayScopedEvents) {
       if (getEventId(ev) === dragId) continue
       const sectionMatch = draggedEvent.program && draggedEvent.year && draggedEvent.block
         && ev.program === draggedEvent.program
@@ -205,15 +232,14 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
       if (sectionMatch || facultyMatch) ids.add(getEventId(ev))
     }
     return ids
-  }, [draggedEvent, events, activeDay])
+  }, [draggedEvent, dayScopedEvents])
 
   // ── Ambient merge IDs ──────────────────────────────────────────────────────
   const ambientMergeIds = useMemo(() => {
     if (!draggedEvent?.courseCode) return new Set()
     const ids = new Set()
     const dragId = getEventId(draggedEvent)
-    for (const ev of events) {
-      if (ev.day !== activeDay) continue
+    for (const ev of dayScopedEvents) {
       if (getEventId(ev) === dragId) continue
       if (
         ev.courseCode === draggedEvent.courseCode &&
@@ -223,44 +249,57 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
       ) ids.add(getEventId(ev))
     }
     return ids
-  }, [draggedEvent, events, activeDay])
+  }, [draggedEvent, dayScopedEvents])
 
   // ── Conflict IDs at the hovered target ────────────────────────────────────
+  const prevConflictingIds = useRef(new Set())
   const conflictingDragIds = useMemo(() => {
-    if (!draggedEvent || !hoveredCell) return new Set()
-    const [hRoom, hSlot] = hoveredCell.split('|')
-    const dragRange = parsePeriodRange(draggedEvent.period)
-    if (!dragRange) return new Set()
-    const newStart  = parseInt(hSlot)
-    const newEnd    = newStart + dragRange.duration
-    const dragId    = getEventId(draggedEvent)
-    const proposed  = { start: newStart, end: newEnd }
-    const ids       = new Set()
+    const ids = new Set()
+    if (draggedEvent && hoveredCell) {
+      const [hRoom, hSlot] = hoveredCell.split('|')
+      const dragRange = parsePeriodRange(draggedEvent.period)
+      if (dragRange) {
+        const newStart  = parseInt(hSlot)
+        const newEnd    = newStart + dragRange.duration
+        const dragId    = getEventId(draggedEvent)
+        const proposed  = { start: newStart, end: newEnd }
 
-    for (const ev of events) {
-      if (getEventId(ev) === dragId || ev.day !== activeDay) continue
-      const r = parsePeriodRange(ev.period)
-      if (!r || !timeOverlaps(proposed, r)) continue
+        for (const ev of dayScopedEvents) {
+          if (getEventId(ev) === dragId) continue
+          const r = parsePeriodRange(ev.period)
+          if (!r || !timeOverlaps(proposed, r)) continue
 
-      const wouldMerge = draggedEvent.courseCode &&
-        ev.courseCode === draggedEvent.courseCode &&
-        ev.program    === draggedEvent.program &&
-        String(ev.year) === String(draggedEvent.year) &&
-        ev.block !== draggedEvent.block &&
-        ev.room === hRoom && hRoom !== 'TBA'
-      if (wouldMerge) continue
+          const wouldMerge = draggedEvent.courseCode &&
+            ev.courseCode === draggedEvent.courseCode &&
+            ev.program    === draggedEvent.program &&
+            String(ev.year) === String(draggedEvent.year) &&
+            ev.block !== draggedEvent.block &&
+            ev.room === hRoom && hRoom !== 'TBA' &&
+            r.start === proposed.start && r.end === proposed.end
+          if (wouldMerge) continue
 
-      const roomC    = ev.room === hRoom && hRoom !== 'TBA' && !isOnlineRoom(hRoom)
-      const sectionC = draggedEvent.program && draggedEvent.year && draggedEvent.block
-        && ev.program === draggedEvent.program
-        && String(ev.year) === String(draggedEvent.year)
-        && ev.block === draggedEvent.block
-      const facultyC = draggedEvent.faculty && draggedEvent.faculty !== 'TBA'
-        && ev.faculty === draggedEvent.faculty
-      if (roomC || sectionC || facultyC) ids.add(getEventId(ev))
+          const roomC    = ev.room === hRoom && hRoom !== 'TBA' && !isOnlineRoom(hRoom)
+          const sectionC = draggedEvent.program && draggedEvent.year && draggedEvent.block
+            && ev.program === draggedEvent.program
+            && String(ev.year) === String(draggedEvent.year)
+            && ev.block === draggedEvent.block
+          const facultyC = draggedEvent.faculty && draggedEvent.faculty !== 'TBA'
+            && ev.faculty === draggedEvent.faculty
+          if (roomC || sectionC || facultyC) ids.add(getEventId(ev))
+        }
+      }
     }
+    
+    if (ids.size === prevConflictingIds.current.size) {
+      let same = true
+      for (const id of ids) {
+        if (!prevConflictingIds.current.has(id)) { same = false; break }
+      }
+      if (same) return prevConflictingIds.current
+    }
+    prevConflictingIds.current = ids
     return ids
-  }, [draggedEvent, hoveredCell, events, activeDay])
+  }, [draggedEvent, hoveredCell, dayScopedEvents])
 
   // ── Full-width conflict bands at the proposed drop position ───────────────
   const dragConflictBands = useMemo(() => {
@@ -275,8 +314,8 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     const sectionHit = new Set()
     const facultyHit = new Set()
 
-    for (const ev of events) {
-      if (getEventId(ev) === dragId || ev.day !== activeDay) continue
+    for (const ev of dayScopedEvents) {
+      if (getEventId(ev) === dragId) continue
       const r = parsePeriodRange(ev.period)
       if (!r || !timeOverlaps(proposed, r)) continue
       if (
@@ -303,7 +342,7 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
       })
     }
     return bands
-  }, [draggedEvent, hoveredCell, events, activeDay])
+  }, [draggedEvent, hoveredCell, dayScopedEvents])
 
   // ── Apply a move to local state + enqueue as pending override ─────────────
   const applyMove = useCallback((event, targetRoom, newPeriod, day) => {
@@ -346,6 +385,7 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
         orig_room:  origRoom,
         orig_day:   origDay,
         orig_period: origPeriod,
+        isLocalOnly: !event.schedule_id,
         label: `${event.courseCode} ${sessType} (${progBlock}) -> ${moveDesc}`,
       })
       return next
@@ -387,7 +427,8 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
         ev.program    === draggedEvent.program    &&
         String(ev.year) === String(draggedEvent.year) &&
         ev.block !== draggedEvent.block &&
-        ev.room === targetRoom && targetRoom !== 'TBA'
+        ev.room === targetRoom && targetRoom !== 'TBA' &&
+        r.start === proposed.start && r.end === proposed.end
 
       if (isMergeCandidate) {
         wouldMergeWith.push(ev)
@@ -586,31 +627,33 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     const overrides = [...pendingOverrides.values()]
     if (overrides.length === 0) return { succeeded: 0, failed: [] }
 
-    // Cancel any pending auto-save timer since we're saving now
-    
-    
-    
+    // Split into backend updates vs purely local UI actions (like Split/Link)
+    const backendOverrides = overrides.filter(o => !o.isLocalOnly)
+    let failed = []
+    let succeeded = overrides.length
 
-    setSaving(true)
-    const results = await Promise.allSettled(
-      overrides.map(o => overrideFn({
-        courseCode: o.courseCode,
-        block:      o.block,
-        session:    o.session,
-        new_room:   o.new_room,
-        new_day:    o.new_day,
-        new_period: o.new_period,
-        new_faculty: o.new_faculty,
-      }))
-    )
-    setSaving(false)
-
-    const failed    = results.map((r, i) => r.status === 'rejected' ? overrides[i] : null).filter(Boolean)
-    const succeeded = overrides.length - failed.length
+    if (backendOverrides.length > 0) {
+      setSaving(true)
+      const results = await Promise.allSettled(
+        backendOverrides.map(o => overrideFn({
+          courseCode: o.courseCode,
+          block:      o.block,
+          session:    o.session,
+          schedule_id: o.schedule_id,
+          new_room:   o.new_room,
+          new_day:    o.new_day,
+          new_period: o.new_period,
+          new_faculty: o.new_faculty,
+        }))
+      )
+      setSaving(false)
+      failed = results.map((r, i) => r.status === 'rejected' ? backendOverrides[i] : null).filter(Boolean)
+      succeeded = overrides.length - failed.length
+    }
 
     if (failed.length === 0) {
       setPendingOverrides(new Map())
-      setToast({ type: 'success', message: `Saved ${succeeded} change${succeeded !== 1 ? 's' : ''}` })
+      if (succeeded > 0) setToast({ type: 'success', message: `Saved ${succeeded} change${succeeded !== 1 ? 's' : ''}` })
     } else {
       const failedIds = new Set(failed.map(f => f.id))
       setPendingOverrides(prev => {
@@ -618,7 +661,7 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
         for (const [id, rec] of prev) if (failedIds.has(id)) next.set(id, rec)
         return next
       })
-      setToast({ type: 'error', message: `${succeeded} saved, ${failed.length} failed — check network and retry` })
+      setToast({ type: 'error', message: `${succeeded} saved, ${failed.length} failed - check network and retry` })
     }
     return { succeeded, failed }
   }, [pendingOverrides, overrideFn])
@@ -705,6 +748,7 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
             orig_day: origDay,
             orig_period: origPeriod,
             orig_faculty: origFaculty,
+            isLocalOnly: !updated.schedule_id,
             label: `${updated.courseCode} ${sessType} (${progBlock}) -> ${moveDesc}`
           })
       }
@@ -747,11 +791,19 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     const dragId   = getEventId(draggedEvent)
     const proposed = { start: newStart, end: newEnd }
     const conflictTypes = new Set()
-    for (const ev of events) {
-      if (getEventId(ev) === dragId || ev.day !== activeDay) continue
+    for (const ev of dayScopedEvents) {
+      if (getEventId(ev) === dragId) continue
       const r = parsePeriodRange(ev.period)
       if (!r || !timeOverlaps(proposed, r)) continue
-      if (ev.room === room && room !== 'TBA' && !isOnlineRoom(room)) conflictTypes.add('Room')
+      if (ev.room === room && room !== 'TBA' && !isOnlineRoom(room)) {
+        const wouldMerge = draggedEvent.courseCode &&
+          ev.courseCode === draggedEvent.courseCode &&
+          ev.program    === draggedEvent.program &&
+          String(ev.year) === String(draggedEvent.year) &&
+          ev.block !== draggedEvent.block &&
+          r.start === proposed.start && r.end === proposed.end
+        if (!wouldMerge) conflictTypes.add('Room')
+      }
       if (draggedEvent.program && ev.program === draggedEvent.program
           && String(ev.year) === String(draggedEvent.year)
           && ev.block === draggedEvent.block) conflictTypes.add('Section')
@@ -759,9 +811,89 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
           && ev.faculty === draggedEvent.faculty) conflictTypes.add('Faculty')
     }
     return conflictTypes.size > 0 ? { label: [...conflictTypes].join(' + ') + ' Conflict' } : null
-  }, [draggedEvent, events, activeDay])
+  }, [draggedEvent, dayScopedEvents])
+
+
+  const splitEvent = useCallback((event) => {
+    if (locked) return
+    const range = parsePeriodRange(event.period)
+    if (!range || range.duration <= 30) return
+    const mid = range.start + (range.duration / 2)
+    const p1 = `${minutesToTimeLabel(range.start)} - ${minutesToTimeLabel(mid)}`
+    const p2 = `${minutesToTimeLabel(mid)} - ${minutesToTimeLabel(range.end)}`
+    
+    const e1 = { ...event, period: p1 }
+    const e2 = { ...event, period: p2 }
+    delete e2.schedule_id 
+    
+    const updatedEvents = events.filter(e => getEventId(e) !== getEventId(event))
+    updatedEvents.push(e1, e2)
+    
+    setLocalEvents(updatedEvents)
+    setEvents(updatedEvents)
+    setPendingOverrides(prev => {
+      const next = new Map(prev)
+      const sessType = (event.session || 'CLASS').toUpperCase()
+      const progBlock = `${event.program || ''} ${event.year || ''}${event.block || ''}`.replace(/\s+/g, ' ').trim()
+      const sid = `split-${Date.now()}`
+      next.set(sid, {
+        id: sid,
+        label: `Split ${event.courseCode} ${sessType} (${progBlock})`,
+        isLocalOnly: true
+      })
+      return next
+    })
+    setToast({ type: 'success', message: 'Split session into two parts.' })
+  }, [events, setLocalEvents, setEvents, locked]);
+
+  const mergeWithNext = useCallback((event) => {
+    if (locked) return
+    const range = parsePeriodRange(event.period)
+    if (!range) return
+    
+    const nextEvent = events.find(e => 
+      e.courseCode === event.courseCode &&
+      e.program === event.program &&
+      String(e.year) === String(event.year) &&
+      e.block === event.block &&
+      e.day === event.day &&
+      e.room === event.room &&
+      getEventId(e) !== getEventId(event) &&
+      parsePeriodRange(e.period)?.start === range.end
+    )
+    if (!nextEvent) {
+      setToast({ type: 'error', message: 'No adjacent session found to link.' })
+      return
+    }
+    
+    const nextRange = parsePeriodRange(nextEvent.period)
+    const newPeriod = `${minutesToTimeLabel(range.start)} - ${minutesToTimeLabel(nextRange.end)}`
+    const eMerged = { ...event, period: newPeriod }
+    
+    const updatedEvents = events.filter(e => getEventId(e) !== getEventId(event) && getEventId(e) !== getEventId(nextEvent))
+    updatedEvents.push(eMerged)
+    
+    setLocalEvents(updatedEvents)
+    setEvents(updatedEvents)
+    setPendingOverrides(prev => {
+      const next = new Map(prev)
+      const sessType = (event.session || 'CLASS').toUpperCase()
+      const progBlock = `${event.program || ''} ${event.year || ''}${event.block || ''}`.replace(/\s+/g, ' ').trim()
+      const sid = `link-${Date.now()}`
+      next.set(sid, {
+        id: sid,
+        label: `Linked ${event.courseCode} ${sessType} (${progBlock})`,
+        isLocalOnly: true
+      })
+      return next
+    })
+    setToast({ type: 'success', message: 'Linked sessions successfully.' })
+  }, [events, setLocalEvents, setEvents, locked]);
 
   return {
+    splitEvent,
+    mergeWithNext,
+
     // Locked (finalized) flag — consumers use this to disable draggable
     // attributes / show a lock cursor, though edits are already blocked
     // functionally regardless of what the UI does with it.

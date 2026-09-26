@@ -1134,7 +1134,7 @@ def pre_diagnostic(semester: str = None, user=Depends(admin_only)):
 
     # 4. NSTP slot pool check
     # NSTP is restricted to Fri/Sat only. Multiple sections can run in parallel across rooms.
-    nstp_days = sum(1 for d in (days or []) if d in ('Friday', 'Saturday'))
+    nstp_days = sum(1 for d in (settings_days or []) if d in ('Friday', 'Saturday'))
     nstp_time_positions = nstp_days * 3  # up to 3 valid fixed offsets per active Fri/Sat
     nstp_available_slots = nstp_time_positions * max(len(lec_rooms), 1)
     nstp_total_blocks = sum(
@@ -1164,8 +1164,8 @@ def pre_diagnostic(semester: str = None, user=Depends(admin_only)):
     # GEC/MAT restricted to Mon–Thu, 8 fixed start offsets per day.
     # GEC_MAT is restricted to Mon-Thu. Valid offsets are based on specific clock hours.
     # [7.0, 8.5, 10.0, 12.5, 14.0, 15.5, 17.5, 19.0]
-    gec_days = sum(1 for d in (days or []) if d in ('Monday', 'Tuesday', 'Wednesday', 'Thursday'))
-    gec_offsets = [h for h in [7.0, 8.5, 10.0, 12.5, 14.0, 15.5, 17.5, 19.0] if start_time <= h < end_time]
+    gec_days = sum(1 for d in (settings_days or []) if d in ('Monday', 'Tuesday', 'Wednesday', 'Thursday'))
+    gec_offsets = [h for h in [7.0, 8.5, 10.0, 12.5, 14.0, 15.5, 17.5, 19.0] if start_t <= h < end_t]
     gec_available = gec_days * len(gec_offsets) * max(len(lec_rooms), 1)
     
     gec_raw_blocks = sum(

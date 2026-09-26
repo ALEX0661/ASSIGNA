@@ -1,5 +1,5 @@
 import { useState, memo } from 'react'
-import { sectionColor, getEventStyle, SLOT_HEIGHT } from './svHelpers'
+import { sectionColor, getEventStyle, SLOT_HEIGHT, getEventId } from './svHelpers'
 import { TV } from './svPrimitives'
 
 const SessionCard = memo(function SessionCard({
@@ -15,6 +15,11 @@ const SessionCard = memo(function SessionCard({
   onDropOnCard,
   locked = false,
   isAmbient = false,
+  canMergeNext = false,
+  prevEventToMerge = null,
+  onMergeEvent = null,
+  canSplit = false,
+  onSplitEvent = null,
 }) {
   const [isHovered,     setIsHovered]     = useState(false)
   const [isStackTarget, setIsStackTarget] = useState(false)
@@ -191,6 +196,8 @@ const SessionCard = memo(function SessionCard({
     const isTiny = compactCardH < 24
     return (
       <div
+        id={`card-${getEventId(event)}`}
+        className="tg-card"
         draggable={!locked}
         onDragStart={locked ? undefined : e => onDragStart(e, event)}
         onDragEnd={locked ? undefined : onDragEnd}
@@ -212,7 +219,7 @@ const SessionCard = memo(function SessionCard({
           display: 'flex', alignItems: 'center',
           gap: 3,
           padding: isTiny ? '0 4px' : '1px 5px',
-          cursor: locked ? 'default' : 'grab', overflow: 'hidden',
+          cursor: locked ? 'default' : 'grab', overflow: 'visible',
           boxShadow: computeShadow(),
           opacity: event._isDragGhost ? 0 : isDimmed ? 0.32 : isDragging ? 0.55 : 1,
           pointerEvents: (event._isDragGhost || isDimmed || isDragging) ? 'none' : 'auto',
@@ -272,6 +279,61 @@ const SessionCard = memo(function SessionCard({
             {sessionType}
           </span>
         </div>
+
+        {isHovered && canSplit && onSplitEvent && (
+          <button
+            className="tg-action-btn"
+            onClick={(e) => { e.stopPropagation(); onSplitEvent(event); }}
+            style={{
+              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+              background: 'var(--surface)', border: `1px solid ${borderColor}`,
+              borderRadius: 6, padding: '4px 10px', fontSize: 10, fontWeight: 700,
+              color: textColor, cursor: 'pointer', zIndex: 10,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              display: 'flex', alignItems: 'center', gap: 4
+            }}
+          >
+            <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 3h5v5"/><path d="M4 20L21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>
+            Split
+          </button>
+        )}
+
+        {isHovered && prevEventToMerge && onMergeEvent && (
+          <button
+            className="tg-action-btn"
+            onClick={(e) => { e.stopPropagation(); onMergeEvent(prevEventToMerge); }}
+            style={{
+              position: 'absolute', top: '0%', left: '50%', transform: 'translate(-50%, -50%)',
+              background: 'var(--surface)', border: `1px solid ${borderColor}`,
+              borderRadius: 6, padding: '4px 10px', fontSize: 10, fontWeight: 700,
+              color: textColor, cursor: 'pointer', zIndex: 10,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              display: 'flex', alignItems: 'center', gap: 4
+            }}
+          >
+            <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            Link
+          </button>
+        )}
+
+        {isHovered && canMergeNext && onMergeEvent && (
+          <button
+            className="tg-action-btn"
+            onClick={(e) => { e.stopPropagation(); onMergeEvent(event); }}
+            style={{
+              position: 'absolute', top: '100%', left: '50%', transform: 'translate(-50%, -50%)',
+              background: 'var(--surface)', border: `1px solid ${borderColor}`,
+              borderRadius: 6, padding: '4px 10px', fontSize: 10, fontWeight: 700,
+              color: textColor, cursor: 'pointer', zIndex: 10,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              display: 'flex', alignItems: 'center', gap: 4
+            }}
+          >
+            <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            Link
+          </button>
+        )}
+
       </div>
     )
   }
@@ -280,6 +342,8 @@ const SessionCard = memo(function SessionCard({
   // ── NORMAL / MAXIMIZE MODE — rich, solid cards ──────────────────────────
   return (
     <div
+      id={`card-${getEventId(event)}`}
+      className="tg-card"
       draggable={!locked}
       onDragStart={locked ? undefined : e => onDragStart(e, event)}
       onDragEnd={locked ? undefined : onDragEnd}
@@ -300,7 +364,7 @@ const SessionCard = memo(function SessionCard({
         borderRadius: 7,
         padding: '5px 8px 4px',
         cursor: locked ? 'default' : isDragging ? 'grabbing' : 'grab',
-        overflow: 'hidden',
+        overflow: 'visible',
         boxShadow: computeShadow(),
         opacity: event._isDragGhost ? 0 : isDimmed ? 0.25 : isDragging ? 0.5 : 1,
         pointerEvents: (event._isDragGhost || isDimmed || isDragging) ? 'none' : 'auto',
@@ -396,16 +460,18 @@ const SessionCard = memo(function SessionCard({
             {merged && (
               <span title="Merged Block" style={{ color: accentColor, display: 'flex' }}>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                  <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                  <polyline points="2 17 12 22 22 17"/>
+                  <polyline points="2 12 12 17 22 12"/>
                 </svg>
               </span>
             )}
             {isPotentialMerge && !isDragging && (
               <span title="Could merge with dragged card" style={{ color: '#60A5FA', display: 'flex' }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                  <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                  <polyline points="2 17 12 22 22 17"/>
+                  <polyline points="2 12 12 17 22 12"/>
                 </svg>
               </span>
             )}
@@ -472,6 +538,61 @@ const SessionCard = memo(function SessionCard({
             )}
           </div>
         )}
+
+        {isHovered && canSplit && onSplitEvent && (
+          <button
+            className="tg-action-btn"
+            onClick={(e) => { e.stopPropagation(); onSplitEvent(event); }}
+            style={{
+              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+              background: 'var(--surface)', border: `1px solid ${borderColor}`,
+              borderRadius: 6, padding: '4px 10px', fontSize: 10, fontWeight: 700,
+              color: textColor, cursor: 'pointer', zIndex: 10,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              display: 'flex', alignItems: 'center', gap: 4
+            }}
+          >
+            <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 3h5v5"/><path d="M4 20L21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>
+            Split
+          </button>
+        )}
+
+        {isHovered && prevEventToMerge && onMergeEvent && (
+          <button
+            className="tg-action-btn"
+            onClick={(e) => { e.stopPropagation(); onMergeEvent(prevEventToMerge); }}
+            style={{
+              position: 'absolute', top: '0%', left: '50%', transform: 'translate(-50%, -50%)',
+              background: 'var(--surface)', border: `1px solid ${borderColor}`,
+              borderRadius: 6, padding: '4px 10px', fontSize: 10, fontWeight: 700,
+              color: textColor, cursor: 'pointer', zIndex: 10,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              display: 'flex', alignItems: 'center', gap: 4
+            }}
+          >
+            <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            Link
+          </button>
+        )}
+
+        {isHovered && canMergeNext && onMergeEvent && (
+          <button
+            className="tg-action-btn"
+            onClick={(e) => { e.stopPropagation(); onMergeEvent(event); }}
+            style={{
+              position: 'absolute', top: '100%', left: '50%', transform: 'translate(-50%, -50%)',
+              background: 'var(--surface)', border: `1px solid ${borderColor}`,
+              borderRadius: 6, padding: '4px 10px', fontSize: 10, fontWeight: 700,
+              color: textColor, cursor: 'pointer', zIndex: 10,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              display: 'flex', alignItems: 'center', gap: 4
+            }}
+          >
+            <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            Link
+          </button>
+        )}
+
       </div>
     </div>
   )

@@ -235,7 +235,7 @@ export const coordSubmitSchedule  = async (id)   => axios.post(`${BASE}/coordina
 export const coordUnsubmitSchedule = async (id)  => axios.post(`${BASE}/coordinator/schedule/${id}/unsubmit`, {}, { headers: await authHeaders() }).then(r => r.data)
 // Save-in-place (editor) — unlike coordSaveSchedule above (which always mints a new draft),
 // this persists edits back onto the SAME schedule doc and archives a version when content changed.
-export const coordSaveScheduleInPlace = async (id) => axios.put(`${BASE}/coordinator/schedule/${id}`, {}, { headers: await authHeaders() }).then(r => r.data)
+export const coordSaveScheduleInPlace = async (id, events = null) => axios.put(`${BASE}/coordinator/schedule/${id}`, events ? { events } : {}, { headers: await authHeaders() }).then(r => r.data)
 export const coordOverrideSession = async (scheduleId, d) =>
   axios.post(`${BASE}/coordinator/schedule/${scheduleId}/override`, d, { headers: await authHeaders() }).then(r => r.data)
 export const coordRestoreScheduleVersion = async (scheduleId, version) =>

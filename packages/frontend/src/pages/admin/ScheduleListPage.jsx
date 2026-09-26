@@ -209,7 +209,7 @@ export default function ScheduleListPage() {
   const total = schedules.length
   const published = schedules.filter(s => s.finalized).length
   const drafts = total - published
-  const archived = 0 // not implemented
+
   const [toastMsg, setToastMsg] = useState(null)
   
   const allAYs = [...new Set(schedules.map(s => s.academic_year || s.academicYear).filter(Boolean))]
@@ -429,7 +429,7 @@ export default function ScheduleListPage() {
     {
       target: '#tour-sl-stats',
       title: 'Schedule Overview',
-      content: 'A quick snapshot of every schedule you\'ve saved — how many total, how many are published, still in draft, or archived.',
+      content: 'A quick snapshot of every schedule you\'ve saved — how many total, how many are published, still in draft.',
       disableBeacon: true,
       placement: 'bottom',
     },
@@ -526,7 +526,7 @@ export default function ScheduleListPage() {
         <StatCard icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)"><rect x="3" y="4" width="18" height="18" rx="2" strokeWidth="2"/><line x1="16" y1="2" x2="16" y2="6" strokeWidth="2"/><line x1="8" y1="2" x2="8" y2="6" strokeWidth="2"/><line x1="3" y1="10" x2="21" y2="10" strokeWidth="2"/></svg>} title="Total Schedules" value={total} />
         <StatCard icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" strokeWidth="2"/><polyline points="22 4 12 14.01 9 11.01" strokeWidth="2"/></svg>} title="Published" value={published} />
         <StatCard icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F59E0B"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeWidth="2"/><polyline points="14 2 14 8 20 8" strokeWidth="2"/><line x1="16" y1="13" x2="8" y2="13" strokeWidth="2"/><line x1="16" y1="17" x2="8" y2="17" strokeWidth="2"/><polyline points="10 9 9 9 8 9" strokeWidth="2"/></svg>} title="Drafts" value={drafts} trendColor="#F59E0B" iconBg="rgba(245,158,11,0.15)" />
-        <StatCard icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6B7280"><polyline points="21 8 21 21 3 21 3 8" strokeWidth="2"/><rect x="1" y="3" width="22" height="5" strokeWidth="2"/><line x1="10" y1="12" x2="14" y2="12" strokeWidth="2"/></svg>} title="Archived" value={archived} trendColor="#6B7280" iconBg="rgba(107,114,128,0.15)" />
+
       </div>
 
       {/* Filters */}

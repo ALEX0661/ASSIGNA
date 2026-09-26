@@ -468,7 +468,7 @@ def get_schedule(schedule_id: str, user: dict = Depends(coordinator_only)):
     return data
 
 @router.put("/schedule/{schedule_id}")
-def save_schedule_inplace(schedule_id: str, user: dict = Depends(coordinator_only)):
+def save_schedule_inplace(schedule_id: str, payload: dict, user: dict = Depends(coordinator_only)):
     """Save-in-place for the editor: persists the current in-memory
     schedule_dict (populated by GET /schedule/{schedule_id}) back onto the
     SAME doc — unlike POST /schedule/save which always mints a new draft —
@@ -487,7 +487,11 @@ def save_schedule_inplace(schedule_id: str, user: dict = Depends(coordinator_onl
     doc_ref, data = _verify_schedule_ownership(schedule_id, program)
     _require_editable(data)
 
-    current_events  = list(schedule_dict.values())
+    current_events = payload.get("events") if payload and payload.get("events") else list(schedule_dict.values())
+    if payload and payload.get("events"):
+        schedule_dict.clear()
+        for ev in payload.get("events"):
+            schedule_dict[str(ev.get("schedule_id", uuid.uuid4()))] = ev
     existing_events = data.get("schedule", [])
 
     current_fp  = _event_fingerprint(current_events)
@@ -944,3 +948,5 @@ def get_global_settings(user: dict = Depends(coordinator_only)):
         "time": get_time(),
         "days": get_days()
     }
+
+

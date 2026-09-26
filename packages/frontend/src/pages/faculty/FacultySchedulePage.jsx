@@ -23,6 +23,8 @@ import iconConflict from '../../assets/CONFLICT.png'
 import iconMerged   from '../../assets/MERGED.png'
 
 // ─── Inject Styles ────────────────────────────────────────────────────────────
+const DAY_TOKENS = { Monday: 'M', Tuesday: 'T', Wednesday: 'W', Thursday: 'Th', Friday: 'F', Saturday: 'Sat', Sunday: 'Sun' }
+
 if (!document.getElementById('fsp-style')) {
   const s = document.createElement('style')
   s.id = 'fsp-style'
@@ -574,7 +576,7 @@ function GridCard({ event, index, conflictMap, onClick }) {
 function WeekHeatmap({ myEvents }) {
   const dayCount = useMemo(() => {
     const map = {}
-    const DAY_TOKENS = { Monday: 'M', Tuesday: 'T', Wednesday: 'W', Thursday: 'Th', Friday: 'F', Saturday: 'Sat', Sunday: 'Sun' }
+
     DAYS.forEach(d => { 
       map[d] = myEvents.filter(e => splitDayTokens(e.day).includes(DAY_TOKENS[d])).length 
     })
@@ -617,10 +619,8 @@ function TimetableView({ events, conflictMap, onSelect }) {
     return [...set].sort((a, b) => periodStartMinutes(a) - periodStartMinutes(b))
   }, [events])
   
-  const DAY_TOKENS = { Monday: 'M', Tuesday: 'T', Wednesday: 'W', Thursday: 'Th', Friday: 'F', Saturday: 'Sat', Sunday: 'Sun' }
-  const activeDays = useMemo(() => DAYS.filter(d => events.some(e => splitDayTokens(e.day).includes(DAY_TOKENS[d]))), [events])
 
-  if (activeDays.length === 0 || timeSlots.length === 0) return null
+  const activeDays = useMemo(() => DAYS.filter(d => events.some(e => splitDayTokens(e.day).includes(DAY_TOKENS[d]))), [events])
 
   const cellMap = useMemo(() => {
     const m = {}
@@ -636,6 +636,8 @@ function TimetableView({ events, conflictMap, onSelect }) {
     }
     return m
   }, [events])
+
+  if (activeDays.length === 0 || timeSlots.length === 0) return null
 
   const TIME_W  = 72
 
@@ -821,7 +823,7 @@ export default function FacultySchedulePage() {
   }, [events, facultyName, user])
 
   const conflictMap  = useMemo(() => buildConflictMap?.(myEvents) || new Map(), [myEvents])
-  const DAY_TOKENS = { Monday: 'M', Tuesday: 'T', Wednesday: 'W', Thursday: 'Th', Friday: 'F', Saturday: 'Sat', Sunday: 'Sun' }
+
   const teachingDays = useMemo(() => DAYS.filter(d => myEvents.some(e => splitDayTokens(e.day).includes(DAY_TOKENS[d]))), [myEvents])
   
   const displayedEvents = useMemo(() => {
@@ -1317,3 +1319,4 @@ export default function FacultySchedulePage() {
     </div>
   )
 }
+

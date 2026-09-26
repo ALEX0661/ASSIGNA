@@ -6,7 +6,7 @@ async def verify_token(authorization: str = Header(...)):
     """Validate any logged-in user."""
     try:
         token = authorization.replace("Bearer ", "")
-        decoded = auth.verify_id_token(token)
+        decoded = auth.verify_id_token(token, clock_skew_seconds=60)
         return decoded
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid or expired token.")
