@@ -5,6 +5,7 @@ from app.core.firebase import db
 from app.core.globals import schedule_dict, progress_state, running_processes, cancel_flags, failure_details, phase_state
 from app.core.scheduler import generate_schedule, validate_phase_order, DEFAULT_PHASE_ORDER
 from app.core.event_cache import event_cache
+from app.core.audit import log_audit_event
 import uuid
 import hashlib
 import json
@@ -140,6 +141,17 @@ def _values_differ(a, b) -> bool:
     change just because one side came through as a different type."""
     if a is None and b is None:
         return False
+    # Numbers equal in value but different in type -- 2 vs 2.0, or "2" vs 2
+    # after a JSON/Firestore round-trip -- shouldn't be a change either.
+    # str(2) != str(2.0) ("2" vs "2.0") is exactly what was making fields
+    # like Units show up as "2 -> 2" in the changelog: identical on screen,
+    # flagged as changed anyway. Try a numeric comparison first; only fall
+    # back to the string comparison for values that aren't both numeric.
+    if a is not None and b is not None:
+        try:
+            return float(a) != float(b)
+        except (TypeError, ValueError):
+            pass
     return str(a) != str(b)
 
 
@@ -148,6 +160,22 @@ def _session_summary(ev: dict) -> dict:
     Includes every field on the event (minus internal ones) so the frontend
     always has full context to show, not just a fixed subset."""
     return {k: v for k, v in ev.items() if k not in _DIFF_IGNORED_FIELDS}
+
+
+def _diff_key(ev: dict) -> str:
+    """Stable key for matching one session across two event lists when
+    diffing versions. schedule_id is preferred since it survives edits, but
+    an event can still show up with none -- e.g. anything saved before the
+    save_schedule id-backfill above existed. Falling back to the same
+    composite the frontend uses (courseCode-block-session-day) means that
+    event is still matched/tracked instead of being silently excluded from
+    both the before and after side of the diff. The "id:"/"composite:"
+    prefixes keep the two key spaces from ever colliding with each other.
+    """
+    sid = ev.get("schedule_id")
+    if sid is not None:
+        return f"id:{sid}"
+    return f"composite:{ev.get('courseCode')}-{ev.get('block')}-{ev.get('session')}-{ev.get('day')}"
 
 
 def _diff_events(before: list, after: list) -> dict:
@@ -160,8 +188,8 @@ def _diff_events(before: list, after: list) -> dict:
     on either side of a session is compared (not a fixed whitelist) so an
     edit never silently disappears from the changelog just because the
     field it touched wasn't on some hardcoded list."""
-    before_map = {str(e.get("schedule_id")): e for e in (before or []) if e.get("schedule_id") is not None}
-    after_map  = {str(e.get("schedule_id")): e for e in (after or [])  if e.get("schedule_id") is not None}
+    before_map = {_diff_key(e): e for e in (before or [])}
+    after_map  = {_diff_key(e): e for e in (after or [])}
 
     added_ids   = [k for k in after_map if k not in before_map]
     removed_ids = [k for k in before_map if k not in after_map]
@@ -399,10 +427,26 @@ def save_schedule(data: dict, user=Depends(admin_only)):
 
     current_events = data.get("events")
     if current_events is not None:
-        # Keep schedule_dict in sync too -- the override/drag-drop engine
-        # and other endpoints in this session still read from it.
+        # Every event needs a permanent schedule_id before it's stored --
+        # not just a locally-generated one for this dict's key. A session
+        # can arrive here with none (e.g. the second half of a frontend
+        # Split, which deliberately omits schedule_id so the save treats it
+        # as a new insert). Assigning the id here, onto the event dict
+        # itself, means it's still there in `current_events` below when
+        # that list gets written to Firestore as doc_data["events"] -- so
+        # it has a stable identity for every future diff/version-history
+        # comparison instead of permanently falling through _diff_events'
+        # schedule_id-only matching (previously: the uuid was minted for
+        # schedule_dict's key and then thrown away, so the saved event
+        # itself still had no schedule_id, and _diff_events silently drops
+        # any event with schedule_id is None from both sides of the diff --
+        # that's why a just-split session's second half never showed up as
+        # "added" in Version History).
         schedule_dict.clear()
-        schedule_dict.update({str(ev.get("schedule_id", uuid.uuid4())): ev for ev in current_events})
+        for ev in current_events:
+            if not ev.get("schedule_id"):
+                ev["schedule_id"] = str(uuid.uuid4())
+            schedule_dict[str(ev["schedule_id"])] = ev
     else:
         # Back-compat path: caller didn't send events explicitly (e.g. the
         # auto-save-after-drag-drop flow), fall back to whatever is
@@ -631,6 +675,74 @@ def load_saved(name: str, user=Depends(any_authenticated)):
         "versionHistory": data.get("versionHistory", []),
     }
 
+def _unfinalize_final_schedule(doc_ref, data: dict, user: dict):
+    """Shared core of unpublishing a final_schedules doc: flips its own
+    finalized flag, unapproves any coordinator submissions for that term,
+    and — if it was generated from a Master Schedule queue — reopens that
+    queue and puts the master schedule back into draft.
+
+    Used both by the explicit /unfinalize endpoint and by finalize_schedule's
+    "un-publish whatever else was published for this term" step, so that
+    replacing the published schedule for a term is a real revert-to-draft in
+    every case, not just a flipped flag on the doc that got bumped."""
+    doc_ref.update({"finalized": False})
+
+    ay = data.get("academicYear")
+    sem = data.get("semester")
+    if not (ay and sem):
+        return
+
+    schedules = db.collection("coordinator_schedules") \
+        .where("academicYear", "==", ay) \
+        .where("semester", "==", sem) \
+        .where("status", "in", ["submitted", "approved"]) \
+        .stream()
+    batch = db.batch()
+    count = 0
+    now = (datetime.utcnow().isoformat() + "Z")
+    for s in schedules:
+        batch.update(s.reference, {
+            "status": "draft",
+            "approvedAt": None,
+            "approvedBy": None,
+            "submittedAt": None,
+            "unfinalizedNote": f"The master schedule for {sem} {ay} was unpublished.",
+            "updatedAt": now
+        })
+        count += 1
+        if count >= 450:
+            batch.commit()
+            batch = db.batch()
+            count = 0
+
+    if count:
+        batch.commit()
+
+    # Re-open the queue this specific schedule was published from, and
+    # put its master schedule back into draft -- keyed off the queueId
+    # stamped on this exact final_schedules doc (see approval.py's
+    # finalize_master_schedule), not by matching academicYear/semester.
+    # A term match would be wrong here: more than one final schedule can
+    # exist for the same term now (re-finalized versions get "(1)",
+    # "(2)" names), and only one of them -- the one actually generated
+    # from a master schedule -- should reach back and reopen a queue.
+    # Manually admin-saved schedules (source != "queue") never carry a
+    # queueId and are correctly left alone.
+    origin_queue_id = data.get("queueId") if data.get("source") == "queue" else None
+    if origin_queue_id:
+        queue_ref = db.collection("coordinator_queues").document(origin_queue_id)
+        queue_doc = queue_ref.get()
+        if queue_doc.exists and queue_doc.to_dict().get("status") == "completed":
+            queue_ref.update({"status": "active", "updatedAt": now})
+
+            master_docs = db.collection("master_schedules").where("queueId", "==", origin_queue_id).get()
+            for m in master_docs:
+                m.reference.update({"status": "draft", "updatedAt": now})
+                event_cache.invalidate(f"master:{m.id}")
+
+            log_audit_event(origin_queue_id, "MASTER_UNFINALIZED", user, target_program="Master", details=f"Unpublished {sem} {ay} from the schedule list view")
+
+
 @router.post("/final/{name}/finalize")
 def finalize_schedule(name: str, user=Depends(admin_only)):
     doc_ref = db.collection("final_schedules").document(name)
@@ -651,9 +763,41 @@ def finalize_schedule(name: str, user=Depends(admin_only)):
 
         for d in other_docs:
             if d.id != name:
-                d.reference.update({"finalized": False})
+                # Full revert-to-draft for whatever was previously published,
+                # not just flipping its finalized flag -- otherwise a sibling
+                # that came from a Master Schedule queue would be left
+                # showing "finalized: false" while its queue stayed
+                # "completed" and its master schedule stayed "finalized",
+                # a state the dedicated /unfinalize endpoint never produces.
+                _unfinalize_final_schedule(d.reference, d.to_dict(), user)
 
     doc_ref.update({"finalized": True})
+
+    # Publishing a schedule for a term closes out that term's live queue
+    # too -- otherwise the queue sits around looking active/waiting for
+    # coordinators to keep submitting into a term that's already published,
+    # which is exactly the confusing state this is meant to prevent.
+    #
+    # NOTE: this used to add a third .where("status", "!=", "completed")
+    # clause directly in the query. Combining a "!=" filter with two other
+    # equality filters needs its own Firestore composite index (distinct
+    # from the plain academicYear+semester index create_queue's duplicate
+    # check already relies on) -- without it Firestore silently returns no
+    # matches instead of raising, so the schedule still finalized fine but
+    # the queue never closed. Filtering "not completed" in Python sidesteps
+    # needing that extra index entirely.
+    if ay and sem:
+        now = (datetime.utcnow().isoformat() + "Z")
+        matching_queues = db.collection("coordinator_queues") \
+            .where("academicYear", "==", ay) \
+            .where("semester", "==", sem) \
+            .stream()
+        for q in matching_queues:
+            if q.to_dict().get("status") == "completed":
+                continue
+            q.reference.update({"status": "completed", "updatedAt": now})
+            log_audit_event(q.id, "QUEUE_FINISHED", user, target_program="Master", details=f"Auto-finished — {sem} {ay} was published from the schedule list view")
+
     return {"finalized": name}
 
 @router.post("/final/{name}/unfinalize")
@@ -662,57 +806,9 @@ def unfinalize_schedule(name: str, user=Depends(admin_only)):
     doc = doc_ref.get()
     if not doc.exists:
         raise HTTPException(404, "Schedule not found")
-    
-    doc_ref.update({"finalized": False})
 
-    # Unapprove coordinator submissions for this term
-    data = doc.to_dict()
-    ay = data.get("academicYear")
-    sem = data.get("semester")
-    if ay and sem:
-        schedules = db.collection("coordinator_schedules") \
-            .where("academicYear", "==", ay) \
-            .where("semester", "==", sem) \
-            .where("status", "in", ["submitted", "approved"]) \
-            .stream()
-        batch = db.batch()
-        count = 0
-        now = (datetime.utcnow().isoformat() + "Z")
-        for s in schedules:
-            batch.update(s.reference, {
-                "status": "draft",
-                "approvedAt": None,
-                "approvedBy": None,
-                "submittedAt": None,
-                "unfinalizedNote": f"The master schedule for {sem} {ay} was unpublished.",
-                "updatedAt": now
-            })
-            count += 1
-            if count >= 450:
-                batch.commit()
-                batch = db.batch()
-                count = 0
-                
-        # Re-open the queue if one exists for this term
-        queues = db.collection("coordinator_queues") \
-            .where("academicYear", "==", ay) \
-            .where("semester", "==", sem) \
-            .where("status", "==", "completed") \
-            .stream()
-        for q in queues:
-            batch.update(q.reference, {
-                "status": "active",
-                "updatedAt": now
-            })
-            count += 1
-            if count >= 450:
-                batch.commit()
-                batch = db.batch()
-                count = 0
-                
-        if count:
-            batch.commit()
-            
+    _unfinalize_final_schedule(doc_ref, doc.to_dict(), user)
+
     return {"unfinalized": name}
 
 @router.put("/final/{name}/metadata")

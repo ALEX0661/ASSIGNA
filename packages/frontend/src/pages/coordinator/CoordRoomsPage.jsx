@@ -438,9 +438,23 @@ export default function CoordRoomsPage() {
       
       const init = {}
       crsArr.forEach(c => {
-        init[c.courseCode] = c.preferredRoom 
-          ? c.preferredRoom.split(',').map(s => s.trim()).filter(Boolean) 
+        // setCoursePreferredRoom (api.js) always writes preferredRoomLec /
+        // preferredRoomLab and clears the old preferredRoom field to null.
+        // Reading preferredRoom here means every assignment "disappears"
+        // the moment you leave and come back, even though it saved fine.
+        // Fall back to preferredRoom only for legacy rows that predate the
+        // lec/lab split and were never resaved.
+        const legacy = c.preferredRoom
+          ? c.preferredRoom.split(',').map(s => s.trim()).filter(Boolean)
           : []
+        init[c.courseCode] = {
+          lec: c.preferredRoomLec
+            ? c.preferredRoomLec.split(',').map(s => s.trim()).filter(Boolean)
+            : legacy,
+          lab: c.preferredRoomLab
+            ? c.preferredRoomLab.split(',').map(s => s.trim()).filter(Boolean)
+            : [],
+        }
       })
       setAssignments(init)
       setOrigAssign(init)
@@ -541,6 +555,7 @@ export default function CoordRoomsPage() {
     } else {
       setAssignments(prev => ({ ...prev, [modalState.targetKey]: selectedModalRooms }))
     }
+    setModalState(p => ({ ...p, isOpen: false }))
   }
 
   function resetDirty() {
@@ -849,4 +864,4 @@ export default function CoordRoomsPage() {
       )}
     </div>
   )
-}
+}

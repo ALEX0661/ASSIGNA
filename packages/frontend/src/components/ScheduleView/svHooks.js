@@ -673,6 +673,33 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
   const revertOverride = useCallback((id) => {
     const override = pendingOverrides.get(id)
     if (!override) return
+
+    // Structural changes (Split / Link) changed how many events exist, so
+    // they can't be undone by patching fields on a matching id — remove the
+    // resulting event(s) and put the original(s) back instead.
+    if (override.type === 'split' || override.type === 'merge') {
+      const consumedIds = override.type === 'split' ? override.childIds : [override.mergedId]
+      const restored     = override.type === 'split' ? [override.originalEvent] : override.originalEvents
+      const reverted = [
+        ...events.filter(ev => !consumedIds.includes(getEventId(ev))),
+        ...restored,
+      ]
+      setLocalEvents(reverted)
+      setEvents(reverted)
+      setPendingOverrides(prev => {
+        const n = new Map(prev)
+        n.delete(id)
+        // Any other queued override that was made against one of the
+        // consumed ids (e.g. you split, then dragged one half) described a
+        // state that no longer exists once we restore the original event —
+        // drop it too instead of leaving a dangling entry in the list.
+        for (const [oid, o] of n) if (consumedIds.includes(oid)) n.delete(oid)
+        return n
+      })
+      setToast({ type: 'success', message: `Reverted: ${override.label}` })
+      return
+    }
+
     const reverted = events.map(ev =>
       getEventId(ev) !== id ? ev : {
         ...ev,
@@ -760,9 +787,32 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
   const revertAllOverrides = useCallback(() => {
     if (pendingOverrides.size === 0) return
 
-    const reverted = events.map(ev => {
+    const structural = [...pendingOverrides.values()].filter(o => o.type === 'split' || o.type === 'merge')
+    const plain       = [...pendingOverrides.values()].filter(o => !o.type)
+
+    // Ids that a structural revert is about to delete/replace. Any plain
+    // (field-edit) override queued against one of these ids — e.g. you split
+    // a session, then dragged one of the halves — describes a state that no
+    // longer exists once the structural revert puts the original back, so it
+    // must be skipped rather than field-patched onto whatever's left.
+    const consumedIds = new Set(
+      structural.flatMap(o => o.type === 'split' ? o.childIds : [o.mergedId])
+    )
+
+    // Undo structural changes first: drop the resulting event(s), restore
+    // the original(s). This has to happen before the plain field-reverts
+    // below, since those match by id against the CURRENT event list.
+    let working = events
+    for (const o of structural) {
+      const consumed  = o.type === 'split' ? o.childIds : [o.mergedId]
+      const restored  = o.type === 'split' ? [o.originalEvent] : o.originalEvents
+      working = [...working.filter(ev => !consumed.includes(getEventId(ev))), ...restored]
+    }
+
+    const reverted = working.map(ev => {
       const id = getEventId(ev)
-      const override = pendingOverrides.get(id)
+      if (consumedIds.has(id)) return ev // already restored to its true original above
+      const override = plain.find(o => o.id === id)
       if (override) {
           return {
             ...ev,
@@ -836,10 +886,32 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
       const sessType = (event.session || 'CLASS').toUpperCase()
       const progBlock = `${event.program || ''} ${event.year || ''}${event.block || ''}`.replace(/\s+/g, ' ').trim()
       const sid = `split-${Date.now()}`
+      // `type: 'split'` marks this as a STRUCTURAL change (1 event -> 2), not
+      // a field edit. revertOverride/revertAllOverrides can't undo that by
+      // patching room/day/period on a matching id the way a move/edit does —
+      // there's no single id to patch, and e1 above reuses `event`'s own
+      // schedule_id, so a plain per-id field revert would only ever touch
+      // one half and leave the other orphaned (this used to be exactly that
+      // bug: half the session survived Undo All). Instead we snapshot the
+      // pre-split event and both resulting ids here, so revert can delete
+      // both halves and restore the one original event.
       next.set(sid, {
         id: sid,
+        type: 'split',
         label: `Split ${event.courseCode} ${sessType} (${progBlock})`,
-        isLocalOnly: true
+        isLocalOnly: true,
+        originalEvent: event,
+        childIds: [getEventId(e1), getEventId(e2)],
+        // Display-only fields so PendingChangesModal can render something
+        // meaningful instead of falling through to its default courseCode/
+        // room/day/period diff layout, which these structural entries don't
+        // have and never did (that's the "CLASS ()" blank-card bug).
+        courseCode: event.courseCode,
+        program: event.program,
+        year: event.year,
+        block: event.block,
+        session: event.session,
+        newPeriods: [p1, p2],
       })
       return next
     })
@@ -880,10 +952,24 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
       const sessType = (event.session || 'CLASS').toUpperCase()
       const progBlock = `${event.program || ''} ${event.year || ''}${event.block || ''}`.replace(/\s+/g, ' ').trim()
       const sid = `link-${Date.now()}`
+      // Same reasoning as splitEvent's `type: 'split'` above — merging is
+      // also structural (2 events -> 1), so store both originals + the
+      // merged id rather than relying on per-id field patching to undo it.
       next.set(sid, {
         id: sid,
+        type: 'merge',
         label: `Linked ${event.courseCode} ${sessType} (${progBlock})`,
-        isLocalOnly: true
+        isLocalOnly: true,
+        originalEvents: [event, nextEvent],
+        mergedId: getEventId(eMerged),
+        // Display-only fields — see the matching comment in splitEvent above.
+        courseCode: event.courseCode,
+        program: event.program,
+        year: event.year,
+        block: event.block,
+        session: event.session,
+        origPeriods: [event.period, nextEvent.period],
+        newPeriod,
       })
       return next
     })

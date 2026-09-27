@@ -312,6 +312,7 @@ export default function CoordMySchedulePage() {
 
   const [selected,       setSelected]       = useState(new Set())
   const [deleting,       setDeleting]       = useState(false)
+  const [duplicating,    setDuplicating]    = useState(false)
   const [confirmModal,   setConfirmModal]   = useState(null)
 
   // Active queue's academic term — used to know which of *my* approved
@@ -320,6 +321,7 @@ export default function CoordMySchedulePage() {
   // in this list; only the one matching the current queue's term gets the
   // "view combined schedule" action on its row).
   const [roundTerm,         setRoundTerm]         = useState(null)
+  const [isMyTurn,          setIsMyTurn]          = useState(true) // true until loaded, so we don't flash a false block
   const [hasApprovedInQueue, setHasApprovedInQueue] = useState(false)
   const [activeQueueId,     setActiveQueueId]     = useState(null)
 
@@ -441,6 +443,7 @@ export default function CoordMySchedulePage() {
         setRoundTerm({ academicYear: t.academicYear, semester: t.semester })
         setHasApprovedInQueue(t.queue?.some(p => p.status === 'approved') || false)
         setActiveQueueId(t.queueId)
+        setIsMyTurn(Boolean(t.isMyTurn))
       }
     }).catch(() => {})
   }, [])
@@ -499,8 +502,10 @@ export default function CoordMySchedulePage() {
   }
 
   async function handleDuplicate(sid, name) {
+    setDuplicating(true)
     try { await coordDuplicateSchedule(sid, { name: `${name} (copy)` }); flash('Duplicated'); loadList() }
     catch (e) { flash(e?.response?.data?.detail || 'Duplicate failed') }
+    finally { setDuplicating(false); setConfirmModal(null) }
   }
 
   async function handleSubmit(sid) {
@@ -566,13 +571,9 @@ export default function CoordMySchedulePage() {
     return s.academicYear !== roundTerm.academicYear || s.semester !== roundTerm.semester;
   }
 
-  // Allow viewing the combined master schedule for any schedule belonging to
-  // the currently active queue round, regardless of status.
-  function isActiveRound(s) {
-    return roundTerm
-      && hasApprovedInQueue
-      && roundTerm.academicYear === s.academicYear
-      && roundTerm.semester === s.semester
+  // Blocks submitting out of turn — mirrors the backend's queue-turn check.
+  function notMyTurn(s) {
+    return !isNotActiveTerm(s) && !isMyTurn;
   }
 
   return (
@@ -758,19 +759,24 @@ export default function CoordMySchedulePage() {
         {confirmModal && (() => {
           const isSubmit = confirmModal.action === 'submit'
           const isBulk = confirmModal.action === 'bulkDelete'
-          const title = isSubmit ? 'Submit Schedule?' : isBulk ? `Delete ${selected.size} Schedule${selected.size > 1 ? 's' : ''}?` : 'Delete Schedule?'
+          const isDuplicate = confirmModal.action === 'duplicate'
+          const title = isSubmit ? 'Submit Schedule?' : isDuplicate ? 'Duplicate Schedule?' : isBulk ? `Delete ${selected.size} Schedule${selected.size > 1 ? 's' : ''}?` : 'Delete Schedule?'
           const desc = isSubmit
             ? 'Are you sure you want to submit this schedule for approval? You will not be able to edit it unless the admin recalls it.'
-            : isBulk
-              ? `This cannot be undone. All ${selected.size} selected schedule${selected.size > 1 ? 's' : ''} will be removed forever.`
-              : 'This cannot be undone. This schedule will be removed forever.'
-          const busy = deleting
+            : isDuplicate
+              ? `This will create a copy of "${confirmModal.name}" as a new draft.`
+              : isBulk
+                ? `This cannot be undone. All ${selected.size} selected schedule${selected.size > 1 ? 's' : ''} will be removed forever.`
+                : 'This cannot be undone. This schedule will be removed forever.'
+          const busy = deleting || duplicating
           return (
             <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(10,30,18,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => !busy && setConfirmModal(null)}>
               <div style={{ background: 'var(--surface)', borderRadius: 18, padding: '28px 28px 24px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(10,30,18,0.22)', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                <div style={{ width: 52, height: 52, borderRadius: '50%', background: isSubmit ? G.meadowSoft : G.redSoft, margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 52, height: 52, borderRadius: '50%', background: (isSubmit || isDuplicate) ? G.meadowSoft : G.redSoft, margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {isSubmit ? (
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={G.meadow} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/></svg>
+                  ) : isDuplicate ? (
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={G.meadow} strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                   ) : (
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={G.red} strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
                   )}
@@ -784,13 +790,14 @@ export default function CoordMySchedulePage() {
                   <button
                     onClick={() => {
                       if (isSubmit) handleSubmit(confirmModal.id)
+                      else if (isDuplicate) handleDuplicate(confirmModal.id, confirmModal.name)
                       else if (isBulk) handleBulkDelete()
                       else handleDelete(confirmModal.id)
                     }}
                     disabled={busy}
-                    style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: isSubmit ? `linear-gradient(135deg,${G.meadow},${G.meadowDeep})` : G.red, fontSize: 13, fontWeight: 700, color: '#fff', cursor: busy ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: busy ? 0.7 : 1 }}
+                    style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: (isSubmit || isDuplicate) ? `linear-gradient(135deg,${G.meadow},${G.meadowDeep})` : G.red, fontSize: 13, fontWeight: 700, color: '#fff', cursor: busy ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', opacity: busy ? 0.7 : 1 }}
                   >
-                    {busy ? (isSubmit ? 'Submitting...' : 'Deleting...') : isSubmit ? 'Submit' : isBulk ? `Delete ${selected.size}` : 'Yes, Delete'}
+                    {busy ? (isSubmit ? 'Submitting...' : isDuplicate ? 'Duplicating...' : 'Deleting...') : isSubmit ? 'Submit' : isDuplicate ? 'Yes, Duplicate' : isBulk ? `Delete ${selected.size}` : 'Yes, Delete'}
                   </button>
                 </div>
               </div>
@@ -864,14 +871,14 @@ export default function CoordMySchedulePage() {
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                     </button>
                   )}
-                  <button className="co-row-icon-btn tour-btn-duplicate" title="Duplicate" onClick={() => handleDuplicate(s.id, s.name)}>
+                  <button className="co-row-icon-btn tour-btn-duplicate" title="Duplicate" onClick={() => setConfirmModal({ action: 'duplicate', id: s.id, name: s.name })}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                   </button>
                   {s.status === 'draft' && (
                     <>
-                      <button className="co-row-icon-btn tour-btn-submit" disabled={termLocked(s) || isNotActiveTerm(s)}
-                        title={termLocked(s) ? 'Another schedule is already submitted/approved for this term' : isNotActiveTerm(s) ? 'You can only submit schedules for the active scheduling queue term' : 'Submit for review'}
-                        onClick={() => !(termLocked(s) || isNotActiveTerm(s)) && setConfirmModal({ action: 'submit', id: s.id })}>
+                      <button className="co-row-icon-btn tour-btn-submit" disabled={termLocked(s) || isNotActiveTerm(s) || notMyTurn(s)}
+                        title={termLocked(s) ? 'Another schedule is already submitted/approved for this term' : isNotActiveTerm(s) ? 'You can only submit schedules for the active scheduling queue term' : notMyTurn(s) ? "It's not your turn to submit yet" : 'Submit for review'}
+                        onClick={() => !(termLocked(s) || isNotActiveTerm(s) || notMyTurn(s)) && setConfirmModal({ action: 'submit', id: s.id })}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                       </button>
                       <button className="co-row-icon-btn tour-btn-delete danger" title="Delete" onClick={() => setConfirmModal({ action: 'delete', id: s.id })}>
@@ -882,13 +889,6 @@ export default function CoordMySchedulePage() {
                   {s.status === 'submitted' && (
                     <button className="co-row-icon-btn amber" title="Withdraw from review" onClick={() => handleUnsubmit(s.id)}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
-                    </button>
-                  )}
-                  {isActiveRound(s) && (
-                    <button className="co-row-icon-btn" style={{ color: G.blue, borderColor: G.blueBorder, background: G.blueSoft }}
-                      title="View the combined schedule — see how this schedule fits with what's approved so far"
-                      onClick={() => navigate(`/coordinator/schedules/master?overlay=${s.id}`)}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="15" width="7" height="7" rx="1.5"/><rect x="14" y="15" width="7" height="7" rx="1.5"/></svg>
                     </button>
                   )}
                 </div>

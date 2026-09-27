@@ -537,6 +537,38 @@ export function PendingChangesModal({ pendingOverrides, onClose, onRevertAll, on
           {overrides.map(o => {
             const sessType = (o.session || 'CLASS').toUpperCase();
             const progBlock = `${o.program || ''} ${o.year || ''}${o.block || ''}`.replace(/\s+/g, ' ').trim();
+
+            // Split/Link (Merge) are structural changes recorded by
+            // splitEvent/mergeWithNext in svHooks.js — they don't have
+            // new_room/orig_room/etc the way a move or edit does, so the
+            // generic field-diff layout below used to render a blank
+            // "CLASS ()" card for them. Render their own summary instead.
+            if (o.type === 'split' || o.type === 'merge') {
+              return (
+                <div key={o.id} style={{
+                  padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border)',
+                  background: 'var(--hover)', display: 'flex', flexDirection: 'column', gap: 4
+                }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>
+                    {o.courseCode} {sessType} <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--muted)' }}>({progBlock})</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text)', display: 'flex', flexWrap: 'wrap', gap: '8px 16px' }}>
+                    {o.type === 'split' ? (
+                      <div>
+                        <span style={{color:'var(--muted)'}}>Split into:</span>{' '}
+                        <span style={{fontWeight:600}}>{o.newPeriods?.[0]}</span> &amp; <span style={{fontWeight:600}}>{o.newPeriods?.[1]}</span>
+                      </div>
+                    ) : (
+                      <div>
+                        <span style={{color:'var(--muted)'}}>Linked:</span>{' '}
+                        <span>{o.origPeriods?.[0]}</span> + <span>{o.origPeriods?.[1]}</span> &rarr; <span style={{fontWeight:600}}>{o.newPeriod}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            }
+
             return (
               <div key={o.id} style={{
                 padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border)',

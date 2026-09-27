@@ -4,7 +4,7 @@ import G from './tokens'
 import { EmptyState, ICONS } from './primitives'
 import AdminQueueRail, { queueHeadCopy } from './AdminQueueRail'
 
-function QueueTab({ queues, activeQueueId, setActiveQueueId, onAdvance, onFinish, onDelete, showToast }) {
+function QueueTab({ queues, activeQueueId, setActiveQueueId, onAdvance, onFinish, onDelete, showToast, masterFinalized }) {
   const [busy, setBusy] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [confirmFinish, setConfirmFinish] = useState(null)
@@ -88,9 +88,14 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onAdvance, onFinish
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={G.red} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
             </div>
             <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 8, fontFamily: 'Inter,sans-serif' }}>Delete Queue?</div>
-            <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 24, lineHeight: 1.5, fontFamily: 'Inter,sans-serif' }}>
+            <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: !masterFinalized ? 12 : 24, lineHeight: 1.5, fontFamily: 'Inter,sans-serif' }}>
               This removes the {confirmDelete.semester} {confirmDelete.academicYear} queue and its turn order. This cannot be undone.
             </div>
+            {!masterFinalized && (
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: G.red, background: G.redSoft, borderRadius: 9, padding: '10px 12px', marginBottom: 24, lineHeight: 1.5, textAlign: 'left', fontFamily: 'Inter,sans-serif' }}>
+                This queue's master schedule hasn't been published yet — whether the queue is still ongoing or already marked done — so it hasn't been saved anywhere else. Deleting this queue will delete that master schedule too.
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setConfirmDelete(null)} disabled={busy} style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1.5px solid var(--border)`, background: 'var(--surface)', fontSize: 13, fontWeight: 600, color: 'var(--muted)', cursor: busy ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
                 Cancel

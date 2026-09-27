@@ -379,6 +379,7 @@ export default function ApprovalDashboardPage() {
                 onFinish={handleFinish}
                 onDelete={handleDeleteQueue}
                 showToast={toast}
+                masterFinalized={master?.status === 'finalized'}
               />
               {activeQueueId && <QueueAuditTrail queueId={activeQueueId} />}
             </>

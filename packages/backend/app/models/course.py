@@ -10,7 +10,9 @@ class Course(BaseModel):
     unitsLab: int = 0
     blocks: int = 1
     semester: str = "1st Semester"
-    preferredRoom: Optional[str] = None   # e.g. "Room 407" — pins course to a specific room
+    preferredRoom: Optional[str] = None       # legacy single-pool field, kept for old rows
+    preferredRoomLec: Optional[str] = None    # comma-joined room pool for lecture sessions
+    preferredRoomLab: Optional[str] = None    # comma-joined room pool for lab sessions
 
 class CourseUpdate(BaseModel):
     courseCode: Optional[str] = None
@@ -21,4 +23,6 @@ class CourseUpdate(BaseModel):
     unitsLab: Optional[int] = None
     blocks: Optional[int] = None
     semester: Optional[str] = None
-    preferredRoom: Optional[str] = None   # "" or None = no preference; "Room 407" = pinned
+    preferredRoom: Optional[str] = None       # "" or None = no preference; "Room 407" = pinned (legacy)
+    preferredRoomLec: Optional[str] = None    # "" or None = no lecture pool; else comma-joined room list
+    preferredRoomLab: Optional[str] = None    # "" or None = no lab pool; else comma-joined room list

@@ -735,10 +735,13 @@ def duplicate_schedule(schedule_id: str, req: DuplicateRequest, user: dict = Dep
     new_data = data.copy()
     new_data["name"] = req.name
     new_data["status"] = "draft"
+    new_data["scheduleId"] = new_id  # was left pointing at the original doc
     new_data["createdAt"] = now
     new_data["updatedAt"] = now
     
     new_data.pop("submittedAt", None)
+    new_data.pop("approvedAt", None)
+    new_data.pop("approvedBy", None)
     
     db.collection("coordinator_schedules").document(new_id).set(new_data)
     
@@ -777,6 +780,16 @@ def submit_schedule(schedule_id: str, user: dict = Depends(coordinator_only)):
     if data.get("semester") != q_sem or data.get("academicYear") != q_ay:
         raise HTTPException(status_code=400, detail="Schedule term does not match the active queue.")
 
+    # Block submission if it isn't this program's turn yet — this was
+    # computed for the /queue/my-turn dashboard readout but never actually
+    # enforced here, so any coordinator could submit out of turn as long as
+    # their draft was in the active term.
+    queue_list = queue_doc.get("queue", [])
+    current_index = queue_doc.get("currentTurnIndex", -1)
+    current_program = queue_list[current_index] if 0 <= current_index < len(queue_list) else None
+    if current_program != program:
+        raise HTTPException(status_code=400, detail="It's not your turn to submit yet.")
+
     # Block submission if another schedule for the same term is already submitted/approved
     if queue_id:
         existing = db.collection("coordinator_schedules") \
@@ -812,6 +825,7 @@ def unsubmit_schedule(schedule_id: str, user: dict = Depends(coordinator_only)):
         "updatedAt": (datetime.utcnow().isoformat() + "Z")
     })
     _set_program_status(data.get("queueId"), program, "active", only_if="submitted")
+    log_audit_event(data.get("queueId"), "SCHEDULE_WITHDRAWN", user, target_program=program, details=f"Withdrew submission")
     return {"message": "Schedule unsubmitted successfully"}
 
 @router.get("/rooms")
@@ -948,5 +962,3 @@ def get_global_settings(user: dict = Depends(coordinator_only)):
         "time": get_time(),
         "days": get_days()
     }
-
-

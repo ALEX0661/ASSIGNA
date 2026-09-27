@@ -308,7 +308,7 @@ def update_course(course_code: str, program: str, data: CourseUpdate, user=Depen
     # - Fields that are None only because they weren't sent (all other optional
     #   fields) are skipped entirely via exclude_unset so we don't accidentally
     #   wipe legitimate data.
-    NULLABLE_FIELDS = {"preferredRoom"}
+    NULLABLE_FIELDS = {"preferredRoom", "preferredRoomLec", "preferredRoomLab"}
 
     update_data = {}
     for k, v in data.dict(exclude_unset=True).items():

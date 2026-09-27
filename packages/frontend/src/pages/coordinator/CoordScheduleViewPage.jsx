@@ -771,10 +771,14 @@ export default function CoordScheduleViewPage() {
   const [showVersionHistory, setShowVersionHistory] = useState(false)
   
   const [roundTerm,         setRoundTerm]     = useState(null)
+  const [isMyTurn,          setIsMyTurn]      = useState(true) // true until loaded, so we don't flash a false block
 
   useEffect(() => {
     coordCheckTurn().then(t => {
-      if (t) setRoundTerm({ academicYear: t.academicYear, semester: t.semester })
+      if (t) {
+        setRoundTerm({ academicYear: t.academicYear, semester: t.semester })
+        setIsMyTurn(Boolean(t.isMyTurn))
+      }
     }).catch(() => {})
   }, [])
 
@@ -782,6 +786,7 @@ export default function CoordScheduleViewPage() {
   const locked = (isMasterView && !overlayId) || isFinalType || status !== 'draft'
 
   const isActiveTerm = Boolean(roundTerm && schedAY === roundTerm.academicYear && schedSem === roundTerm.semester)
+  const canSubmit = isActiveTerm && isMyTurn
   const [globalStartHour,   setGlobalStartHour] = useState(7)
   const [globalEndHour,     setGlobalEndHour]   = useState(21)
 
@@ -1467,9 +1472,9 @@ export default function CoordScheduleViewPage() {
                   Approved
                 </span>
               ) : (
-                <button onClick={handleSubmit} disabled={actionState === 'working' || !isActiveTerm}
-                  title={!isActiveTerm ? 'You can only submit schedules for the active scheduling queue term' : ''}
-                  style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 14px', borderRadius:8, border:'none', background:'var(--meadow)', color: '#fff', fontSize:11.5, fontWeight:600, cursor: (actionState === 'working' || !isActiveTerm) ? 'default' : 'pointer', opacity: (actionState === 'working' || !isActiveTerm) ? 0.6 : 1, fontFamily:'Inter,sans-serif', whiteSpace:'nowrap', transition:'all 0.15s' }}>
+                <button onClick={handleSubmit} disabled={actionState === 'working' || !canSubmit}
+                  title={!isActiveTerm ? 'You can only submit schedules for the active scheduling queue term' : !isMyTurn ? "It's not your turn to submit yet" : ''}
+                  style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 14px', borderRadius:8, border:'none', background:'var(--meadow)', color: '#fff', fontSize:11.5, fontWeight:600, cursor: (actionState === 'working' || !canSubmit) ? 'default' : 'pointer', opacity: (actionState === 'working' || !canSubmit) ? 0.6 : 1, fontFamily:'Inter,sans-serif', whiteSpace:'nowrap', transition:'all 0.15s' }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                   {actionState === 'working' ? 'Submitting…' : 'Submit'}
                 </button>
@@ -2423,8 +2428,3 @@ function ListView({ dayEvents, conflictMap, hasFilters, clearFilters, onCardClic
     </div>
   )
 }
-
-
-
-
-

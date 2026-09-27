@@ -236,8 +236,17 @@ export default function ScheduleListPage() {
     navigate(`/dashboard/schedule/${encodeURIComponent(s.id || s.name)}`)
   }
 
-  const handleDuplicate = async (schedule, events) => {
-    setToastMsg({ type: 'info', message: 'Duplicating schedule...' })
+  const [scheduleToDuplicate, setScheduleToDuplicate] = useState(null) // { schedule, events }
+  const [duplicatingState, setDuplicatingState] = useState('idle')
+
+  const handleDuplicateRequest = (schedule, events) => {
+    setScheduleToDuplicate({ schedule, events })
+  }
+
+  const confirmDuplicate = async () => {
+    if (!scheduleToDuplicate) return
+    const { schedule, events } = scheduleToDuplicate
+    setDuplicatingState('working')
     try {
       let dupEvents = events
       if (!dupEvents || dupEvents.length === 0) {
@@ -256,6 +265,9 @@ export default function ScheduleListPage() {
     } catch(err) {
       console.error(err)
       setToastMsg({ type: 'error', message: 'Failed to duplicate' })
+    } finally {
+      setDuplicatingState('idle')
+      setScheduleToDuplicate(null)
     }
   }
 
@@ -347,32 +359,41 @@ export default function ScheduleListPage() {
     }
   }
 
-  // Publishing is a one-way-visible action (it goes live to faculty), so —
-  // same as the Schedule View page — it gets a confirmation step. Moving
-  // back to Draft doesn't need one, since that just hides it again.
+  // Publishing is a one-way-visible action (it goes live to faculty), so it
+  // gets a confirmation step. Moving back to Draft also gets one now: when
+  // this schedule came from a Master Schedule queue, unpublishing it reaches
+  // back and unpublishes that master schedule too (and reopens its queue),
+  // which isn't obvious from this page alone.
   const [scheduleToPublish, setScheduleToPublish] = useState(null)
   const [publishingState, setPublishingState] = useState('idle')
+  const [scheduleToUnpublish, setScheduleToUnpublish] = useState(null)
+  const [unpublishingState, setUnpublishingState] = useState('idle')
 
   const handleTogglePublish = (schedule) => {
     if (schedule.finalized) {
-      confirmUnpublish(schedule)
+      setScheduleToUnpublish(schedule)
     } else {
       setScheduleToPublish(schedule)
     }
   }
 
-  const confirmUnpublish = async (schedule) => {
-    const name = schedule.id || schedule.name
+  const confirmUnpublish = async () => {
+    if (!scheduleToUnpublish) return
+    const name = scheduleToUnpublish.id || scheduleToUnpublish.name
+    setUnpublishingState('working')
     try {
       // unfinalize_schedule on the backend already unapproves any
       // coordinator submissions for this term and reopens the queue —
       // one plain call is all that's needed, regardless of source.
       await unfinalizeSchedule(name)
-      setToastMsg({ type: 'success', message: `Moved "${schedule.name}" back to draft` })
+      setToastMsg({ type: 'success', message: `Moved "${scheduleToUnpublish.name}" back to draft` })
       handleRefresh()
     } catch (err) {
       console.error(err)
       setToastMsg({ type: 'error', message: 'Failed to update status' })
+    } finally {
+      setUnpublishingState('idle')
+      setScheduleToUnpublish(null)
     }
   }
 
@@ -487,6 +508,38 @@ export default function ScheduleListPage() {
         />
       )}
 
+      {/* ── Duplicate confirmation modal ───────────────────────────────────── */}
+      {scheduleToDuplicate && (
+        <ModalOverlay onClose={() => duplicatingState !== 'working' && setScheduleToDuplicate(null)}>
+          <div style={{ background: 'var(--surface)', borderRadius: 16, width: 420, padding: '28px 30px', boxShadow: '0 24px 60px rgba(0,0,0,0.25)', border: `1px solid ${G.border}`, fontFamily: 'Inter,sans-serif' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 20 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 11, background: 'var(--meadow-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: G.ink }}>Duplicate Schedule</h3>
+                <div style={{ margin: '5px 0 0', fontSize: 12.5, color: G.muted, lineHeight: 1.5 }}>
+                  <p style={{ margin: 0 }}>
+                    This will create a copy of <strong>{scheduleToDuplicate.schedule.name}</strong> as a new draft.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setScheduleToDuplicate(null)} disabled={duplicatingState === 'working'}
+                style={{ padding: '8px 18px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: 'var(--surface)', color: G.muted, fontSize: 12.5, fontWeight: 600, cursor: duplicatingState === 'working' ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
+                Cancel
+              </button>
+              <button onClick={confirmDuplicate} disabled={duplicatingState === 'working'}
+                style={{ padding: '8px 22px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: duplicatingState === 'working' ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', boxShadow: '0 3px 12px rgba(0,0,0,0.25)', opacity: duplicatingState === 'working' ? 0.7 : 1 }}>
+                {duplicatingState === 'working' ? 'Duplicating…' : 'Yes, Duplicate'}
+              </button>
+            </div>
+          </div>
+        </ModalOverlay>
+      )}
+
       {/* ── Publish confirmation modal ─────────────────────────────────────── */}
       {scheduleToPublish && (
         <ModalOverlay onClose={() => publishingState !== 'working' && setScheduleToPublish(null)}>
@@ -505,8 +558,11 @@ export default function ScheduleListPage() {
                       ? ` (${[scheduleToPublish.academic_year || scheduleToPublish.academicYear ? `A.Y. ${scheduleToPublish.academic_year || scheduleToPublish.academicYear}` : '', scheduleToPublish.semester].filter(Boolean).join(', ')})`
                       : ''} to faculty.
                   </p>
+                  <p style={{ margin: '0 0 10px', padding: '10px 14px', background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: 8, fontSize: 12.5, fontWeight: 500, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                    Note: If you already published a Master Schedule for this term, it will automatically be moved back to Draft (not deleted or overwritten — just unpublished). There can only be one active published schedule per term.
+                  </p>
                   <p style={{ margin: 0, padding: '10px 14px', background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: 8, fontSize: 12.5, fontWeight: 500, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                    Warning: If you already published a Master Schedule for this term, it will be automatically overwritten and unpublished. There can only be one active published schedule per term.
+                    If there's a scheduling queue currently open for this term, it will be automatically marked as finished — coordinators won't be able to submit further schedules into it after this is published.
                   </p>
                 </div>
               </div>
@@ -519,6 +575,41 @@ export default function ScheduleListPage() {
               <button onClick={confirmPublish} disabled={publishingState === 'working'}
                 style={{ padding: '8px 22px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: publishingState === 'working' ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', boxShadow: '0 3px 12px rgba(0,0,0,0.25)', opacity: publishingState === 'working' ? 0.7 : 1 }}>
                 {publishingState === 'working' ? 'Publishing…' : 'Yes, Publish'}
+              </button>
+            </div>
+          </div>
+        </ModalOverlay>
+      )}
+
+      {/* ── Unpublish confirmation modal ───────────────────────────────────── */}
+      {scheduleToUnpublish && (
+        <ModalOverlay onClose={() => unpublishingState !== 'working' && setScheduleToUnpublish(null)}>
+          <div style={{ background: 'var(--surface)', borderRadius: 16, width: 420, padding: '28px 30px', boxShadow: '0 24px 60px rgba(0,0,0,0.25)', border: `1px solid ${G.border}`, fontFamily: 'Inter,sans-serif' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 20 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 11, background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: G.ink }}>Move Back to Draft?</h3>
+                <div style={{ margin: '5px 0 0', fontSize: 12.5, color: G.muted, lineHeight: 1.5 }}>
+                  <p style={{ margin: '0 0 10px' }}>
+                    This will unpublish <strong>{scheduleToUnpublish.name}</strong> and move it back to Draft.
+                  </p>
+                  <p style={{ margin: 0, padding: '10px 14px', background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: 8, fontSize: 12.5, fontWeight: 500, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                    If this was published from a Master Schedule queue, it will also be unpublished in the Master Schedule tab and that queue will reopen for coordinators to resubmit.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setScheduleToUnpublish(null)} disabled={unpublishingState === 'working'}
+                style={{ padding: '8px 18px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: 'var(--surface)', color: G.muted, fontSize: 12.5, fontWeight: 600, cursor: unpublishingState === 'working' ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
+                Cancel
+              </button>
+              <button onClick={confirmUnpublish} disabled={unpublishingState === 'working'}
+                style={{ padding: '8px 22px', borderRadius: 9, border: 'none', background: '#6B7280', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: unpublishingState === 'working' ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', boxShadow: '0 3px 12px rgba(0,0,0,0.25)', opacity: unpublishingState === 'working' ? 0.7 : 1 }}>
+                {unpublishingState === 'working' ? 'Moving…' : 'Yes, Move to Draft'}
               </button>
             </div>
           </div>
@@ -630,7 +721,7 @@ export default function ScheduleListPage() {
                 key={s.id || s.name} 
                 schedule={s} 
                 onClick={() => handleView(s)} 
-                onDuplicate={(events) => handleDuplicate(s, events)}
+                onDuplicate={(events) => handleDuplicateRequest(s, events)}
                 onDelete={() => handleDelete(s)}
                 onRename={() => handleRename(s)}
                 onDownloadExcel={(events) => handleDownloadExcel(s, events)}
@@ -643,7 +734,7 @@ export default function ScheduleListPage() {
           <ScheduleListTable
             schedules={paginated}
             onView={handleView}
-            onDuplicate={handleDuplicate}
+            onDuplicate={handleDuplicateRequest}
             onDelete={handleDelete}
             onRename={handleRename}
             onDownloadExcel={handleDownloadExcel}

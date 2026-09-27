@@ -466,9 +466,23 @@ export default function RoomsPage() {
         const init = {}
         courseData.forEach(c => {
           const key = `${c.courseCode}_${c.program}`
-          init[key] = c.preferredRoom 
-            ? c.preferredRoom.split(',').map(s => s.trim()).filter(Boolean) 
+          // setCoursePreferredRoom (api.js) always writes preferredRoomLec /
+          // preferredRoomLab and clears the old preferredRoom field to null.
+          // Reading preferredRoom here means every assignment "disappears"
+          // the moment you leave and come back, even though it saved fine.
+          // Fall back to preferredRoom only for legacy rows that predate the
+          // lec/lab split and were never resaved.
+          const legacy = c.preferredRoom
+            ? c.preferredRoom.split(',').map(s => s.trim()).filter(Boolean)
             : []
+          init[key] = {
+            lec: c.preferredRoomLec
+              ? c.preferredRoomLec.split(',').map(s => s.trim()).filter(Boolean)
+              : legacy,
+            lab: c.preferredRoomLab
+              ? c.preferredRoomLab.split(',').map(s => s.trim()).filter(Boolean)
+              : [],
+          }
         })
         setAssignments(init)
         setOriginal(init)
@@ -584,6 +598,7 @@ export default function RoomsPage() {
     } else {
       setAssignments(prev => ({ ...prev, [modalState.targetKey]: selectedRooms }))
     }
+    setModalState(p => ({ ...p, isOpen: false }))
   }
 
   function resetDirty() {
@@ -887,4 +902,4 @@ export default function RoomsPage() {
       )}
     </div>
   )
-}
+}

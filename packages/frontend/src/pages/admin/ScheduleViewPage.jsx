@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { useScheduleStore } from '../../store/scheduleStore'
 import { getSchedules, getRooms, getFaculty, saveSchedule, finalizeSchedule, unfinalizeSchedule, updateScheduleMeta, getSubmittedSchedule, getMasterSchedule, deleteSaved, getTime, getResult, renameAdminSchedule } from '../../services/api'
@@ -759,6 +759,12 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
     },
   ], !loading)
   const [saveState,         setSaveState]     = useState('idle')
+  // Synchronous save-in-progress guard. `saveState` is React state and only
+  // updates on the next render, so two fast clicks on Save could both read
+  // it as 'idle' and both start a full save before either re-render landed —
+  // producing two concurrent POST /schedule/save calls for one click. A ref
+  // updates immediately, so the second click is actually blocked.
+  const isSavingRef = useRef(false)
   const [error,             setError]         = useState(null)
   const [selectedEvent,     setSelectedEvent] = useState(null)
   const [viewMode,          setViewMode]      = useState('grid')
@@ -786,6 +792,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
   const [scheduleMeta,      setScheduleMeta]  = useState(null)  // New: full metadata
   const [finalizingState,   setFinalizingState]= useState('idle') // 'idle' | 'working' | 'done' | 'error'
   const [showFinalizeModal, setShowFinalizeModal] = useState(false)
+  const [showUnfinalizeModal, setShowUnfinalizeModal] = useState(false)
   const [metaDirty,         setMetaDirty]     = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   // Holds a discard-and-continue callback (e.g. "load another schedule",
@@ -847,7 +854,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
         // both 404 or return the wrong thing for this. `nameOrId` here is
         // the raw queueId (embeddedId with the "master_" prefix stripped).
         const data = await getMasterSchedule(nameOrId)
-        setLocalEvents(data.schedule || []); setEvents(data.schedule || []); setId(idToMatch)
+        setLocalEvents(data.schedule || []); setEvents(data.schedule || []); setPristineEvents(data.schedule || []); setId(idToMatch)
         setPast([]); setFuture([])
         setActiveName(`master_${nameOrId}`); setName(`master_${nameOrId}`)
         setSchedAY(data.academicYear || ''); setSchedSem(data.semester || '')
@@ -877,7 +884,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
         const displaySchedule = masterProgramEvents && masterProgramEvents.length > 0
           ? masterProgramEvents
           : cleanSchedule
-        setLocalEvents(displaySchedule); setEvents(displaySchedule); setId(idToMatch)
+        setLocalEvents(displaySchedule); setEvents(displaySchedule); setPristineEvents(displaySchedule); setId(idToMatch)
         setPast([]); setFuture([])
         setActiveName(data.name || nameOrId); setName(data.name || nameOrId)
         setSchedAY(data.academicYear || ''); setSchedSem(data.semester || '')
@@ -888,7 +895,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
         setScheduleMeta({ version: 1, eventCount: displaySchedule.length })
       } else {
         const data = await getSchedules(nameOrId)
-        setLocalEvents(data.events); setEvents(data.events); setId(idToMatch)
+        setLocalEvents(data.events); setEvents(data.events); setPristineEvents(data.events); setId(idToMatch)
         setPast([]); setFuture([])
         setActiveName(nameOrId); setName(nameOrId)
         setSchedAY(data.academicYear || ''); setSchedSem(data.semester || '')
@@ -990,7 +997,8 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
   }
 
   async function handleSave() {
-    if (!activeName || saveState === 'saving') return
+    if (!activeName || isSavingRef.current) return
+    isSavingRef.current = true
     setSaveState('saving')
 
     try {
@@ -1044,7 +1052,19 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
       }
       
       const response = await saveSchedule(finalName, { academicYear: schedAY, semester: schedSem }, allEvents)
-      
+
+      // The save itself succeeded — this is the point where the schedule is
+      // actually safe on the backend, so this is what should clear the
+      // "unsaved changes" flag. Everything after this line is a best-effort
+      // metadata refresh; it must NOT be able to undo the fact that the save
+      // already happened (a previous version threw here and fell into the
+      // catch block below, which never cleared hasUnsavedChanges even
+      // though the POST had already returned 200 OK — the save was real,
+      // the UI just never found out).
+      setSaveState('saved')
+      setHasUnsavedChanges(false); setPristineEvents(allEvents);
+      setTimeout(() => setSaveState('idle'), 2500)
+
       // Update the name if it was auto-renamed (only for new schedules)
       if (finalName !== activeName && !isExistingSchedule) {
         setActiveName(finalName)
@@ -1054,25 +1074,35 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
       }
 
       // Reload the full schedule from backend so metadata + versionHistory
-      // are always the authoritative backend copy — never duplicated client-side
+      // are always the authoritative backend copy — never duplicated client-side.
+      // Wrapped separately: if this step fails (network hiccup, unexpected
+      // response shape, etc.) it should only mean the version/timestamp
+      // badge is stale, not that the save "didn't happen."
       if (response) {
-        const fresh = await getSchedules(finalName)
-        setScheduleMeta({
-          version:        fresh.version        || response.version || 1,
-          createdAt:      fresh.createdAt,
-          lastModified:   fresh.lastModified   || response.savedAt,
-          savedAt:        fresh.savedAt        || response.savedAt,
-          eventCount:     fresh.eventCount     || allEvents.length,
-          versionHistory: fresh.versionHistory || [],
-        })
+        try {
+          const fresh = await getSchedules(finalName)
+          setScheduleMeta({
+            version:        fresh?.version        || response.version || 1,
+            createdAt:      fresh?.createdAt,
+            lastModified:   fresh?.lastModified   || response.savedAt,
+            savedAt:        fresh?.savedAt        || response.savedAt,
+            eventCount:     fresh?.eventCount     || allEvents.length,
+            versionHistory: fresh?.versionHistory || [],
+          })
+        } catch {
+          // Save already succeeded and is reflected above — just note that
+          // the metadata badge (version/last-saved time) may be stale.
+          setCopyToast({ type: 'info', message: 'Saved, but could not refresh version info.' })
+          setTimeout(() => setCopyToast(null), 4000)
+        }
       }
-
-      setSaveState('saved')
-      setHasUnsavedChanges(false); setPristineEvents(allEvents);
-      setTimeout(() => setSaveState('idle'), 2500)
     } catch {
       setSaveState('error')
+      setCopyToast({ type: 'error', message: 'Save failed — please try again.' })
+      setTimeout(() => setCopyToast(null), 4000)
       setTimeout(() => setSaveState('idle'), 2200)
+    } finally {
+      isSavingRef.current = false
     }
   }
 
@@ -1088,23 +1118,21 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
   }
 
   /* ── Finalize / Unfinalize ─────────────────────────────────────────────── */
+  // Finalize always confirms now — even with no conflicting published
+  // schedule for this term, publishing can still silently close out a live
+  // scheduling queue for that same term, which is worth a heads-up either way.
   function handleFinalizeClick() {
-    // Check if there's already a finalized schedule for the same AY+semester
-    const existingFinalized = schedulesMeta.find(s => 
-      s.academicYear === schedAY && 
-      s.semester === schedSem && 
-      s.finalized && 
-      (s.id || s.name) !== activeName
-    )
-    
-    if (existingFinalized) {
-      // Show modal with warning about existing finalized schedule
-      setShowFinalizeModal(true)
-    } else {
-      // No conflict, proceed directly
-      handleFinalize()
-    }
+    setShowFinalizeModal(true)
   }
+
+  // Whether there's already a different, published schedule for this same
+  // AY+semester — drives the "will overwrite that publish" warning line.
+  const existingFinalizedForTerm = schedulesMeta.find(s =>
+    s.academicYear === schedAY &&
+    s.semester === schedSem &&
+    s.finalized &&
+    (s.id || s.name) !== activeName
+  )
 
   async function handleFinalize() {
     if (!activeName) return
@@ -1144,6 +1172,8 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
 
   const [deletingState, setDeletingState] = useState('idle')
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showCopyModal, setShowCopyModal] = useState(false)
+  const [copyingState, setCopyingState] = useState('idle')
 
   async function confirmDeleteAdminSchedule() {
     if (!activeName) return
@@ -1209,6 +1239,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
     const baseName = `${activeName} - Copy`
     const finalName = generateUniqueName(baseName)
     
+    setCopyingState('working')
     try {
       // Save the current on-screen events as a new schedule
       await saveSchedule(finalName, { academicYear: schedAY, semester: schedSem }, allEvents)
@@ -1230,6 +1261,9 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
       console.error('Failed to copy schedule:', err)
       setCopyToast({ type: 'error', message: 'Failed to create copy' })
       setTimeout(() => setCopyToast(null), 3000)
+    } finally {
+      setCopyingState('idle')
+      setShowCopyModal(false)
     }
   }
 
@@ -1655,7 +1689,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                         Finalized
                       </span>
-                      <button onClick={handleUnfinalize} disabled={finalizingState === 'working'}
+                      <button onClick={() => setShowUnfinalizeModal(true)} disabled={finalizingState === 'working'}
                         style={{ padding:'6px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--surface)', color:'var(--ink)', fontSize:11.5, fontWeight:600, cursor: finalizingState === 'working' ? 'default' : 'pointer', fontFamily:'Inter,sans-serif', transition:'all 0.15s' }}>
                         {finalizingState === 'working' ? 'Removing…' : 'Unfinalize'}
                       </button>
@@ -1713,7 +1747,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
             {/* Make a Copy Button — icon only to save space */}
             {activeName && allEvents.length > 0 && (
               <button
-                onClick={handleMakeCopy}
+                onClick={() => setShowCopyModal(true)}
                 className="sv-save-btn"
                 title="Make a copy of this schedule"
                 style={{ minWidth:'auto', padding:'6px 8px' }}
@@ -1795,9 +1829,13 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
           pendingOverrides={dd.pendingOverrides}
           onSave={handleSave}
           onRevertAll={() => {
+              // dd.revertAllOverrides() already restores every event to its
+              // own orig_* fields, so it's the source of truth here. Do NOT
+              // also stomp localEvents/store events with `pristineEvents` —
+              // that only ever gets populated by adoptFreshSchedule/handleSave,
+              // so a schedule loaded the normal way (dropdown/URL) still has
+              // pristineEvents === [] and this used to wipe the whole grid.
               dd.revertAllOverrides()
-              setLocalEvents(pristineEvents)
-              setEvents(pristineEvents)
               setPast([])
               setFuture([])
               setHasUnsavedChanges(false)
@@ -1811,9 +1849,9 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
             onClose={() => setShowPendingModal(false)}
             onSave={handleSave}
             onRevertAll={() => {
+              // Same fix as the bar above: rely on dd.revertAllOverrides()
+              // alone, don't overwrite with the (often-stale/empty) pristineEvents.
               dd.revertAllOverrides()
-              setLocalEvents(pristineEvents)
-              setEvents(pristineEvents)
               setPast([])
               setFuture([])
               setHasUnsavedChanges(false)
@@ -2539,6 +2577,38 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
 
       )}
 
+      {/* ── Make a Copy confirmation modal ──────────────────────────────────── */}
+      {showCopyModal && (
+        <ModalOverlay onClose={() => copyingState !== 'working' && setShowCopyModal(false)}>
+          <div style={{ background: 'var(--surface)', borderRadius:16, width:420, padding:'28px 30px', boxShadow:'0 24px 60px rgba(0,0,0,0.25)', border:`1px solid ${TV.border}`, fontFamily:'Inter,sans-serif' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ display:'flex', alignItems:'flex-start', gap:14, marginBottom:20 }}>
+              <div style={{ width:40, height:40, borderRadius:11, background:'var(--meadow-soft)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </div>
+              <div>
+                <h3 style={{ margin:0, fontSize:15, fontWeight:700, color: 'var(--ink)' }}>Make a Copy</h3>
+                <div style={{ margin:'5px 0 0', fontSize:12.5, color: 'var(--muted2)', lineHeight:1.5 }}>
+                  <p style={{ margin: 0 }}>
+                    This will save the schedule currently on screen as a new, separate draft named <strong>{activeName} - Copy</strong>. You'll be switched to editing that copy.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+              <button onClick={() => setShowCopyModal(false)} disabled={copyingState === 'working'}
+                style={{ padding:'8px 18px', borderRadius:9, border:`1.5px solid ${TV.border}`, background: 'var(--surface)', color: 'var(--muted)', fontSize:12.5, fontWeight:600, cursor: copyingState === 'working' ? 'default' : 'pointer', fontFamily:'Inter,sans-serif' }}>
+                Cancel
+              </button>
+              <button onClick={handleMakeCopy} disabled={copyingState === 'working'}
+                style={{ padding:'8px 22px', borderRadius:9, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize:12.5, fontWeight:700, cursor: copyingState === 'working' ? 'default' : 'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 3px 12px rgba(0,0,0,0.25)', opacity: copyingState === 'working' ? 0.7 : 1 }}>
+                {copyingState === 'working' ? 'Copying…' : 'Yes, Make Copy'}
+              </button>
+            </div>
+          </div>
+        </ModalOverlay>
+      )}
+
       {/* ── Finalize confirmation modal ───────────────────────────────────── */}
       {showFinalizeModal && (
         <ModalOverlay onClose={() => setShowFinalizeModal(false)}>
@@ -2554,8 +2624,13 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
                   <p style={{ margin: '0 0 10px' }}>
                     This will publish <strong>{activeName}</strong>{schedAY || schedSem ? ` (${[schedAY ? `A.Y. ${schedAY}` : '', schedSem].filter(Boolean).join(', ')})` : ''} to faculty.
                   </p>
+                  {existingFinalizedForTerm && (
+                    <p style={{ margin: '0 0 10px', padding: '10px 14px', background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: 8, fontSize: 12.5, fontWeight: 500, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                      Note: You already published a Master Schedule for this term — it will automatically be moved back to Draft (not deleted or overwritten — just unpublished). There can only be one active published schedule per term.
+                    </p>
+                  )}
                   <p style={{ margin: 0, padding: '10px 14px', background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: 8, fontSize: 12.5, fontWeight: 500, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                    Warning: If you already published a Master Schedule for this term, it will be automatically overwritten and unpublished. There can only be one active published schedule per term.
+                    If there's a scheduling queue currently open for this term, it will be automatically marked as finished — coordinators won't be able to submit further schedules into it after this is published.
                   </p>
                 </div>
               </div>
@@ -2568,6 +2643,41 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
               <button onClick={handleFinalize} disabled={finalizingState === 'working'}
                 style={{ padding:'8px 22px', borderRadius:9, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 3px 12px rgba(0,0,0,0.25)', opacity: finalizingState === 'working' ? 0.7 : 1 }}>
                 {finalizingState === 'working' ? 'Finalizing…' : 'Yes, Finalize'}
+              </button>
+            </div>
+          </div>
+        </ModalOverlay>
+      )}
+
+      {/* ── Unfinalize confirmation modal ─────────────────────────────────── */}
+      {showUnfinalizeModal && (
+        <ModalOverlay onClose={() => finalizingState !== 'working' && setShowUnfinalizeModal(false)}>
+          <div style={{ background: 'var(--surface)', borderRadius:16, width:420, padding:'28px 30px', boxShadow:'0 24px 60px rgba(0,0,0,0.25)', border:`1px solid ${TV.border}`, fontFamily:'Inter,sans-serif' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ display:'flex', alignItems:'flex-start', gap:14, marginBottom:20 }}>
+              <div style={{ width:40, height:40, borderRadius:11, background:'#F3F4F6', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </div>
+              <div>
+                <h3 style={{ margin:0, fontSize:15, fontWeight:700, color: 'var(--ink)' }}>Unfinalize Schedule?</h3>
+                <div style={{ margin:'5px 0 0', fontSize:12.5, color: 'var(--muted2)', lineHeight:1.5 }}>
+                  <p style={{ margin: '0 0 10px' }}>
+                    This will unpublish <strong>{activeName}</strong> and move it back to Draft.
+                  </p>
+                  <p style={{ margin: 0, padding: '10px 14px', background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: 8, fontSize: 12.5, fontWeight: 500, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                    If this was published from a Master Schedule queue, it will also be unpublished in the Master Schedule tab and that queue will reopen for coordinators to resubmit.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+              <button onClick={() => setShowUnfinalizeModal(false)} disabled={finalizingState === 'working'}
+                style={{ padding:'8px 18px', borderRadius:9, border:`1.5px solid ${TV.border}`, background: 'var(--surface)', color: 'var(--muted)', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
+                Cancel
+              </button>
+              <button onClick={async () => { await handleUnfinalize(); setShowUnfinalizeModal(false) }} disabled={finalizingState === 'working'}
+                style={{ padding:'8px 22px', borderRadius:9, border:'none', background:'#6B7280', color: '#fff', fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 3px 12px rgba(0,0,0,0.25)', opacity: finalizingState === 'working' ? 0.7 : 1 }}>
+                {finalizingState === 'working' ? 'Removing…' : 'Yes, Unfinalize'}
               </button>
             </div>
           </div>
