@@ -24,6 +24,12 @@ export function useTour(tourId, steps, isReady = true, { isPrimary = true } = {}
     activeTourId = tourId
     setStepIndex(0)
     setRun(true)
+    // Separate from the 'start-tour' *trigger* event (fired by the header
+    // "?" button to request a tour start) — this fires whenever a tour
+    // actually begins running, auto-start included, so layouts (sidebar
+    // auto-collapse, etc.) can react to every tour, not just manually
+    // triggered ones.
+    window.dispatchEvent(new Event('tour-started'))
     return true
   }, [tourId])
 

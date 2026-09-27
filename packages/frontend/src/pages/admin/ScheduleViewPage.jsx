@@ -14,6 +14,8 @@ import { exportAvailableRoomsToExcel } from '../../utils/exportAvailableRoomsToE
 import { exportScheduleToPDF } from '../../utils/exportScheduleToPDF'
 import { computeRoomAvailability } from '../../utils/roomAvailability'
 import scheduleImage from '../../assets/SCHEDULE.png'
+import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard' // adjust path to match your project structure
+import UnsavedChangesModal from '../../components/UnsavedChangesModal' // adjust path to match your project structure
 
 
 /* ── Page-scoped styles ────────────────────────────────────────────────────── */
@@ -786,6 +788,10 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
   const [showFinalizeModal, setShowFinalizeModal] = useState(false)
   const [metaDirty,         setMetaDirty]     = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  // Holds a discard-and-continue callback (e.g. "load another schedule",
+  // "close this overlay") while there are unsaved changes, so the styled
+  // modal can run it if the user confirms instead of using window.confirm().
+  const [confirmDiscard,    setConfirmDiscard] = useState(null)
   const [copyToast,         setCopyToast]   = useState(null)
   const [showVersionHistory, setShowVersionHistory] = useState(false)
 
@@ -829,7 +835,8 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
   /* ── Load schedule ──────────────────────────────────────────────────────── */
   async function loadSchedule(nameOrId, { force = false } = {}) {
     if (!force && (hasUnsavedChanges || dd.pendingOverrides.size > 0)) {
-      if (!window.confirm('You have unsaved changes. Are you sure you want to discard them?')) return;
+      setConfirmDiscard(() => () => loadSchedule(nameOrId, { force: true }))
+      return
     }
     if (!nameOrId || (!force && nameOrId === activeName)) return
     setLoading(true); setError(null); setSaveState('idle')
@@ -1392,49 +1399,10 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
   /* ── Drag & drop — now with pending overrides + conflict ids ──────────── */
   const dd = useDragDrop(allEvents, activeDay, syncLocalEvents, setEvents, storeEvents, schedFinalized, overrideFn)
 
-  // New: Prevent accidental exit (reload, back button, and links)
-  useEffect(() => {
-    if (!hasUnsavedChanges && (!dd || dd.pendingOverrides.size === 0)) return
-
-    // 1. Tab close / reload
-    const handleBeforeUnload = (e) => {
-      e.preventDefault()
-      e.returnValue = 'You have unsaved changes. Are you sure you want to leave?'
-    }
-    window.addEventListener('beforeunload', handleBeforeUnload)
-
-    // 2. Browser back button (popstate trap)
-    // Push a dummy state so the back button doesn't instantly leave
-    window.history.pushState('sv-trap', null, window.location.href)
-    const handlePopState = (e) => {
-      if (!window.confirm('You have unsaved changes. Are you sure you want to discard them?')) {
-        // User canceled: restore the trap
-        window.history.pushState('sv-trap', null, window.location.href)
-      } else {
-        // User accepted: actually go back (this triggers popstate again, but we remove the listener on unmount)
-        window.history.back()
-      }
-    }
-    window.addEventListener('popstate', handlePopState)
-
-    // 3. In-app navigation links (Sidebar, etc.)
-    const handleLinkClick = (e) => {
-      const target = e.target.closest('a')
-      if (target && target.href && !target.hasAttribute('download') && target.origin === window.location.origin && target.pathname !== window.location.pathname) {
-        if (!window.confirm('You have unsaved changes. Are you sure you want to discard them?')) {
-          e.preventDefault()
-          e.stopPropagation()
-        }
-      }
-    }
-    document.addEventListener('click', handleLinkClick, { capture: true })
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload)
-      window.removeEventListener('popstate', handlePopState)
-      document.removeEventListener('click', handleLinkClick, { capture: true })
-    }
-  }, [hasUnsavedChanges, dd])
+  // Prevent accidental exit (reload, back button, and links) — shared
+  // across pages instead of a hand-rolled copy of the same logic.
+  const { pendingLeaveAction, confirmLeave, cancelLeave, guardedNavigate } =
+    useUnsavedChangesGuard(hasUnsavedChanges || (dd && dd.pendingOverrides.size > 0), 'scheduleView')
 
   const allDayRooms = useMemo(() => {
     const occupied = new Set(dayEvents.map(e => e.room).filter(Boolean))
@@ -1648,12 +1616,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
               <div>
                   <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                     {!embeddedId && !onClose && !isMasterView && (
-                      <button onClick={() => {
-                        if (hasUnsavedChanges || (dd && dd.pendingOverrides.size > 0)) {
-                          if (!window.confirm('You have unsaved changes. Are you sure you want to discard them?')) return;
-                        }
-                        navigate('/dashboard/schedule')
-                      }} style={{ background: 'transparent', border: `1px solid ${TV.border}`, borderRadius: 6, padding: '4px 10px 4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: TV.muted, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', fontSize: 12, fontWeight: 500, gap: 4, marginRight: 4 }} title="Back to Schedules">
+                      <button onClick={() => guardedNavigate('/dashboard/schedule')} style={{ background: 'transparent', border: `1px solid ${TV.border}`, borderRadius: 6, padding: '4px 10px 4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: TV.muted, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', fontSize: 12, fontWeight: 500, gap: 4, marginRight: 4 }} title="Back to Schedules">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
                         Back
                       </button>
@@ -1807,9 +1770,10 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
             {onClose && (
               <button onClick={() => {
                 if (hasUnsavedChanges || dd.pendingOverrides.size > 0) {
-                  if (!window.confirm('You have unsaved changes. Are you sure you want to discard them?')) return;
+                  setConfirmDiscard(() => onClose)
+                } else {
+                  onClose()
                 }
-                onClose();
               }} className="sv-icon-btn" title="Close">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                   <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -2194,12 +2158,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
               {!embeddedId && !onClose && !isMasterView && (
                 <>
-                  <button onClick={() => {
-                    if (hasUnsavedChanges || (dd && dd.pendingOverrides.size > 0)) {
-                      if (!window.confirm('You have unsaved changes. Are you sure you want to discard them?')) return;
-                    }
-                    navigate('/dashboard/schedule')
-                  }} style={{ background: 'transparent', border: `1px solid ${TV.border}`, borderRadius: 6, padding: '4px 10px 4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: TV.muted, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', fontSize: 12, fontWeight: 500, gap: 4 }} title="Back to Schedules">
+                  <button onClick={() => guardedNavigate('/dashboard/schedule')} style={{ background: 'transparent', border: `1px solid ${TV.border}`, borderRadius: 6, padding: '4px 10px 4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: TV.muted, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', fontSize: 12, fontWeight: 500, gap: 4 }} title="Back to Schedules">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
                     Back
                   </button>
@@ -2683,6 +2642,21 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
             })
             setTimeout(() => setCopyToast(null), 5000)
           }}
+        />
+      )}
+
+      {/* ── Unsaved changes — confirm before leaving the page ─────────────── */}
+      {pendingLeaveAction && (
+        <UnsavedChangesModal subject={activeName} onConfirm={confirmLeave} onCancel={cancelLeave} />
+      )}
+
+      {/* ── Unsaved changes — confirm before discarding via an in-page action
+          (load another schedule, close this overlay) ─────────────────────── */}
+      {confirmDiscard && (
+        <UnsavedChangesModal
+          subject={activeName}
+          onConfirm={() => { const fn = confirmDiscard; setConfirmDiscard(null); fn() }}
+          onCancel={() => setConfirmDiscard(null)}
         />
       )}
 

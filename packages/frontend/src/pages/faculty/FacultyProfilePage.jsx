@@ -1,9 +1,11 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { getFaculty, updateFaculty, updatePreferences, getCourses, updateCredentials } from '../../services/api'
 import SpecializationModal from '../../components/FacultyDetail/SpecializationModal'
 import { PANEL_COLOR_PRESETS } from '../../components/FacultyDetail/fdShared'
 import { useTour } from '../../hooks/useTour'
+import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
+import UnsavedChangesModal from '../../components/UnsavedChangesModal'
 
 // ─── Theme — matches FacultyCards/FacultyDetailPage exactly ──────────────────
 const T = {
@@ -265,6 +267,12 @@ export default function FacultyProfilePage() {
   const isInfoChanged  = useMemo(() => originalForm && JSON.stringify(form) !== JSON.stringify(originalForm), [form, originalForm])
   const isPrefsChanged = useMemo(() => originalPrefs && (JSON.stringify([...prefDays].sort()) !== JSON.stringify([...originalPrefs.days].sort()) || prefStart !== originalPrefs.start || prefEnd !== originalPrefs.end), [prefDays, prefStart, prefEnd, originalPrefs])
   const isColorChanged = useMemo(() => panelColor !== originalPanelColor, [panelColor, originalPanelColor])
+
+  // Panel color auto-saves on change, so it's excluded here — only fields
+  // that need an explicit Save click count as "unsaved".
+  const hasUnsavedChanges = Boolean(isInfoChanged) || Boolean(isPrefsChanged) || Boolean(credPassword) || Boolean(credConfirm)
+
+  const { pendingLeaveAction, confirmLeave, cancelLeave } = useUnsavedChangesGuard(hasUnsavedChanges, 'facultyProfileUnsavedGuard')
 
   // Tour setup
   const tourSteps = useMemo(() => {
@@ -815,6 +823,10 @@ export default function FacultyProfilePage() {
       {showSpecModal && (
         <SpecializationModal specializations={specs} onSave={handleSaveSpecs} onClose={() => setShowSpecModal(false)} isSaving={specSaving} />
       )}
+
+      {pendingLeaveAction && (
+        <UnsavedChangesModal subject="your profile" onConfirm={confirmLeave} onCancel={cancelLeave} />
+      )}
     </div>
   )
-}
+}

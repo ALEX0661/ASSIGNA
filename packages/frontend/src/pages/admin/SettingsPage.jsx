@@ -1,7 +1,9 @@
-import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 
 const isDark = document.documentElement.getAttribute('data-mode') === 'dark';
 import { getDays, saveDays, getTime, saveTime } from '../../services/api'
+import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
+import UnsavedChangesModal from '../../components/UnsavedChangesModal'
 
 import iconDays from '../../assets/DAYS.png'
 import iconTime from '../../assets/TIME.png'
@@ -281,6 +283,11 @@ export default function SettingsPage() {
   /* Compute Dirty States Independently */
   const daysChanged = useMemo(() => days.join(',') !== originalDays.join(','), [days, originalDays])
   const timeChanged = useMemo(() => startHour !== originalStart || endHour !== originalEnd, [startHour, originalStart, endHour, originalEnd])
+
+  const hasUnsavedChanges = daysChanged || timeChanged
+
+  const { pendingLeaveAction, confirmLeave, cancelLeave } = useUnsavedChangesGuard(hasUnsavedChanges, 'settingsUnsavedGuard')
+
 
   /* Handlers for Days */
   function discardDays() {
@@ -565,6 +572,10 @@ export default function SettingsPage() {
 
       {/* Floating Toast Notifications */}
       <ToastContainer toasts={toasts} />
+
+      {pendingLeaveAction && (
+        <UnsavedChangesModal subject="your settings" onConfirm={confirmLeave} onCancel={cancelLeave} />
+      )}
     </div>
   )
-}
+}

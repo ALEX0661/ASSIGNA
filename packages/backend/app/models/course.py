@@ -9,6 +9,7 @@ class Course(BaseModel):
     unitsLecture: int = 0
     unitsLab: int = 0
     blocks: int = 1
+    semester: str = "1st Semester"
     preferredRoom: Optional[str] = None   # e.g. "Room 407" — pins course to a specific room
 
 class CourseUpdate(BaseModel):
@@ -19,4 +20,5 @@ class CourseUpdate(BaseModel):
     unitsLecture: Optional[int] = None
     unitsLab: Optional[int] = None
     blocks: Optional[int] = None
+    semester: Optional[str] = None
     preferredRoom: Optional[str] = None   # "" or None = no preference; "Room 407" = pinned

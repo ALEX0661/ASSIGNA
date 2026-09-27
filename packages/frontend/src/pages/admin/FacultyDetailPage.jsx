@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { addFaculty, updateFaculty, deleteFaculty, archiveFaculty, unarchiveFaculty, updateCredentials } from '../../services/api'
 
@@ -12,6 +12,8 @@ import { ProfileCard, UnitLoadCard, BasicInfoCard, SchedulePrefsCard, Credential
 import SpecializationModal from '../../components/FacultyDetail/SpecializationModal'
 import ScheduleSection     from '../../components/FacultyDetail/ScheduleSection'
 import { useTour } from '../../hooks/useTour.jsx'
+import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
+import UnsavedChangesModal from '../../components/UnsavedChangesModal'
 
 const TOUR_SEEN_KEY = 'adminFacultyDetail_tourSeen'
 function isOnboardingCompleted() {
@@ -137,8 +139,17 @@ export default function FacultyDetailPage() {
     form.preferredTimeEnd   !== savedPrefs.preferredTimeEnd   ||
     JSON.stringify([...(form.preferredDays || [])].sort()) !== JSON.stringify([...(savedPrefs.preferredDays || [])].sort())
   )
+  const hasUnsavedChanges = infoChanged || prefsChanged || Boolean(credPassword) || Boolean(credConfirm)
 
   const { fg: avFg, bg: avBg, initials: avInitials } = getAvatarParts(form.name || (isNew ? 'New' : '?'), form.firstName, form.lastName)
+
+  const { pendingLeaveAction, confirmLeave, cancelLeave, guardedNavigate } = useUnsavedChangesGuard(hasUnsavedChanges, 'facultyDetailUnsavedGuard')
+
+  // Same confirmation for the in-page "Faculty" breadcrumb link, since it
+  // leaves the page just as much as the browser back button does.
+  function handleBackToList() {
+    guardedNavigate('/dashboard/faculty')
+  }
 
   // ── Handlers ──────────────────────────────────────────────────────────────────
   async function handleSaveInfo() {
@@ -245,7 +256,7 @@ export default function FacultyDetailPage() {
       {/* Breadcrumb + actions */}
       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:20, flexWrap:'wrap' }}>
         <div style={{ display:'flex', alignItems:'center', gap:8, flex:1 }}>
-          <button onClick={() => navigate('/dashboard/faculty')} style={{ background:'none', border:'none', color: 'var(--muted)', cursor:'pointer', display:'flex', alignItems:'center', gap:5, fontSize:12.5, fontFamily:"'Inter',sans-serif", padding:0 }}>
+          <button onClick={handleBackToList} style={{ background:'none', border:'none', color: 'var(--muted)', cursor:'pointer', display:'flex', alignItems:'center', gap:5, fontSize:12.5, fontFamily:"'Inter',sans-serif", padding:0 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>Faculty
           </button>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--border)" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
@@ -451,6 +462,10 @@ export default function FacultyDetailPage() {
       )}
 
       <ToastContainer toasts={toasts} />
+
+      {pendingLeaveAction && (
+        <UnsavedChangesModal subject="this faculty member's profile" onConfirm={confirmLeave} onCancel={cancelLeave} />
+      )}
     </div>
   )
-}
+}

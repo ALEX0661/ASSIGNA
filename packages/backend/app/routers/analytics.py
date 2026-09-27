@@ -1224,7 +1224,7 @@ def pre_diagnostic(semester: str = None, user=Depends(admin_only)):
             "label":  "GEC / MAT slot pool",
             "status": "fail" if gec_pct > 90 or gec_available < gec_sessions_needed else "warn" if gec_pct > 70 else "pass",
             "detail": (
-                f"GEC/MAT restricted to Mon–Thu, {len(gec_offsets)} valid time pattern(s) inside your {start_time}:00–{end_time}:00 window × {len(lec_rooms)} lecture room(s) "
+                f"GEC/MAT restricted to Mon–Thu, {len(gec_offsets)} valid time pattern(s) inside your {start_t}:00–{end_t}:00 window × {len(lec_rooms)} lecture room(s) "
                 f"across {gec_days} active Mon-Thu day(s) = {gec_available} effective positions. "
                 f"{gec_raw_blocks} block(s) → {gec_sessions_needed} merged slot(s) needed "
                 f"({gec_pct}% of pool). Note: the solver also enforces Mon↔Tue / Wed↔Thu "

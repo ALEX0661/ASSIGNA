@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { getCourses } from '../../services/api'
 import { dedupeSpecs } from './fdShared'
 import { useTour } from '../../hooks/useTour.jsx'
+import UnsavedChangesModal from '../UnsavedChangesModal' // adjust path to match your project structure
 
 const isDark = document.documentElement.getAttribute('data-mode') === 'dark';
 
@@ -62,6 +63,7 @@ function RatingPips({ value, onChange, size = 'md' }) {
             key={l.rating}
             type="button"
             title={l.label}
+            className="spec-pip"
             onClick={() => onChange(l.rating)}
             onMouseEnter={() => setHovered(l.rating)}
             onMouseLeave={() => setHovered(null)}
@@ -114,7 +116,7 @@ function SearchBox({ value, onChange, placeholder }) {
 
 function NavBtn({ active, onClick, icon, label, badge }) {
   return (
-    <button type="button" onClick={onClick}
+    <button type="button" onClick={onClick} className="spec-navbtn"
       style={{
         width: '100%', display: 'flex', alignItems: 'center', gap: 9,
         padding: '8px 11px', borderRadius: 8, border: 'none',
@@ -441,6 +443,21 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
   useEffect(() => {
     if (editedOnly && editedCount === 0 && newCount === 0) setEditedOnly(false)
   }, [editedOnly, editedCount, newCount])
+
+  // Warn on tab close / reload while there are unsaved changes.
+  useEffect(() => {
+    if (!hasUnsavedChanges) return
+    const handler = e => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [hasUnsavedChanges])
+
+  // Confirm before closing the modal if there's anything unsaved.
+  const [confirmClose, setConfirmClose] = useState(false)
+  function handleClose() {
+    if (hasUnsavedChanges) { setConfirmClose(true); return }
+    onClose()
+  }
   const removedCount = useMemo(() => {
     const currentCodes = new Set(specs.map(s => (s.courseCode || '').toLowerCase().trim()))
     return savedBaseline.filter(s => !currentCodes.has((s.courseCode || '').toLowerCase().trim())).length
@@ -511,7 +528,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <div style={{
+    <div className="spec-overlay" style={{
       position: 'fixed', inset: 0, zIndex: 1000,
       background: 'rgba(10,8,28,0.55)', backdropFilter: 'blur(6px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -532,63 +549,133 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
         }
         .spec-save-glow { animation: pulseGlow 1.6s ease-in-out infinite; }
         @keyframes dotPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+        /* ── Responsive: tablet ─────────────────────────────────────────── */
+        @media (max-width: 860px) {
+          .spec-sidebar { width: 168px !important; }
+        }
+
+        /* ── Responsive: mobile ─────────────────────────────────────────── */
+        @media (max-width: 680px) {
+          .spec-overlay { padding: 0 !important; }
+          .spec-modal { width: 100% !important; height: 100% !important; max-height: 100dvh !important; border-radius: 0 !important; }
+
+          .spec-header { padding: 12px 14px !important; flex-wrap: wrap !important; row-gap: 10px !important; }
+          .spec-header-actions { order: 2 !important; }
+          .spec-header-badges { order: 3 !important; flex: 1 1 100% !important; }
+          .spec-header-subtitle { display: none !important; }
+
+          .spec-body { flex-direction: column !important; }
+          .spec-sidebar { width: 100% !important; flex-direction: row !important; align-items: stretch !important;
+            overflow-x: visible !important; border-right: none !important; border-bottom: 1px solid var(--border) !important;
+            padding: 8px 10px !important; gap: 6px !important; }
+          .spec-sidebar-label, .spec-sidebar-breakdown { display: none !important; }
+          .spec-sidebar-nav { display: flex !important; gap: 6px !important; flex: 1 !important; }
+          .spec-navbtn { flex: 1 1 0 !important; width: auto !important; justify-content: center !important;
+            text-align: center !important; white-space: normal !important; line-height: 1.15 !important;
+            padding: 9px 4px !important; min-height: 40px !important; }
+          .spec-navbtn > span:nth-child(2) { flex: 0 1 auto !important; }
+
+          .spec-search-wrap { width: 100% !important; flex: 1 1 100% !important; }
+          .spec-toolbar-row select { flex: 1 1 auto !important; min-width: 0 !important; padding: 9px 8px !important; font-size: 13px !important; }
+          .spec-toolbar-row { width: 100% !important; }
+          .spec-toolbar-divider { display: none !important; }
+          .spec-toolbar-sort { width: 100% !important; justify-content: space-between !important; }
+
+          .spec-assigned-row { flex-wrap: wrap !important; }
+          .spec-row-main { flex: 1 1 100% !important; }
+          .spec-row-actions { flex: 1 1 100% !important; justify-content: space-between !important; margin-top: 10px !important; padding-left: 15px !important; flex-wrap: wrap !important; row-gap: 10px !important; }
+          .spec-remove-btn { width: auto !important; padding: 0 14px !important; gap: 6px !important; }
+          .spec-remove-label { display: inline !important; font-size: 11.5px !important; font-weight: 700 !important; }
+          .spec-row-actions-label { display: inline !important; }
+
+          /* Let the course title take its own full line and wrap normally
+             instead of being squeezed by the level/edited badges and cut
+             off with an ellipsis — badges flow to the line below it. */
+          .spec-info-header { flex-wrap: wrap !important; row-gap: 4px !important; }
+          .spec-info-title { flex: 1 1 100% !important; white-space: normal !important; overflow: visible !important; text-overflow: clip !important; line-height: 1.3 !important; }
+
+          .spec-browse-row { flex-wrap: wrap !important; }
+          .spec-browse-info { flex: 1 1 100% !important; }
+          .spec-browse-actions { flex: 1 1 100% !important; justify-content: flex-start !important; margin-top: 10px !important; }
+
+          .spec-pip { width: 34px !important; height: 34px !important; font-size: 12px !important; }
+
+          .spec-footer { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; padding: 12px 16px !important; }
+          .spec-footer-info { text-align: left !important; }
+          .spec-footer-actions { width: 100% !important; }
+          .spec-footer-actions button { flex: 1 1 0 !important; padding: 12px 14px !important; }
+        }
       `}</style>
 
-      <div style={{
-        background: 'var(--surface)', borderRadius: 18, width: '100%', maxWidth: 960,
+      <div className="spec-modal" style={{
+        background: 'var(--surface)', borderRadius: 18, width: '100%', maxWidth: 1180,
         boxShadow: '0 28px 80px rgba(10,8,28,0.2), 0 0 0 1px rgba(0,0,0,0.05)',
         overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '90vh',
       }}>
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
-        <div style={{
+        <div className="spec-header" style={{
           padding: '16px 22px', borderBottom: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0,
           background: 'linear-gradient(to right, var(--hover), var(--hover))',
         }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: 10,
-            background: 'linear-gradient(135deg, var(--meadow) 0%, var(--meadow-deep) 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          }}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-              <line x1="8" y1="7" x2="16" y2="7" /><line x1="8" y1="11" x2="12" y2="11" />
-            </svg>
+          <div className="spec-header-title-group" style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1, order: 1 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 10,
+              background: 'linear-gradient(135deg, var(--meadow) 0%, var(--meadow-deep) 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                <line x1="8" y1="7" x2="16" y2="7" /><line x1="8" y1="11" x2="12" y2="11" />
+              </svg>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.2px' }}>Manage Specializations</div>
+              <div className="spec-header-subtitle" style={{ fontSize: 12, color: 'var(--muted)', marginTop: 1 }}>Assign courses and set proficiency levels</div>
+            </div>
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.2px' }}>Manage Specializations</div>
-            <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 1 }}>Assign courses and set proficiency levels</div>
+
+          {/* Tour + close — always stay pinned on the title's row, never wrap onto their own line */}
+          <div className="spec-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, order: 3 }}>
+            <button type="button" onClick={() => startTour()} title="Take the tour"
+              style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, flexShrink: 0, color: 'var(--muted)', fontSize: 13, fontWeight: 700, fontFamily: "'Inter', sans-serif" }}>
+              ?
+            </button>
+            <button onClick={handleClose}
+              style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            </button>
           </div>
-          {specCount > 0 && (
-            <div style={{ padding: '3px 11px', borderRadius: 99, background: 'var(--meadow-soft)', border: '1px solid var(--meadow-border)' }}>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--meadow-text-hover)' }}>{specCount} assigned</span>
+
+          {/* Status badges — wrap onto their own full-width row on mobile, below the title/action row */}
+          {(specCount > 0 || hasUnsavedChanges) && (
+            <div className="spec-header-badges" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', order: 2 }}>
+              {specCount > 0 && (
+                <div style={{ padding: '3px 11px', borderRadius: 99, background: 'var(--meadow-soft)', border: '1px solid var(--meadow-border)' }}>
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--meadow-text-hover)' }}>{specCount} assigned</span>
+                </div>
+              )}
+              {hasUnsavedChanges && (
+                <div title="You have changes that haven't been saved yet" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 11px', borderRadius: 99, background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.35)' }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#F59E0B', animation: 'dotPulse 1.4s ease-in-out infinite' }} />
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: '#B45309' }}>Unsaved changes</span>
+                </div>
+              )}
             </div>
           )}
-          {hasUnsavedChanges && (
-            <div title="You have changes that haven't been saved yet" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 11px', borderRadius: 99, background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.35)' }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#F59E0B', animation: 'dotPulse 1.4s ease-in-out infinite' }} />
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: '#B45309' }}>Unsaved changes</span>
-            </div>
-          )}
-          <button type="button" onClick={() => startTour()} title="Take the tour"
-            style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, flexShrink: 0, color: 'var(--muted)', fontSize: 13, fontWeight: 700, fontFamily: "'Inter', sans-serif" }}>
-            ?
-          </button>
-          <button onClick={onClose}
-            style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-          </button>
         </div>
 
+
         {/* ── Body ───────────────────────────────────────────────────────── */}
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        <div className="spec-body" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
           {/* Sidebar */}
-          <div style={{ width: 208, flexShrink: 0, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', padding: '12px 10px', gap: 2, background: 'var(--bg)' }}>
-            <div style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--muted2)', textTransform: 'uppercase', letterSpacing: '0.8px', padding: '4px 11px 8px' }}>Navigation</div>
+          <div className="spec-sidebar" style={{ width: 208, flexShrink: 0, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', padding: '12px 10px', gap: 2, background: 'var(--bg)' }}>
+            <div className="spec-sidebar-label" style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--muted2)', textTransform: 'uppercase', letterSpacing: '0.8px', padding: '4px 11px 8px' }}>Navigation</div>
 
-            <div id="tour-spec-nav">
+            <div id="tour-spec-nav" className="spec-sidebar-nav">
               <NavBtn active={tab === 'current'} onClick={() => setTab('current')}
                 icon={<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></>}
                 label="Assigned" badge={specCount} />
@@ -603,7 +690,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
             </div>
 
             {specCount > 0 && (
-              <div id="tour-spec-breakdown" style={{ marginTop: 'auto', paddingTop: 14 }}>
+              <div id="tour-spec-breakdown" className="spec-sidebar-breakdown" style={{ marginTop: 'auto', paddingTop: 14 }}>
                 <div style={{ height: 1, background: 'var(--border)', marginBottom: 12 }} />
                 <div style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--muted2)', textTransform: 'uppercase', letterSpacing: '0.8px', padding: '0 11px', marginBottom: 8 }}>Breakdown</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3, padding: '0 2px' }}>
@@ -629,8 +716,8 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                   {/* Everything — search, program, level, sort — in one wrapping row. Each
                       control is sized to its content (no flex:1 search box hogging space) so
                       they pack tightly instead of forcing filters onto their own line. */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', rowGap: 8 }}>
-                    <div style={{ width: 180, flexShrink: 0 }}>
+                  <div className="spec-toolbar-row" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', rowGap: 8 }}>
+                    <div className="spec-search-wrap" style={{ width: 180, flexShrink: 0 }}>
                       <SearchBox value={currentQ} onChange={setCurrentQ} placeholder="Filter by code or title…" />
                     </div>
 
@@ -649,9 +736,9 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                       {LEVELS.map(l => <option key={l.rating} value={l.rating}>{l.label}</option>)}
                     </select>
 
-                    <span style={{ width: 1, alignSelf: 'stretch', minHeight: 20, background: 'var(--border)', margin: '0 2px', flexShrink: 0 }} />
+                    <span className="spec-toolbar-divider" style={{ width: 1, alignSelf: 'stretch', minHeight: 20, background: 'var(--border)', margin: '0 2px', flexShrink: 0 }} />
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+                    <div className="spec-toolbar-sort" style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
                       <span style={{ fontSize: 11, color: 'var(--muted2)', fontWeight: 600, marginRight: 4 }}>Sort</span>
                       {[{ key: 'rating-desc', label: 'Best' }, { key: 'code-asc', label: 'A–Z' }, { key: 'rating-asc', label: 'Lowest' }].map(o => (
                         <button key={o.key} type="button" disabled={ratingsDirty} onClick={() => setSortBy(o.key)}
@@ -727,7 +814,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                         const isEditedRow  = !!baselineSpec && (baselineSpec.rating || 3) !== rating
                         const changed      = isNewRow || isEditedRow
                         return (
-                          <div key={spec.courseCode || `spec-${origIdx}`} style={{
+                          <div key={spec.courseCode || `spec-${origIdx}`} className="spec-assigned-row" style={{
                             display: 'flex', alignItems: 'center', gap: 12,
                             padding: '11px 14px', borderRadius: 11,
                             border: changed ? '1.5px solid rgba(245, 158, 11, 0.45)' : '1.5px solid var(--border)',
@@ -735,42 +822,50 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                             animation: 'fadeUp 0.15s ease',
                             position: 'relative',
                           }}>
-                            {/* Color accent strip */}
-                            <div style={{ width: 3, borderRadius: 99, background: changed ? '#F59E0B' : lvl.dot, alignSelf: 'stretch', flexShrink: 0, minHeight: 32 }} />
-                            {/* Info */}
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 2 }}>
-                                {title ? (
-                                  <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)', letterSpacing: '0.2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{title}</span>
-                                ) : (
-                                  <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)', letterSpacing: '0.2px' }}>{spec.courseCode}</span>
-                                )}
-                                <LevelBadge rating={rating} />
-                                {isNewRow && (
-                                  <span title="Not yet saved" style={{ fontSize: 9.5, fontWeight: 700, color: '#B45309', background: 'rgba(245, 158, 11, 0.12)', padding: '1px 7px', borderRadius: 99, border: '1px solid rgba(245, 158, 11, 0.35)', flexShrink: 0, whiteSpace: 'nowrap' }}>New</span>
-                                )}
-                                {isEditedRow && (
-                                  <span title="Not yet saved" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9.5, fontWeight: 700, color: '#B45309', background: 'rgba(245, 158, 11, 0.12)', padding: '1px 7px', borderRadius: 99, border: '1px solid rgba(245, 158, 11, 0.35)', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                                    Edited
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontWeight: 500, opacity: 0.85 }}>
-                                      <span style={{ textDecoration: 'line-through', textDecorationColor: 'rgba(180, 83, 9, 0.55)' }}>{getLvl(baselineSpec.rating || 3).short}</span>
-                                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                                      <span>{lvl.short}</span>
+                            <div className="spec-row-main" style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+                              {/* Color accent strip */}
+                              <div style={{ width: 3, borderRadius: 99, background: changed ? '#F59E0B' : lvl.dot, alignSelf: 'stretch', flexShrink: 0, minHeight: 32 }} />
+                              {/* Info */}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div className="spec-info-header" style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 2 }}>
+                                  {title ? (
+                                    <span className="spec-info-title" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)', letterSpacing: '0.2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{title}</span>
+                                  ) : (
+                                    <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)', letterSpacing: '0.2px' }}>{spec.courseCode}</span>
+                                  )}
+                                  <LevelBadge rating={rating} />
+                                  {isNewRow && (
+                                    <span title="Not yet saved" style={{ fontSize: 9.5, fontWeight: 700, color: '#B45309', background: 'rgba(245, 158, 11, 0.12)', padding: '1px 7px', borderRadius: 99, border: '1px solid rgba(245, 158, 11, 0.35)', flexShrink: 0, whiteSpace: 'nowrap' }}>New</span>
+                                  )}
+                                  {isEditedRow && (
+                                    <span title="Not yet saved" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9.5, fontWeight: 700, color: '#B45309', background: 'rgba(245, 158, 11, 0.12)', padding: '1px 7px', borderRadius: 99, border: '1px solid rgba(245, 158, 11, 0.35)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                                      Edited
+                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontWeight: 500, opacity: 0.85 }}>
+                                        <span style={{ textDecoration: 'line-through', textDecorationColor: 'rgba(180, 83, 9, 0.55)' }}>{getLvl(baselineSpec.rating || 3).short}</span>
+                                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                                        <span>{lvl.short}</span>
+                                      </span>
                                     </span>
-                                  </span>
-                                )}
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontFamily: 'monospace', fontSize: 10.5, fontWeight: 600, color: 'var(--meadow-text-hover)', background: 'var(--meadow-soft)', padding: '1px 7px', borderRadius: 5, border: '1px solid var(--meadow-border)', flexShrink: 0 }}>{spec.courseCode}</span>
+                                  )}
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span style={{ fontFamily: 'monospace', fontSize: 10.5, fontWeight: 600, color: 'var(--meadow-text-hover)', background: 'var(--meadow-soft)', padding: '1px 7px', borderRadius: 5, border: '1px solid var(--meadow-border)', flexShrink: 0 }}>{spec.courseCode}</span>
+                                </div>
                               </div>
                             </div>
-                            {/* Rating pips */}
-                            <RatingPips size="sm" value={rating} onChange={r => { setRatingsDirty(true); setSpecs(p => p.map((s, i) => i === origIdx ? { ...s, rating: r } : s)) }} />
-                            {/* Remove */}
-                            <button onClick={() => setSpecs(p => p.filter((_, i) => i !== origIdx))}
-                              style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid rgba(239, 68, 68, 0.25)', background: 'rgba(220, 38, 38, 0.05)', color: '#EF4444', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
-                            </button>
+                            <div className="spec-row-actions" style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                              {/* Rating pips */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span className="spec-row-actions-label" style={{ display: 'none', fontSize: 10.5, color: 'var(--muted2)', fontWeight: 600 }}>Rate:</span>
+                                <RatingPips size="sm" value={rating} onChange={r => { setRatingsDirty(true); setSpecs(p => p.map((s, i) => i === origIdx ? { ...s, rating: r } : s)) }} />
+                              </div>
+                              {/* Remove */}
+                              <button onClick={() => setSpecs(p => p.filter((_, i) => i !== origIdx))} className="spec-remove-btn"
+                                style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid rgba(239, 68, 68, 0.25)', background: 'rgba(220, 38, 38, 0.05)', color: '#EF4444', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
+                                <span className="spec-remove-label" style={{ display: 'none' }}>Remove</span>
+                              </button>
+                            </div>
                           </div>
                         )
                       })}
@@ -839,8 +934,8 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                     into one wrapping row (dropdowns instead of tab strips keep it tight
                     even with many programs), plus a slim status/count line underneath. */}
                 <div style={{ padding: '12px 18px 10px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', rowGap: 8 }}>
-                    <div style={{ width: 180, flexShrink: 0 }}>
+                  <div className="spec-toolbar-row" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', rowGap: 8 }}>
+                    <div className="spec-search-wrap" style={{ width: 180, flexShrink: 0 }}>
                       <SearchBox value={browseQ} onChange={setBrowseQ} placeholder="Search code or title…" />
                     </div>
 
@@ -859,7 +954,7 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                       </select>
                     )}
 
-                    <span style={{ width: 1, alignSelf: 'stretch', minHeight: 20, background: 'var(--border)', margin: '0 2px', flexShrink: 0 }} />
+                    <span className="spec-toolbar-divider" style={{ width: 1, alignSelf: 'stretch', minHeight: 20, background: 'var(--border)', margin: '0 2px', flexShrink: 0 }} />
 
                     <button type="button" onClick={() => setHideAssigned(v => !v)}
                       style={{
@@ -1000,17 +1095,6 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
                       })}
                       {pendingCount > 5 && <span style={{ fontSize: 11.5, color: '#7C3AED', fontWeight: 600 }}>+{pendingCount - 5} more</span>}
                     </div>
-                    <div style={{ display: 'flex', gap: 7, flexShrink: 0 }}>
-                      <button type="button" onClick={() => setPending({})}
-                        style={{ padding: '7px 14px', borderRadius: 8, border: '1.5px solid var(--meadow-border)', background: 'transparent', color: 'var(--meadow-text-hover)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}>
-                        Clear
-                      </button>
-                      <button type="button" onClick={commitPending}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 18px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter', sans-serif", boxShadow: '0 4px 14px rgba(0,0,0,0.28)' }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
-                        Add {pendingCount} Course{pendingCount !== 1 ? 's' : ''}
-                      </button>
-                    </div>
                   </div>
                 )}
               </div>
@@ -1085,8 +1169,8 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
         </div>
 
         {/* ── Footer ─────────────────────────────────────────────────────── */}
-        <div style={{ padding: '12px 22px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)', flexShrink: 0 }} id="tour-spec-footer">
-          <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+        <div className="spec-footer" style={{ padding: '12px 22px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)', flexShrink: 0 }} id="tour-spec-footer">
+          <div className="spec-footer-info" style={{ fontSize: 12, color: 'var(--muted)' }}>
             {specCount === 0
               ? 'No specializations assigned'
               : `${specCount} specialization${specCount === 1 ? '' : 's'} assigned`}
@@ -1094,35 +1178,58 @@ export default function SpecializationModal({ specializations, onSave, onClose, 
               <span> · top level: <strong style={{ color: breakdown[0].color }}>{breakdown[0].label}</strong></span>
             )}
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={onClose}
-              style={{ padding: '8px 18px', borderRadius: 9, border: '1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}>
-              Cancel
-            </button>
-            <button onClick={() => {
-              const cleaned = specs.map(s => {
-                if (s.isUnmatched && courseTitleMap[(s.courseCode || '').toLowerCase().replace(/\s+/g, '')]) {
-                  const { isUnmatched, ...rest } = s
-                  return rest
-                }
-                return s
-              })
-              setRatingsDirty(false)
-              setSavedBaseline(cleaned)
-              setSaveVersion(v => v + 1)
-              onSave(cleaned)
-            }} disabled={isSaving}
-              className={hasUnsavedChanges && !isSaving ? 'spec-save-glow' : undefined}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 20px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize: 13, fontWeight: 600, cursor: isSaving ? 'default' : 'pointer', fontFamily: "'Inter', sans-serif", opacity: isSaving ? 0.65 : 1, boxShadow: '0 4px 14px rgba(0,0,0,0.28)' }}>
-              {isSaving
-                ? <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'spin 0.8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>Saving…</>
-                : <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>{specCount > 0 ? `Save Changes (${specCount})` : 'Save'}</>
-              }
-            </button>
+          <div className="spec-footer-actions" style={{ display: 'flex', gap: 8 }}>
+            {pendingCount > 0 ? (
+              <>
+                <button onClick={() => setPending({})}
+                  style={{ padding: '8px 18px', borderRadius: 9, border: '1.5px solid var(--meadow-border)', background: 'transparent', color: 'var(--meadow-text-hover)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}>
+                  Clear
+                </button>
+                <button onClick={commitPending}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 20px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter', sans-serif", boxShadow: '0 4px 14px rgba(0,0,0,0.28)' }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+                  Add {pendingCount} Course{pendingCount !== 1 ? 's' : ''}
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={handleClose}
+                  style={{ padding: '8px 18px', borderRadius: 9, border: '1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}>
+                  Cancel
+                </button>
+                <button onClick={() => {
+                  const cleaned = specs.map(s => {
+                    if (s.isUnmatched && courseTitleMap[(s.courseCode || '').toLowerCase().replace(/\s+/g, '')]) {
+                      const { isUnmatched, ...rest } = s
+                      return rest
+                    }
+                    return s
+                  })
+                  setRatingsDirty(false)
+                  setSavedBaseline(cleaned)
+                  setSaveVersion(v => v + 1)
+                  onSave(cleaned)
+                }} disabled={isSaving}
+                  className={hasUnsavedChanges && !isSaving ? 'spec-save-glow' : undefined}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 20px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize: 13, fontWeight: 600, cursor: isSaving ? 'default' : 'pointer', fontFamily: "'Inter', sans-serif", opacity: isSaving ? 0.65 : 1, boxShadow: '0 4px 14px rgba(0,0,0,0.28)' }}>
+                  {isSaving
+                    ? <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'spin 0.8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>Saving…</>
+                    : <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>{specCount > 0 ? `Save Changes (${specCount})` : 'Save'}</>
+                  }
+                </button>
+              </>
+            )}
           </div>
         </div>
 
       </div>
+
+      {confirmClose && (
+        <UnsavedChangesModal
+          onConfirm={() => { setConfirmClose(false); onClose() }}
+          onCancel={() => setConfirmClose(false)}
+        />
+      )}
     </div>
   )
 }
@@ -1135,6 +1242,7 @@ function BrowseCourseRow({ course, already, staged, onRate }) {
 
   return (
     <div
+      className="spec-browse-row"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -1147,10 +1255,10 @@ function BrowseCourseRow({ course, already, staged, onRate }) {
         opacity: already ? 0.7 : 1,
       }}>
       {/* Course info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: course.title ? 3 : 0 }}>
+      <div className="spec-browse-info" style={{ flex: 1, minWidth: 0 }}>
+        <div className="spec-info-header" style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: course.title ? 3 : 0 }}>
           {course.title ? (
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)', letterSpacing: '0.2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{course.title}</span>
+            <span className="spec-info-title" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)', letterSpacing: '0.2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{course.title}</span>
           ) : (
             <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)', letterSpacing: '0.2px' }}>{code}</span>
           )}
@@ -1168,14 +1276,14 @@ function BrowseCourseRow({ course, already, staged, onRate }) {
 
       {/* Rating pips — disabled if already assigned */}
       {already ? (
-        <span style={{ fontSize: 11.5, color: 'var(--muted)', fontStyle: 'italic' }}>already assigned</span>
+        <span className="spec-browse-actions" style={{ fontSize: 11.5, color: 'var(--muted)', fontStyle: 'italic' }}>already assigned</span>
       ) : (
-        <div style={{ display: 'flex', gap: 3, alignItems: 'center', flexShrink: 0 }}>
+        <div className="spec-browse-actions" style={{ display: 'flex', gap: 3, alignItems: 'center', flexShrink: 0 }}>
           <span style={{ fontSize: 10.5, color: 'var(--muted2)', marginRight: 4, fontWeight: 600 }}>Rate:</span>
           {LEVELS.map(l => {
             const active = staged?.rating === l.rating
             return (
-              <button key={l.rating} type="button" title={l.label} onClick={() => onRate(l.rating)}
+              <button key={l.rating} type="button" title={l.label} className="spec-pip" onClick={() => onRate(l.rating)}
                 style={{
                   width: 26, height: 26, borderRadius: 7,
                   border: `1.5px solid ${active ? l.border : '#E9E6F5'}`,

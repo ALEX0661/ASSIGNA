@@ -3,6 +3,8 @@
 const isDark = document.documentElement.getAttribute('data-mode') === 'dark';
 import { getRooms, saveRooms, getCourses, bulkSetPreferredRooms } from '../../services/api'
 import { useTour } from '../../hooks/useTour.jsx'
+import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
+import UnsavedChangesModal from '../../components/UnsavedChangesModal'
 
 const TOUR_SEEN_KEY = 'adminRooms_tourSeen'
 function isOnboardingCompleted() {
@@ -533,6 +535,10 @@ export default function RoomsPage() {
   
   const dirtyKeys = useMemo(() => Object.keys(assignments).filter(k => assignments[k]?.lec?.join(',') !== original[k]?.lec?.join(',') || assignments[k]?.lab?.join(',') !== original[k]?.lab?.join(',')), [assignments, original])
 
+  const hasUnsavedChanges = roomsDirty || dirtyKeys.length > 0
+
+  const { pendingLeaveAction, confirmLeave, cancelLeave } = useUnsavedChangesGuard(hasUnsavedChanges, 'roomsUnsavedGuard')
+
   const visibleCourses = useMemo(() => {
     const q = search.toLowerCase().trim()
     return courses.filter(c => {
@@ -875,6 +881,10 @@ export default function RoomsPage() {
       />
 
       <ToastContainer toasts={toasts} />
+
+      {pendingLeaveAction && (
+        <UnsavedChangesModal subject="your room assignments" onConfirm={confirmLeave} onCancel={cancelLeave} />
+      )}
     </div>
   )
-}
+}

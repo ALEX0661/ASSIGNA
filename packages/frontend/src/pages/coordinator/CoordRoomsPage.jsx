@@ -5,6 +5,8 @@ import {
   coordGetCourses, setCoursePreferredRoom
 } from '../../services/api'
 import { useTour } from '../../hooks/useTour.jsx'
+import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
+import UnsavedChangesModal from '../../components/UnsavedChangesModal'
 
 const TOUR_SEEN_KEY = 'coordRooms_tourSeen'
 function isOnboardingCompleted() {
@@ -492,6 +494,10 @@ export default function CoordRoomsPage() {
   /* ── Assignment Handlers ── */
   const dirtyKeys = useMemo(() => Object.keys(assignments).filter(k => assignments[k]?.lec?.join(',') !== origAssign[k]?.lec?.join(',') || assignments[k]?.lab?.join(',') !== origAssign[k]?.lab?.join(',')), [assignments, origAssign])
 
+  const hasUnsavedChanges = roomsDirty || dirtyKeys.length > 0
+
+  const { pendingLeaveAction, confirmLeave, cancelLeave } = useUnsavedChangesGuard(hasUnsavedChanges, 'coordRoomsUnsavedGuard')
+
   const visibleCourses = useMemo(() => {
     const q = search.toLowerCase().trim()
     return courses.filter(c => {
@@ -837,16 +843,10 @@ export default function CoordRoomsPage() {
       />
 
       <ToastContainer toasts={toasts} />
+
+      {pendingLeaveAction && (
+        <UnsavedChangesModal subject="your room assignments" onConfirm={confirmLeave} onCancel={cancelLeave} />
+      )}
     </div>
   )
-}
-
-
-
-
-
-
-
-
-
-
+}

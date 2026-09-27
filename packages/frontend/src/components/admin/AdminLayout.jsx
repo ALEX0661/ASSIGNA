@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import icon1Img from '../../assets/ASSIGNAV1.png'
+import UnsavedChangesModal from '../UnsavedChangesModal' // adjust path to match your project structure
+import { getUnsavedFlag } from '../../utils/unsavedChangesRegistry' // adjust path to match your project structure
 
 const NAV_SECTIONS = [
   {
@@ -79,6 +81,14 @@ export default function AdminLayout() {
   )
   const currentPageLabel = activeLink?.label ?? 'Dashboard'
   const [showLogoutModal, setShowLogoutModal] = useState(false)
+  // If the page currently mounted under this layout has unsaved work
+  // (tracked via useUnsavedChangesGuard), warn about losing it before
+  // even offering the normal "confirm logout" step.
+  const [unsavedWarning, setUnsavedWarning] = useState(false)
+  function requestLogout() {
+    if (getUnsavedFlag().flag) setUnsavedWarning(true)
+    else setShowLogoutModal(true)
+  }
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
   const [collapsed, setCollapsed] = useState(() => window.innerWidth < 768)
 
@@ -192,7 +202,7 @@ export default function AdminLayout() {
                   <div className="sidebar-user-email">{user?.email ?? 'Dean'}</div>
                   <div className="sidebar-user-role">Dean</div>
                 </div>
-                <button className="sidebar-logout-btn" onClick={() => setShowLogoutModal(true)} title="Log out">
+                <button className="sidebar-logout-btn" onClick={requestLogout} title="Log out">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                     <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
@@ -269,7 +279,7 @@ export default function AdminLayout() {
               <span style={{ fontSize:10.5, fontWeight:500, color:'var(--muted2)' }}>{dateStr}</span>
             </div>
             {collapsed && (
-              <button className="topbar-logout" onClick={() => setShowLogoutModal(true)}
+              <button className="topbar-logout" onClick={requestLogout}
                 style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 13px', borderRadius:9, border:'1.5px solid var(--border)', background:'var(--hover)', color:'var(--muted)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}
                 onMouseEnter={e => { e.currentTarget.style.background='rgba(239, 68, 68, 0.1)'; e.currentTarget.style.color='#EF4444'; }}
                 onMouseLeave={e => { e.currentTarget.style.background='var(--hover)'; e.currentTarget.style.color='var(--muted)'; }}
@@ -291,6 +301,13 @@ export default function AdminLayout() {
 
       {showLogoutModal && (
         <LogoutModal onConfirm={handleLogout} onCancel={() => setShowLogoutModal(false)} />
+      )}
+
+      {unsavedWarning && (
+        <UnsavedChangesModal
+          onConfirm={() => { setUnsavedWarning(false); handleLogout() }}
+          onCancel={() => setUnsavedWarning(false)}
+        />
       )}
     </div>
   )

@@ -137,8 +137,11 @@ export default function FacultyLayout() {
     const handleTourStart = () => {
       if (isMobile) setCollapsed(true)
     }
-    window.addEventListener('start-tour', handleTourStart)
-    return () => window.removeEventListener('start-tour', handleTourStart)
+    // 'tour-started' fires whenever any tour actually begins running,
+    // including a page's own auto-start on load — 'start-tour' alone only
+    // covers the header "?" button, which auto-started tours never fire.
+    window.addEventListener('tour-started', handleTourStart)
+    return () => window.removeEventListener('tour-started', handleTourStart)
   }, [isMobile])
 
   const [now, setNow] = useState(new Date())

@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { getCourses, addCourse, deleteCourse, updateCourse } from '../../services/api'
 import ImportCoursesModal from '../../components/ImportCoursesModal'
 import BlockConfigModal from '../../components/BlockConfigModal'
@@ -78,6 +79,9 @@ const LS_VIEW_PREFS = 'cp-view-prefs'
     .cp-inp:focus,.cp-sel:focus { border-color: var(--meadow-text-hover); box-shadow:0 0 0 3px rgba(0,0,0,0.1); }
     .cp-sel { appearance:none; cursor:pointer; padding-right:32px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B8C7A' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; }
 
+    .cp-menu-item { display:flex; align-items:center; gap:8px; width:100%; padding:9px 14px; border:none; background:transparent; cursor:pointer; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; color:${G.ink}; text-align:left; }
+    .cp-menu-item:hover { background:${G.hover}; }
+
     .cp-th-sort { cursor:pointer; user-select:none; transition: color .15s; }
     .cp-th-sort:hover { color: var(--meadow-text)!important; }
     .cp-th-sort .cp-sort-arrow { display:inline-block; margin-left:4px; opacity:0; transition: opacity .15s; }
@@ -94,6 +98,79 @@ const LS_VIEW_PREFS = 'cp-view-prefs'
 }
 
 /* ─── Shared Components ──────────────────────────────────────────────────── */
+/* ── Export menu button — one "Export" control with a dropdown for scope
+   (current semester vs. all), instead of two separate buttons. Portaled to
+   document.body and positioned from the button's own rect so it isn't
+   clipped by any ancestor's overflow:hidden. ── */
+function ExportMenuButton({ onExportCurrent, onExportAll, currentLabel, disabledCurrent, disabledAll }) {
+  const [open, setOpen] = useState(false)
+  const [menuPos, setMenuPos] = useState(null)
+  const btnRef = useRef(null)
+
+  const toggleOpen = (e) => {
+    e.stopPropagation()
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      setMenuPos({ top: r.bottom + 6, right: window.innerWidth - r.right })
+    }
+    setOpen(o => !o)
+  }
+
+  useEffect(() => {
+    if (!open) return
+    const close = () => setOpen(false)
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('resize', close)
+    return () => {
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('resize', close)
+    }
+  }, [open])
+
+  return (
+    <div style={{ position: 'relative', flexShrink: 0 }}>
+      <button ref={btnRef} onClick={toggleOpen} title="Export to Excel"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: `1px solid ${G.border}`, background: 'var(--surface)', color: G.muted2, fontSize: 11.5, fontWeight: 500, cursor: 'pointer', transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
+        onMouseEnter={e => { e.currentTarget.style.background = G.hover; e.currentTarget.style.color = 'var(--meadow-text-hover)' }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.color = G.muted2 }}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Export
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginLeft: 1 }}><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      {open && menuPos && createPortal(
+        <>
+          <div onClick={(e) => { e.stopPropagation(); setOpen(false) }} style={{ position: 'fixed', inset: 0, zIndex: 99998 }} />
+          <div style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 99999, background: 'var(--surface)', border: `1px solid ${G.border}`, borderRadius: 10, boxShadow: '0 12px 32px rgba(0,0,0,.16)', minWidth: 200, overflow: 'hidden' }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); setOpen(false); onExportCurrent() }}
+              className="cp-menu-item"
+              disabled={disabledCurrent}
+              style={{ borderBottom: `1px solid ${G.border}`, opacity: disabledCurrent ? 0.45 : 1, cursor: disabledCurrent ? 'not-allowed' : 'pointer' }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              {currentLabel}
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setOpen(false); onExportAll() }}
+              className="cp-menu-item"
+              disabled={disabledAll}
+              style={{ opacity: disabledAll ? 0.45 : 1, cursor: disabledAll ? 'not-allowed' : 'pointer' }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              All Semesters
+            </button>
+          </div>
+        </>,
+        document.body
+      )}
+    </div>
+  )
+}
+
 function Skel({ w = '100%', h = 14, r = 6, style = {} }) {
   return <div className="cp-skeleton" style={{ width: w, height: h, borderRadius: r, flexShrink: 0, ...style }} />
 }
@@ -230,6 +307,7 @@ function DeleteConfirmModal({ name, count, onConfirm, onCancel, deleting }) {
 function CourseModal({ mode, initial, onSave, onClose, saving, error }) {
   const [form, setForm] = useState(initial || EMPTY)
   const isEdit = mode === 'edit'
+  const isDuplicate = mode === 'duplicate'
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const canSave = form.courseCode.trim() && !form.courseCode.includes('-COPY') && form.title.trim() && form.program
 
@@ -565,17 +643,19 @@ export default function CourseListPage() {
   const programs = useMemo(() => Array.from(new Set(courses.map(c=>c.program).filter(Boolean))).sort(), [courses])
   const YEAR_OPTS = ['1','2','3','4']
 
-  const filtered = useMemo(() => {
-    let list = courses.filter(c => {
-      const q = search.toLowerCase()
-      const matchSem = c.semester === semesterTab || (semesterTab === 'all')
-      const matchType = typeFilter === 'lab' ? (c.unitsLab > 0) : typeFilter === 'lec' ? (c.unitsLab === 0) : true
-      return matchSem && matchType
-        && (!q || `${c.courseCode} ${c.title}`.toLowerCase().includes(q))
-        && (progFilter.length === 0 || progFilter.includes(c.program))
-        && (yearFilter.length === 0 || yearFilter.includes(String(c.yearLevel)))
-    })
+  // Shared predicate for every non-semester filter (search, program, year, lec/lab).
+  // Both the on-screen 'filtered' list and the "export all semesters" action reuse
+  // this so the two can never fall out of sync with each other.
+  function matchesCommonFilters(c) {
+    const q = search.toLowerCase()
+    const matchType = typeFilter === 'lab' ? (c.unitsLab > 0) : typeFilter === 'lec' ? (c.unitsLab === 0) : true
+    return matchType
+      && (!q || `${c.courseCode} ${c.title}`.toLowerCase().includes(q))
+      && (progFilter.length === 0 || progFilter.includes(c.program))
+      && (yearFilter.length === 0 || yearFilter.includes(String(c.yearLevel)))
+  }
 
+  function sortCourses(list) {
     const dir = sortDir === 'asc' ? 1 : -1
     const cmp = {
       code:     (a, b) => a.courseCode.localeCompare(b.courseCode),
@@ -585,9 +665,15 @@ export default function CourseListPage() {
       sections: (a, b) => (a.blocks || 0) - (b.blocks || 0),
       units:    (a, b) => ((a.unitsLecture||0)+(a.unitsLab||0)) - ((b.unitsLecture||0)+(b.unitsLab||0)),
     }[sortBy] || (() => 0)
+    return [...list].sort((a, b) => cmp(a, b) * dir)
+  }
 
-    list.sort((a, b) => cmp(a, b) * dir)
-    return list
+  const filtered = useMemo(() => {
+    const list = courses.filter(c => {
+      const matchSem = (c.semester || '1st Semester') === semesterTab || (semesterTab === 'all')
+      return matchSem && matchesCommonFilters(c)
+    })
+    return sortCourses(list)
   }, [courses, search, progFilter, yearFilter, semesterTab, typeFilter, sortBy, sortDir])
 
   function handleSort(field) {
@@ -675,8 +761,14 @@ export default function CourseListPage() {
     } finally { setDeleting(false) }
   }
 
-  function handleExport() {
-    if (!filtered.length) return // Use 'filtered' instead of 'courses'
+  function handleExport(scope = 'current') {
+    // 'current' = respects the active semester tab (same rows as the visible table)
+    // 'all'     = every semester, still respecting search/program/year/lec-lab filters
+    const source = scope === 'all'
+      ? sortCourses(courses.filter(matchesCommonFilters))
+      : filtered
+
+    if (!source.length) return
 
     const headers = ['Course Code', 'Title', 'Program', 'Semester', 'Year Level', 'Sections', 'Lecture Units', 'Lab Units', 'Total Units']
     const colWidths = [
@@ -687,8 +779,8 @@ export default function CourseListPage() {
     const wb = XLSX.utils.book_new()
 
     SEMESTERS.forEach(sem => {
-      // Filter from the 'filtered' array to respect active search/filters
-      const semCourses = filtered.filter(c => (c.semester || '1st Semester') === sem)
+      // Filter from 'source' to respect active search/filters (and scope, for 'all')
+      const semCourses = source.filter(c => (c.semester || '1st Semester') === sem)
       if (!semCourses.length) return
 
       const rows = semCourses.map(c => [
@@ -710,7 +802,11 @@ export default function CourseListPage() {
 
     // 1. Build a dynamic filename based on active filters
     const filterParts = []
-    
+
+    // Flag whether this export covers one semester (current tab) or all of them
+    const isAllSemesters = scope === 'all' || semesterTab === 'all'
+    filterParts.push(isAllSemesters ? 'All-Semesters' : SEM_SHEET[semesterTab].replace(/\s+/g, '-'))
+
     if (progFilter.length > 0) {
       filterParts.push(progFilter.join('-'))
     }
@@ -729,7 +825,7 @@ export default function CourseListPage() {
     
     // 2. Append the dynamic suffix to the exported file name
     XLSX.writeFile(wb, `Courses${filterSuffix}-${date}.xlsx`)
-    toast('Filtered courses exported successfully', 'success')
+    toast(isAllSemesters ? 'All semesters exported successfully' : `${semesterTab} exported successfully`, 'success')
   }
 
   return (
@@ -776,18 +872,14 @@ export default function CourseListPage() {
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
           </button>
 
-          {/* Export */}
-          <button onClick={handleExport} disabled={!filtered.length} title="Export all semesters to Excel"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: `1px solid ${G.border}`, background: 'var(--surface)', color: G.muted2, fontSize: 11.5, fontWeight: 500, cursor: filtered.length ? 'pointer' : 'not-allowed', opacity: filtered.length ? 1 : 0.45, transition: 'all .15s', fontFamily: "'Inter',sans-serif" }}
-            onMouseEnter={e => { if (filtered.length) { e.currentTarget.style.background = G.hover; e.currentTarget.style.color = 'var(--meadow-text-hover)' }}}
-            onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.color = G.muted2 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            Export
-          </button>
+          {/* Export — one button, dropdown for scope (current semester vs. all) */}
+          <ExportMenuButton
+            onExportCurrent={() => handleExport('current')}
+            onExportAll={() => handleExport('all')}
+            currentLabel={semesterTab === 'all' ? 'All Semesters (current view)' : semesterTab}
+            disabledCurrent={!filtered.length}
+            disabledAll={!courses.filter(matchesCommonFilters).length}
+          />
 
           {/* Import */}
           <button onClick={() => setShowImport(true)}
