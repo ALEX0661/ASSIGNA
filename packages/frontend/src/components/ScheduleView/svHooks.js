@@ -2,6 +2,141 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { overrideSession } from '../../services/api'
 import { parsePeriodRange, minutesToTimeLabel, getEventId, timeOverlaps, buildConflictMap, areMergePartners, isOnlineRoom } from './svHelpers'
 
+// ── Hover store ───────────────────────────────────────────────────────────────
+// The hovered drop cell used to live in useDragDrop's React state. That state
+// belongs to the PAGE component, so every hover change (up to every 50 ms while
+// dragging) re-rendered the entire page, then TimeGrid. It now lives in this tiny
+// store instead, and only the room columns that actually changed subscribe to it.
+// Pages opt in with useDragDrop(..., { isolateHover: true }) and pass
+// dd.hoverStore to <TimeGrid>. Without the opt-in nothing changes.
+export function createHoverStore() {
+  let value = null
+  const listeners = new Set()
+  return {
+    get: () => value,
+    set: (next) => {
+      if (next === value) return
+      value = next
+      listeners.forEach(fn => fn())
+    },
+    subscribe: (fn) => { listeners.add(fn); return () => { listeners.delete(fn) } },
+  }
+}
+
+const EMPTY_IDS   = new Set()   // shared and never mutated
+const EMPTY_BANDS = []
+
+// Events that would clash with the dragged card if it were dropped on hoveredCell.
+export function computeConflictingDragIds(draggedEvent, hoveredCell, dayScopedEvents) {
+  const ids = new Set()
+  if (draggedEvent && hoveredCell) {
+    const [hRoom, hSlot] = hoveredCell.split('|')
+    const dragRange = parsePeriodRange(draggedEvent.period)
+    if (dragRange) {
+      const newStart  = parseInt(hSlot)
+      const newEnd    = newStart + dragRange.duration
+      const dragId    = getEventId(draggedEvent)
+      const proposed  = { start: newStart, end: newEnd }
+
+      for (const ev of dayScopedEvents) {
+        if (getEventId(ev) === dragId) continue
+        const r = parsePeriodRange(ev.period)
+        if (!r || !timeOverlaps(proposed, r)) continue
+
+        const wouldMerge = draggedEvent.courseCode &&
+          ev.courseCode === draggedEvent.courseCode &&
+          ev.program    === draggedEvent.program &&
+          String(ev.year) === String(draggedEvent.year) &&
+          ev.block !== draggedEvent.block &&
+          ev.room === hRoom && hRoom !== 'TBA' &&
+          r.start === proposed.start && r.end === proposed.end
+        if (wouldMerge) continue
+
+        const roomC    = ev.room === hRoom && hRoom !== 'TBA' && !isOnlineRoom(hRoom)
+        const sectionC = draggedEvent.program && draggedEvent.year && draggedEvent.block
+          && ev.program === draggedEvent.program
+          && String(ev.year) === String(draggedEvent.year)
+          && ev.block === draggedEvent.block
+        const facultyC = draggedEvent.faculty && draggedEvent.faculty !== 'TBA'
+          && ev.faculty === draggedEvent.faculty
+        if (roomC || sectionC || facultyC) ids.add(getEventId(ev))
+      }
+    }
+  }
+  return ids
+}
+
+// Full-width conflict bands at the proposed drop position.
+export function computeDragConflictBands(draggedEvent, hoveredCell, dayScopedEvents) {
+  if (!draggedEvent || !hoveredCell) return EMPTY_BANDS
+  const [, hSlot]  = hoveredCell.split('|')
+  const dragRange  = parsePeriodRange(draggedEvent.period)
+  if (!dragRange) return EMPTY_BANDS
+  const newStart   = parseInt(hSlot)
+  const newEnd     = newStart + dragRange.duration
+  const dragId     = getEventId(draggedEvent)
+  const proposed   = { start: newStart, end: newEnd }
+  const sectionHit = new Set()
+  const facultyHit = new Set()
+
+  for (const ev of dayScopedEvents) {
+    if (getEventId(ev) === dragId) continue
+    const r = parsePeriodRange(ev.period)
+    if (!r || !timeOverlaps(proposed, r)) continue
+    if (
+      draggedEvent.program && draggedEvent.year && draggedEvent.block
+      && ev.program === draggedEvent.program
+      && String(ev.year) === String(draggedEvent.year)
+      && ev.block === draggedEvent.block
+    ) sectionHit.add(`${ev.program}${ev.year}-${ev.block}`)
+    if (draggedEvent.faculty && draggedEvent.faculty !== 'TBA' && ev.faculty === draggedEvent.faculty)
+      facultyHit.add(ev.faculty)
+  }
+
+  const bands = []
+  if (sectionHit.size > 0 || facultyHit.size > 0) {
+    bands.push({
+      start:   newStart,
+      end:     newEnd,
+      section: sectionHit.size > 0,
+      faculty: facultyHit.size > 0,
+      label:   [
+        sectionHit.size > 0 ? `${draggedEvent.program} ${draggedEvent.year}-${draggedEvent.block} conflict` : null,
+        facultyHit.size > 0 ? `${draggedEvent.faculty} conflict` : null,
+      ].filter(Boolean).join(' · '),
+    })
+  }
+  return bands
+}
+
+const sameSet = (a, b) => {
+  if (a.size !== b.size) return false
+  for (const v of a) if (!b.has(v)) return false
+  return true
+}
+
+// Conflict data derived from the hover store. Recomputed once per hover change
+// (however many components read it) and returns the SAME reference when nothing
+// changed, so subscribers only re-render when their value really differs.
+export function makeHoverDerived(store, draggedEvent, dayScopedEvents) {
+  let primed = false, lastHover = null
+  let ids = EMPTY_IDS, bands = EMPTY_BANDS
+  const refresh = () => {
+    const hv = store.get()
+    if (primed && hv === lastHover) return
+    primed = true; lastHover = hv
+    const nextIds = computeConflictingDragIds(draggedEvent, hv, dayScopedEvents)
+    if (!sameSet(ids, nextIds)) ids = nextIds
+    const nextBands = computeDragConflictBands(draggedEvent, hv, dayScopedEvents)
+    bands = (nextBands.length === 0 && bands.length === 0) ? bands : nextBands
+  }
+  return {
+    subscribe: store.subscribe,
+    getIds:    () => { refresh(); return ids },
+    getBands:  () => { refresh(); return bands },
+  }
+}
+
 // ── useFilters ────────────────────────────────────────────────────────────────
 export function useFilters(events, masterFacultyList, masterRooms, activeDay) {
   const [searchQuery,      setSearchQuery]     = useState('')
@@ -118,9 +253,21 @@ export function useFilters(events, masterFacultyList, masterRooms, activeDay) {
 // overrideFn lets a caller (e.g. the coordinator editor) redirect saves to
 // its own scoped endpoint instead of the admin-only one — defaults to the
 // admin override so existing callers are unaffected.
-export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeEvents, locked = false, overrideFn = overrideSession) {
+export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeEvents, locked = false, overrideFn = overrideSession, options = {}) {
+  const isolateHover = !!options.isolateHover
   const [draggedEvent,     setDraggedEvent]     = useState(null)
-  const [hoveredCell,      setHoveredCell]      = useState(null)
+  // Hover lives in a store (see createHoverStore). With isolateHover it is NOT
+  // React state, so hovering never re-renders the page. Without it, behaviour is
+  // exactly what it was before (state mirrors the store).
+  const hoverStoreRef = useRef(null)
+  if (!hoverStoreRef.current) hoverStoreRef.current = createHoverStore()
+  const hoverStore = hoverStoreRef.current
+  const [hoveredCellState, setHoveredCellState] = useState(null)
+  const setHoveredCell = useCallback((v) => {
+    hoverStore.set(v)
+    if (!isolateHover) setHoveredCellState(v)
+  }, [hoverStore, isolateHover])
+  const hoveredCell = isolateHover ? null : hoveredCellState
   const [toast,            setToast]            = useState(null)
 
   // ── Frontend-first override queue ─────────────────────────────────────────
@@ -200,17 +347,28 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
 
   const lastDragOverTime = useRef(0)
 
+  // dragover only fires at the browser's own cadence (~50 ms), so on its own the
+  // highlight trails the cursor by up to that long after crossing a cell edge.
+  // dragenter fires the instant the cursor enters a new cell, so handleDragEnter
+  // moves the highlight immediately; dragover then just keeps it in sync.
+  // With isolateHover there is no throttle at all: hoverStore.set() ignores a
+  // repeat of the same cell, and a change only touches the two columns involved.
+  // (The old leading-edge throttle could also drop the one update that mattered.)
+  const handleDragEnter = useCallback((e, room, slot) => {
+    e.preventDefault()
+    setHoveredCell(`${room}|${slot.startMinutes}`)
+  }, [setHoveredCell])
+
   const handleDragOver = useCallback((e, room, slot) => {
     e.preventDefault(); e.dataTransfer.dropEffect = 'move'
-    const now = Date.now()
-    // Throttle: only update hovered cell at most every 50 ms.
-    // Without this, every pixel of mouse movement triggers setHoveredCell
-    // which re-renders the entire grid (800+ cards) and re-runs four expensive
-    // useMemo conflict-detection loops — the main source of drag lag.
-    if (now - lastDragOverTime.current < 50) return
-    lastDragOverTime.current = now
+    if (!isolateHover) {
+      // Legacy path (page re-renders on every hover change): keep the throttle.
+      const now = Date.now()
+      if (now - lastDragOverTime.current < 50) return
+      lastDragOverTime.current = now
+    }
     setHoveredCell(`${room}|${slot.startMinutes}`)
-  }, [])
+  }, [setHoveredCell, isolateHover])
 
   const handleDragLeave = useCallback(e => {
     if (!e.currentTarget.contains(e.relatedTarget)) setHoveredCell(null)
@@ -252,44 +410,11 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
   }, [draggedEvent, dayScopedEvents])
 
   // ── Conflict IDs at the hovered target ────────────────────────────────────
+  // (isolated mode: TimeGrid derives these itself from the hover store)
   const prevConflictingIds = useRef(new Set())
   const conflictingDragIds = useMemo(() => {
-    const ids = new Set()
-    if (draggedEvent && hoveredCell) {
-      const [hRoom, hSlot] = hoveredCell.split('|')
-      const dragRange = parsePeriodRange(draggedEvent.period)
-      if (dragRange) {
-        const newStart  = parseInt(hSlot)
-        const newEnd    = newStart + dragRange.duration
-        const dragId    = getEventId(draggedEvent)
-        const proposed  = { start: newStart, end: newEnd }
-
-        for (const ev of dayScopedEvents) {
-          if (getEventId(ev) === dragId) continue
-          const r = parsePeriodRange(ev.period)
-          if (!r || !timeOverlaps(proposed, r)) continue
-
-          const wouldMerge = draggedEvent.courseCode &&
-            ev.courseCode === draggedEvent.courseCode &&
-            ev.program    === draggedEvent.program &&
-            String(ev.year) === String(draggedEvent.year) &&
-            ev.block !== draggedEvent.block &&
-            ev.room === hRoom && hRoom !== 'TBA' &&
-            r.start === proposed.start && r.end === proposed.end
-          if (wouldMerge) continue
-
-          const roomC    = ev.room === hRoom && hRoom !== 'TBA' && !isOnlineRoom(hRoom)
-          const sectionC = draggedEvent.program && draggedEvent.year && draggedEvent.block
-            && ev.program === draggedEvent.program
-            && String(ev.year) === String(draggedEvent.year)
-            && ev.block === draggedEvent.block
-          const facultyC = draggedEvent.faculty && draggedEvent.faculty !== 'TBA'
-            && ev.faculty === draggedEvent.faculty
-          if (roomC || sectionC || facultyC) ids.add(getEventId(ev))
-        }
-      }
-    }
-    
+    if (isolateHover) return EMPTY_IDS
+    const ids = computeConflictingDragIds(draggedEvent, hoveredCell, dayScopedEvents)
     if (ids.size === prevConflictingIds.current.size) {
       let same = true
       for (const id of ids) {
@@ -299,50 +424,13 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     }
     prevConflictingIds.current = ids
     return ids
-  }, [draggedEvent, hoveredCell, dayScopedEvents])
+  }, [draggedEvent, hoveredCell, dayScopedEvents, isolateHover])
 
   // ── Full-width conflict bands at the proposed drop position ───────────────
   const dragConflictBands = useMemo(() => {
-    if (!draggedEvent || !hoveredCell) return []
-    const [, hSlot]  = hoveredCell.split('|')
-    const dragRange  = parsePeriodRange(draggedEvent.period)
-    if (!dragRange) return []
-    const newStart   = parseInt(hSlot)
-    const newEnd     = newStart + dragRange.duration
-    const dragId     = getEventId(draggedEvent)
-    const proposed   = { start: newStart, end: newEnd }
-    const sectionHit = new Set()
-    const facultyHit = new Set()
-
-    for (const ev of dayScopedEvents) {
-      if (getEventId(ev) === dragId) continue
-      const r = parsePeriodRange(ev.period)
-      if (!r || !timeOverlaps(proposed, r)) continue
-      if (
-        draggedEvent.program && draggedEvent.year && draggedEvent.block
-        && ev.program === draggedEvent.program
-        && String(ev.year) === String(draggedEvent.year)
-        && ev.block === draggedEvent.block
-      ) sectionHit.add(`${ev.program}${ev.year}-${ev.block}`)
-      if (draggedEvent.faculty && draggedEvent.faculty !== 'TBA' && ev.faculty === draggedEvent.faculty)
-        facultyHit.add(ev.faculty)
-    }
-
-    const bands = []
-    if (sectionHit.size > 0 || facultyHit.size > 0) {
-      bands.push({
-        start:   newStart,
-        end:     newEnd,
-        section: sectionHit.size > 0,
-        faculty: facultyHit.size > 0,
-        label:   [
-          sectionHit.size > 0 ? `${draggedEvent.program} ${draggedEvent.year}-${draggedEvent.block} conflict` : null,
-          facultyHit.size > 0 ? `${draggedEvent.faculty} conflict` : null,
-        ].filter(Boolean).join(' · '),
-      })
-    }
-    return bands
-  }, [draggedEvent, hoveredCell, dayScopedEvents])
+    if (isolateHover) return EMPTY_BANDS
+    return computeDragConflictBands(draggedEvent, hoveredCell, dayScopedEvents)
+  }, [draggedEvent, hoveredCell, dayScopedEvents, isolateHover])
 
   // ── Apply a move to local state + enqueue as pending override ─────────────
   const applyMove = useCallback((event, targetRoom, newPeriod, day) => {
@@ -985,9 +1073,9 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     // functionally regardless of what the UI does with it.
     locked,
     // Drag state
-    draggedEvent, hoveredCell, toast, setToast,
+    draggedEvent, hoveredCell, hoverStore, toast, setToast,
     // Drag handlers
-    handleDragStart, handleDragEnd, handleDragOver, handleDragLeave, handleDrop, handleDayDrop,
+    handleDragStart, handleDragEnd, handleDragEnter, handleDragOver, handleDragLeave, handleDrop, handleDayDrop,
     getDropConflict,
     // Conflict visualization during drag
     conflictingDragIds,

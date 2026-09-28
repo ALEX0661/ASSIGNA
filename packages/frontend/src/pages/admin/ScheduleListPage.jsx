@@ -8,6 +8,7 @@ import { exportScheduleToPDF } from '../../utils/exportScheduleToPDF'
 import { Toast, ModalOverlay } from '../../components/ScheduleView/svPrimitives'
 import { DeleteScheduleModal } from '../../components/ScheduleView/FilterModals'
 import { useTour } from '../../hooks/useTour.jsx'
+import PublishModal, { usePublishImpact, clearPublishImpactCache } from '../../components/ScheduleView/PublishModal'
 
 const G = {
   meadow: 'var(--meadow, var(--meadow))', meadowDeep: 'var(--meadow-deep)', meadowMid: 'var(--meadow-mid)', meadowSoft: 'var(--meadow-soft)', meadowBorder: 'var(--meadow-border)',
@@ -369,6 +370,19 @@ export default function ScheduleListPage() {
   const [scheduleToUnpublish, setScheduleToUnpublish] = useState(null)
   const [unpublishingState, setUnpublishingState] = useState('idle')
 
+  // What publishing would touch for this term. Only queries while the publish
+  // modal is open (1 indexed read, cached 30s) — see PublishModal.jsx.
+  const pubAY  = scheduleToPublish?.academic_year || scheduleToPublish?.academicYear
+  const pubSem = scheduleToPublish?.semester
+  const publishImpact = usePublishImpact(!!scheduleToPublish, pubAY, pubSem)
+  const publishedSibling = scheduleToPublish
+    ? schedules.find(x =>
+        x.finalized &&
+        (x.id || x.name) !== (scheduleToPublish.id || scheduleToPublish.name) &&
+        (x.academic_year || x.academicYear) === pubAY &&
+        x.semester === pubSem)
+    : null
+
   const handleTogglePublish = (schedule) => {
     if (schedule.finalized) {
       setScheduleToUnpublish(schedule)
@@ -386,6 +400,7 @@ export default function ScheduleListPage() {
       // coordinator submissions for this term and reopens the queue —
       // one plain call is all that's needed, regardless of source.
       await unfinalizeSchedule(name)
+      clearPublishImpactCache()
       setToastMsg({ type: 'success', message: `Moved "${scheduleToUnpublish.name}" back to draft` })
       handleRefresh()
     } catch (err) {
@@ -405,6 +420,7 @@ export default function ScheduleListPage() {
     setPublishingState('working')
     try {
       await finalizeSchedule(name)
+      clearPublishImpactCache()
 
       // Only one schedule can be the live, published one for a given
       // academic year + semester. finalize_schedule on the backend already
@@ -543,65 +559,29 @@ export default function ScheduleListPage() {
       {/* ── Publish confirmation modal ─────────────────────────────────────── */}
       {scheduleToPublish && (
         <ModalOverlay onClose={() => publishingState !== 'working' && setScheduleToPublish(null)}>
-          <div style={{ background: 'var(--surface)', borderRadius: 16, width: 420, padding: '28px 30px', boxShadow: '0 24px 60px rgba(0,0,0,0.25)', border: `1px solid ${G.border}`, fontFamily: 'Inter,sans-serif' }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 20 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 11, background: 'var(--meadow-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              </div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: G.ink }}>Publish Schedule</h3>
-                <div style={{ margin: '5px 0 0', fontSize: 12.5, color: G.muted, lineHeight: 1.5 }}>
-                  <p style={{ margin: '0 0 10px' }}>
-                    This will publish <strong>{scheduleToPublish.name}</strong>
-                    {(scheduleToPublish.academic_year || scheduleToPublish.academicYear || scheduleToPublish.semester)
-                      ? ` (${[scheduleToPublish.academic_year || scheduleToPublish.academicYear ? `A.Y. ${scheduleToPublish.academic_year || scheduleToPublish.academicYear}` : '', scheduleToPublish.semester].filter(Boolean).join(', ')})`
-                      : ''} to faculty.
-                  </p>
-                  <p style={{ margin: '0 0 10px', padding: '10px 14px', background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: 8, fontSize: 12.5, fontWeight: 500, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                    Note: If you already published a Master Schedule for this term, it will automatically be moved back to Draft (not deleted or overwritten — just unpublished). There can only be one active published schedule per term.
-                  </p>
-                  <p style={{ margin: 0, padding: '10px 14px', background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: 8, fontSize: 12.5, fontWeight: 500, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                    If there's a scheduling queue currently open for this term, it will be automatically marked as finished — coordinators won't be able to submit further schedules into it after this is published.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setScheduleToPublish(null)} disabled={publishingState === 'working'}
-                style={{ padding: '8px 18px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: 'var(--surface)', color: G.muted, fontSize: 12.5, fontWeight: 600, cursor: publishingState === 'working' ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
-                Cancel
-              </button>
-              <button onClick={confirmPublish} disabled={publishingState === 'working'}
-                style={{ padding: '8px 22px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: publishingState === 'working' ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', boxShadow: '0 3px 12px rgba(0,0,0,0.25)', opacity: publishingState === 'working' ? 0.7 : 1 }}>
-                {publishingState === 'working' ? 'Publishing…' : 'Yes, Publish'}
-              </button>
-            </div>
-          </div>
+          <PublishModal
+            name={scheduleToPublish.name}
+            academicYear={pubAY}
+            semester={pubSem}
+            sibling={publishedSibling?.name}
+            impact={publishImpact}
+            busy={publishingState === 'working'}
+            onCancel={() => setScheduleToPublish(null)}
+            onConfirm={confirmPublish}
+            border={G.border}
+          />
         </ModalOverlay>
       )}
 
       {/* ── Unpublish confirmation modal ───────────────────────────────────── */}
       {scheduleToUnpublish && (
         <ModalOverlay onClose={() => unpublishingState !== 'working' && setScheduleToUnpublish(null)}>
-          <div style={{ background: 'var(--surface)', borderRadius: 16, width: 420, padding: '28px 30px', boxShadow: '0 24px 60px rgba(0,0,0,0.25)', border: `1px solid ${G.border}`, fontFamily: 'Inter,sans-serif' }}
+          <div style={{ background: 'var(--surface)', borderRadius: 16, width: 420, padding: '24px 26px', boxShadow: '0 24px 60px rgba(0,0,0,0.25)', border: `1px solid ${G.border}`, fontFamily: 'Inter,sans-serif' }}
             onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 20 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 11, background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-              </div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: G.ink }}>Move Back to Draft?</h3>
-                <div style={{ margin: '5px 0 0', fontSize: 12.5, color: G.muted, lineHeight: 1.5 }}>
-                  <p style={{ margin: '0 0 10px' }}>
-                    This will unpublish <strong>{scheduleToUnpublish.name}</strong> and move it back to Draft.
-                  </p>
-                  <p style={{ margin: 0, padding: '10px 14px', background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: 8, fontSize: 12.5, fontWeight: 500, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                    If this was published from a Master Schedule queue, it will also be unpublished in the Master Schedule tab and that queue will reopen for coordinators to resubmit.
-                  </p>
-                </div>
-              </div>
-            </div>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: G.ink }}>Move back to Draft?</h3>
+            <p style={{ margin: '8px 0 20px', fontSize: 12.5, color: G.muted, lineHeight: 1.5 }}>
+              <strong style={{ color: G.ink }}>{scheduleToUnpublish.name}</strong> will no longer be visible to faculty. If it came from a queue, that queue reopens so coordinators can resubmit.
+            </p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => setScheduleToUnpublish(null)} disabled={unpublishingState === 'working'}
                 style={{ padding: '8px 18px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: 'var(--surface)', color: G.muted, fontSize: 12.5, fontWeight: 600, cursor: unpublishingState === 'working' ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>

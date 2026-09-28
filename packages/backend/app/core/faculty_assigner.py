@@ -10,6 +10,13 @@ enforcing:
   • Specialization gate      – faculty.specializations must contain the courseCode
   • Tiered unit cap          – from unit_balancing.compute_effective_max_units()
   • Double-booking guard     – no faculty in two time-overlapping slots
+  • Full-time preferences    – IGNORED entirely (never a constraint, never scored),
+                               even if preferredDays / preferredTime* are set.
+  • Part-time preferences    – HARD constraint: a part-time faculty member is only
+                               eligible for a section if EVERY session in it falls
+                               on one of their preferredDays AND inside their
+                               preferredTimeStart–preferredTimeEnd window.
+                               (Empty / unset preferences mean "no restriction".)
   • Section consistency      – ALL sessions (lecture + lab, across all days)
                                of the same (program, courseCode, block) go to
                                the same instructor
@@ -68,6 +75,14 @@ class FacultyAssigner:
         self._course_title_map:  dict[str, str]         = {}   # courseCode.upper() → courseTitle
         self._pre_booked_faculty: dict[str, list[tuple]] = {}  # injected pre-bookings from approved schedules
 
+        # Time grid used to convert a global _start_slot into a clock hour.
+        # Defaults match the scheduler defaults; call configure_time() to
+        # sync with the admin's Time settings.
+        self._start_hour:    float = SLOT_START_HOUR
+        self._slots_per_day: int   = 28
+        self._slot_inc:      float = SLOT_INCREMENT
+        self._warned_prefs:  set[tuple] = set()
+
     # ── Data loading ──────────────────────────────────────────────────────────
 
     def load_faculty(self) -> None:
@@ -107,6 +122,129 @@ class FacultyAssigner:
             "FacultyAssigner: queued %d pre-booked intervals for %d faculty",
             count, len(faculty_bookings)
         )
+
+    def configure_time(
+        self,
+        start_hour:    float,
+        slots_per_day: int,
+        increment:     float = SLOT_INCREMENT,
+    ) -> None:
+        """Sync the slot→clock-hour conversion with the scheduler's time settings.
+
+        Call BEFORE assign(). Without it the assigner assumes a 7:00 AM start
+        with 28 half-hour slots per day.
+        """
+        self._start_hour    = float(start_hour)
+        self._slots_per_day = max(1, int(slots_per_day))
+        self._slot_inc      = float(increment)
+
+    # ── Part-time preference gate (HARD constraint) ───────────────────────────
+
+    @staticmethod
+    def _is_part_time(faculty: dict) -> bool:
+        """True for 'part-time', 'Part Time', 'part_time', 'Part-time Instructor', 'PT', ..."""
+        status = re.sub(r"[^a-z]", "", str(faculty.get("status") or "full-time").lower())
+        return status.startswith("part") or status == "pt"
+
+    @staticmethod
+    def _day_key(day: Any) -> str:
+        """'Monday', 'monday', 'Mon', 'M', 'Tues', 'Th', 'Thurs' → 'mon', 'tue', 'thu', ..."""
+        t = re.sub(r"[^a-z]", "", str(day or "").lower())
+        if not t:
+            return ""
+        if t == "t":  return "tue"
+        if t == "s":  return "sat"
+        if t.startswith("th"): return "thu"
+        if t.startswith("tu"): return "tue"
+        if t.startswith("sa"): return "sat"
+        if t.startswith("su"): return "sun"
+        if t[0] == "m": return "mon"
+        if t[0] == "w": return "wed"
+        if t[0] == "f": return "fri"
+        return t[:3]
+
+    @staticmethod
+    def _to_hour(value: Any) -> float | None:
+        """Accept 8, 8.5, '8', '8:30', '08:30', '1:30 PM' → hour as float."""
+        if value is None or isinstance(value, bool) or value == "":
+            return None
+        if isinstance(value, (int, float)):
+            return float(value)
+        text = str(value).strip().lower()
+        try:
+            return float(text)
+        except ValueError:
+            pass
+        m = re.match(r"^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$", text)
+        if not m:
+            return None
+        h, mi, ap = int(m.group(1)), int(m.group(2) or 0), m.group(3)
+        if ap == "pm" and h < 12:
+            h += 12
+        elif ap == "am" and h == 12:
+            h = 0
+        return h + mi / 60.0
+
+    def _part_time_prefs(
+        self, faculty: dict
+    ) -> tuple[set[str], float | None, float | None]:
+        """Return (allowed_day_keys, window_start, window_end).
+
+        An empty day set / None bound means "no restriction" on that axis.
+        """
+        raw_days = faculty.get("preferredDays") or []
+        if isinstance(raw_days, str):
+            raw_days = [d for d in re.split(r"[,/;]", raw_days) if d.strip()]
+        days = {self._day_key(d) for d in raw_days if str(d).strip()}
+
+        raw_start = faculty.get("preferredTimeStart")
+        raw_end   = faculty.get("preferredTimeEnd")
+        p_start   = self._to_hour(raw_start)
+        p_end     = self._to_hour(raw_end)
+
+        name = faculty.get("name", "?")
+        for label, raw, parsed in (("preferredTimeStart", raw_start, p_start),
+                                   ("preferredTimeEnd",   raw_end,   p_end)):
+            if raw not in (None, "") and parsed is None and (name, label) not in self._warned_prefs:
+                self._warned_prefs.add((name, label))
+                logger.warning(
+                    "FacultyAssigner: could not parse %s=%r for %s; ignoring it",
+                    label, raw, name,
+                )
+        return days, p_start, p_end
+
+    def _respects_preferences(self, faculty: dict, events: list[dict]) -> bool:
+        """True unless this faculty is part-time AND any event in `events`
+        falls outside their preferred days or preferred time window.
+
+        Full-time faculty are never restricted here.
+        """
+        if not self._is_part_time(faculty):
+            return True
+
+        days, p_start, p_end = self._part_time_prefs(faculty)
+        if not days and p_start is None and p_end is None:
+            return True
+
+        eps = 1e-6
+        for ev in events:
+            if days and self._day_key(ev.get("day")) not in days:
+                return False
+
+            if p_start is None and p_end is None:
+                continue
+            start_slot = ev.get("_start_slot")
+            dur        = ev.get("_duration")
+            if start_slot is None or dur is None:
+                continue  # cannot verify the time; the day check above still applied
+
+            ev_start = self._start_hour + (start_slot % self._slots_per_day) * self._slot_inc
+            ev_end   = ev_start + dur * self._slot_inc
+            if p_start is not None and ev_start < p_start - eps:
+                return False
+            if p_end is not None and ev_end > p_end + eps:
+                return False
+        return True
 
     # ── Conflict helpers ──────────────────────────────────────────────────────
 
@@ -295,7 +433,14 @@ class FacultyAssigner:
         if course_code.upper() in self._faculty_courses.get(name, set()):
             score += W_CONTINUITY
 
-        # ── Per-event preference factors ──────────────────────────────────────
+        # ── Per-event preference factors (part-time only) ─────────────────────
+        # Full-time faculty: preferredDays / preferredTimeStart / preferredTimeEnd
+        # are ignored entirely, even if set. For part-timers they are already
+        # enforced as hard constraints, so the bonus below only affects ranking
+        # among part-timers who passed the gate.
+        if not self._is_part_time(faculty):
+            return score
+
         preferred_days = faculty.get("preferredDays", [])
         pref_start     = float(faculty.get("preferredTimeStart", SLOT_START_HOUR))
         pref_end       = float(faculty.get("preferredTimeEnd", 21.0))
@@ -446,6 +591,10 @@ class FacultyAssigner:
 
         candidates: list[tuple[float, str]] = []
         for faculty in self.faculty_list:
+            # HARD constraint: part-time preferred days / time window
+            if not self._respects_preferences(faculty, events):
+                continue
+
             # Check against every distinct time slot the group occupies
             eligible = True
             for (start, dur) in unique_slots:
@@ -553,6 +702,9 @@ class FacultyAssigner:
             # Find faculty with the right specialization
             for faculty in self.faculty_list:
                 if not self._has_specialization(faculty, code):
+                    continue
+                # HARD constraint: part-time preferred days / time window
+                if not self._respects_preferences(faculty, tba_group):
                     continue
                 name = faculty["name"]
 
@@ -685,6 +837,29 @@ class FacultyAssigner:
         )
 
         self._reset_tracking()
+
+        # Diagnostic: what the assigner actually sees for each part-timer.
+        # If you never see this line in the console, an OLD faculty_assigner.py
+        # is running (restart the backend after replacing the file).
+        pts = [f for f in self.faculty_list if self._is_part_time(f)]
+        logger.info(
+            "FacultyAssigner: part-time hard constraints ACTIVE for %d of %d faculty",
+            len(pts), len(self.faculty_list),
+        )
+        for f in pts:
+            days, p_start, p_end = self._part_time_prefs(f)
+            if not days and p_start is None and p_end is None:
+                logger.warning(
+                    "  part-time %s: status=%r but NO preferredDays/time saved -> unrestricted",
+                    f.get("name"), f.get("status"),
+                )
+            else:
+                logger.info(
+                    "  part-time %s: status=%r days=%s window=%s-%s",
+                    f.get("name"), f.get("status"),
+                    sorted(days) or "any", p_start, p_end,
+                )
+
         groups = self._group_events(schedule)
 
         logger.info(
@@ -708,6 +883,7 @@ class FacultyAssigner:
             qualified_count = sum(
                 1 for f in self.faculty_list
                 if self._has_specialization(f, code)
+                and self._respects_preferences(f, group)
             )
             # Secondary sort: larger groups (more slots) are harder to satisfy
             return (qualified_count, -len(self._unique_slots(group)))
@@ -731,9 +907,16 @@ class FacultyAssigner:
                 self._mark_tba(group, code)
                 tba_groups.append(group)
                 blocks = sorted(set(ev.get("block", "?") for ev in group))
+                pref_blocked = [
+                    f["name"] for f in self.faculty_list
+                    if self._has_specialization(f, code)
+                    and not self._respects_preferences(f, group)
+                ]
                 logger.warning(
-                    "TBA (greedy): no eligible faculty for %s block(s) %s (%d events)",
+                    "TBA (greedy): no eligible faculty for %s block(s) %s (%d events)%s",
                     code, blocks, len(group),
+                    f" | qualified but outside part-time preferences: {pref_blocked}"
+                    if pref_blocked else "",
                 )
 
         # ── Backtracking pass ─────────────────────────────────────────────────
@@ -809,6 +992,18 @@ class FacultyAssigner:
                         ev1.get("courseCode"), ev1.get("block"), s1, e1,
                         ev2.get("courseCode"), ev2.get("block"), s2, e2,
                     )
+
+        # Check 3: part-time preferences (hard constraint) must hold
+        by_name = {f["name"]: f for f in self.faculty_list}
+        for ev in schedule:
+            fac = by_name.get(ev.get("faculty", "TBA"))
+            if fac and not self._respects_preferences(fac, [ev]):
+                logger.error(
+                    "PREFERENCE VIOLATION: part-time %s assigned %s (%s) on %s %s "
+                    "outside preferred days/time",
+                    fac["name"], ev.get("courseCode"), ev.get("block"),
+                    ev.get("day"), ev.get("period"),
+                )
 
     # ── Diagnostic helper (optional) ─────────────────────────────────────────
 

@@ -743,6 +743,30 @@ def _unfinalize_final_schedule(doc_ref, data: dict, user: dict):
             log_audit_event(origin_queue_id, "MASTER_UNFINALIZED", user, target_program="Master", details=f"Unpublished {sem} {ay} from the schedule list view")
 
 
+@router.get("/publish-impact")
+def publish_impact(academic_year: str, semester: str, user=Depends(admin_only)):
+    """Read-only preview of what publishing a schedule for this term would touch.
+
+    Same academicYear+semester equality query finalize_schedule already runs on
+    coordinator_queues (no new index needed). limit(1) because create_queue only
+    allows one queue per term -> at most 1 document read. The queue doc already
+    carries programStatus, so no extra queries are needed for the counts."""
+    docs = db.collection("coordinator_queues") \
+        .where("academicYear", "==", academic_year) \
+        .where("semester", "==", semester) \
+        .limit(1).get()
+    for d in docs:
+        q = d.to_dict()
+        if q.get("status") == "completed":
+            return {"queue": None}
+        statuses = q.get("programStatus", {}) or {}
+        return {"queue": {
+            "id": d.id,
+            "total": len(q.get("queue", [])),
+            "approved": sum(1 for v in statuses.values() if v == "approved"),
+        }}
+    return {"queue": None}
+
 @router.post("/final/{name}/finalize")
 def finalize_schedule(name: str, user=Depends(admin_only)):
     doc_ref = db.collection("final_schedules").document(name)

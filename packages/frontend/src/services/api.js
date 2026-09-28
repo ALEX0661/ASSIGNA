@@ -139,6 +139,7 @@ export const finalizeSchedule     = async (name) => axios.post(`${BASE}/schedule
 export const unfinalizeSchedule   = async (name) => axios.post(`${BASE}/schedule/final/${name}/unfinalize`, {}, { headers: await authHeaders() }).then(r => r.data)
 export const updateScheduleMeta   = async (name, d) => axios.put(`${BASE}/schedule/final/${name}/metadata`, d, { headers: await authHeaders() }).then(r => r.data)
 export const getActiveSchedule    = async (academicYear, semester) => axios.get(`${BASE}/schedule/final/active`, { headers: await authHeaders(), params: { academic_year: academicYear, semester } }).then(r => r.data)
+export const getPublishImpact     = async (academicYear, semester) => axios.get(`${BASE}/schedule/publish-impact`, { headers: await authHeaders(), params: { academic_year: academicYear, semester } }).then(r => r.data)
 
 export const getSchedules = async (scheduleName = null) => {
   const headers = await authHeaders()
@@ -189,7 +190,8 @@ export const getWorkload             = async () => axios.get(`${BASE}/analytics/
 export const getScheduleDistribution = async () => axios.get(`${BASE}/analytics/schedule-distribution`, { headers: await authHeaders() }).then(r => r.data)
 export const getDashboardStats       = async () => axios.get(`${BASE}/analytics/dashboard-stats`,       { headers: await authHeaders() }).then(r => r.data)
 export const getPreDiagnostic        = async (semester) => axios.get(`${BASE}/analytics/pre-diagnostic`, { headers: await authHeaders(), params: semester ? { semester } : {} }).then(r => r.data)
-
+export const getFacultySatisfaction  = async () => axios.get(`${BASE}/analytics/faculty-satisfaction`,  { headers: await authHeaders() }).then(r => r.data)
+export const getRoomCompliance       = async () => axios.get(`${BASE}/analytics/room-compliance`,       { headers: await authHeaders() }).then(r => r.data)
 export const updateCredentials = async (id, d) =>
   axios.put(`${BASE}/faculty/credentials/${id}`, d, { headers: await authHeaders() }).then(r => r.data)
 
@@ -270,6 +272,7 @@ export const rejectSchedule         = async (id,d) => axios.post(`${BASE}/approv
 export const getMasterSchedule      = async (qid)  => axios.get(`${BASE}/approval/master/${qid}`,               { headers: await authHeaders() }).then(r => r.data)
 export const unfinalizeMasterSchedule = async (qid)  => axios.post(`${BASE}/approval/master/${qid}/unfinalize`, {}, { headers: await authHeaders() }).then(r => r.data)
 export const finalizeMasterSchedule = async (qid)  => axios.post(`${BASE}/approval/master/${qid}/finalize`, {}, { headers: await authHeaders() }).then(r => r.data)
+export const getMasterPublishImpact = async (qid)  => axios.get(`${BASE}/approval/master/${qid}/publish-impact`, { headers: await authHeaders() }).then(r => r.data)
 export const adminEditMasterSchedule = async (qid,d) => axios.put(`${BASE}/approval/master/${qid}/edit`, d, { headers: await authHeaders() }).then(r => r.data)
 export const adminEditSchedule      = async (id,d) => axios.put(`${BASE}/approval/schedule/${id}/edit`, d,      { headers: await authHeaders() }).then(r => r.data)
 

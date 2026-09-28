@@ -256,7 +256,7 @@ export default function ApprovalDashboardPage() {
   async function handleFinalize(qId) {
     try {
       await finalizeMasterSchedule(qId)
-      toast('Master schedule published to faculty!', 'success')
+      toast('Published to faculty. The queue is now closed.', 'success')
       loadAll()
       refreshMaster(qId)
     }
@@ -265,7 +265,7 @@ export default function ApprovalDashboardPage() {
   async function handleUnpublish(qId) {
     try {
       await unfinalizeMasterSchedule(qId)
-      toast('Master schedule unpublished. Queue reopened.', 'info')
+      toast('Unpublished. Queue reopened and coordinator schedules reset to draft.', 'info')
       loadAll()
       refreshMaster(qId)
     } catch (e) { toast(e?.response?.data?.detail || 'Unpublish failed', 'error') }

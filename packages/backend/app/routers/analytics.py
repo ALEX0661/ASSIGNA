@@ -238,6 +238,396 @@ def _count_conflicts(events: list) -> int:
     return len(conflict_ids)
 
 
+# ── Satisfaction analysis ─────────────────────────────────────────────────────
+# NOTE: `assignmentScore` written by FacultyAssigner is a raw weighted score
+# (hundreds to thousands, negative when a cap/specialization rule is broken),
+# NOT a 0-1 value. Comparing it to 0.6 / 0.7 (as this file used to) made
+# "preferred days" and "in window" read ~100% for almost any schedule. The
+# helpers below measure satisfaction directly from the faculty's saved
+# preferences instead.
+
+_SAT_W_SPEC = 0.50
+_SAT_W_DAY  = 0.25
+_SAT_W_TIME = 0.25
+
+
+def _norm_title(t) -> str:
+    return " ".join(str(t or "").lower().split())
+
+
+def _spec_rating_for(fac: dict, code: str, title_norm: str) -> int:
+    """Specialization rating (1-5) this faculty holds for a course, 0 if none."""
+    code_u = (code or "").upper().strip()
+    for s in (fac.get("specializations") or []):
+        if not isinstance(s, dict):
+            continue
+        sc = (s.get("courseCode") or "").upper().strip()
+        if sc and sc == code_u:
+            return int(s.get("rating", 1) or 1)
+        if s.get("isUnmatched"):
+            continue
+        st = _norm_title(s.get("courseTitle"))
+        if st and title_norm and st == title_norm:
+            return int(s.get("rating", 1) or 1)
+    return 0
+
+
+def _event_minutes(e: dict):
+    slot = (e.get("period") or e.get("timeSlot") or e.get("time") or "")
+    slot = str(slot).strip()
+    return _parse_slot(slot) if slot else None
+
+
+def _pref_window(fac: dict):
+    """Preferred teaching window in minutes, or None if unset / full day."""
+    a, b = fac.get("preferredTimeStart"), fac.get("preferredTimeEnd")
+    if a is None and b is None:
+        return None
+    try:
+        a = float(a if a is not None else 7.0)
+        b = float(b if b is not None else 21.0)
+    except (TypeError, ValueError):
+        return None
+    if a <= 7.0 and b >= 21.0:
+        return None
+    return (a * 60, b * 60)
+
+
+def _is_part_time_fac(fac: dict) -> bool:
+    """True for part-time faculty ('part-time', 'Part-Time', 'part_time', ...)."""
+    status = str(fac.get("status") or "full-time").lower()
+    return "".join(ch for ch in status if ch.isalpha()) == "parttime"
+
+
+def _sat_band(score: float) -> str:
+    if score >= 80: return "great"
+    if score >= 60: return "good"
+    if score >= 40: return "fair"
+    return "poor"
+
+
+def _satisfaction_analysis(events: list, faculty_list: list, courses: list) -> dict:
+    """
+    Per-faculty and overall satisfaction, measured against saved preferences.
+
+    Components (0-100 each):
+      spec : how well the courses taught match the faculty's specialization
+             ratings (rating / 5, 0 when the course is not a specialization)
+      day  : share of sessions on preferredDays        (part-time only, if days are set)
+      time : share of sessions inside the preferred window (part-time only, if set)
+
+    Day/time preferences are only considered for PART-TIME faculty. Full-time
+    faculty are scored on specialization alone, even if they saved preferences.
+
+    Composite = weighted mean of the components that apply
+    (spec 50 %, day 25 %, time 25 %, re-normalised when day/time do not apply).
+    """
+    fac_by_name = {f.get("name"): f for f in faculty_list if f.get("name")}
+    title_by_code = {
+        (c.get("courseCode") or "").strip().upper(): _norm_title(c.get("title"))
+        for c in courses
+    }
+
+    stats: dict[str, dict] = {}
+    seen: set = set()
+    for e in events:
+        name = (e.get("faculty") or "TBA")
+        fac = fac_by_name.get(name)
+        if name == "TBA" or not fac:
+            continue
+        code = (e.get("courseCode") or "").strip()
+        day = (e.get("day") or "").strip()
+        rng = _event_minutes(e)
+        # merged sections appear as several events for one physical class
+        key = (name, code, day, e.get("period") or e.get("timeSlot") or e.get("time"))
+        if key in seen:
+            continue
+        seen.add(key)
+
+        s = stats.setdefault(name, {
+            "sessions": 0, "rating_sum": 0, "spec_hits": 0,
+            "day_evals": 0, "day_hits": 0, "time_evals": 0, "time_hits": 0,
+            "courses": set(), "days": set(),
+        })
+        title = title_by_code.get(code.upper()) or _norm_title(e.get("courseTitle") or e.get("title"))
+        rating = _spec_rating_for(fac, code, title)
+        s["sessions"] += 1
+        s["rating_sum"] += min(rating, 5)
+        if rating > 0:
+            s["spec_hits"] += 1
+        if code:
+            s["courses"].add(code)
+        if day:
+            s["days"].add(day)
+
+        # Preferences count for part-time faculty only; full-time are ignored.
+        if _is_part_time_fac(fac):
+            pref_days = fac.get("preferredDays") or []
+            if pref_days and day:
+                s["day_evals"] += 1
+                if day in pref_days:
+                    s["day_hits"] += 1
+
+            window = _pref_window(fac)
+            if window and rng:
+                s["time_evals"] += 1
+                if rng[0] >= window[0] and rng[1] <= window[1]:
+                    s["time_hits"] += 1
+
+    rows = []
+    for name, s in stats.items():
+        fac = fac_by_name[name]
+        n = s["sessions"] or 1
+        spec_score = s["rating_sum"] / (n * 5) * 100
+        day_score  = (s["day_hits"]  / s["day_evals"]  * 100) if s["day_evals"]  else None
+        time_score = (s["time_hits"] / s["time_evals"] * 100) if s["time_evals"] else None
+
+        parts = [(spec_score, _SAT_W_SPEC)]
+        if day_score  is not None: parts.append((day_score,  _SAT_W_DAY))
+        if time_score is not None: parts.append((time_score, _SAT_W_TIME))
+        composite = sum(v * w for v, w in parts) / sum(w for _, w in parts)
+
+        rows.append({
+            "name":           name,
+            "status":         fac.get("status", "full-time"),
+            "sessions":       s["sessions"],
+            "courses":        len(s["courses"]),
+            "teachingDays":   len(s["days"]),
+            "satisfaction":   round(composite, 1),
+            "band":           _sat_band(composite),
+            "specScore":      round(spec_score, 1),
+            "specMatchPct":   round(s["spec_hits"] / n * 100, 1),
+            "dayScore":       round(day_score, 1)  if day_score  is not None else None,
+            "timeScore":      round(time_score, 1) if time_score is not None else None,
+            "noSpecSessions": s["sessions"] - s["spec_hits"],
+            "offDaySessions": s["day_evals"] - s["day_hits"],
+            "offTimeSessions": s["time_evals"] - s["time_hits"],
+        })
+    rows.sort(key=lambda r: (r["satisfaction"], r["name"]))
+
+    def _avg(vals):
+        vals = [v for v in vals if v is not None]
+        return round(sum(vals) / len(vals), 1) if vals else None
+
+    tot_sessions = sum(s["sessions"] for s in stats.values())
+    tot_spec  = sum(s["spec_hits"] for s in stats.values())
+    tot_dev   = sum(s["day_evals"] for s in stats.values())
+    tot_dhit  = sum(s["day_hits"] for s in stats.values())
+    tot_tev   = sum(s["time_evals"] for s in stats.values())
+    tot_thit  = sum(s["time_hits"] for s in stats.values())
+
+    bands = {"great": 0, "good": 0, "fair": 0, "poor": 0}
+    for r in rows:
+        bands[r["band"]] += 1
+
+    return {
+        "rows": rows,
+        "summary": {
+            "totalFaculty":      len(rows),
+            "partTimeFaculty":   sum(1 for r in rows if _is_part_time_fac(fac_by_name[r["name"]])),
+            "avgSatisfaction":   _avg([r["satisfaction"] for r in rows]),
+            "avgSpec":           _avg([r["specScore"] for r in rows]),
+            "avgDay":            _avg([r["dayScore"] for r in rows]),
+            "avgTime":           _avg([r["timeScore"] for r in rows]),
+            "dayPrefFaculty":    sum(1 for r in rows if r["dayScore"]  is not None),
+            "timePrefFaculty":   sum(1 for r in rows if r["timeScore"] is not None),
+            "bands":             bands,
+            "specMatchPct":      round(tot_spec / tot_sessions * 100, 1) if tot_sessions else None,
+            "pctOnPreferredDays": round(tot_dhit / tot_dev * 100, 1) if tot_dev else None,
+            "pctInWindow":       round(tot_thit / tot_tev * 100, 1) if tot_tev else None,
+        },
+    }
+
+
+# ── Room compliance ───────────────────────────────────────────────────────────
+# Courses can carry preferredRoomLec / preferredRoomLab / preferredRoom
+# (comma-separated room names). The solver limits those sessions to the listed
+# rooms, so a session outside them usually means a manual edit or a special
+# placement path. This measures how often the schedule honours them.
+
+_NO_ROOM = {"", "tba", "online", "virtual", "online/virtual"}
+
+
+def _pref_rooms(course: dict, session: str) -> list:
+    s = (session or "").lower()
+    if "lab" in s:
+        raw = course.get("preferredRoomLab") or course.get("preferredRoom") or ""
+    elif "lec" in s:
+        raw = course.get("preferredRoomLec") or course.get("preferredRoom") or ""
+    else:
+        return []
+    if isinstance(raw, list):
+        raw = ",".join(str(x) for x in raw)
+    return [p.strip() for p in str(raw).split(",") if p.strip()]
+
+
+def _room_type_map(rooms) -> dict:
+    out: dict = {}
+    if isinstance(rooms, dict):
+        for k, v in rooms.items():
+            kind = "lab" if "lab" in str(k).lower() else "lecture"
+            for r in (v if isinstance(v, list) else []):
+                name = r if isinstance(r, str) else (r.get("name") if isinstance(r, dict) else None)
+                if name:
+                    out[str(name).strip().lower()] = kind
+    return out
+
+
+def _empty_room_compliance() -> dict:
+    return {
+        "rows": [], "violations": [], "typeMismatchRows": [], "byRoom": [],
+        "summary": {
+            "scheduledCourses": 0, "coursesWithPref": 0, "fullyRespected": 0,
+            "partial": 0, "broken": 0, "sessionsWithPref": 0,
+            "respectedSessions": 0, "violatedSessions": 0, "respectPct": None,
+            "causes": {"preferred_busy": 0, "preferred_free": 0, "unplaced": 0, "unknown": 0},
+            "typeMismatch": 0,
+        },
+    }
+
+
+def _room_compliance_analysis(events: list, courses: list, rooms) -> dict:
+    from collections import defaultdict
+
+    course_idx: dict = {}
+    for c in courses:
+        code = (c.get("courseCode") or "").strip().upper()
+        course_idx[(code, c.get("program"))] = c
+        course_idx.setdefault((code, None), c)
+    type_map = _room_type_map(rooms)
+
+    # occupancy per (room, day) so a miss can be explained
+    occ: dict = defaultdict(list)
+    for e in events:
+        rl = (e.get("room") or "").strip().lower()
+        day = (e.get("day") or "").strip()
+        rng = _event_minutes(e)
+        if rl not in _NO_ROOM and day and rng:
+            occ[(rl, day)].append(rng)
+
+    seen: set = set()
+    scheduled: set = set()
+    per_course: dict = {}
+    violations: list = []
+    mismatches: list = []
+    causes = {"preferred_busy": 0, "preferred_free": 0, "unplaced": 0, "unknown": 0}
+    by_room: dict = {}
+
+    for e in events:
+        code = (e.get("courseCode") or "").strip()
+        code_u = code.upper()
+        prog = e.get("program")
+        sess = e.get("session") or ""
+        room_raw = (e.get("room") or "").strip()
+        room_l = room_raw.lower()
+        day = (e.get("day") or "").strip()
+        period = e.get("period") or e.get("timeSlot") or e.get("time") or ""
+
+        key = (code_u, prog, str(e.get("year", "")), day, period, room_l, sess)
+        if key in seen:                 # merged sections = one physical class
+            continue
+        seen.add(key)
+
+        scheduled.add((code_u, prog))
+        course = course_idx.get((code_u, prog)) or course_idx.get((code_u, None))
+        if not course:
+            continue
+
+        prefs = _pref_rooms(course, sess)
+        placed = room_l not in _NO_ROOM
+        pl = [p.lower() for p in prefs]
+        ok = bool(prefs) and placed and room_l in pl
+
+        # room-type mismatch (ignore rooms the course explicitly asked for)
+        if placed and not ok and "practicum" not in sess.lower():
+            rtype = type_map.get(room_l)
+            want = "lab" if "lab" in sess.lower() else "lecture"
+            if rtype and rtype != want:
+                mismatches.append({
+                    "courseCode": code, "program": prog, "session": sess,
+                    "day": day, "period": period, "room": room_raw, "roomType": rtype,
+                })
+
+        if not prefs:
+            continue
+
+        pc = per_course.setdefault((code_u, prog), {
+            "courseCode": code, "title": course.get("title") or e.get("title") or "",
+            "program": prog,
+            "preferredLec": course.get("preferredRoomLec") or course.get("preferredRoom") or "",
+            "preferredLab": course.get("preferredRoomLab") or course.get("preferredRoom") or "",
+            "sessions": 0, "respected": 0, "violated": 0, "rooms": set(),
+        })
+        pc["sessions"] += 1
+        if placed:
+            pc["rooms"].add(room_raw)
+
+        for p in prefs:
+            br = by_room.setdefault(p, {"room": p, "courses": set(), "wanted": 0, "got": 0})
+            br["courses"].add(code_u)
+            br["wanted"] += 1
+            if room_l == p.lower():
+                br["got"] += 1
+
+        if ok:
+            pc["respected"] += 1
+            continue
+
+        pc["violated"] += 1
+        if not placed:
+            cause = "unplaced"
+        else:
+            rng = _event_minutes(e)
+            if not rng or not day:
+                cause = "unknown"
+            else:
+                busy = [p for p in pl if any(_slots_overlap(rng, r2) for r2 in occ.get((p, day), []))]
+                cause = "preferred_busy" if len(busy) == len(pl) else "preferred_free"
+        causes[cause] += 1
+        violations.append({
+            "courseCode": code, "title": course.get("title") or e.get("title") or "",
+            "program": prog, "block": e.get("block"), "session": sess,
+            "day": day, "period": period, "preferred": prefs,
+            "actual": room_raw or "TBA", "cause": cause,
+        })
+
+    rows = []
+    for pc in per_course.values():
+        status = ("respected" if pc["violated"] == 0
+                  else "broken" if pc["respected"] == 0 else "partial")
+        rows.append({**pc, "rooms": sorted(pc["rooms"]), "status": status})
+    order = {"broken": 0, "partial": 1, "respected": 2}
+    rows.sort(key=lambda r: (order[r["status"]], -r["violated"], r["courseCode"]))
+
+    sessions = sum(r["sessions"] for r in rows)
+    respected = sum(r["respected"] for r in rows)
+    by_room_rows = sorted(
+        [{"room": b["room"], "courses": len(b["courses"]), "wanted": b["wanted"], "got": b["got"]}
+         for b in by_room.values()],
+        key=lambda r: (-r["wanted"], r["room"]),
+    )[:8]
+
+    return {
+        "rows": rows,
+        "violations": violations[:80],
+        "typeMismatchRows": mismatches[:20],
+        "byRoom": by_room_rows,
+        "summary": {
+            "scheduledCourses":  len(scheduled),
+            "coursesWithPref":   len(rows),
+            "fullyRespected":    sum(1 for r in rows if r["status"] == "respected"),
+            "partial":           sum(1 for r in rows if r["status"] == "partial"),
+            "broken":            sum(1 for r in rows if r["status"] == "broken"),
+            "sessionsWithPref":  sessions,
+            "respectedSessions": respected,
+            "violatedSessions":  sessions - respected,
+            "respectPct":        round(respected / sessions * 100, 1) if sessions else None,
+            "causes":            causes,
+            "typeMismatch":      len(mismatches),
+        },
+    }
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.get("/assignment-quality")
@@ -253,6 +643,7 @@ def assignment_quality(user=Depends(admin_only)):
             "totalConflicts":     0,
             "pctInWindow":        None,
             "pctOnPreferredDays": None,
+            "specMatchPct":       None,
             "perFaculty":         [],
         }
 
@@ -261,14 +652,10 @@ def assignment_quality(user=Depends(admin_only)):
     events   = [e for e in all_events if not _is_other_dept(e.get("courseCode", ""))]
     auto     = [e for e in events if e.get("facultyAutoAssigned")]
     tba      = [e for e in events if e.get("faculty") == "TBA"]
-    scored   = [e for e in events if e.get("assignmentScore") is not None]
-    in_win   = [e for e in scored  if e.get("assignmentScore", 0) >= 0.6]
-    on_day   = [e for e in scored  if e.get("assignmentScore", 0) >= 0.7]
-
-    avg_score = (
-        round(sum(e["assignmentScore"] for e in scored) / len(scored), 2)
-        if scored else None
-    )
+    # Preference metrics are measured from the faculty's saved preferences.
+    # (assignmentScore is a raw weighted score, not a 0-1 value.)
+    sat = _satisfaction_analysis(all_events, _get_active_faculty(), get_courses())
+    sat_sum = sat["summary"]
 
     fac_map: dict[str, dict] = {}
     for e in events:
@@ -298,10 +685,12 @@ def assignment_quality(user=Depends(admin_only)):
         "autoAssigned":       len(auto),
         "tbaSessions":        len(tba),
         "autoAssignPct":      round(len(auto) / len(events) * 100, 1) if events else 0,
-        "avgScore":           avg_score,
+        "avgScore":           sat_sum["avgSatisfaction"],   # 0-100 satisfaction
+        "avgSatisfaction":    sat_sum["avgSatisfaction"],
         "totalConflicts":     total_conflicts,
-        "pctInWindow":        round(len(in_win) / len(scored) * 100, 1) if scored else None,
-        "pctOnPreferredDays": round(len(on_day) / len(scored) * 100, 1) if scored else None,
+        "pctInWindow":        sat_sum["pctInWindow"],
+        "pctOnPreferredDays": sat_sum["pctOnPreferredDays"],
+        "specMatchPct":       sat_sum["specMatchPct"],
         "perFaculty":         per_faculty,
     }
 
@@ -378,6 +767,27 @@ def workload(user=Depends(admin_only)):
         row["course_list"] = sorted(faculty_courses.get(row["name"], []))
 
     return {"workload": rows}
+
+
+@router.get("/room-compliance")
+def room_compliance(user=Depends(admin_only)):
+    """How often sessions land in the room their course was assigned."""
+    if not schedule_dict:
+        return _empty_room_compliance()
+    return _room_compliance_analysis(list(schedule_dict.values()), get_courses(), get_rooms())
+
+
+@router.get("/faculty-satisfaction")
+def faculty_satisfaction(user=Depends(admin_only)):
+    """How well the live schedule respects each faculty member's preferences."""
+    if not schedule_dict:
+        return {"rows": [], "summary": {
+            "totalFaculty": 0, "avgSatisfaction": None, "avgSpec": None,
+            "avgDay": None, "avgTime": None, "dayPrefFaculty": 0,
+            "timePrefFaculty": 0, "bands": {"great": 0, "good": 0, "fair": 0, "poor": 0},
+            "specMatchPct": None, "pctOnPreferredDays": None, "pctInWindow": None,
+        }}
+    return _satisfaction_analysis(list(schedule_dict.values()), _get_active_faculty(), get_courses())
 
 
 def _build_load_reason(
@@ -576,6 +986,43 @@ def schedule_distribution(user=Depends(admin_only)):
         "pct":     round(covered / total_m * 100, 1) if total_m else 0,
     }
 
+    # ── Hour-by-day heatmap (classes in session per clock hour) ────────────────
+    heat: dict = defaultdict(int)
+    heat_seen: set = set()
+    for e in all_events:
+        day = (e.get("day", "") or "").strip()
+        rng = _event_minutes(e)
+        if not day or not rng:
+            continue
+        hkey = (day, e.get("period") or e.get("timeSlot") or e.get("time"),
+                e.get("room"), e.get("courseCode"), e.get("faculty"))
+        if hkey in heat_seen:      # merged sections = one physical class
+            continue
+        heat_seen.add(hkey)
+        h = rng[0] // 60
+        while h * 60 < rng[1] and h < 24:
+            heat[(day, h)] += 1
+            h += 1
+    heatmap = [{"day": d, "hour": h, "count": c} for (d, h), c in sorted(heat.items())]
+
+    # ── Unassigned (TBA) major courses ────────────────────────────────────────
+    tba_map: dict[str, dict] = {}
+    for e in major_events:
+        if (e.get("faculty", "TBA") or "TBA") != "TBA":
+            continue
+        code = (e.get("courseCode") or "").strip() or "Unknown"
+        row = tba_map.setdefault(code, {
+            "courseCode": code, "sessions": 0, "programs": set(),
+            "title": e.get("courseTitle") or e.get("title") or "",
+        })
+        row["sessions"] += 1
+        if e.get("program"):
+            row["programs"].add(e.get("program"))
+    tba_courses = sorted(
+        [{**r, "programs": sorted(r["programs"])} for r in tba_map.values()],
+        key=lambda r: (-r["sessions"], r["courseCode"]),
+    )[:10]
+
     # ── Convenience highlights ─────────────────────────────────────────────────
     peak_day     = max(day_map, key=day_map.get, default="N/A") if day_map else "N/A"
     peak_program = max(prog_map, key=lambda p: prog_map[p]["sessions"], default="N/A")
@@ -587,6 +1034,8 @@ def schedule_distribution(user=Depends(admin_only)):
         "byYearLevel":     by_year,
         "roomUtilisation": room_utilisation,
         "facultyCoverage": faculty_coverage,
+        "heatmap":         heatmap,
+        "tbaCourses":      tba_courses,
         "peakDay":         peak_day,
         "peakProgram":     peak_program,
         "totalSessions":   len(all_events),
@@ -601,6 +1050,8 @@ def _empty_distribution() -> dict:
         "byYearLevel":     [],
         "roomUtilisation": [],
         "facultyCoverage": {"covered": 0, "tba": 0, "total": 0, "pct": 0},
+        "heatmap":         [],
+        "tbaCourses":      [],
         "peakDay":         "N/A",
         "peakProgram":     "N/A",
         "totalSessions":   0,

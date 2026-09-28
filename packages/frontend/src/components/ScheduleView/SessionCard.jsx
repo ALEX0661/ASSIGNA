@@ -224,7 +224,9 @@ const SessionCard = memo(function SessionCard({
           opacity: event._isDragGhost ? 0 : isDimmed ? 0.32 : isDragging ? 0.55 : 1,
           pointerEvents: (event._isDragGhost || isDimmed || isDragging) ? 'none' : 'auto',
           transform,
-          transition: 'all .15s ease-out',
+          // No transitions while another card is being dragged: 200+ cards animating
+          // shadow/opacity at once on every drag start/hover is pure main-thread cost.
+          transition: isDimmed ? 'none' : 'all .15s ease-out',
           zIndex,
         }}
       >
@@ -369,7 +371,8 @@ const SessionCard = memo(function SessionCard({
         opacity: event._isDragGhost ? 0 : isDimmed ? 0.25 : isDragging ? 0.5 : 1,
         pointerEvents: (event._isDragGhost || isDimmed || isDragging) ? 'none' : 'auto',
         transform,
-        transition: isDragging ? 'opacity .12s ease' : 'all .18s ease-out',
+        // See compact branch: transitions are off while another card is being dragged.
+        transition: isDragging ? 'opacity .12s ease' : isDimmed ? 'none' : 'all .18s ease-out',
         zIndex,
         display: 'flex', flexDirection: 'column', gap: 0,
       }}

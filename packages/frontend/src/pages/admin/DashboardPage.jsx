@@ -4,9 +4,13 @@ import { useAuth } from '../../hooks/useAuth'
 import {
   getDashboardStats, getWorkload, listSaved, loadSaved,
   getAssignmentQuality, getScheduleDistribution,
+  listQueues, getSubmittedSchedules, getMasterSchedule,
 } from '../../services/api'
 import { useScheduleStore } from '../../store/scheduleStore'
 import { useTour } from '../../hooks/useTour.jsx'
+import QueueAuditTrail from '../../components/QueueAuditTrail'
+import ApprovalOverview from '../../components/admin/ApprovalDashboard/ApprovalOverview'
+import { POLL_MS } from '../../components/admin/ApprovalDashboard/constants'
 
 const TOUR_SEEN_KEY = 'adminDashboard_tourSeen'
 function isOnboardingCompleted() {
@@ -41,6 +45,7 @@ const DASH_STYLE = `
     box-shadow: 0 1px 8px rgba(0,0,0,0.06);
     overflow: visible;
   }
+  .ap-spin { animation: spin 1s linear infinite; }
   .d-row { cursor:pointer; transition:background 0.13s; }
   .d-row:hover { background: var(--hover) !important; }
   .stat-card {
@@ -475,6 +480,12 @@ export default function DashboardPage() {
   const [showAllCoverage, setShowAllCoverage] = useState(false)
   const [error,        setError]        = useState(null)
 
+  // Approval pipeline (active queue + submissions + master status)
+  const [activeQueue,   setActiveQueue]   = useState(null)
+  const [submissions,   setSubmissions]   = useState([])
+  const [masterInfo,    setMasterInfo]    = useState(null)
+  const [approvalLoading, setApprovalLoading] = useState(true)
+
   const { TourElement, startTour } = useTour('adminDashboard', [
     {
       target: '#tour-admin-stats',
@@ -482,6 +493,12 @@ export default function DashboardPage() {
       content: 'A live snapshot of the system — faculty, courses, rooms, and schedules. Watch these counts as you set things up; they double as a quick check that each step of onboarding actually went through.',
       placement: 'bottom',
       disableBeacon: true,
+    },
+    {
+      target: '#tour-admin-queue',
+      title: 'Scheduling Queue',
+      content: 'Appears while a coordinator queue is active. Shows which program is up, how far along the queue is, and any submitted schedules waiting on your review.',
+      placement: 'top',
     },
     {
       target: '#tour-admin-setup',
@@ -557,6 +574,44 @@ export default function DashboardPage() {
     return () => { cancelled = true }
   }, [])
 
+  // Approval pipeline: fetch once, then poll quietly while the tab is visible.
+  // The master schedule is only re-fetched when the active queue changes,
+  // since that endpoint reads every event in the master.
+  useEffect(() => {
+    let cancelled = false
+    let timer = null
+    let masterFor = null
+
+    async function loadApproval() {
+      const [q, s] = await Promise.allSettled([listQueues(), getSubmittedSchedules()])
+      if (cancelled) return
+      const qArr = q.status === 'fulfilled' ? (Array.isArray(q.value) ? q.value : (q.value?.queues ?? [])) : []
+      const sArr = s.status === 'fulfilled'
+        ? (Array.isArray(s.value) ? s.value : (s.value?.schedules ?? s.value?.submitted ?? s.value?.items ?? s.value?.results ?? []))
+        : []
+      const active = qArr.find(x => x.status === 'active') || null
+      setActiveQueue(active)
+      setSubmissions(sArr)
+      setApprovalLoading(false)
+
+      const id = active ? (active.id || active.queueId) : null
+      if (id !== masterFor) {
+        masterFor = id
+        if (!id) setMasterInfo(null)
+        else getMasterSchedule(id).then(m => { if (!cancelled) setMasterInfo(m) }).catch(() => { if (!cancelled) setMasterInfo(null) })
+      }
+    }
+
+    function start() { if (!timer) timer = setInterval(loadApproval, POLL_MS) }
+    function stop()  { if (timer) { clearInterval(timer); timer = null } }
+    function onVis() { if (document.hidden) stop(); else { start(); loadApproval() } }
+
+    loadApproval()
+    if (!document.hidden) start()
+    document.addEventListener('visibilitychange', onVis)
+    return () => { cancelled = true; stop(); document.removeEventListener('visibilitychange', onVis) }
+  }, [])
+
   async function loadSchedule(name) {
     setWlLoading(true); setDistLoading(true)
     try {
@@ -578,6 +633,8 @@ export default function DashboardPage() {
   }
 
   /* ── Derived ── */
+  const activeQueueId = activeQueue ? (activeQueue.id || activeQueue.queueId) : null
+  const pendingCount = submissions.filter(s => s.status === 'submitted' && (s.queueId || null) === activeQueueId).length
   const wlRows   = workload ? [...workload].sort((a,b)=>(b.assigned/Math.max(b.max_units,1))-(a.assigned/Math.max(a.max_units,1))) : []
   const overList = wlRows.filter(f => f.overloaded)
   const atRisk   = wlRows.filter(f => !f.overloaded && (f.assigned/Math.max(f.max_units,1)) >= 0.85)
@@ -707,13 +764,25 @@ export default function DashboardPage() {
             {greeting}, {displayName}.
           </h1>
         </div>
-        <button id="tour-admin-scheduler" onClick={() => navigate('/dashboard/scheduler')}
-          style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:10, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 4px 14px rgba(0,0,0,0.28)', transition:'opacity .15s' }}
-          onMouseEnter={e=>e.currentTarget.style.opacity='.9'}
-          onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          Run Scheduler
-        </button>
+        <div id="tour-admin-scheduler" style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+          <button onClick={() => navigate('/dashboard/scheduler?mode=manage')}
+            style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 16px', borderRadius:10, border:'1.5px solid var(--border)', background:'var(--surface)', color:'var(--ink)', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', transition:'background .15s' }}
+            onMouseEnter={e=>e.currentTarget.style.background='var(--hover)'}
+            onMouseLeave={e=>e.currentTarget.style.background='var(--surface)'}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+            Manage Queue
+            {pendingCount > 0 && (
+              <span style={{ minWidth:18, height:18, padding:'0 5px', borderRadius:99, background:'#F59E0B', color:'#fff', fontSize:10.5, fontWeight:800, display:'inline-flex', alignItems:'center', justifyContent:'center' }}>{pendingCount}</span>
+            )}
+          </button>
+          <button onClick={() => navigate('/dashboard/scheduler?mode=generate')}
+            style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:10, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color:'#fff', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 4px 14px rgba(0,0,0,0.28)', transition:'opacity .15s' }}
+            onMouseEnter={e=>e.currentTarget.style.opacity='.9'}
+            onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Generate Schedule
+          </button>
+        </div>
       </div>
 
       {/* ── Setup Checklist — always mounted; renders its own empty/complete state ── */}
@@ -761,6 +830,24 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>
+
+      {/* ── Scheduling Queue: only while a queue is active ── */}
+      {!approvalLoading && activeQueue && (
+        <div id="tour-admin-queue">
+          <ApprovalOverview
+            queue={activeQueue}
+            submissions={submissions}
+            master={masterInfo}
+            loading={approvalLoading}
+            onNavigate={navigate}
+          />
+        </div>
+      )}
+      {!approvalLoading && activeQueue && (
+        <div id="tour-admin-audit" style={{ marginBottom: -20 }}>
+          <QueueAuditTrail queueId={activeQueueId} />
+        </div>
+      )}
 
       {/* ── Schedule Health ── */}
       <div id="tour-admin-health" className="d-card" style={{ padding:'16px 18px', animationDelay:'.12s' }}>

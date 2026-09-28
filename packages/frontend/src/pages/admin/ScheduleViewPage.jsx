@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { useScheduleStore } from '../../store/scheduleStore'
 import { getSchedules, getRooms, getFaculty, saveSchedule, finalizeSchedule, unfinalizeSchedule, updateScheduleMeta, getSubmittedSchedule, getMasterSchedule, deleteSaved, getTime, getResult, renameAdminSchedule } from '../../services/api'
+import PublishModal, { usePublishImpact, clearPublishImpactCache } from '../../components/ScheduleView/PublishModal'
 import { buildConflictMap, DAYS, getEventId, getMergedIds } from '../../components/ScheduleView/svHelpers'
 import { TV, ConflictSummaryBar, Toast, FilterButton, FilterRow, PendingChangesBar, PendingChangesModal, ProgramLegend, ModalOverlay, ModalHeader } from '../../components/ScheduleView/svPrimitives'
 import { useFilters, useDragDrop } from '../../components/ScheduleView/svHooks'
@@ -1134,11 +1135,16 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
     (s.id || s.name) !== activeName
   )
 
+  // What publishing would touch for this term. Only queries while the modal
+  // is open (1 indexed read, cached 30s) — see PublishModal.jsx.
+  const publishImpact = usePublishImpact(showFinalizeModal, schedAY, schedSem)
+
   async function handleFinalize() {
     if (!activeName) return
     setFinalizingState('working')
     try {
       await finalizeSchedule(activeName)
+      clearPublishImpactCache()
       setSchedFinalized(true)
       setSchedulesMeta(prev => prev.map(s => {
         if ((s.id || s.name) === activeName) return { ...s, finalized: true }
@@ -1160,6 +1166,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
     setFinalizingState('working')
     try {
       await unfinalizeSchedule(activeName)
+      clearPublishImpactCache()
       setSchedFinalized(false)
       setSchedulesMeta(prev => prev.map(s => (s.id || s.name) === activeName ? { ...s, finalized: false } : s))
       setFinalizingState('done')
@@ -1431,7 +1438,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
   }, [])
 
   /* ── Drag & drop — now with pending overrides + conflict ids ──────────── */
-  const dd = useDragDrop(allEvents, activeDay, syncLocalEvents, setEvents, storeEvents, schedFinalized, overrideFn)
+  const dd = useDragDrop(allEvents, activeDay, syncLocalEvents, setEvents, storeEvents, schedFinalized, overrideFn, { isolateHover: true })
 
   // Prevent accidental exit (reload, back button, and links) — shared
   // across pages instead of a hand-rolled copy of the same logic.
@@ -2337,8 +2344,8 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
                   propStartHour={globalStartHour} propEndHour={globalEndHour}
                   activeDay={activeDay}
                   rooms={visibleRooms} dayEvents={activeDayEvents} conflictMap={conflictMap}
-                  draggedEvent={dd.draggedEvent} hoveredCell={dd.hoveredCell} getDropConflict={dd.getDropConflict}
-                  onDragStart={dd.handleDragStart} onDragEnd={dd.handleDragEnd} onDragOver={dd.handleDragOver}
+                  draggedEvent={dd.draggedEvent} hoveredCell={dd.hoveredCell} hoverStore={dd.hoverStore} getDropConflict={dd.getDropConflict}
+                  onDragStart={dd.handleDragStart} onDragEnd={dd.handleDragEnd} onDragOver={dd.handleDragOver} onDragEnter={dd.handleDragEnter}
                   onDragLeave={dd.handleDragLeave} onDrop={dd.handleDrop} onCardClick={setSelectedEvent} onMergeEvent={dd.mergeWithNext} onSplitEvent={dd.splitEvent}
                   locked={schedFinalized}
                   gridSize={maximizeDensity} fullscreen={true} conflictingDragIds={dd.conflictingDragIds}
@@ -2518,11 +2525,11 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
                 dayEvents={activeDayEvents}
                 conflictMap={conflictMap}
                 draggedEvent={dd.draggedEvent}
-                hoveredCell={dd.hoveredCell}
+                hoveredCell={dd.hoveredCell} hoverStore={dd.hoverStore}
                 getDropConflict={dd.getDropConflict}
                 onDragStart={dd.handleDragStart}
                 onDragEnd={dd.handleDragEnd}
-                onDragOver={dd.handleDragOver}
+                onDragOver={dd.handleDragOver} onDragEnter={dd.handleDragEnter}
                 onDragLeave={dd.handleDragLeave}
                 onDrop={dd.handleDrop}
                 onCardClick={setSelectedEvent} onMergeEvent={dd.mergeWithNext} onSplitEvent={dd.splitEvent}
@@ -2612,64 +2619,29 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
       {/* ── Finalize confirmation modal ───────────────────────────────────── */}
       {showFinalizeModal && (
         <ModalOverlay onClose={() => setShowFinalizeModal(false)}>
-          <div style={{ background: 'var(--surface)', borderRadius:16, width:420, padding:'28px 30px', boxShadow:'0 24px 60px rgba(0,0,0,0.25)', border:`1px solid ${TV.border}`, fontFamily:'Inter,sans-serif' }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ display:'flex', alignItems:'flex-start', gap:14, marginBottom:20 }}>
-              <div style={{ width:40, height:40, borderRadius:11, background:'var(--meadow-soft)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--meadow)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              </div>
-              <div>
-                <h3 style={{ margin:0, fontSize:15, fontWeight:700, color: 'var(--ink)' }}>Finalize Schedule</h3>
-                <div style={{ margin:'5px 0 0', fontSize:12.5, color: 'var(--muted2)', lineHeight:1.5 }}>
-                  <p style={{ margin: '0 0 10px' }}>
-                    This will publish <strong>{activeName}</strong>{schedAY || schedSem ? ` (${[schedAY ? `A.Y. ${schedAY}` : '', schedSem].filter(Boolean).join(', ')})` : ''} to faculty.
-                  </p>
-                  {existingFinalizedForTerm && (
-                    <p style={{ margin: '0 0 10px', padding: '10px 14px', background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: 8, fontSize: 12.5, fontWeight: 500, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                      Note: You already published a Master Schedule for this term — it will automatically be moved back to Draft (not deleted or overwritten — just unpublished). There can only be one active published schedule per term.
-                    </p>
-                  )}
-                  <p style={{ margin: 0, padding: '10px 14px', background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: 8, fontSize: 12.5, fontWeight: 500, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                    If there's a scheduling queue currently open for this term, it will be automatically marked as finished — coordinators won't be able to submit further schedules into it after this is published.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
-              <button onClick={() => setShowFinalizeModal(false)}
-                style={{ padding:'8px 18px', borderRadius:9, border:`1.5px solid ${TV.border}`, background: 'var(--surface)', color: 'var(--muted)', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>
-                Cancel
-              </button>
-              <button onClick={handleFinalize} disabled={finalizingState === 'working'}
-                style={{ padding:'8px 22px', borderRadius:9, border:'none', background:'linear-gradient(135deg,var(--meadow),var(--meadow-deep))', color: '#fff', fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'Inter,sans-serif', boxShadow:'0 3px 12px rgba(0,0,0,0.25)', opacity: finalizingState === 'working' ? 0.7 : 1 }}>
-                {finalizingState === 'working' ? 'Finalizing…' : 'Yes, Finalize'}
-              </button>
-            </div>
-          </div>
+          <PublishModal
+            name={activeName}
+            academicYear={schedAY}
+            semester={schedSem}
+            sibling={existingFinalizedForTerm?.name || existingFinalizedForTerm?.id}
+            impact={publishImpact}
+            busy={finalizingState === 'working'}
+            onCancel={() => setShowFinalizeModal(false)}
+            onConfirm={handleFinalize}
+            border={TV.border}
+          />
         </ModalOverlay>
       )}
 
       {/* ── Unfinalize confirmation modal ─────────────────────────────────── */}
       {showUnfinalizeModal && (
         <ModalOverlay onClose={() => finalizingState !== 'working' && setShowUnfinalizeModal(false)}>
-          <div style={{ background: 'var(--surface)', borderRadius:16, width:420, padding:'28px 30px', boxShadow:'0 24px 60px rgba(0,0,0,0.25)', border:`1px solid ${TV.border}`, fontFamily:'Inter,sans-serif' }}
+          <div style={{ background: 'var(--surface)', borderRadius:16, width:420, padding:'24px 26px', boxShadow:'0 24px 60px rgba(0,0,0,0.25)', border:`1px solid ${TV.border}`, fontFamily:'Inter,sans-serif' }}
             onClick={e => e.stopPropagation()}>
-            <div style={{ display:'flex', alignItems:'flex-start', gap:14, marginBottom:20 }}>
-              <div style={{ width:40, height:40, borderRadius:11, background:'#F3F4F6', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-              </div>
-              <div>
-                <h3 style={{ margin:0, fontSize:15, fontWeight:700, color: 'var(--ink)' }}>Unfinalize Schedule?</h3>
-                <div style={{ margin:'5px 0 0', fontSize:12.5, color: 'var(--muted2)', lineHeight:1.5 }}>
-                  <p style={{ margin: '0 0 10px' }}>
-                    This will unpublish <strong>{activeName}</strong> and move it back to Draft.
-                  </p>
-                  <p style={{ margin: 0, padding: '10px 14px', background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', borderRadius: 8, fontSize: 12.5, fontWeight: 500, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                    If this was published from a Master Schedule queue, it will also be unpublished in the Master Schedule tab and that queue will reopen for coordinators to resubmit.
-                  </p>
-                </div>
-              </div>
-            </div>
+            <h3 style={{ margin:0, fontSize:15, fontWeight:700, color: 'var(--ink)' }}>Move back to Draft?</h3>
+            <p style={{ margin:'8px 0 20px', fontSize:12.5, color: 'var(--muted2)', lineHeight:1.5 }}>
+              <strong style={{ color: 'var(--ink)' }}>{activeName}</strong> will no longer be visible to faculty. If it came from a queue, that queue reopens so coordinators can resubmit.
+            </p>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
               <button onClick={() => setShowUnfinalizeModal(false)} disabled={finalizingState === 'working'}
                 style={{ padding:'8px 18px', borderRadius:9, border:`1.5px solid ${TV.border}`, background: 'var(--surface)', color: 'var(--muted)', fontSize:12.5, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif' }}>

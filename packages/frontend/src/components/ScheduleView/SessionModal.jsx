@@ -5,6 +5,7 @@ import {
   parsePeriodRange, minutesToTimeLabel, findMergePartner,
   getEventId, findConflicts, TIME_SLOTS, programColor,
   timeOverlaps, areMergePartners,
+  getFacultyPreference, checkPreferenceViolation, formatPreferenceSummary,
 } from './svHelpers'
 import {
   ModalOverlay, ModalHeader, RoomChip, ConflictTable, TV,
@@ -118,6 +119,65 @@ s.textContent = `
     .sm-batch-col-header { flex-shrink:0; padding:16px 20px 0; }
     .sm-batch-col-body   { flex:1; overflow-y:auto; padding:12px 20px 16px; min-height:0; }
     .sm-batch-col-body.sm-scroll { scrollbar-gutter:stable; }
+
+    /* ── Faculty toolbar: search · sort · filter ───────────────────────────── */
+    .sm-select.sm-select-sm {
+      height:30px; padding:0 24px 0 9px; width:auto; min-width:0; font-size:11.5px;
+      border-radius:8px; background-position:right 8px center; font-weight:500;
+    }
+    .sm-fac-search { position:relative; flex:1; min-width:0; }
+    .sm-fac-search input {
+      width:100%; height:30px; box-sizing:border-box; padding:0 26px 0 28px;
+      border-radius:8px; border:1px solid var(--border); background:var(--surface);
+      color:var(--ink); font-family:'Inter',sans-serif; font-size:11.5px; outline:none;
+      transition:border-color .15s, box-shadow .15s;
+    }
+    .sm-fac-search input::placeholder { color:var(--muted); }
+    .sm-fac-search input:hover { border-color:var(--meadow-border); }
+    .sm-fac-search input:focus { border-color:var(--mint); box-shadow:0 0 0 3px rgba(0,0,0,.08); }
+    .sm-fac-search .sm-s-ico { position:absolute; left:9px; top:50%; transform:translateY(-50%); pointer-events:none; display:flex; }
+    .sm-fac-search .sm-s-clear {
+      position:absolute; right:5px; top:50%; transform:translateY(-50%);
+      width:18px; height:18px; padding:0; border:none; border-radius:50%;
+      background:var(--hover); color:var(--muted); cursor:pointer; font-size:13px; line-height:1;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .sm-fac-search .sm-s-clear:hover { background:var(--border); color:var(--ink); }
+    .sm-tool-btn {
+      height:30px; padding:0 10px; display:flex; align-items:center; gap:5px; flex-shrink:0;
+      border-radius:8px; border:1px solid var(--border); background:var(--surface);
+      color:var(--muted); font-family:'Inter',sans-serif; font-size:11.5px; font-weight:600;
+      cursor:pointer; white-space:nowrap; transition:all .14s;
+    }
+    .sm-tool-btn:hover { background:var(--hover); color:var(--ink); border-color:var(--meadow-border); }
+    .sm-tool-btn.on { background:var(--meadow-soft); border-color:var(--meadow-border); color:var(--meadow); }
+    .sm-tool-btn .sm-count {
+      min-width:15px; height:15px; padding:0 4px; border-radius:99px;
+      background:var(--meadow); color:#fff; font-size:9px; font-weight:700;
+      display:inline-flex; align-items:center; justify-content:center;
+    }
+    .sm-pop {
+      position:absolute; top:calc(100% + 6px); right:0; z-index:30; width:240px; padding:10px;
+      border-radius:11px; background:var(--surface); border:1px solid var(--border);
+      box-shadow:0 12px 32px rgba(0,0,0,.18); animation:sm-in .14s ease-out;
+    }
+    .sm-seg { display:flex; gap:2px; padding:2px; background:var(--hover); border-radius:8px; }
+    .sm-seg button {
+      flex:1; border:none; background:transparent; padding:5px 0; border-radius:6px;
+      font-family:'Inter',sans-serif; font-size:11px; font-weight:600; color:var(--muted); cursor:pointer;
+    }
+    .sm-seg button.on { background:var(--surface); color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.14); }
+    .sm-ftoggle {
+      display:flex; align-items:center; gap:8px; width:100%; padding:6px 4px; border:none; border-radius:6px;
+      background:transparent; cursor:pointer; text-align:left;
+      font-family:'Inter',sans-serif; font-size:11.5px; color:var(--ink);
+    }
+    .sm-ftoggle:hover { background:var(--hover); }
+    .sm-ftoggle .box {
+      width:14px; height:14px; border-radius:4px; border:1.5px solid var(--border); flex-shrink:0;
+      display:inline-flex; align-items:center; justify-content:center; transition:all .12s;
+    }
+    .sm-ftoggle.on .box { background:var(--meadow); border-color:var(--meadow); }
     `
 
 /* ── Reusable SVG icons ───────────────────────────────────────────────────── */
@@ -208,6 +268,16 @@ const Ic = {
       <polyline points="22 4 12 14.01 9 11.01"/>
     </svg>
   ),
+  Search: ({ size=14, color='currentColor' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
+      <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+  ),
+  Filter: ({ size=14, color='currentColor' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
+      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+    </svg>
+  ),
   Spin: ({ size=14, color=TV.deep }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" style={{animation:'sm-spin .75s linear infinite', flexShrink:0}}>
       <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
@@ -216,6 +286,24 @@ const Ic = {
 }
 
 
+
+const FAC_SORTS = [
+  { key:'best', label:'Best match'    },
+  { key:'name', label:'Name A–Z'      },
+  { key:'spec', label:'Specialization'},
+  { key:'load', label:'Lowest load'   },
+  { key:'free', label:'Most available'},
+]
+const FAC_FILTER_DEFAULTS = { status:'all', available:false, withinCap:false, inPref:false, hasSpec:false }
+
+function FilterToggle({ checked, onChange, label }) {
+  return (
+    <button type="button" className={`sm-ftoggle${checked ? ' on' : ''}`} onClick={onChange}>
+      <span className="box">{checked && <Ic.Check size={9} color="#fff" />}</span>
+      {label}
+    </button>
+  )
+}
 
 export function OverrideConfirmDialog({ event, newDay, newPeriod, newRoom, newFaculty, conflicts, onConfirm, onCancel }) {
   return (
@@ -314,7 +402,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
     {
       target: '#tour-sm-tab-batch',
       title: 'Assign All — Batch Faculty Assignment',
-      content: 'Assigns one faculty member to this session and every merged/sibling session at once (e.g. the same course\'s lecture and lab blocks, or every section taught across several days) instead of editing each one individually. It ranks candidates by availability and projects each one\'s resulting unit load against their cap, and flags any sibling session where that faculty member would already be double-booked — you confirm an override per conflict, the same as a normal drag-and-drop move, before anything saves.',
+      content: 'Assigns one faculty member to this session and every merged/sibling session at once (e.g. the same course\'s lecture and lab blocks, or every section taught across several days) instead of editing each one individually. It ranks candidates by availability and projects each one\'s resulting unit load against their cap, and flags any sibling session where that faculty member would already be double-booked — you confirm an override per conflict, the same as a normal drag-and-drop move, before anything saves. Part-time faculty whose preferred days or hours don\'t cover a session get an orange "Off-pref" flag — a warning only, it doesn\'t block the assignment.',
       isPrimary: false,
     },
   ], true, { isPrimary: false })
@@ -332,6 +420,12 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
   const [batchSaving,   setBatchSaving]   = useState(false)
   const [batchError,    setBatchError]    = useState('')
   const [batchResults,  setBatchResults]  = useState(null) // null = not run yet
+
+  // ── Faculty picker: search / sort / filter ────────────────────────────────
+  const [facQuery,      setFacQuery]      = useState('')
+  const [facSort,       setFacSort]       = useState('best')
+  const [facFilters,    setFacFilters]    = useState(FAC_FILTER_DEFAULTS)
+  const [facFilterOpen, setFacFilterOpen] = useState(false)
 
   // ── Merge state (read-only; merging is now done via drag-and-drop) ───────
 
@@ -558,6 +652,39 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
     return map
   }, [allFacNames, siblingEvents, allEvents, evId, newDay, newStart, newEnd])
 
+  /* ── Part-time preference check (preferred days / hours) ───────────────── */
+  // For every part-time faculty member with preferences on file, find which of
+  // the affected sessions would land outside their preferred days/hours.
+  // Same convention as batchFacultyStatusMap: the session being edited uses the
+  // proposed day/time from the Details tab, siblings use their saved slot.
+  // A soft warning only — it never forces an override.
+  const facultyPrefMap = useMemo(() => {
+    const map = new Map()
+    masterFacultyList.forEach(facObj => {
+      if (facObj.status !== 'part-time') return
+      const pref = getFacultyPreference(facObj)
+      if (!pref) return
+      const violations = new Map()   // sibId → { dayOff, timeOff, day, start, end }
+      siblingEvents.forEach(sib => {
+        const sibId = getEventId(sib)
+        const isCurrentEvent = sibId === evId
+        const range = parsePeriodRange(sib.period)
+        const v = checkPreferenceViolation(
+          pref,
+          isCurrentEvent ? newDay   : sib.day,
+          isCurrentEvent ? newStart : (range?.start ?? null),
+          isCurrentEvent ? newEnd   : (range?.end   ?? null),
+        )
+        if (v) violations.set(sibId, v)
+      })
+      map.set(facObj.name, { pref, summary: formatPreferenceSummary(pref), violations })
+    })
+    return map
+  }, [masterFacultyList, siblingEvents, evId, newDay, newStart, newEnd])
+
+  const selectedPref   = batchFaculty && batchFaculty !== 'TBA' ? (facultyPrefMap.get(batchFaculty) ?? null) : null
+  const batchPrefCount = selectedPref?.violations.size ?? 0
+
   /* ── Unit cap helper (mirrors FacultyDetailPage / unit_balancing.py) ──────── */
   const getEffectiveMaxUnits = (status, courseCount) => {
     if (status === 'part-time') return 15
@@ -652,12 +779,46 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
       const bConf = batchFacultyStatusMap.get(b) ?? 0
       const aOver = facultyUnitMap.get(a)?.wouldExceed ? 1 : 0
       const bOver = facultyUnitMap.get(b)?.wouldExceed ? 1 : 0
+      const aPref = facultyPrefMap.get(a)?.violations.size ?? 0
+      const bPref = facultyPrefMap.get(b)?.violations.size ?? 0
       // Higher score floats to top of list
-      const score = (spec, conf, over) => spec * 20 - conf * 6 - over * 10
-      const diff  = score(bSpec, bConf, bOver) - score(aSpec, aConf, aOver)
+      const score = (spec, conf, over, pref) => spec * 20 - conf * 6 - over * 10 - pref * 4
+      const diff  = score(bSpec, bConf, bOver, bPref) - score(aSpec, aConf, aOver, aPref)
       return diff !== 0 ? diff : a.localeCompare(b)
     })
-  }, [allFacNames, facultySpecMap, batchFacultyStatusMap, facultyUnitMap])
+  }, [allFacNames, facultySpecMap, batchFacultyStatusMap, facultyUnitMap, facultyPrefMap])
+
+  /* ── Faculty picker: apply search + filters + sort to the ranked list ─────── */
+  const activeFilterCount =
+    (facFilters.status !== 'all' ? 1 : 0) + (facFilters.available ? 1 : 0) +
+    (facFilters.withinCap ? 1 : 0) + (facFilters.inPref ? 1 : 0) + (facFilters.hasSpec ? 1 : 0)
+  const isFacFiltered = !!facQuery.trim() || activeFilterCount > 0
+  const clearFacFilters = () => { setFacQuery(''); setFacFilters(FAC_FILTER_DEFAULTS) }
+  const toggleFacFilter = key => setFacFilters(f => ({ ...f, [key]: !f[key] }))
+
+  const visibleFaculty = useMemo(() => {
+    const norm   = str => String(str).toLowerCase().replace(/[.,]/g, ' ').replace(/\s+/g, ' ').trim()
+    const tokens = norm(facQuery).split(' ').filter(Boolean)
+    const list = rankedFaculty.filter(fac => {
+      if (tokens.length) { const n = norm(fac); if (!tokens.every(t => n.includes(t))) return false }
+      const unit = facultyUnitMap.get(fac)
+      if (facFilters.status !== 'all' && unit?.status !== facFilters.status)           return false
+      if (facFilters.available  && (batchFacultyStatusMap.get(fac) ?? 0) > 0)          return false
+      if (facFilters.withinCap  && unit?.wouldExceed)                                  return false
+      if (facFilters.inPref     && (facultyPrefMap.get(fac)?.violations.size ?? 0) > 0) return false
+      if (facFilters.hasSpec    && !facultySpecMap.has(fac))                           return false
+      return true
+    })
+    if (facSort === 'best') return list
+    const rank = new Map(rankedFaculty.map((f, i) => [f, i]))
+    const cmp = {
+      name: (a, b) => a.localeCompare(b),
+      spec: (a, b) => (facultySpecMap.get(b) ?? 0) - (facultySpecMap.get(a) ?? 0) || a.localeCompare(b),
+      load: (a, b) => (facultyUnitMap.get(a)?.usedUnits ?? 0) - (facultyUnitMap.get(b)?.usedUnits ?? 0) || a.localeCompare(b),
+      free: (a, b) => (batchFacultyStatusMap.get(a) ?? 0) - (batchFacultyStatusMap.get(b) ?? 0) || rank.get(a) - rank.get(b),
+    }[facSort]
+    return [...list].sort(cmp)
+  }, [rankedFaculty, facQuery, facFilters, facSort, facultyUnitMap, batchFacultyStatusMap, facultyPrefMap, facultySpecMap])
 
   /* ── Merge: partner detection (when already merged) ─────────────────────── */
   async function handleBatchSave() {
@@ -758,7 +919,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
     { key:'details',   label:'Details',    icon:<Ic.Calendar size={11} />, count:null,                    warn:false },
     { key:'rooms',     label:'Rooms',      icon:<Ic.Door     size={11} />, count:null,                    warn:roomConflictSet.has(newRoom), merge: mergePreviewRooms.has(newRoom) && !roomConflictSet.has(newRoom) },
     { key:'conflicts', label:'Conflicts',  icon:<Ic.Warning  size={11} />, count:totalConflicts||null,    warn:totalConflicts > 0 },
-    { key:'batch',     label:'Assign All', icon:<Ic.Users    size={11} />, count:siblingEvents.length||null, warn:false },
+    { key:'batch',     label:'Assign All', icon:<Ic.Users    size={11} />, count:siblingEvents.length||null, warn:batchPrefCount > 0 },
   ]
 
   /* ── Combined section label: e.g. "BSCS 3-A" ───────────────────────────── */
@@ -1205,7 +1366,62 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                       <span style={{ fontWeight:500, fontSize:10, color:TV.muted, textTransform:'none', letterSpacing:0, marginLeft:4 }}>
                         · {siblingEvents.length} session{siblingEvents.length !== 1 ? 's' : ''}
                       </span>
+                      {isFacFiltered && (
+                        <span style={{ marginLeft:'auto', fontWeight:600, fontSize:10, color:TV.muted, textTransform:'none', letterSpacing:0 }}>
+                          {visibleFaculty.length} of {rankedFaculty.length}
+                        </span>
+                      )}
                     </p>
+
+                    {/* ── Search · Sort · Filter ── */}
+                    <div style={{ position:'relative', display:'flex', alignItems:'center', gap:6, marginTop:10 }}>
+                      <div className="sm-fac-search">
+                        <span className="sm-s-ico"><Ic.Search size={12} color={TV.muted} /></span>
+                        <input
+                          type="text" value={facQuery} placeholder="Search faculty…"
+                          onChange={e => setFacQuery(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Escape' && facQuery) { e.stopPropagation(); setFacQuery('') } }}
+                        />
+                        {facQuery && <button type="button" className="sm-s-clear" onClick={() => setFacQuery('')} title="Clear search">×</button>}
+                      </div>
+
+                      <select className="sm-select sm-select-sm" value={facSort} onChange={e => setFacSort(e.target.value)} title="Sort faculty">
+                        {FAC_SORTS.map(o => <option key={o.key} value={o.key}>Sort: {o.label}</option>)}
+                      </select>
+
+                      <button
+                        type="button"
+                        className={`sm-tool-btn${activeFilterCount > 0 || facFilterOpen ? ' on' : ''}`}
+                        onClick={() => setFacFilterOpen(o => !o)}
+                      >
+                        <Ic.Filter size={11} /> Filter
+                        {activeFilterCount > 0 && <span className="sm-count">{activeFilterCount}</span>}
+                      </button>
+
+                      {facFilterOpen && (
+                        <>
+                          <div onClick={() => setFacFilterOpen(false)} style={{ position:'fixed', inset:0, zIndex:29 }} />
+                          <div className="sm-pop">
+                            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+                              <span style={{ fontSize:10, fontWeight:700, color:TV.muted, textTransform:'uppercase', letterSpacing:'.8px' }}>Filter faculty</span>
+                              {activeFilterCount > 0 && (
+                                <button type="button" className="sm-view-link" onClick={() => setFacFilters(FAC_FILTER_DEFAULTS)}>Reset</button>
+                              )}
+                            </div>
+                            <div className="sm-seg" style={{ marginBottom:6 }}>
+                              {[['all','All'],['full-time','Full-time'],['part-time','Part-time']].map(([k, l]) => (
+                                <button key={k} type="button" className={facFilters.status === k ? 'on' : ''}
+                                  onClick={() => setFacFilters(f => ({ ...f, status:k }))}>{l}</button>
+                              ))}
+                            </div>
+                            <FilterToggle checked={facFilters.available} onChange={() => toggleFacFilter('available')} label="No schedule overlaps" />
+                            <FilterToggle checked={facFilters.withinCap} onChange={() => toggleFacFilter('withinCap')} label="Within unit cap" />
+                            <FilterToggle checked={facFilters.inPref}    onChange={() => toggleFacFilter('inPref')}    label="Within preferred days / hours" />
+                            <FilterToggle checked={facFilters.hasSpec}   onChange={() => toggleFacFilter('hasSpec')}   label={`Specializes in ${event.courseCode}`} />
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {/* Scrollable body */}
@@ -1214,10 +1430,10 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                   <div style={{ border:`1px solid ${TV.border}`, borderRadius:10, overflow:'hidden', background: 'var(--surface)' }}>
 
                     {/* ── Recommended header (shown when any faculty has a spec match) ── */}
-                    {[...facultySpecMap.keys()].some(k => allFacNames.includes(k)) && (
+                    {(facSort !== 'best' || [...facultySpecMap.keys()].some(k => allFacNames.includes(k))) && (
                       <div style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 12px', background:'var(--bg)', borderBottom:`1px solid ${TV.border}` }}>
                         <span style={{ fontSize:9, fontWeight:700, color:TV.muted, textTransform:'uppercase', letterSpacing:'.8px' }}>
-                          ★ Ranked by specialization &amp; availability
+                          {facSort === 'best' ? '★ Ranked by specialization & availability' : `Sorted · ${FAC_SORTS.find(o => o.key === facSort)?.label}`}
                         </span>
                         <span style={{ marginLeft:'auto', fontSize:9, color:TV.muted, fontWeight:500 }}>
                           {event.courseCode}
@@ -1258,14 +1474,23 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
 
                       // Find the first index in the ranked list where conflicts or unit overflow begin
                       let dividerAt = -1
-                      rankedFaculty.forEach((fac, idx) => {
-                        if (dividerAt !== -1) return
+                      visibleFaculty.forEach((fac, idx) => {
+                        if (dividerAt !== -1 || facSort !== 'best') return
                         const conf = batchFacultyStatusMap.get(fac) ?? 0
                         const over = facultyUnitMap.get(fac)?.wouldExceed
-                        if (conf > 0 || over) dividerAt = idx
+                        const pref = (facultyPrefMap.get(fac)?.violations.size ?? 0) > 0
+                        if (conf > 0 || over || pref) dividerAt = idx
                       })
 
-                      return rankedFaculty.map((fac, idx) => {
+                      if (visibleFaculty.length === 0) return (
+                        <div style={{ padding:'18px 12px', textAlign:'center', fontSize:11.5, color:TV.muted }}>
+                          No faculty match
+                          {facQuery.trim() && <> “<strong style={{ color:TV.text }}>{facQuery.trim()}</strong>”</>}.{' '}
+                          <button type="button" className="sm-view-link" onClick={clearFacFilters}>Clear filters</button>
+                        </div>
+                      )
+
+                      return visibleFaculty.map((fac, idx) => {
                         const conflictCount  = batchFacultyStatusMap.get(fac) ?? 0
                         const totalSessions  = siblingEvents.length
                         const isSelected     = batchFaculty === fac
@@ -1276,14 +1501,18 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                         const unitInfo       = facultyUnitMap.get(fac)
                         const hasUnitInfo    = !!unitInfo
                         const wouldExceed    = unitInfo?.wouldExceed ?? false
+                        const prefInfo       = facultyPrefMap.get(fac)
+                        const prefCount      = prefInfo?.violations.size ?? 0
+                        const hasPref        = prefCount > 0
+                        const softIssue      = wouldExceed || hasPref   // amber-level issues
 
                         // Colour scheme — cleaner, fewer colours
                         let bg, color, bl, dotColor
-                        if      (isSelected && isClean && !wouldExceed)      { bg='var(--meadow-soft)'; color=TV.deep;    bl=`3px solid ${TV.deep}`; dotColor=TV.deep }
-                        else if (isSelected && (isPartial || wouldExceed))   { bg='rgba(245, 158, 11, 0.1)'; color='#F59E0B';  bl='3px solid #f59e0b';    dotColor='#f59e0b' }
+                        if      (isSelected && isClean && !softIssue)      { bg='var(--meadow-soft)'; color=TV.deep;    bl=`3px solid ${TV.deep}`; dotColor=TV.deep }
+                        else if (isSelected && (isPartial || softIssue))   { bg='rgba(245, 158, 11, 0.1)'; color='#F59E0B';  bl='3px solid #f59e0b';    dotColor='#f59e0b' }
                         else if (isSelected)                                  { bg='rgba(239, 68, 68, 0.1)'; color='#FCA5A5';  bl='3px solid #f87171';    dotColor='#ef4444' }
-                        else if (isClean && !wouldExceed)                    { bg='var(--surface)';    color=TV.text;    bl='3px solid transparent'; dotColor='var(--meadow)' }
-                        else if (isPartial || wouldExceed)                   { bg='var(--surface)';    color=TV.text;    bl='3px solid #fbbf24';    dotColor='#f59e0b' }
+                        else if (isClean && !softIssue)                    { bg='var(--surface)';    color=TV.text;    bl='3px solid transparent'; dotColor='var(--meadow)' }
+                        else if (isPartial || softIssue)                   { bg='var(--surface)';    color=TV.text;    bl='3px solid #fbbf24';    dotColor='#f59e0b' }
                         else                                                  { bg='var(--surface)';    color=TV.text;    bl='3px solid #fca5a5';    dotColor='#ef4444' }
 
                         // Unit bar — show projected only when this row is selected
@@ -1298,7 +1527,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                             {idx === dividerAt && (
                               <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 12px', background:'var(--bg)', borderTop:`1px solid ${TV.border}`, borderBottom:`1px solid ${TV.border}` }}>
                                 <span style={{ fontSize:9, fontWeight:600, color:TV.muted, textTransform:'uppercase', letterSpacing:'.7px' }}>
-                                  Conflicts or unit issues below
+                                  Conflicts, unit or preference issues below
                                 </span>
                               </div>
                             )}
@@ -1326,7 +1555,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                                 </span>
 
                                 {/* Single status pill */}
-                                {!isSelected && isClean && !wouldExceed && (
+                                {!isSelected && isClean && !softIssue && (
                                   <span style={{ fontSize:9, fontWeight:600, color: 'var(--meadow-text)', flexShrink:0 }}>Free · all {totalSessions}</span>
                                 )}
                                 {!isSelected && isPartial && (
@@ -1345,8 +1574,16 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                                     {conflictCount > 0 ? `${conflictCount} overlap${conflictCount > 1 ? 's' : ''}` : 'Over cap'}
                                   </span>
                                 )}
-                                {isSelected && conflictCount === 0 && !wouldExceed && (
+                                {isSelected && conflictCount === 0 && !wouldExceed && !hasPref && (
                                   <span style={{ fontSize:9, color:TV.deep, flexShrink:0 }}>✓ All clear</span>
+                                )}
+                                {hasPref && (
+                                  <span
+                                    title={`Part-time · prefers ${prefInfo.summary}`}
+                                    style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:9, fontWeight:700, color:'#EA580C', flexShrink:0 }}
+                                  >
+                                    <Ic.Clock size={8} color="#EA580C" /> Off-pref · {prefCount}/{totalSessions}
+                                  </span>
                                 )}
                               </div>
 
@@ -1369,6 +1606,14 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                                       </span>
                                     </>
                                   )}
+                                </div>
+                              )}
+
+                              {/* ── Preference window (selected + off-pref) ── */}
+                              {isSelected && hasPref && (
+                                <div style={{ display:'flex', alignItems:'center', gap:5, paddingLeft:22, fontSize:9.5, fontWeight:600, color:'#c2410c' }}>
+                                  <Ic.Clock size={9} color="#c2410c" />
+                                  <span>Part-time · prefers {prefInfo.summary}</span>
                                 </div>
                               )}
                             </div>
@@ -1418,7 +1663,20 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                       <div style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 11px', background:'var(--hover)', border:'1px solid var(--meadow-border)', borderRadius:8, fontSize:11.5 }}>
                         <Ic.CheckCircle size={12} color="var(--meadow)" />
                         <span style={{ fontWeight:700, color: 'var(--meadow-text)' }}>No overlaps.</span>
-                        <span style={{ color:'var(--meadow-mid)' }}>All {siblingEvents.length} sessions safe to assign.</span>
+                        <span style={{ color:'var(--meadow-mid)' }}>No double-booking across all {siblingEvents.length} sessions.</span>
+                      </div>
+                    )}
+                    {batchFaculty && batchPrefCount > 0 && !batchResults && (
+                      <div style={{ display:'flex', alignItems:'flex-start', gap:8, padding:'8px 11px', background:'rgba(234, 88, 12, 0.06)', border:'1px solid #fdba74', borderRadius:8, fontSize:11.5 }}>
+                        <span style={{ marginTop:1 }}><Ic.Clock size={12} color="#c2410c" /></span>
+                        <div>
+                          <span style={{ fontWeight:700, color:'#c2410c' }}>
+                            Outside preferred availability · {batchPrefCount} of {siblingEvents.length}
+                          </span>
+                          <div style={{ color:'#92400e', marginTop:2 }}>
+                            Part-time · prefers {selectedPref.summary}. You can still assign.
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1434,6 +1692,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                       const isCurrentEvent = sibId === evId
                       const conflicts      = batchFaculty ? (batchConflictMap.get(sibId) ?? []) : []
                       const hasConflict    = conflicts.length > 0
+                      const prefViolation  = batchFaculty && selectedPref ? (selectedPref.violations.get(sibId) ?? null) : null
                       const result         = batchResults?.find(r => getEventId(r.sib) === sibId)
                       // Is this sib the partner block (different from the clicked event's block)?
                       const isPartnerBlock = merged && sib.block !== event.block
@@ -1443,8 +1702,8 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                           key={sibId}
                           style={{
                             padding:'11px 14px', borderRadius:10,
-                            border:`1px solid ${result?.ok ? 'var(--mint)' : hasConflict ? '#fca5a5' : TV.border}`,
-                            background: result?.ok ? 'var(--hover)' : hasConflict ? 'rgba(220, 38, 38, 0.05)' : 'var(--surface)',
+                            border:`1px solid ${result?.ok ? 'var(--mint)' : hasConflict ? '#fca5a5' : prefViolation ? '#fdba74' : TV.border}`,
+                            background: result?.ok ? 'var(--hover)' : hasConflict ? 'rgba(220, 38, 38, 0.05)' : prefViolation ? 'rgba(234, 88, 12, 0.06)' : 'var(--surface)',
                             display:'flex', alignItems:'flex-start', gap:12,
                           }}
                         >
@@ -1456,7 +1715,9 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                                 ? <Ic.AlertCircle size={15} color='#EF4444' />
                                 : hasConflict
                                   ? <Ic.Warning size={15} color="#c2410c" />
-                                  : <Ic.Clock size={15} color={TV.muted} />
+                                  : prefViolation
+                                    ? <Ic.Clock size={15} color="#EA580C" />
+                                    : <Ic.Clock size={15} color={TV.muted} />
                             }
                           </div>
 
@@ -1512,6 +1773,19 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                               </div>
                             )}
 
+                            {/* Off-preference details (part-time faculty) */}
+                            {prefViolation && !result && (
+                              <div style={{ marginTop:4, fontSize:10.5, color:'#c2410c', display:'flex', alignItems:'flex-start', gap:5 }}>
+                                <span style={{ marginTop:1 }}><Ic.Clock size={10} color="#c2410c" /></span>
+                                <span>
+                                  <strong>
+                                    Outside preferred {prefViolation.dayOff && prefViolation.timeOff ? 'day & hours' : prefViolation.dayOff ? 'day' : 'hours'}
+                                  </strong>
+                                  {' '}— {String(prefViolation.day).slice(0, 3)} {minutesToTimeLabel(prefViolation.start)}–{minutesToTimeLabel(prefViolation.end)}, prefers {selectedPref.summary}
+                                </span>
+                              </div>
+                            )}
+
                             {/* Save result feedback */}
                             {result?.error && (
                               <p style={{ margin:'4px 0 0', fontSize:10.5, color:'#EF4444' }}>{result.error}</p>
@@ -1543,6 +1817,15 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                   </div>
                 )}
 
+                {batchPrefCount > 0 && !batchResults && !batchError && (
+                  <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(234, 88, 12, 0.06)', border:'1px solid #fdba74', borderRadius:8, padding:'6px 10px', fontSize:11.5, flex:1 }}>
+                    <Ic.Clock size={12} color="#c2410c" />
+                    <span style={{ color:'#c2410c', fontWeight:600 }}>
+                      {batchPrefCount} session{batchPrefCount > 1 ? 's' : ''} outside preferred availability
+                    </span>
+                  </div>
+                )}
+
                 {batchConflictCount > 0 && !batchResults && !batchError && (
                   <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(217, 119, 6, 0.05)', border:'1px solid #fed7aa', borderRadius:8, padding:'6px 10px', fontSize:11.5, flex:1 }}>
                     <Ic.Warning size={12} color="#c2410c" />
@@ -1561,7 +1844,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                       ? 'var(--hover)'
                       : isTBA
                         ? 'linear-gradient(135deg,#6b7280,#4b5563)'
-                        : batchConflictCount > 0
+                        : batchConflictCount > 0 || batchPrefCount > 0
                           ? '#F59E0B'
                           : 'linear-gradient(135deg,var(--meadow),var(--meadow-deep))'
                     return (
@@ -1583,6 +1866,8 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                             ? <><Ic.User size={13} color="#fff" /> Unassign All {siblingEvents.length} Sessions</>
                             : batchConflictCount > 0
                               ? <><Ic.Warning size={13} color="#fff" /> Assign with Overrides ({siblingEvents.length})</>
+                              : batchPrefCount > 0
+                                ? <><Ic.Clock size={13} color="#fff" /> Assign Anyway ({batchPrefCount} off-preference)</>
                               : <><Ic.Users size={13} color={hasChoice ? 'var(--surface)' : TV.muted} /> Assign to All {siblingEvents.length} Sessions</>
                         }
                       </button>
@@ -1685,6 +1970,3 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
     </>
   )
 }
-
-
-

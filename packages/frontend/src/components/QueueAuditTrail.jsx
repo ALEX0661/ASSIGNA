@@ -76,6 +76,7 @@ export default function QueueAuditTrail({ queueId }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [open, setOpen] = useState(false);
 
   const loadLogs = useCallback(async (silent = false) => {
     if (!queueId) return;
@@ -98,58 +99,111 @@ export default function QueueAuditTrail({ queueId }) {
 
   if (!queueId) return null;
 
-  return (
-    <div className="d-card ap-card queue-audit-trail" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 250, maxHeight: 600, marginBottom: 20 }}>
-      <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface)' }}>
-        <div>
-          <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink)' }}>Queue Audit Trail</div>
-          <div style={{ fontSize: 13, color: 'var(--muted)' }}>Live updates of actions taken on this queue</div>
-        </div>
-        <button 
-          onClick={() => loadLogs(true)} 
-          disabled={loading}
-          className={`cd-refresh-btn ${loading ? 'spinning' : ''}`}
-          style={{ width: 'auto', padding: '6px 12px', fontSize: 12, fontWeight: 700 }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21v-5h5"/></svg>
-          Refresh
-        </button>
-      </div>
-      
-      {loading && logs.length === 0 && <div style={{ padding: 24, fontSize: 13, color: 'var(--muted)' }}>Loading activity...</div>}
-      {error && <div style={{ padding: 24, fontSize: 13, color: '#DC2626' }}>{error}</div>}
-      
-      {!loading && !error && logs.length === 0 && (
-        <div style={{ padding: 24, fontSize: 13, color: 'var(--muted)' }}>No recent activity found.</div>
-      )}
+  const latest = logs[0];
+  const latestText = latest
+    ? `${latest.actorName || 'Someone'}: ${(latest.details || '').split(' | ')[0]}`
+    : 'No recent activity';
 
-      {logs.length > 0 && (
-        <div style={{ overflowY: 'auto', padding: '16px 24px' }} className="cd-sched-scroll">
-          {logs.map((log) => {
-            const ui = ACTION_UI[log.action] || ACTION_UI.DEFAULT;
-            return (
-              <div key={log.id || log.timestamp} style={{ display: 'flex', gap: 14, marginBottom: 18, position: 'relative' }}>
-                <div style={{ width: 1.5, background: 'var(--border)', position: 'absolute', top: 28, bottom: -20, left: 16 }} />
-                <div style={{ width: 34, height: 34, borderRadius: 10, background: ui.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1, color: ui.color }}>
-                  {ui.icon}
-                </div>
-                <div style={{ flex: 1, paddingBottom: 4 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>{log.actorName}</span>
-                    <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: 'var(--hover)', color: 'var(--muted)', textTransform: 'capitalize', fontWeight: 600 }}>
-                      {log.actorRoleLabel || log.actorRole}
-                    </span>
-                    <span style={{ fontSize: 11, color: 'var(--muted2)', fontWeight: 500 }}>
-                      {log.timestamp ? formatRelativeTime(log.timestamp) : ''}
-                    </span>
-                  </div>
-                  {parseDetails(log.details)}
-                </div>
-              </div>
-            );
-          })}
+  return (
+    <div className="d-card ap-card queue-audit-trail" style={{ display: 'flex', flexDirection: 'column', marginBottom: 20, overflow: 'hidden' }}>
+      <style>{`
+        .qat-head { cursor: pointer; transition: background .13s; user-select: none; }
+        .qat-head:hover { background: var(--hover) !important; }
+        .qat-refresh { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 8px; cursor: pointer; font-family: Inter, sans-serif; transition: background .13s; }
+        .qat-refresh:hover { background: var(--hover); }
+        .qat-refresh:disabled { opacity: .6; cursor: default; }
+        .qat-refresh.spinning svg { animation: qatSpin 1s linear infinite; }
+        @keyframes qatSpin { to { transform: rotate(360deg); } }
+        .qat-chev { transition: transform .25s ease; }
+        .qat-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s ease; }
+        .qat-body.open { grid-template-rows: 1fr; }
+        .qat-body > div { min-height: 0; overflow: hidden; }
+      `}</style>
+
+      <div
+        className="qat-head"
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={() => setOpen(v => !v)}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(v => !v); } }}
+        style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 14, background: 'var(--surface)', borderBottom: open ? '1px solid var(--border)' : 'none' }}
+      >
+        <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--meadow-soft)', color: 'var(--meadow-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         </div>
-      )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--ink)' }}>Queue Audit Trail</span>
+            {logs.length > 0 && (
+              <span style={{ fontSize: 10.5, fontWeight: 800, padding: '1px 8px', borderRadius: 99, background: 'var(--meadow-soft)', color: 'var(--meadow-text)', border: '1px solid var(--meadow-border)' }}>
+                {logs.length}
+              </span>
+            )}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {open
+              ? 'Live updates of actions taken on this queue'
+              : <>
+                  {loading && logs.length === 0 ? 'Loading activity...' : latestText}
+                  {latest?.timestamp && <span style={{ color: 'var(--muted2)' }}> · {formatRelativeTime(latest.timestamp)}</span>}
+                </>}
+          </div>
+        </div>
+        {open && (
+          <button
+            onClick={e => { e.stopPropagation(); loadLogs(true); }}
+            disabled={loading}
+            className={`qat-refresh${loading ? ' spinning' : ''}`}
+            style={{ width: 'auto', padding: '6px 12px', fontSize: 12, fontWeight: 700 }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21v-5h5"/></svg>
+            Refresh
+          </button>
+        )}
+        <svg className="qat-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted2)" strokeWidth="2.5" style={{ transform: open ? 'rotate(180deg)' : 'none', flexShrink: 0 }}>
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+
+      <div className={`qat-body${open ? ' open' : ''}`}>
+        <div>
+          {loading && logs.length === 0 && <div style={{ padding: 24, fontSize: 13, color: 'var(--muted)' }}>Loading activity...</div>}
+          {error && <div style={{ padding: 24, fontSize: 13, color: '#DC2626' }}>{error}</div>}
+
+          {!loading && !error && logs.length === 0 && (
+            <div style={{ padding: 24, fontSize: 13, color: 'var(--muted)' }}>No recent activity found.</div>
+          )}
+
+          {logs.length > 0 && (
+            <div style={{ overflowY: 'auto', maxHeight: 460, padding: '16px 24px' }} className="cd-sched-scroll">
+            {logs.map((log) => {
+              const ui = ACTION_UI[log.action] || ACTION_UI.DEFAULT;
+              return (
+                <div key={log.id || log.timestamp} style={{ display: 'flex', gap: 14, marginBottom: 18, position: 'relative' }}>
+                  <div style={{ width: 1.5, background: 'var(--border)', position: 'absolute', top: 28, bottom: -20, left: 16 }} />
+                  <div style={{ width: 34, height: 34, borderRadius: 10, background: ui.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1, color: ui.color }}>
+                    {ui.icon}
+                  </div>
+                  <div style={{ flex: 1, paddingBottom: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>{log.actorName}</span>
+                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: 'var(--hover)', color: 'var(--muted)', textTransform: 'capitalize', fontWeight: 600 }}>
+                        {log.actorRoleLabel || log.actorRole}
+                      </span>
+                      <span style={{ fontSize: 11, color: 'var(--muted2)', fontWeight: 500 }}>
+                        {log.timestamp ? formatRelativeTime(log.timestamp) : ''}
+                      </span>
+                    </div>
+                    {parseDetails(log.details)}
+                  </div>
+                </div>
+              );
+            })}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

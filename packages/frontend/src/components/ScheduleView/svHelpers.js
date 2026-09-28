@@ -355,3 +355,80 @@ export function findConflicts(allEvents, { evId, day, startMin, endMin, room, fa
   }
   return results
 }
+
+// ── Faculty preference helpers (part-time preferred days / hours) ─────────────
+// Faculty docs carry preferredDays, preferredTimeStart and preferredTimeEnd
+// (see PUT /faculty/preferences/{id}). These helpers are deliberately tolerant
+// about the stored shape: days may be an array or a comma-separated string of
+// full names / abbreviations, and times may be "HH:MM" (24h), "H:MM AM/PM",
+// a bare hour, or a number.
+const _DAY_KEYS = DAYS.map(d => d.slice(0, 3).toLowerCase())
+
+function _dayKey(d) {
+  if (d == null) return null
+  const k = String(d).trim().slice(0, 3).toLowerCase()
+  return _DAY_KEYS.includes(k) ? k : null
+}
+
+function _prefTimeToMinutes(v) {
+  if (v == null || v === '') return null
+  if (typeof v === 'number') return Number.isFinite(v) ? (v <= 24 ? v * 60 : v) : null
+  const m = String(v).trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i)
+  if (!m) return null
+  let h = parseInt(m[1], 10)
+  const min  = m[2] ? parseInt(m[2], 10) : 0
+  const ampm = m[3]?.toLowerCase()
+  if (ampm === 'pm' && h !== 12) h += 12
+  if (ampm === 'am' && h === 12) h = 0
+  if (h > 24 || min > 59) return null
+  return h * 60 + min
+}
+
+/**
+ * Normalises a faculty record's preference fields.
+ * Returns null when the faculty has no usable preference on file (nothing to check).
+ */
+export function getFacultyPreference(fac) {
+  if (!fac) return null
+  const rawDays = Array.isArray(fac.preferredDays)
+    ? fac.preferredDays
+    : typeof fac.preferredDays === 'string' ? fac.preferredDays.split(/[,;/]+/) : []
+  const dayKeys = new Set(rawDays.map(_dayKey).filter(Boolean))
+
+  let start = _prefTimeToMinutes(fac.preferredTimeStart)
+  let end   = _prefTimeToMinutes(fac.preferredTimeEnd)
+  if (start != null && end != null && end <= start) { start = null; end = null } // bad data — ignore window
+
+  const hasDays = dayKeys.size > 0
+  const hasTime = start != null || end != null
+  if (!hasDays && !hasTime) return null
+  return {
+    dayKeys,
+    days: DAYS.filter(d => dayKeys.has(d.slice(0, 3).toLowerCase())),
+    start, end, hasDays, hasTime,
+  }
+}
+
+/**
+ * Checks one session slot against a preference from getFacultyPreference().
+ * Returns null when the slot is fine, otherwise
+ * { dayOff, timeOff, day, start, end } describing what falls outside.
+ */
+export function checkPreferenceViolation(pref, day, startMin, endMin) {
+  if (!pref) return null
+  const dayOff = !!(pref.hasDays && day && !pref.dayKeys.has(String(day).slice(0, 3).toLowerCase()))
+  const timeOff = !!(pref.hasTime && startMin != null && endMin != null &&
+    ((pref.start != null && startMin < pref.start) || (pref.end != null && endMin > pref.end)))
+  return dayOff || timeOff ? { dayOff, timeOff, day, start: startMin, end: endMin } : null
+}
+
+/** Human-readable summary, e.g. "Mon, Wed · 8:00 AM – 12:00 PM". */
+export function formatPreferenceSummary(pref) {
+  if (!pref) return ''
+  const days = pref.hasDays ? pref.days.map(d => d.slice(0, 3)).join(', ') : 'Any day'
+  let time = 'any time'
+  if (pref.start != null && pref.end != null) time = `${minutesToTimeLabel(pref.start)} – ${minutesToTimeLabel(pref.end)}`
+  else if (pref.start != null)                time = `from ${minutesToTimeLabel(pref.start)}`
+  else if (pref.end != null)                  time = `until ${minutesToTimeLabel(pref.end)}`
+  return `${days} · ${time}`
+}

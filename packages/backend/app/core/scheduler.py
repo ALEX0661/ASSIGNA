@@ -1618,6 +1618,7 @@ def generate_schedule(process_id=None, semester=None, phase_order=None):
         s.update_progress(97)
         assigner = FacultyAssigner()
         assigner.load_faculty()
+        assigner.configure_time(s.start_t, s.slots_per_day, s.inc_hr)
         res = assigner.assign(res)
 
         # Log a quick load summary at DEBUG level
@@ -1881,6 +1882,7 @@ def generate_coordinator_schedule(
         s.update_progress(97)
         assigner = FacultyAssigner()
         assigner.load_faculty()
+        assigner.configure_time(s.start_t, s.slots_per_day, s.inc_hr)
 
         # Pre-populate faculty slots from approved schedules to prevent
         # cross-program double-booking

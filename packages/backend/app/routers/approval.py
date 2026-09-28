@@ -498,6 +498,41 @@ def _unfinalize_final_schedule_doc(doc_ref, data: dict, user: dict):
             log_audit_event(origin_queue_id, "MASTER_UNFINALIZED", user, target_program="Master", details=f"Unpublished {sem} {ay} — its slot was taken by another queue's publish")
 
 
+@router.get("/master/{queue_id}/publish-impact")
+def master_publish_impact(queue_id: str, user: dict = Depends(admin_only)):
+    """Read-only preview of what publishing this queue's master schedule would touch.
+
+    Mirrors the equality-only queries finalize_master_schedule already runs
+    (academicYear + semester), so no new index is needed. Only called when the
+    publish confirmation opens: 1 doc get + 1 limit(1) query + a capped
+    (limit 10) sibling-queue query."""
+    empty = {"published": None, "otherQueues": 0, "queueCompleted": False}
+    queue_doc = db.collection("coordinator_queues").document(queue_id).get()
+    if not queue_doc.exists:
+        return empty
+    q = queue_doc.to_dict()
+    ay, sem = q.get("academicYear"), q.get("semester")
+    if not (ay and sem):
+        return {**empty, "queueCompleted": q.get("status") == "completed"}
+
+    published = None
+    for d in db.collection("final_schedules") \
+            .where("academicYear", "==", ay) \
+            .where("semester", "==", sem) \
+            .where("finalized", "==", True) \
+            .limit(1).get():
+        published = d.id
+
+    others = 0
+    for d in db.collection("coordinator_queues") \
+            .where("academicYear", "==", ay) \
+            .where("semester", "==", sem) \
+            .limit(10).get():
+        if d.id != queue_id and d.to_dict().get("status") != "completed":
+            others += 1
+
+    return {"published": published, "otherQueues": others, "queueCompleted": q.get("status") == "completed"}
+
 @router.post("/master/{queue_id}/finalize")
 def finalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
     docs = db.collection("master_schedules").where("queueId", "==", queue_id).get()
@@ -625,14 +660,30 @@ def unfinalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
 
     now = (datetime.utcnow().isoformat() + "Z")
     
-    # 1. Mark final schedule as not finalized (if it exists)
-    if semester and academic_year:
-        final_name = f"A.Y. {academic_year}, {semester}".strip()
-    else:
-        final_name = f"{semester} {academic_year} - Final".strip()
-    final_ref = db.collection("final_schedules").document(final_name)
-    if final_ref.get().exists:
-        final_ref.update({"finalized": False})
+    # 1. Mark this queue's published final schedule(s) as not finalized.
+    #    finalize_master_schedule stamps queueId on every final_schedules doc it
+    #    creates and picks a fresh name each time ("A.Y. X, Sem", then
+    #    "... (1)", "... (2)" after an unpublish -> re-publish), so look them up
+    #    by queueId instead of guessing the base name -- otherwise a re-published
+    #    "(1)" copy would stay finalized (still visible to faculty) after this
+    #    unpublish. Filtering finalized in Python keeps this a single-field query.
+    unfinalized_names = []
+    for d in db.collection("final_schedules").where("queueId", "==", queue_id).stream():
+        if d.to_dict().get("finalized"):
+            d.reference.update({"finalized": False})
+            unfinalized_names.append(d.id)
+
+    # Legacy fallback: publishes from before queueId was stamped only ever used
+    # the base name. Skip it if it belongs to a different queue.
+    base_name = f"A.Y. {academic_year}, {semester}".strip()
+    if base_name not in unfinalized_names:
+        base_ref = db.collection("final_schedules").document(base_name)
+        base_doc = base_ref.get()
+        if base_doc.exists:
+            base_data = base_doc.to_dict()
+            if base_data.get("finalized") and base_data.get("queueId") in (None, queue_id):
+                base_ref.update({"finalized": False})
+                unfinalized_names.append(base_name)
     
     # 2. Re-open the queue and reset program statuses
     queue_ref = db.collection("coordinator_queues").document(queue_id)
@@ -695,7 +746,8 @@ def unfinalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
     # The master's event data didn't change, but the final schedule's
     # finalized flag flipped — invalidate both so nothing reads stale.
     event_cache.invalidate(f"master:{master_doc.id}")
-    event_cache.invalidate(f"final:{final_name}")
+    for n in unfinalized_names:
+        event_cache.invalidate(f"final:{n}")
 
     log_audit_event(queue_id, "MASTER_UNFINALIZED", user, target_program="Master", details=f"Unpublished the master schedule for {semester} {academic_year}. Reopened queue for resubmission.")
 
