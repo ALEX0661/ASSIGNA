@@ -115,6 +115,13 @@ if (!document.getElementById('tg-perf-style')) {
     /* The row-label glow animates background/border-color (main-thread paint every
        frame, unlike the opacity pulse), so it goes static in the same mode. */
     .tg-glow-static .tg-row-conflict { animation:none; background:rgba(239,68,68,.07); border-right-color:rgba(239,68,68,.40); }
+
+    /* Drag dimming + pointer-events live in CSS now. Flipping ONE class on the grid
+       replaces re-rendering every card with an isDimmed prop and 200+ inline styles. */
+    .tg-card-ghost { opacity:0 !important; pointer-events:none !important; }
+    .tg-grid-dragging .tg-card { opacity:var(--tg-dim,.25); pointer-events:none; transition:none !important; }
+    .tg-grid-dragging .tg-card.tg-card-drag { opacity:var(--tg-drag,.5); }
+    .tg-glow-run { position:absolute; left:0; right:0; pointer-events:none; z-index:1; }
   `
   document.head.appendChild(s)
 }
@@ -144,7 +151,7 @@ const AS_DIRS     = ['left', 'right', 'up', 'down']
 const EMPTY_SET = new Set()
 const EMPTY_ARR = []
 const NOOP_SUB  = () => () => {}
-const GLOW_STATIC_THRESHOLD = 40
+const GLOW_STATIC_THRESHOLD = 40   // counted in cells; runs of cells animate as one, so this is now very conservative
 
 // Re-renders the calling component only when getValue()'s result changes.
 // (Hand-rolled instead of useSyncExternalStore so it works on any React 16.8+.)
@@ -188,12 +195,68 @@ function resolveDims(gridSize) {
   return                             { slotH: NORMAL_SLOT,  roomMinW: ROOM_MIN_W     }
 }
 
-// ── Drop-target cells for one room column ────────────────────────────────────
-// Split out of RoomColumn so the hovered-slot subscription lives HERE. Moving the
-// cursor between cells re-renders this (≈ one div per time slot) and nothing else.
-const DropCells = React.memo(function DropCells({
-  room, timeSlots, gridStart, slotH, draggedEvent, preGlowCells, availableSlotSet,
-  ambientMergeIds, roomEvents, getDropConflict, onDragOver, onDragEnter, onDrop,
+// ── Grid lines as ONE background instead of 1 div per slot ───────────────────
+// (21 rooms x 28 slots = ~600 absolutely positioned, z-indexed divs before.)
+const _gridBgCache = new Map()
+function gridLinesBg(slotH) {
+  let v = _gridBgCache.get(slotH)
+  if (v) return v
+  const dash = encodeURIComponent(
+    `<svg xmlns='http://www.w3.org/2000/svg' width='7' height='${slotH * 2}'>` +
+    `<line x1='0' y1='${slotH * 2 - 0.5}' x2='7' y2='${slotH * 2 - 0.5}' stroke='rgba(180,220,195,.38)' stroke-width='1' stroke-dasharray='4 3'/></svg>`
+  )
+  v = {
+    backgroundImage:
+      `url("data:image/svg+xml,${dash}"), ` +
+      `linear-gradient(to bottom, transparent ${slotH - 1}px, ${TV.border} ${slotH - 1}px, ${TV.border} ${slotH}px, transparent ${slotH}px)`,
+    backgroundSize: `7px ${slotH * 2}px, 100% ${slotH * 2}px`,
+    backgroundRepeat: 'repeat-x repeat-y, repeat-y',
+  }
+  _gridBgCache.set(slotH, v)
+  return v
+}
+
+// Consecutive slots in the same state become ONE div (runs), not one div each.
+function buildRuns(timeSlots, slotH, gridStart, stateOf) {
+  const runs = []
+  let cur = null
+  for (let i = 0; i < timeSlots.length; i++) {
+    const st = stateOf(timeSlots[i])
+    if (st && cur && cur.st === st) { cur.n++; continue }
+    if (cur) runs.push(cur)
+    cur = st ? { st, top: ((timeSlots[i].startMinutes - gridStart) / SLOT_MINUTES) * slotH, n: 1 } : null
+  }
+  if (cur) runs.push(cur)
+  return runs
+}
+
+// The pre-glow / available highlights for one room, as a handful of run divs.
+const GlowRuns = React.memo(function GlowRuns({
+  room, timeSlots, gridStart, slotH, dragging, preGlowCells, availableSlotSet,
+}) {
+  const runs = useMemo(() => buildRuns(timeSlots, slotH, gridStart, slot => {
+    const key = `${room}|${slot.startMinutes}`
+    if (dragging) {
+      if (preGlowCells?.conflict.has(key)) return 'tg-cell-conflict'
+      if (preGlowCells?.merge.has(key))    return 'tg-cell-merge'
+      return null
+    }
+    return availableSlotSet?.has(slot.startMinutes) ? 'tg-cell-available' : null
+  }), [room, timeSlots, slotH, gridStart, dragging, preGlowCells, availableSlotSet])
+  if (runs.length === 0) return null
+  return (
+    <>
+      {runs.map(r => (
+        <div key={r.top} className={`tg-glow-run ${r.st}`} style={{ top: r.top, height: r.n * slotH }} />
+      ))}
+    </>
+  )
+})
+
+// The ONLY per-hover DOM: one highlight box for the hovered slot of this room.
+// A hover change re-renders this tiny component in two columns and nothing else.
+const HoverCell = React.memo(function HoverCell({
+  room, timeSlots, gridStart, slotH, ambientMergeIds, roomEvents, getDropConflict,
   hoverStore, hoveredSlotProp,
 }) {
   const liveSlot = useStoreValue(
@@ -201,101 +264,59 @@ const DropCells = React.memo(function DropCells({
     () => (hoverStore ? slotForRoom(hoverStore.get(), room) : null),
   )
   const hoveredSlot = hoverStore ? liveSlot : hoveredSlotProp
+  if (hoveredSlot == null || Number.isNaN(hoveredSlot)) return null
+  const slot = timeSlots.find(sl => sl.startMinutes === hoveredSlot)
+  if (!slot) return null
+
+  const dropConf = getDropConflict(room, slot)
+  const hovRoomConflicts = dropConf ? roomEvents.filter(ev => {
+    const range = parsePeriodRange(ev.period)
+    return range && timeOverlaps(range, { start: slot.startMinutes, end: slot.startMinutes + SLOT_MINUTES })
+  }) : []
+  const isHovMergeOnly = !!dropConf && hovRoomConflicts.length > 0 &&
+    hovRoomConflicts.every(ev => ambientMergeIds.has(getEventId(ev)))
+
   return (
-    <>
-      {timeSlots.map(slot => {
-        const cellKey  = `${room}|${slot.startMinutes}`
-        const isHov    = hoveredSlot === slot.startMinutes
-        const dropConf = isHov ? getDropConflict(room, slot) : null
-        const isHour   = slot.startMinutes % 60 === 0
-
-        // ── Pre-glow (when dragging but NOT currently hovering this cell) ──
-        const isPreConflict = !isHov && !!draggedEvent && (preGlowCells?.conflict.has(cellKey) ?? false)
-        const isPreMerge    = !isHov && !!draggedEvent && (preGlowCells?.merge.has(cellKey)    ?? false)
-
-        // ── Available-Rooms highlight — only when not mid-drag/hover, and
-        // only for slots the room is TRULY free for (see availableSlotSet above) ──
-        const isAvailableSlot = !isHov && !draggedEvent &&
-          (availableSlotSet?.has(slot.startMinutes) ?? false)
-
-        // ── Detect merge-only hover: all overlapping events in this room are merge partners ──
-        const hovRoomConflicts = (isHov && dropConf) ? roomEvents.filter(ev => {
-          const range = parsePeriodRange(ev.period)
-          return range && timeOverlaps(range, { start: slot.startMinutes, end: slot.startMinutes + SLOT_MINUTES })
-        }) : []
-        // It's truly a merge only if EVERY overlapping event is a merge partner
-        // AND there's at least one (so the slot isn't just empty)
-        const isHovMergeOnly = isHov && !!dropConf &&
-          hovRoomConflicts.length > 0 &&
-          hovRoomConflicts.every(ev => ambientMergeIds.has(getEventId(ev)))
-
-        return (
-          <div
-            key={slot.startMinutes}
-            onDragOver={e => onDragOver(e, room, slot)}
-            onDragEnter={onDragEnter ? (e => onDragEnter(e, room, slot)) : undefined}
-            onDrop={e => onDrop(e, room, slot)}
-            className={isPreConflict ? 'tg-cell-conflict' : isPreMerge ? 'tg-cell-merge' : isAvailableSlot ? 'tg-cell-available' : ''}
-            style={{
-              position: 'absolute',
-              top: ((slot.startMinutes - gridStart) / SLOT_MINUTES) * slotH,
-              left: 0, right: 0, height: slotH,
-              borderBottom: isHour
-                ? `1px solid ${TV.border}`
-                : `1px dashed rgba(180,220,195,.38)`,
-              background: isHov
-                ? isHovMergeOnly
-                   ? 'rgba(59,130,246,.15)'   // merge hover → green
-                  : dropConf
-                    ? 'rgba(239,68,68,.07)'   // conflict hover → red
-                     : 'rgba(0,0,0,.05)' // clean hover → soft green
-                : 'transparent',
-              transition: (isPreConflict || isPreMerge || isAvailableSlot) ? 'none' : 'background .1s',
-              zIndex: 1,
-            }}
-          >
-            {isHov && (
-              <div style={{
-                position: 'absolute', inset: 2, borderRadius: 4,
-                border: `1.5px dashed ${isHovMergeOnly ? TV.mid : dropConf ? '#ef4444' : TV.mid}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                pointerEvents: 'none',
-              }}>
-                {/* Merge-only hover label */}
-                {isHovMergeOnly && (
-                  <span style={{
-                    fontSize: 8.5, fontWeight: 700, color: TV.deep,
-                    background: 'var(--surface)', padding: '2px 6px', borderRadius: 4,
-                    boxShadow: '0 2px 6px rgba(0,0,0,.08)',
-                    display: 'inline-flex', alignItems: 'center', gap: 3,
-                  }}>
-                    <svg width={8} height={8} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline',verticalAlign:'middle'}}>
-                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                    </svg>
-                    Merge — drop to merge
-                  </span>
-                )}
-                {/* Real conflict hover label */}
-                {!isHovMergeOnly && dropConf && (
-                  <span style={{
-                    fontSize: 8.5, fontWeight: 700, color: '#ef4444',
-                    background: 'var(--surface)', padding: '2px 6px', borderRadius: 4,
-                    boxShadow: '0 2px 6px rgba(0,0,0,.08)',
-                  }}>
-                    <svg width={8} height={8} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline',verticalAlign:'middle',marginRight:2}}>
-                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                      <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                    </svg>
-                    {dropConf.label} — drop to override
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-        )
-      })}
-    </>
+    <div style={{
+      position: 'absolute', left: 0, right: 0, zIndex: 1, pointerEvents: 'none',
+      top: ((slot.startMinutes - gridStart) / SLOT_MINUTES) * slotH, height: slotH,
+      background: isHovMergeOnly ? 'rgba(59,130,246,.15)' : dropConf ? 'rgba(239,68,68,.07)' : 'rgba(0,0,0,.05)',
+    }}>
+      <div style={{
+        position: 'absolute', inset: 2, borderRadius: 4,
+        border: `1.5px dashed ${isHovMergeOnly ? TV.mid : dropConf ? '#ef4444' : TV.mid}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        pointerEvents: 'none',
+      }}>
+        {isHovMergeOnly && (
+          <span style={{
+            fontSize: 8.5, fontWeight: 700, color: TV.deep,
+            background: 'var(--surface)', padding: '2px 6px', borderRadius: 4,
+            boxShadow: '0 2px 6px rgba(0,0,0,.08)',
+            display: 'inline-flex', alignItems: 'center', gap: 3,
+          }}>
+            <svg width={8} height={8} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline',verticalAlign:'middle'}}>
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+            Merge — drop to merge
+          </span>
+        )}
+        {!isHovMergeOnly && dropConf && (
+          <span style={{
+            fontSize: 8.5, fontWeight: 700, color: '#ef4444',
+            background: 'var(--surface)', padding: '2px 6px', borderRadius: 4,
+            boxShadow: '0 2px 6px rgba(0,0,0,.08)',
+          }}>
+            <svg width={8} height={8} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline',verticalAlign:'middle',marginRight:2}}>
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            {dropConf.label} — drop to override
+          </span>
+        )}
+      </div>
+    </div>
   )
 })
 
@@ -318,7 +339,7 @@ const RoomColumnMemo = React.memo(function RoomColumn({
   const compact    = gridSize === 'compact'
 
   // Isolated-hover mode: this column re-renders only when the SET of conflicting
-  // cards changes. The hovered slot is handled inside <DropCells>.
+  // cards changes. The hovered slot is handled inside <HoverCell>.
   const liveConflictIds = useStoreValue(
     hoverDerived ? hoverDerived.subscribe : NOOP_SUB,
     () => (hoverDerived ? hoverDerived.getIds() : EMPTY_SET),
@@ -422,19 +443,38 @@ const RoomColumnMemo = React.memo(function RoomColumn({
     return { overlapIndex, canMergeNext, prevEventToMerge, canSplit }
   }), [roomEvents, dayEvents, locked, splitCounts])
 
+  // Slot from cursor Y. Cards are pointer-events:none while dragging, so the column
+  // itself is the event target and offsetY is already relative to it.
+  const slotFromEvent = (e) => {
+    const y = e.target === e.currentTarget
+      ? e.nativeEvent.offsetY
+      : e.clientY - e.currentTarget.getBoundingClientRect().top
+    const i = Math.min(timeSlots.length - 1, Math.max(0, Math.floor(y / slotH)))
+    return timeSlots[i]
+  }
+
   return (
     <div
-      style={{ position: 'relative', flex: 1, minWidth: resolveDims(gridSize).roomMinW, height: '100%' }}
+      style={{
+        position: 'relative', flex: 1, minWidth: resolveDims(gridSize).roomMinW, height: '100%',
+        ...gridLinesBg(slotH),
+        // Own stacking context per column: hit testing and painting can skip the other
+        // 20 columns instead of sorting every card in the grid. The column with a
+        // hovered stack sits above its neighbours so the spread cards aren't hidden.
+        zIndex: hoveredId ? 60 : 0,
+      }}
+      onDragEnter={onDragEnter ? (e => onDragEnter(e, room, slotFromEvent(e))) : undefined}
+      onDragOver={e => onDragOver(e, room, slotFromEvent(e))}
+      onDrop={e => onDrop(e, room, slotFromEvent(e))}
       onDragLeave={onDragLeave}
     >
-      {/* Drop-target cells — own memoized component so a hover change re-renders
-          only these lightweight divs, never the session cards below. */}
-      <DropCells
+      <GlowRuns
         room={room} timeSlots={timeSlots} gridStart={gridStart} slotH={slotH}
-        draggedEvent={draggedEvent} preGlowCells={preGlowCells}
-        availableSlotSet={availableSlotSet} ambientMergeIds={ambientMergeIds}
-        roomEvents={roomEvents} getDropConflict={getDropConflict}
-        onDragOver={onDragOver} onDragEnter={onDragEnter} onDrop={onDrop}
+        dragging={!!draggedEvent} preGlowCells={preGlowCells} availableSlotSet={availableSlotSet}
+      />
+      <HoverCell
+        room={room} timeSlots={timeSlots} gridStart={gridStart} slotH={slotH}
+        ambientMergeIds={ambientMergeIds} roomEvents={roomEvents} getDropConflict={getDropConflict}
         hoverStore={hoverStore} hoveredSlotProp={hoveredSlotProp}
       />
 
@@ -443,7 +483,6 @@ const RoomColumnMemo = React.memo(function RoomColumn({
         const evId             = getEventId(event)
         const conflictInfo     = conflictMap.get(evId) ?? null
         const isDragging       = draggedEvent && getEventId(draggedEvent) === evId
-        const isDimmed         = !!draggedEvent && !isDragging
         const { overlapIndex, canMergeNext, prevEventToMerge, canSplit } = cardMeta[idx]
         const spreadOffset     = spreadOffsets[evId] ?? 0
         const isInHoveredGroup = evId in spreadOffsets
@@ -455,15 +494,12 @@ const RoomColumnMemo = React.memo(function RoomColumn({
         const isMerged = mergedIds ? mergedIds.has(evId) : false
         
         return (
-          // When any card is being dragged, make ALL cards (including the one left behind)
-          // transparent to pointer/drag events so the slot-drop-targets underneath are reachable.
-          <div
-            key={evId}
-            style={{ pointerEvents: draggedEvent ? 'none' : 'auto' }}
-          >
+          // Dimming and pointer-events:none while dragging come from the
+          // .tg-grid-dragging class on the grid, not from per-card props.
             <SessionCard
+              key={evId}
               event={event} conflictInfo={conflictInfo}
-              isDragging={isDragging} isDimmed={isDimmed}
+              isDragging={isDragging}
               compact={compact} slotH={slotH} gridStart={gridStart}
               onClick={onCardClick}
               onDragStart={onDragStart} onDragEnd={onDragEnd}
@@ -482,7 +518,6 @@ const RoomColumnMemo = React.memo(function RoomColumn({
               canSplit={canSplit}
               onSplitEvent={onSplitEvent}
             />
-          </div>
         )
       })}
     </div>
@@ -582,16 +617,34 @@ export default function TimeGrid({
 
     const speed = t => AS_MIN_SPEED + (AS_MAX_SPEED - AS_MIN_SPEED) * Math.pow(Math.min(1, Math.max(0, t)), 1.4)
 
+    // Geometry is cached: reading clientWidth / scrollWidth / getBoundingClientRect on
+    // every animation frame forced a synchronous layout whenever React had just
+    // changed the DOM (that was the 96 ms "Forced reflow" in the profile). Dragging
+    // never resizes the grid, so read once, refresh only on resize / page scroll.
+    let dims = null
+    const readDims = () => {
+      dims = {
+        w: el.clientWidth, h: el.clientHeight,
+        sw: el.scrollWidth, sh: el.scrollHeight,
+        rect: el.getBoundingClientRect(),
+      }
+    }
+    const invalidate = () => { dims = null }
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(invalidate) : null
+    ro?.observe(el)
+    window.addEventListener('resize', invalidate)
+    window.addEventListener('scroll', invalidate, { passive: true })
+
     const measure = () => {
-      const w = el.clientWidth, h = el.clientHeight
+      if (!dims) readDims()
+      const { w, h, sw, sh, rect } = dims
       const canL = el.scrollLeft > 1
-      const canR = el.scrollLeft < el.scrollWidth  - w - 1
+      const canR = el.scrollLeft < sw - w - 1
       const canU = el.scrollTop  > 1
-      const canD = el.scrollTop  < el.scrollHeight - h - 1
+      const canD = el.scrollTop  < sh - h - 1
       const s = { vx: 0, vy: 0, canL, canR, canU, canD, inL: false, inR: false, inU: false, inD: false }
       if (!inside) return s
 
-      const rect = el.getBoundingClientRect()
       const x = px - rect.left, y = py - rect.top
       const zl = TIME_COL_W + AS_SIDE_L
       const zt = headerH + AS_TOP
@@ -649,6 +702,9 @@ export default function TimeGrid({
       el.removeEventListener('scroll',    kick)
       document.removeEventListener('dragend', onEnd)
       document.removeEventListener('drop',    onEnd)
+      ro?.disconnect()
+      window.removeEventListener('resize', invalidate)
+      window.removeEventListener('scroll', invalidate)
       if (rafId !== null) cancelAnimationFrame(rafId)
     }
   }, [isDragging])
@@ -785,19 +841,27 @@ export default function TimeGrid({
 
   return (
     <div style={{ position: 'relative' }}>
-      <div ref={scrollRef} className={glowStatic ? 'tg-glow-static' : undefined} style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: gridH, paddingBottom: 12 }}>
+      <div
+        ref={scrollRef}
+        className={[glowStatic && 'tg-glow-static', isDragging && 'tg-grid-dragging'].filter(Boolean).join(' ') || undefined}
+        style={{
+          overflowX: 'auto', overflowY: 'auto', maxHeight: gridH, paddingBottom: 12,
+          '--tg-dim': resolvedSize === 'compact' ? .32 : .25,
+          '--tg-drag': resolvedSize === 'compact' ? .55 : .5,
+        }}
+      >
         <div style={{ minWidth: gridMinW }}>
 
           {/* ── HEADER ── */}
           <div ref={headerRef} style={{
             display: 'flex',
             background: 'linear-gradient(to bottom,var(--surface),var(--bg))',
-            position: 'sticky', top: 0, zIndex: 30, flexShrink: 0,
+            position: 'sticky', top: 0, zIndex: 200, flexShrink: 0,
           }}>
             <div style={{
               width: TIME_COL_W, flexShrink: 0,
               borderRight: `2px solid ${TV.border}`,
-              position: 'sticky', left: 0, zIndex: 31,
+              position: 'sticky', left: 0, zIndex: 201,
               background: 'linear-gradient(to bottom,var(--surface),var(--bg))',
             }} />
             {rooms.map((room, idx) => (
@@ -833,7 +897,7 @@ export default function TimeGrid({
             <div style={{
               width: TIME_COL_W, flexShrink: 0,
               borderRight: `2px solid ${TV.border}`,
-              position: 'sticky', left: 0, background: 'var(--bg)', zIndex: 20,
+              position: 'sticky', left: 0, background: 'var(--bg)', zIndex: 100,
               boxShadow: '2px 0 6px rgba(0,0,0,0.03)',
             }}>
               {timeSlots.map(slot => {

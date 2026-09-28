@@ -1088,6 +1088,7 @@ export function useDragDrop(events, activeDay, setLocalEvents, setEvents, storeE
     pendingStack, handleDropOnCard, confirmStack, cancelStack,
     // Pending override queue
     pendingOverrides,
+    setPendingOverrides,   // lets the page restore pending changes on undo / redo
     saveAllOverrides,
     revertOverride,
     revertAllOverrides,

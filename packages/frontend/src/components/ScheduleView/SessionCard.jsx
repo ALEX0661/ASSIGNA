@@ -2,6 +2,35 @@ import { useState, memo } from 'react'
 import { sectionColor, getEventStyle, SLOT_HEIGHT, getEventId } from './svHelpers'
 import { TV } from './svPrimitives'
 
+// Module level on purpose: when this was declared inside SessionCard, every render
+// created a new component type, so React unmounted and remounted the dot each time.
+function UnassignedDot({ compact }) {
+  return (
+    <span
+      title="Faculty unassigned"
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        width: compact ? 8 : 12, height: compact ? 8 : 12,
+        borderRadius: '50%',
+        background: 'rgba(245,158,11,.18)',
+        border: '1px solid #f59e0b',
+        flexShrink: 0,
+      }}
+    >
+      <svg
+        width={compact ? 5 : 7} height={compact ? 5 : 7}
+        viewBox="0 0 24 24" fill="none"
+        stroke='#F59E0B' strokeWidth="2.5"
+        strokeLinecap="round" strokeLinejoin="round"
+      >
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+        <line x1="12" y1="23" x2="12.01" y2="23"/>
+      </svg>
+    </span>
+  )
+}
+
 const SessionCard = memo(function SessionCard({
   event, onClick, conflictInfo, isDragging, isDimmed,
   onDragStart, onDragEnd, compact, slotH = SLOT_HEIGHT, gridStart, overlapIndex = 0,
@@ -122,7 +151,9 @@ const SessionCard = memo(function SessionCard({
   } else if (isDragging) {
     sc = 0.95
   }
-  const transform = `translate(${tx}px,${ty}px) scale(${sc})`
+  // 'none' when at rest: any real transform value turns every card into its own
+  // paint layer, which is what makes hit testing and layerize so expensive.
+  const transform = (tx === 0 && ty === 0 && sc === 1) ? 'none' : `translate(${tx}px,${ty}px) scale(${sc})`
   const cardH     = Math.max(height - vOffset, 24)
 
   const handleEnter = () => { setIsHovered(true);  onHoverChange?.(true)  }
@@ -146,48 +177,23 @@ const SessionCard = memo(function SessionCard({
   const zIndex = isDragging ? 2000 : isHovered ? 1200 : isConflictTarget ? 1100 : isStackTarget ? 1150 : isInHoveredGroup ? 900 : 10 + overlapIndex
 
   const baseShadow   = `0 1px 3px rgba(0,0,0,.10), 0 0 0 0.5px ${borderColor}88`
-  const hoverShadow  = `0 12px 36px ${glowColor}, 0 3px 10px rgba(0,0,0,.12), 0 0 0 2px ${accentColor}66`
-  const groupShadow  = `0 5px 16px ${glowColor}, 0 0 0 1.5px ${borderColor}99`
-  const conflictRing = `0 0 0 2.5px #dc2626, 0 0 0 5px rgba(220,38,38,.28), 0 6px 28px rgba(239,68,68,.50)`
-  const stackRing    = `0 0 0 2.5px var(--meadow), 0 0 0 5px rgba(16,185,129,.28), 0 6px 28px rgba(16,185,129,.45)`
-  const ambientConflictRing = `0 0 0 1.5px #fca5a5, 0 0 0 3.5px rgba(220,38,38,.18), 0 4px 16px rgba(239,68,68,.30)`
-  const ambientMergeRing    = `0 0 0 1.5px #93c5fd, 0 0 0 3.5px rgba(59,130,246,.18), 0 4px 16px rgba(37,99,235,.28)`
+  const hoverShadow  = `0 6px 16px ${glowColor}, 0 0 0 2px ${accentColor}66`
+  const groupShadow  = `0 3px 10px ${glowColor}, 0 0 0 1.5px ${borderColor}99`
+  const conflictRing = `0 0 0 2.5px #dc2626, 0 0 0 5px rgba(220,38,38,.28), 0 4px 14px rgba(239,68,68,.45)`
+  const stackRing    = `0 0 0 2.5px var(--meadow), 0 0 0 5px rgba(16,185,129,.28), 0 4px 14px rgba(16,185,129,.40)`
+  const ambientConflictRing = `0 0 0 1.5px #fca5a5, 0 0 0 3.5px rgba(220,38,38,.18)`
+  const ambientMergeRing    = `0 0 0 1.5px #93c5fd, 0 0 0 3.5px rgba(59,130,246,.18)`
 
   function computeShadow() {
     if (isAmbient) return 'none'
     if (isStackTarget)                        return stackRing
     if (isConflictTarget && !isDragging)      return conflictRing
-    if (isPotentialMerge && !isDragging)      return isHovered ? `0 0 0 2px #3b82f6, 0 0 0 5px rgba(59,130,246,.28), 0 6px 28px rgba(37,99,235,.45)` : ambientMergeRing
+    if (isPotentialMerge && !isDragging)      return isHovered ? `0 0 0 2px #3b82f6, 0 0 0 5px rgba(59,130,246,.28), 0 4px 14px rgba(37,99,235,.40)` : ambientMergeRing
     if (isPotentialConflict && !isDragging)   return isHovered ? conflictRing : ambientConflictRing
     if (isHovered)                            return hoverShadow
     if (isInHoveredGroup)                     return groupShadow
     return baseShadow
   }
-
-  const UnassignedDot = () => (
-    <span
-      title="Faculty unassigned"
-      style={{
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        width: compact ? 8 : 12, height: compact ? 8 : 12,
-        borderRadius: '50%',
-        background: 'rgba(245,158,11,.18)',
-        border: '1px solid #f59e0b',
-        flexShrink: 0,
-      }}
-    >
-      <svg
-        width={compact ? 5 : 7} height={compact ? 5 : 7}
-        viewBox="0 0 24 24" fill="none"
-        stroke='#F59E0B' strokeWidth="2.5"
-        strokeLinecap="round" strokeLinejoin="round"
-      >
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-        <circle cx="12" cy="7" r="4"/>
-        <line x1="12" y1="23" x2="12.01" y2="23"/>
-      </svg>
-    </span>
-  )
 
   // ─────────────────────────────────────────────────────────────────────────
   // ── COMPACT MODE — ultra-tight, single-row layout ───────────────────────
@@ -197,7 +203,7 @@ const SessionCard = memo(function SessionCard({
     return (
       <div
         id={`card-${getEventId(event)}`}
-        className="tg-card"
+        className={`tg-card${isDragging ? ' tg-card-drag' : ''}${event._isDragGhost ? ' tg-card-ghost' : ''}`}
         draggable={!locked}
         onDragStart={locked ? undefined : e => onDragStart(e, event)}
         onDragEnd={locked ? undefined : onDragEnd}
@@ -221,12 +227,10 @@ const SessionCard = memo(function SessionCard({
           padding: isTiny ? '0 4px' : '1px 5px',
           cursor: locked ? 'default' : 'grab', overflow: 'visible',
           boxShadow: computeShadow(),
-          opacity: event._isDragGhost ? 0 : isDimmed ? 0.32 : isDragging ? 0.55 : 1,
-          pointerEvents: (event._isDragGhost || isDimmed || isDragging) ? 'none' : 'auto',
           transform,
           // No transitions while another card is being dragged: 200+ cards animating
           // shadow/opacity at once on every drag start/hover is pure main-thread cost.
-          transition: isDimmed ? 'none' : 'all .15s ease-out',
+          transition: 'transform .15s ease-out, box-shadow .15s ease-out',
           zIndex,
         }}
       >
@@ -260,7 +264,7 @@ const SessionCard = memo(function SessionCard({
 
         {/* Right-side info cluster */}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-          {isUnassigned && <UnassignedDot />}
+          {isUnassigned && <UnassignedDot compact />}
           {event.block && (
             <span style={{
               fontSize: 6, fontWeight: 900,
@@ -345,7 +349,7 @@ const SessionCard = memo(function SessionCard({
   return (
     <div
       id={`card-${getEventId(event)}`}
-      className="tg-card"
+      className={`tg-card${isDragging ? ' tg-card-drag' : ''}${event._isDragGhost ? ' tg-card-ghost' : ''}`}
       draggable={!locked}
       onDragStart={locked ? undefined : e => onDragStart(e, event)}
       onDragEnd={locked ? undefined : onDragEnd}
@@ -368,11 +372,9 @@ const SessionCard = memo(function SessionCard({
         cursor: locked ? 'default' : isDragging ? 'grabbing' : 'grab',
         overflow: 'visible',
         boxShadow: computeShadow(),
-        opacity: event._isDragGhost ? 0 : isDimmed ? 0.25 : isDragging ? 0.5 : 1,
-        pointerEvents: (event._isDragGhost || isDimmed || isDragging) ? 'none' : 'auto',
         transform,
         // See compact branch: transitions are off while another card is being dragged.
-        transition: isDragging ? 'opacity .12s ease' : isDimmed ? 'none' : 'all .18s ease-out',
+        transition: 'transform .18s ease-out, box-shadow .18s ease-out',
         zIndex,
         display: 'flex', flexDirection: 'column', gap: 0,
       }}

@@ -1338,7 +1338,23 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
   }
 
   /* ── Undo / Redo ────────────────────────────────────────────────────────── */
+  // Pending changes must travel with undo/redo. Every events array remembers the
+  // pending-overrides Map that was live while it was the current state, so stepping
+  // to that array restores the matching pending list. Keyed by array identity, so
+  // the existing past/future stacks and their resets are untouched.
+  const ddRef = useRef(null)
+  const pendingByEvents = useRef(new WeakMap())
+  const rememberPending = evs => {
+    const pending = ddRef.current?.pendingOverrides
+    if (evs && pending) pendingByEvents.current.set(evs, pending)
+  }
+  const restorePending = evs => {
+    const snap = pendingByEvents.current.get(evs)
+    if (snap) ddRef.current?.setPendingOverrides(snap)
+  }
+
   const syncLocalEvents = useCallback(updated => {
+    rememberPending(localEvents)   // pending as it was BEFORE this change lands
     setPast(p => [...p, localEvents])
     setFuture([])
     setEvents(updated)
@@ -1349,21 +1365,25 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
   const undo = () => {
     if (past.length === 0) return
     const previous = past[past.length - 1]
+    rememberPending(localEvents)
     setPast(past.slice(0, -1))
     setFuture(f => [localEvents, ...f])
     setEvents(previous)
     setHasUnsavedChanges(true)
     setLocalEvents(previous)
+    restorePending(previous)
   }
 
   const redo = () => {
     if (future.length === 0) return
     const next = future[0]
+    rememberPending(localEvents)
     setFuture(future.slice(1))
     setPast(p => [...p, localEvents])
     setEvents(next)
     setHasUnsavedChanges(true)
     setLocalEvents(next)
+    restorePending(next)
   }
 
 
@@ -1439,6 +1459,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
 
   /* ── Drag & drop — now with pending overrides + conflict ids ──────────── */
   const dd = useDragDrop(allEvents, activeDay, syncLocalEvents, setEvents, storeEvents, schedFinalized, overrideFn, { isolateHover: true })
+  ddRef.current = dd
 
   // Prevent accidental exit (reload, back button, and links) — shared
   // across pages instead of a hand-rolled copy of the same logic.
