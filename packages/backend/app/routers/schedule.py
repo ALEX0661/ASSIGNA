@@ -6,6 +6,7 @@ from app.core.globals import schedule_dict, progress_state, running_processes, c
 from app.core.scheduler import generate_schedule, validate_phase_order, DEFAULT_PHASE_ORDER
 from app.core.event_cache import event_cache
 from app.core.audit import log_audit_event
+from app.core.schedule_naming import base_schedule_name, unique_schedule_name, is_placeholder_name
 import uuid
 import hashlib
 import json
@@ -416,9 +417,31 @@ def get_result(user=Depends(admin_only)):
 def get_result_endpoint(user=Depends(admin_only)):
     return {"schedule": list(schedule_dict.values()), "count": len(schedule_dict)}
 
+def _final_name_taken(name: str) -> bool:
+    return db.collection("final_schedules").document(name).get().exists
+
+
+@router.get("/suggest-name")
+def suggest_schedule_name(academic_year: str = None, semester: str = None,
+                          label: str = None, user=Depends(admin_only)):
+    """Next free Dean name for a term, e.g. "A.Y. 2026-2027, 1st Semester (Dean v2)".
+    Lets the frontend prefill the name box with the same convention /save uses."""
+    base = base_schedule_name(academic_year, semester, source="admin", label=label)
+    return {"name": unique_schedule_name(base, _final_name_taken)}
+
+
 @router.post("/save")
 def save_schedule(data: dict, user=Depends(admin_only)):
-    name = data.get("schedule_name", "unnamed")
+    name = data.get("schedule_name")
+    # A blank / "unnamed" name, or an explicit auto_name flag, gets the Dean
+    # convention. A name the dean typed themselves is never touched, and
+    # re-saving an existing schedule keeps its name (auto_name only applies
+    # when that name isn't already a saved schedule).
+    if is_placeholder_name(name) or (data.get("auto_name") and not _final_name_taken(name or "")):
+        ay  = data.get("academic_year")
+        sem = data.get("semester")
+        base = base_schedule_name(ay, sem, source="admin", label=data.get("label"))
+        name = unique_schedule_name(base, _final_name_taken)
     current_time = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z"
 
     doc_ref = db.collection("final_schedules").document(name)
@@ -621,7 +644,7 @@ def list_saved(user=Depends(any_authenticated)):
     # which can take megabytes of bandwidth and severely slow down the list view.
     docs = db.collection("final_schedules").select([
         "schedule_name", "academicYear", "semester", "finalized", 
-        "createdAt", "lastModified", "savedAt", "version", "eventCount"
+        "createdAt", "lastModified", "savedAt", "version", "eventCount", "source"
     ]).stream()
     
     return [{
@@ -634,7 +657,8 @@ def list_saved(user=Depends(any_authenticated)):
         "lastModified": d.to_dict().get("lastModified"),
         "savedAt": d.to_dict().get("savedAt"),
         "version": d.to_dict().get("version", 1),
-        "eventCount": d.to_dict().get("eventCount", 0)
+        "eventCount": d.to_dict().get("eventCount", 0),
+        "source": d.to_dict().get("source")
     } for d in docs]
 
 @router.get("/final/active")
@@ -675,7 +699,16 @@ def load_saved(name: str, user=Depends(any_authenticated)):
         "versionHistory": data.get("versionHistory", []),
     }
 
-def _unfinalize_final_schedule(doc_ref, data: dict, user: dict):
+def _other_active_queue(queue_id: str):
+    """Only one queue may be active at a time (create_queue enforces the same
+    rule). Returns a DIFFERENT active queue's dict, or None. Unpublish still
+    goes through when one exists -- it just doesn't reopen the origin queue."""
+    for d in db.collection("coordinator_queues").where("status", "==", "active").limit(2).get():
+        if d.id != queue_id:
+            return d.to_dict()
+    return None
+
+def _unfinalize_final_schedule(doc_ref, data: dict, user: dict, reopen_queue: bool = True):
     """Shared core of unpublishing a final_schedules doc: flips its own
     finalized flag, unapproves any coordinator submissions for that term,
     and — if it was generated from a Master Schedule queue — reopens that
@@ -733,14 +766,30 @@ def _unfinalize_final_schedule(doc_ref, data: dict, user: dict):
         queue_ref = db.collection("coordinator_queues").document(origin_queue_id)
         queue_doc = queue_ref.get()
         if queue_doc.exists and queue_doc.to_dict().get("status") == "completed":
-            queue_ref.update({"status": "active", "updatedAt": now})
+            # Only reopen when no different queue is active; otherwise the
+            # origin queue stays "completed". The master goes back to draft either way.
+            if reopen_queue:
+                queue_ref.update({"status": "active", "updatedAt": now})
 
             master_docs = db.collection("master_schedules").where("queueId", "==", origin_queue_id).get()
             for m in master_docs:
                 m.reference.update({"status": "draft", "updatedAt": now})
                 event_cache.invalidate(f"master:{m.id}")
 
-            log_audit_event(origin_queue_id, "MASTER_UNFINALIZED", user, target_program="Master", details=f"Unpublished {sem} {ay} from the schedule list view")
+            suffix = "" if reopen_queue else " (queue not reopened: another queue is active)"
+            log_audit_event(origin_queue_id, "MASTER_UNFINALIZED", user, target_program="Master", details=f"Unpublished {sem} {ay} from the schedule list view{suffix}")
+
+
+@router.get("/active-queue")
+def active_queue(user=Depends(admin_only)):
+    """Which queue is active right now, if any. Used by the list page's
+    unpublish confirm to say whether the origin queue will reopen.
+    One equality filter on a single field (no composite index) with limit(1)
+    -> at most 1 document read. Only called when that modal opens."""
+    for d in db.collection("coordinator_queues").where("status", "==", "active").limit(1).get():
+        o = d.to_dict()
+        return {"queue": {"id": d.id, "semester": o.get("semester"), "academicYear": o.get("academicYear")}}
+    return {"queue": None}
 
 
 @router.get("/publish-impact")
@@ -831,9 +880,17 @@ def unfinalize_schedule(name: str, user=Depends(admin_only)):
     if not doc.exists:
         raise HTTPException(404, "Schedule not found")
 
-    _unfinalize_final_schedule(doc_ref, doc.to_dict(), user)
+    data = doc.to_dict()
+    # Explicit unpublish only. finalize_schedule also calls the helper for
+    # sibling schedules (default reopen_queue=True, and it closes same-term
+    # queues right after), so the active-queue check lives here.
+    reopen_queue = True
+    if data.get("source") == "queue" and data.get("queueId"):
+        reopen_queue = _other_active_queue(data["queueId"]) is None
 
-    return {"unfinalized": name}
+    _unfinalize_final_schedule(doc_ref, data, user, reopen_queue=reopen_queue)
+
+    return {"unfinalized": name, "queueReopened": reopen_queue}
 
 @router.put("/final/{name}/metadata")
 def update_metadata(name: str, data: dict, user=Depends(admin_only)):

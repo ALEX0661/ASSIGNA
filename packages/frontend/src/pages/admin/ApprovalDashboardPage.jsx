@@ -264,8 +264,11 @@ export default function ApprovalDashboardPage() {
   }
   async function handleUnpublish(qId) {
     try {
-      await unfinalizeMasterSchedule(qId)
-      toast('Unpublished. Queue reopened and coordinator schedules reset to draft.', 'info')
+      const res = await unfinalizeMasterSchedule(qId)
+      const reopened = (res?.data ?? res)?.queueReopened !== false
+      toast(reopened
+        ? 'Unpublished. Queue reopened and coordinator schedules reset to draft.'
+        : 'Unpublished. Coordinator schedules reset to draft; the queue stays closed because another queue is active.', 'info')
       loadAll()
       refreshMaster(qId)
     } catch (e) { toast(e?.response?.data?.detail || 'Unpublish failed', 'error') }
@@ -385,7 +388,11 @@ export default function ApprovalDashboardPage() {
             </>
           )}
           {tab === 'master' && (
-            <MasterTab queueId={activeQueueId} onFinalize={handleFinalize} onUnpublish={handleUnpublish} programs={programs} onMasterSaved={() => refreshMaster(activeQueueId)} />
+            <MasterTab queueId={activeQueueId} onFinalize={handleFinalize} onUnpublish={handleUnpublish} programs={programs} onMasterSaved={() => refreshMaster(activeQueueId)}
+              blockedBy={(() => {
+                const other = queues.find(q => q.status === 'active' && (q.id || q.queueId) !== activeQueueId)
+                return other ? `${other.semester} ${other.academicYear}` : null
+              })()} />
           )}
           {tab === 'activity' && <ActivityTab schedules={submitted} />}
         </>

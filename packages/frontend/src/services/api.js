@@ -140,6 +140,7 @@ export const unfinalizeSchedule   = async (name) => axios.post(`${BASE}/schedule
 export const updateScheduleMeta   = async (name, d) => axios.put(`${BASE}/schedule/final/${name}/metadata`, d, { headers: await authHeaders() }).then(r => r.data)
 export const getActiveSchedule    = async (academicYear, semester) => axios.get(`${BASE}/schedule/final/active`, { headers: await authHeaders(), params: { academic_year: academicYear, semester } }).then(r => r.data)
 export const getPublishImpact     = async (academicYear, semester) => axios.get(`${BASE}/schedule/publish-impact`, { headers: await authHeaders(), params: { academic_year: academicYear, semester } }).then(r => r.data)
+export const getActiveQueue       = async ()                       => axios.get(`${BASE}/schedule/active-queue`, { headers: await authHeaders() }).then(r => r.data)
 
 export const getSchedules = async (scheduleName = null) => {
   const headers = await authHeaders()

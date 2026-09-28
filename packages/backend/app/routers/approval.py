@@ -10,6 +10,7 @@ from app.core.firebase import db
 from app.core.globals import schedule_dict
 from app.core.event_cache import event_cache
 from app.core.audit import log_audit_event
+from app.core.schedule_naming import base_schedule_name, unique_schedule_name, is_placeholder_name
 
 router = APIRouter()
 
@@ -24,6 +25,17 @@ def _get_schedule_or_404(schedule_id: str):
     if not doc.exists:
         raise HTTPException(status_code=404, detail="Schedule not found")
     return doc.to_dict()
+
+def _other_active_queue(queue_id: str):
+    """Only one queue may be active at a time (create_queue enforces the same
+    rule). Unpublishing normally reopens the origin queue, so check whether a
+    DIFFERENT queue is already active. Returns that queue's dict, or None.
+    Unpublish is still allowed when one exists -- it just leaves the origin
+    queue closed instead of reopening it."""
+    for d in db.collection("coordinator_queues").where(filter=firestore.FieldFilter("status", "==", "active")).limit(2).get():
+        if d.id != queue_id:
+            return d.to_dict()
+    return None
 
 def _advance_queue(queue_data: dict, queue_id: str):
     """Advance the queue to the next waiting program.
@@ -554,20 +566,14 @@ def finalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
     semester = master_data.get("semester")
     academic_year = master_data.get("academicYear")
 
-    if semester and academic_year:
-        base_final_name = f"A.Y. {academic_year}, {semester}".strip()
-    else:
-        base_final_name = f"{semester} {academic_year} - Final".strip()
-
-    # Each finalize should produce its own saved version rather than
-    # silently overwriting a prior publish of the same term (e.g. after an
-    # unfinalize -> edit -> re-finalize cycle). Pick the base name if free,
-    # otherwise the first "(1)", "(2)", ... suffix that isn't already taken.
-    final_name = base_final_name
-    suffix = 1
-    while db.collection("final_schedules").document(final_name).get().exists:
-        final_name = f"{base_final_name} ({suffix})"
-        suffix += 1
+    # Coordinator-published masters use the "Coordinators" convention
+    # (see app/core/schedule_naming.py). Each finalize still gets its own saved
+    # version: the base name if free, otherwise "(Coordinators v2)", "(Coordinators v3)", and so on.
+    base_final_name = base_schedule_name(academic_year, semester, source="queue")
+    final_name = unique_schedule_name(
+        base_final_name,
+        lambda n: db.collection("final_schedules").document(n).get().exists,
+    )
 
     if semester and academic_year:
         other_docs = db.collection("final_schedules")\
@@ -658,14 +664,19 @@ def unfinalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
     if not semester or not academic_year:
         raise HTTPException(status_code=400, detail="Missing semester/academicYear")
 
+    # If another queue is active, don't reopen this one (only one may be active).
+    # The unpublish itself still goes through.
+    blocking_queue = _other_active_queue(queue_id)
+    reopen_queue = blocking_queue is None
+
     now = (datetime.utcnow().isoformat() + "Z")
     
     # 1. Mark this queue's published final schedule(s) as not finalized.
     #    finalize_master_schedule stamps queueId on every final_schedules doc it
-    #    creates and picks a fresh name each time ("A.Y. X, Sem", then
-    #    "... (1)", "... (2)" after an unpublish -> re-publish), so look them up
-    #    by queueId instead of guessing the base name -- otherwise a re-published
-    #    "(1)" copy would stay finalized (still visible to faculty) after this
+    #    creates and picks a fresh name each time ("A.Y. X, Sem (Coordinators)",
+    #    then "(Coordinators v2)", "(Coordinators v3)" after an unpublish ->
+    #    re-publish), so look them up by queueId instead of guessing the base
+    #    name -- otherwise a re-published "v2" copy would stay finalized (still visible to faculty) after this
     #    unpublish. Filtering finalized in Python keeps this a single-field query.
     unfinalized_names = []
     for d in db.collection("final_schedules").where("queueId", "==", queue_id).stream():
@@ -675,6 +686,8 @@ def unfinalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
 
     # Legacy fallback: publishes from before queueId was stamped only ever used
     # the base name. Skip it if it belongs to a different queue.
+    # (Also covers the short-lived plain "A.Y. X, Sem" naming from before the
+    # Dean / Coordinator convention.)
     base_name = f"A.Y. {academic_year}, {semester}".strip()
     if base_name not in unfinalized_names:
         base_ref = db.collection("final_schedules").document(base_name)
@@ -686,9 +699,10 @@ def unfinalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
                 unfinalized_names.append(base_name)
     
     # 2. Re-open the queue and reset program statuses
+    #    (skipped when a different queue is active -- this queue stays "completed")
     queue_ref = db.collection("coordinator_queues").document(queue_id)
-    queue_doc = queue_ref.get()
-    if queue_doc.exists:
+    queue_doc = queue_ref.get() if reopen_queue else None
+    if queue_doc is not None and queue_doc.exists:
         queue_data = queue_doc.to_dict()
         program_status = queue_data.get("programStatus", {})
         original_queue = queue_data.get("queue", [])
@@ -749,9 +763,13 @@ def unfinalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
     for n in unfinalized_names:
         event_cache.invalidate(f"final:{n}")
 
-    log_audit_event(queue_id, "MASTER_UNFINALIZED", user, target_program="Master", details=f"Unpublished the master schedule for {semester} {academic_year}. Reopened queue for resubmission.")
+    if reopen_queue:
+        audit_details = f"Unpublished the master schedule for {semester} {academic_year}. Reopened queue for resubmission."
+    else:
+        audit_details = f"Unpublished the master schedule for {semester} {academic_year}. Queue was NOT reopened because the {blocking_queue.get('semester')} {blocking_queue.get('academicYear')} queue is active."
+    log_audit_event(queue_id, "MASTER_UNFINALIZED", user, target_program="Master", details=audit_details)
 
-    return {"message": "Master schedule unpublished"}
+    return {"message": "Master schedule unpublished", "queueReopened": reopen_queue}
 
 def _generate_schedule_diff(old_schedule: list, new_schedule: list) -> str:
     def get_id(ev):

@@ -2142,8 +2142,8 @@ export default function SchedulerPage() {
     let finalName = effectiveScheduleName.trim()
     if (!finalName) return
     
-    // Generate unique name to prevent overwrites
-    finalName = generateUniqueName(finalName)
+    // Apply the Dean naming convention, then make it unique to prevent overwrites
+    finalName = generateUniqueName(applyDeanTag(finalName))
     
     await performSave(finalName)
   }
@@ -2188,7 +2188,7 @@ export default function SchedulerPage() {
       setSaved(true)
       
       // Show different message if name was auto-changed
-      if (finalName !== effectiveScheduleName.trim()) {
+      if (finalName !== effectiveScheduleName.trim() && finalName !== applyDeanTag(effectiveScheduleName)) {
         toast(`Saved as "${finalName}" (auto-renamed to avoid overwrite)`, 'success')
       } else {
         toast(`Saved as "${finalName}"`, 'success')
@@ -2256,6 +2256,15 @@ export default function SchedulerPage() {
     }
   }
 
+  // The wizard presets ("A.Y. 2026-2027, Midyear") carry no source tag, and a
+  // typed name is sent to the backend as-is, so the naming convention
+  // (schedule_naming.py) never kicks in. Add the "(Dean)" tag here for those
+  // untagged presets only; custom names the dean typed are left alone.
+  function applyDeanTag(name) {
+    const n = (name || '').trim()
+    return /^A\.Y\. [^,()\/]+, [^,()\/]+$/.test(n) ? `${n} (Dean)` : n
+  }
+
   // Smart naming to prevent overwrites
   function generateUniqueName(baseName) {
     const existingNames = savedList.map(s => typeof s === 'string' ? s : s.name)
@@ -2264,7 +2273,20 @@ export default function SchedulerPage() {
       return baseName
     }
     
-    // Find next available number
+    // Same convention as the backend (schedule_naming.py):
+    // "... (Dean)" -> "... (Dean v2)", "... (Dean, Label)" -> "... (Dean v2, Label)"
+    const tagged = baseName.match(/^(.*) \((Dean|Coordinators)((?:, .*)?)\)$/)
+    if (tagged) {
+      let v = 2
+      let candidate
+      do {
+        candidate = `${tagged[1]} (${tagged[2]} v${v}${tagged[3]})`
+        v++
+      } while (existingNames.includes(candidate))
+      return candidate
+    }
+
+    // Older / hand-typed names keep the "(1)", "(2)" suffix
     let counter = 1
     let uniqueName
     do {
@@ -2277,8 +2299,13 @@ export default function SchedulerPage() {
 
   async function handleViewSchedule() {
     // Set metadata in the schedule store before navigating
-    // Use the current schedule name (which might have been auto-renamed)
-    const currentName = currentScheduleName || effectiveScheduleName
+    // Use the current schedule name (which might have been auto-renamed).
+    // If nothing has been saved yet there is no store name, so build the name
+    // exactly the way handleSave would (Dean tag + unique version). Otherwise
+    // the view page shows the raw preset, e.g. "A.Y. 2026-2027, Midyear",
+    // without "(Dean)" until the schedule is saved.
+    const currentName = currentScheduleName
+      || generateUniqueName(applyDeanTag(effectiveScheduleName.trim()))
     
     // Store the metadata temporarily for the view page -- always the term the
     // schedule was generated for.

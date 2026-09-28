@@ -373,11 +373,16 @@ function ScheduleDropdown({ names, activeName, loading, initLoading, onChange, s
     const meta = (schedulesMeta || []).find(s => (s.id || s.name) === sName)
     let label = meta?.name || sName
     
-    // Differentiate source for professional look
-    if (meta?.source === 'queue') {
-      label = `${label} (Official Queue)`
-    } else if (meta?.source === 'admin') {
-      label = `${label} (Dean)`
+    // Differentiate source for professional look. Names made by the naming
+    // convention already end in "(Dean ...)" / "(Coordinators ...)", so only
+    // older names without that tag need the suffix.
+    const alreadyTagged = /\((Dean|Coordinators)( v\d+)?(, .*)?\)$/.test(label)
+    if (!alreadyTagged) {
+      if (meta?.source === 'queue') {
+        label = `${label} (Official Queue)`
+      } else if (meta?.source === 'admin') {
+        label = `${label} (Dean)`
+      }
     }
 
     return meta?.finalized ? `${label} ★` : label
@@ -804,11 +809,20 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
   const [showVersionHistory, setShowVersionHistory] = useState(false)
 
   /* ── Handle passed metadata from SchedulerPage ─────────────────────────── */
+  // The unsaved-changes guard (useUnsavedChangesGuard) pushes a history entry
+  // while dirty and calls history.back() once it is clean again. That pop
+  // makes the router hand this effect the ORIGINAL entry's state again
+  // ({ scheduleName: <old name>, isUnsaved: true }), which used to put the old
+  // name and the "unsaved" flag straight back right after a successful save.
+  // Each history entry's handover is applied once, keyed by location.key.
+  const handoverKeyRef = useRef(null)
   useEffect(() => {
     const passedMetadata = location.state
     // Academic year can legitimately be blank (custom term), so the semester
     // alone is enough to apply the handed-over metadata.
     if (passedMetadata && passedMetadata.semester) {
+      if (handoverKeyRef.current === location.key) return
+      handoverKeyRef.current = location.key
       // Set metadata from the passed state
       setSchedAY(passedMetadata.academicYear)
       setSchedSem(passedMetadata.semester)
@@ -819,7 +833,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
       // If this schedule is marked as unsaved, set the flag
       setHasUnsavedChanges(passedMetadata.isUnsaved || false)
     }
-  }, [location.state, setName])
+  }, [location.state, location.key, setName])
 
   /* ── Bootstrap ──────────────────────────────────────────────────────────── */
   useEffect(() => {
@@ -978,6 +992,15 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
 
   /* ── Save schedule ──────────────────────────────────────────────────────── */
   
+  // The wizard presets ("A.Y. 2026-2027, Midyear") carry no source tag, and a
+  // typed name is sent to the backend as-is, so the naming convention
+  // (schedule_naming.py) never kicks in. Add the "(Dean)" tag here for those
+  // untagged presets only; custom names the dean typed are left alone.
+  function applyDeanTag(name) {
+    const n = (name || '').trim()
+    return /^A\.Y\. [^,()\/]+, [^,()\/]+$/.test(n) ? `${n} (Dean)` : n
+  }
+
   // Smart naming to prevent overwrites (copied from SchedulerPage)
   function generateUniqueName(baseName) {
     const existingNames = savedNames.map(s => typeof s === 'string' ? s : s.name)
@@ -986,7 +1009,20 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
       return baseName
     }
     
-    // Find next available number
+    // Same convention as the backend (schedule_naming.py):
+    // "... (Dean)" -> "... (Dean v2)", "... (Dean, Label)" -> "... (Dean v2, Label)"
+    const tagged = baseName.match(/^(.*) \((Dean|Coordinators)((?:, .*)?)\)$/)
+    if (tagged) {
+      let v = 2
+      let candidate
+      do {
+        candidate = `${tagged[1]} (${tagged[2]} v${v}${tagged[3]})`
+        v++
+      } while (existingNames.includes(candidate))
+      return candidate
+    }
+
+    // Older / hand-typed names keep the "(1)", "(2)" suffix
     let counter = 1
     let uniqueName
     do {
@@ -1049,7 +1085,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
       // Only generate unique name if this is NOT an existing schedule
       // This allows updating existing schedules without creating duplicates
       if (!isExistingSchedule) {
-        finalName = generateUniqueName(finalName)
+        finalName = generateUniqueName(applyDeanTag(finalName))
       }
       
       const response = await saveSchedule(finalName, { academicYear: schedAY, semester: schedSem }, allEvents)
@@ -1070,7 +1106,20 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
       if (finalName !== activeName && !isExistingSchedule) {
         setActiveName(finalName)
         setName(finalName)
-        window.history.replaceState(null, '', `/dashboard/schedule/${encodeURIComponent(finalName)}`)
+        // Don't rewrite the URL right now: once hasUnsavedChanges turns false the
+        // guard hook pops its trap entry with history.back(), which would
+        // throw this replaced URL away and leave the address bar on the old
+        // name. Wait for that pop (or a short timeout if there was none).
+        const newUrl = `/dashboard/schedule/${encodeURIComponent(finalName)}`
+        let urlSynced = false
+        const syncUrl = () => {
+          if (urlSynced) return
+          urlSynced = true
+          window.removeEventListener('popstate', syncUrl)
+          window.history.replaceState(window.history.state, '', newUrl)
+        }
+        window.addEventListener('popstate', syncUrl)
+        setTimeout(syncUrl, 400)
         setSavedNames(prev => [...prev, finalName])
       }
 
@@ -1171,9 +1220,14 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
       setSchedulesMeta(prev => prev.map(s => (s.id || s.name) === activeName ? { ...s, finalized: false } : s))
       setFinalizingState('done')
       setTimeout(() => setFinalizingState('idle'), 2500)
-    } catch {
+    } catch (err) {
       setFinalizingState('error')
       setTimeout(() => setFinalizingState('idle'), 2200)
+      const detail = err?.response?.data?.detail
+      if (detail) {
+        setCopyToast({ type: 'error', message: detail })
+        setTimeout(() => setCopyToast(null), 5000)
+      }
     }
   }
 
@@ -2661,7 +2715,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
             onClick={e => e.stopPropagation()}>
             <h3 style={{ margin:0, fontSize:15, fontWeight:700, color: 'var(--ink)' }}>Move back to Draft?</h3>
             <p style={{ margin:'8px 0 20px', fontSize:12.5, color: 'var(--muted2)', lineHeight:1.5 }}>
-              <strong style={{ color: 'var(--ink)' }}>{activeName}</strong> will no longer be visible to faculty. If it came from a queue, that queue reopens so coordinators can resubmit.
+              <strong style={{ color: 'var(--ink)' }}>{activeName}</strong> will no longer be visible to faculty. If it came from a queue, that queue reopens so coordinators can resubmit. This isn't possible while a different queue is active.
             </p>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
               <button onClick={() => setShowUnfinalizeModal(false)} disabled={finalizingState === 'working'}

@@ -486,51 +486,69 @@ export default function DashboardPage() {
   const [masterInfo,    setMasterInfo]    = useState(null)
   const [approvalLoading, setApprovalLoading] = useState(true)
 
+  // Steps follow the on-screen order, top to bottom. The queue and insights
+  // steps only exist while a queue is active / a schedule is loaded.
   const { TourElement, startTour } = useTour('adminDashboard', [
+    {
+      target: '#tour-admin-scheduler',
+      title: 'Generate & Manage',
+      content: 'Your two main actions. Generate Schedule opens the scheduler wizard — pick a semester, check Readiness, then start the solver. Manage Queue is where you open coordinator queues and review what they submit; the amber badge counts submissions waiting on you.',
+      placement: 'left',
+      disableBeacon: true,
+    },
+    {
+      target: '#tour-admin-setup',
+      title: 'Setup Checklist',
+      content: 'The recommended path to your first generated schedule, in order. Each item links straight to where you need to go and checks itself off once that step is detected as done, so you always know what\'s left.',
+      placement: 'bottom',
+    },
     {
       target: '#tour-admin-stats',
       title: 'Your Overview',
       content: 'A live snapshot of the system — faculty, courses, rooms, and schedules. Watch these counts as you set things up; they double as a quick check that each step of onboarding actually went through.',
       placement: 'bottom',
-      disableBeacon: true,
     },
     {
       target: '#tour-admin-queue',
       title: 'Scheduling Queue',
-      content: 'Appears while a coordinator queue is active. Shows which program is up, how far along the queue is, and any submitted schedules waiting on your review.',
-      placement: 'top',
-    },
-    {
-      target: '#tour-admin-setup',
-      title: 'Setup Checklist',
-      content: 'The recommended path to your first generated schedule, in order. Each item links straight to where you need to go, and checks itself off automatically once that step is detected as done — so you always know what\'s left.',
+      content: 'Appears while a coordinator queue is active. Shows which program is up, how far along the queue is, and any submitted schedules waiting on your review. The audit trail right below it logs each queue action.',
       placement: 'top',
     },
     {
       target: '#tour-admin-health',
       title: 'Schedule Health',
-      content: 'Once a schedule is loaded, this checks it for problems — room/faculty coverage, unresolved conflicts, and any faculty over or near their unit cap. Green means clear; anything red or amber is worth fixing before you finalize.',
+      content: 'Once a schedule is loaded, three checks appear: Coverage (with TBA sessions), Conflicts, and Overloaded Faculty. Green means clear; amber or red is worth fixing before you finalize. The Saved chips below switch between schedules.',
       placement: 'bottom',
     },
     {
-      target: '#tour-admin-scheduler',
-      title: 'Run the Scheduler',
-      content: 'Once faculty, courses, and rooms are in place, this is where you generate the actual timetable — pick a semester, check Readiness, and start the solver.',
-      placement: 'left',
+      target: '#tour-admin-insights',
+      title: 'Insights & Recommendations',
+      content: 'Plain-language findings for the loaded schedule, tagged critical, warning, or healthy. Start with the critical ones — they usually point at exactly what to change before finalizing.',
+      placement: 'top',
     },
     {
       target: '#tour-admin-breakdowns',
       title: 'Course Breakdowns',
-      content: 'A quick read on how your curriculum is shaped — how courses split across semesters and which programs they belong to. Useful for spotting an imbalance before you generate a schedule.',
+      content: 'How your curriculum is shaped — how courses split across semesters and which programs they belong to. Useful for spotting an imbalance before you generate a schedule.',
+      placement: 'top',
+    },
+    {
+      target: '#tour-admin-coverage',
+      title: 'Specialization Coverage',
+      content: 'Shows how many active faculty specialize in each course, worst-covered first. Red means no matching faculty and amber means only one — the solver will struggle with these. Use Update Specializations to fix gaps before you generate.',
       placement: 'top',
     },
     {
       target: '#tour-admin-snapshot',
       title: 'Year Level & Faculty Mix',
-      content: 'Rounds out the picture: how courses are spread across year levels, and your full-time vs. part-time faculty split — both worth checking if the scheduler ever comes back with unexpected results.',
+      content: 'Rounds out the picture: how courses are spread across year levels, and your full-time vs. part-time faculty split. Both are worth checking if the scheduler ever comes back with unexpected results.',
       placement: 'top',
     },
-  ])
+  ],
+  // Hold auto-start until the stats and queue fetches settle, so the
+  // queue-dependent step isn't judged "target not found" (and skipped) just
+  // because its card hasn't mounted yet.
+  !statsLoading && !approvalLoading)
 
   
 
@@ -850,7 +868,9 @@ export default function DashboardPage() {
       )}
 
       {/* ── Schedule Health ── */}
-      <div id="tour-admin-health" className="d-card" style={{ padding:'16px 18px', animationDelay:'.12s' }}>
+      <div className="d-card" style={{ padding:'16px 18px', animationDelay:'.12s' }}>
+        {/* Tour anchor covers the header + metric tiles only. The Saved chips below can wrap to many rows, and anchoring the whole card pushed the tooltip off-screen. */}
+        <div id="tour-admin-health">
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14, flexWrap:'wrap', gap:8 }}>
           <div>
             <div style={{ fontSize:13, fontWeight:700, color:'var(--ink)' }}>Schedule Health</div>
@@ -911,6 +931,8 @@ export default function DashboardPage() {
             ))}
           </div>
         )}
+        </div>
+
         {/* Saved schedule selector — compact, below health metrics */}
         {savedList.length > 0 && (
           <div style={{ marginTop:12, paddingTop:12, borderTop:'1px solid var(--border)', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
@@ -945,7 +967,7 @@ export default function DashboardPage() {
 
       {/* ── Row 3: Insights & Suggestions ── */}
       {scheduleName && (
-        <div className="d-card" style={{ animationDelay:'.14s' }}>
+        <div id="tour-admin-insights" className="d-card" style={{ animationDelay:'.14s' }}>
           <SectionHeader
             title="Insights & Recommendations"
             sub={

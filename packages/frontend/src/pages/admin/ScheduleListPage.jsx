@@ -8,7 +8,7 @@ import { exportScheduleToPDF } from '../../utils/exportScheduleToPDF'
 import { Toast, ModalOverlay } from '../../components/ScheduleView/svPrimitives'
 import { DeleteScheduleModal } from '../../components/ScheduleView/FilterModals'
 import { useTour } from '../../hooks/useTour.jsx'
-import PublishModal, { usePublishImpact, clearPublishImpactCache } from '../../components/ScheduleView/PublishModal'
+import PublishModal, { ConfirmModal, usePublishImpact, useActiveQueueLabel, clearPublishImpactCache } from '../../components/ScheduleView/PublishModal'
 
 const G = {
   meadow: 'var(--meadow, var(--meadow))', meadowDeep: 'var(--meadow-deep)', meadowMid: 'var(--meadow-mid)', meadowSoft: 'var(--meadow-soft)', meadowBorder: 'var(--meadow-border)',
@@ -383,6 +383,10 @@ export default function ScheduleListPage() {
         x.semester === pubSem)
     : null
 
+  // Only queue-sourced schedules can reopen a queue, so only look up the
+  // active queue for those, and only while the unpublish modal is open.
+  const activeQueue = useActiveQueueLabel(!!scheduleToUnpublish && scheduleToUnpublish.source === 'queue')
+
   const handleTogglePublish = (schedule) => {
     if (schedule.finalized) {
       setScheduleToUnpublish(schedule)
@@ -399,13 +403,14 @@ export default function ScheduleListPage() {
       // unfinalize_schedule on the backend already unapproves any
       // coordinator submissions for this term and reopens the queue —
       // one plain call is all that's needed, regardless of source.
-      await unfinalizeSchedule(name)
+      const res = await unfinalizeSchedule(name)
       clearPublishImpactCache()
-      setToastMsg({ type: 'success', message: `Moved "${scheduleToUnpublish.name}" back to draft` })
+      const notReopened = (res?.data ?? res)?.queueReopened === false
+      setToastMsg({ type: 'success', message: `Moved "${scheduleToUnpublish.name}" back to draft${notReopened ? ' (its queue stays closed because another queue is active)' : ''}` })
       handleRefresh()
     } catch (err) {
       console.error(err)
-      setToastMsg({ type: 'error', message: 'Failed to update status' })
+      setToastMsg({ type: 'error', message: err?.response?.data?.detail || 'Failed to update status' })
     } finally {
       setUnpublishingState('idle')
       setScheduleToUnpublish(null)
@@ -576,23 +581,39 @@ export default function ScheduleListPage() {
       {/* ── Unpublish confirmation modal ───────────────────────────────────── */}
       {scheduleToUnpublish && (
         <ModalOverlay onClose={() => unpublishingState !== 'working' && setScheduleToUnpublish(null)}>
-          <div style={{ background: 'var(--surface)', borderRadius: 16, width: 420, padding: '24px 26px', boxShadow: '0 24px 60px rgba(0,0,0,0.25)', border: `1px solid ${G.border}`, fontFamily: 'Inter,sans-serif' }}
-            onClick={e => e.stopPropagation()}>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: G.ink }}>Move back to Draft?</h3>
-            <p style={{ margin: '8px 0 20px', fontSize: 12.5, color: G.muted, lineHeight: 1.5 }}>
-              <strong style={{ color: G.ink }}>{scheduleToUnpublish.name}</strong> will no longer be visible to faculty. If it came from a queue, that queue reopens so coordinators can resubmit.
-            </p>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setScheduleToUnpublish(null)} disabled={unpublishingState === 'working'}
-                style={{ padding: '8px 18px', borderRadius: 9, border: `1.5px solid ${G.border}`, background: 'var(--surface)', color: G.muted, fontSize: 12.5, fontWeight: 600, cursor: unpublishingState === 'working' ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif' }}>
-                Cancel
-              </button>
-              <button onClick={confirmUnpublish} disabled={unpublishingState === 'working'}
-                style={{ padding: '8px 22px', borderRadius: 9, border: 'none', background: '#6B7280', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: unpublishingState === 'working' ? 'default' : 'pointer', fontFamily: 'Inter,sans-serif', boxShadow: '0 3px 12px rgba(0,0,0,0.25)', opacity: unpublishingState === 'working' ? 0.7 : 1 }}>
-                {unpublishingState === 'working' ? 'Moving…' : 'Yes, Move to Draft'}
-              </button>
-            </div>
-          </div>
+          <ConfirmModal
+            eyebrow={[scheduleToUnpublish.semester, scheduleToUnpublish.academic_year || scheduleToUnpublish.academicYear].filter(Boolean).join(' ') || null}
+            title={`Move ${scheduleToUnpublish.name} back to Draft?`}
+            subtitle="Faculty will no longer see it."
+            effects={[
+              ...(scheduleToUnpublish.source === 'queue' ? [
+                activeQueue.label ? {
+                  title: 'The queue stays closed',
+                  tag: 'Stays closed',
+                  detail: `The ${activeQueue.label} queue is active, and only one queue can be open at a time, so this term's queue won't reopen.`,
+                } : {
+                  title: 'The queue reopens',
+                  tag: 'Reopens',
+                  detail: activeQueue.loading || activeQueue.error
+                    ? 'Every program goes back to waiting. If a different queue is already active, this one stays closed instead.'
+                    : 'Every program goes back to waiting, starting again from the first one.',
+                },
+              ] : []),
+              {
+                title: 'Coordinator schedules reset to draft',
+                tag: 'Reset',
+                detail: activeQueue.label
+                  ? "They can't resubmit until a queue is open for this term again."
+                  : 'Coordinators will need to review and resubmit.',
+              },
+            ]}
+            busy={unpublishingState === 'working'}
+            onCancel={() => setScheduleToUnpublish(null)}
+            onConfirm={confirmUnpublish}
+            confirmLabel="Move to Draft"
+            busyLabel="Moving…"
+            border={G.border}
+          />
         </ModalOverlay>
       )}
       

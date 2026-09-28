@@ -18,6 +18,9 @@ export function useTour(tourId, steps, isReady = true, { isPrimary = true } = {}
 
   const [run, setRun] = useState(false)
   const [stepIndex, setStepIndex] = useState(0)
+  // Per-step flag: true when the step's target is too tall to fit on screen
+  // with a tooltip beside it. Those steps get placement: 'center'.
+  const [tallSteps, setTallSteps] = useState({})
 
   const tryStart = useCallback(() => {
     if (activeTourId && activeTourId !== tourId) return false
@@ -157,14 +160,22 @@ export function useTour(tourId, steps, isReady = true, { isPrimary = true } = {}
     if (!step?.target) return
     const el = typeof step.target === 'string' ? document.querySelector(step.target) : step.target
     if (!el?.scrollIntoView) return
+
+    // Target too tall to fit with a tooltip beside it -> center the tooltip
+    // on screen and show the top of the target. 280 is roughly the tooltip
+    // height plus margin; raise it to center more often, lower it for less.
+    const tall = el.getBoundingClientRect().height > window.innerHeight - 280
+    setTallSteps(prev => (prev[stepIndex] === tall ? prev : { ...prev, [stepIndex]: tall }))
+
     // 'nearest' scrolls only as much as needed to bring the target fully
     // into view — no more. Forcing 'center' or 'end' was overscrolling past
     // the actual end of page content on shorter pages, exposing blank
     // space below the last section that isn't a real bug, just unnecessary
     // scroll distance. Anchors are already small (card headers, not whole
     // sections — see AnalyticsPage), so 'nearest' is enough room for the
-    // tooltip without the overscroll side effect.
-    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    // tooltip without the overscroll side effect. Tall targets use 'start'
+    // so the top of the section is visible behind the centered tooltip.
+    el.scrollIntoView({ behavior: 'smooth', block: tall ? 'start' : 'nearest' })
   }, [run, stepIndex, steps])
 
   // The app's pages scroll inside <main> (see CoordinatorLayout /
@@ -224,9 +235,15 @@ export function useTour(tourId, steps, isReady = true, { isPrimary = true } = {}
   // Joyride only reprocesses steps when they genuinely change.
   const stepsKey = steps.map(s => `${s.target}|${s.title}`).join('::')
   const stepsWithoutBeacon = useMemo(
-    () => steps.map(s => ({ ...s, skipBeacon: true })),
+    () => steps.map((s, i) => ({
+      ...s,
+      skipBeacon: true,
+      // Tall targets: center the tooltip on screen instead of pinning it
+      // to the edge of the target.
+      ...(tallSteps[i] ? { placement: 'center' } : {}),
+    })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [stepsKey]
+    [stepsKey, tallSteps]
   )
 
   const TourElement = (
