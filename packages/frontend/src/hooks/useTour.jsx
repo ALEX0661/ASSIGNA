@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Joyride, STATUS, EVENTS, ACTIONS } from 'react-joyride'
 import { useAuth } from './useAuth'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
-import { db } from '../services/firebase'
+import { getTourStatus, markTourSeen } from '../services/api'
 
 // Module-level (shared across every useTour instance on the page) lock so
 // at most one tour can ever be running at a time — no matter whether it
@@ -12,19 +11,52 @@ import { db } from '../services/firebase'
 // render their tooltips on top of each other.
 let activeTourId = null
 
+// Which tours the signed-in account has seen, loaded from the backend once per
+// session and shared by every useTour instance (so N tours on a page = 1 request).
+let statusCache = { uid: null, promise: null }
+function loadTourStatus(uid) {
+  if (statusCache.uid !== uid || !statusCache.promise) {
+    const promise = getTourStatus().catch(err => {
+      // Don't cache failures, so the next attempt can try again.
+      if (statusCache.promise === promise) statusCache = { uid: null, promise: null }
+      throw err
+    })
+    statusCache = { uid, promise }
+  }
+  return statusCache.promise
+}
+function rememberSeen(uid, tourId, all) {
+  if (statusCache.uid !== uid || !statusCache.promise) return
+  statusCache.promise = statusCache.promise.then(s => ({
+    hasSeenGlobalTours: !!s?.hasSeenGlobalTours || all,
+    toursSeen: { ...(s?.toursSeen || {}), [tourId]: true },
+  }))
+}
+
 export function useTour(tourId, steps, isReady = true, { isPrimary = true } = {}) {
   const { user } = useAuth()
   const storageKey = user?.uid ? `tour_${user.uid}_${tourId}` : `tour_${tourId}`
 
   const [run, setRun] = useState(false)
   const [stepIndex, setStepIndex] = useState(0)
+  // Refs so the auto-start loop can read the latest state without re-arming.
+  const runRef = useRef(false)
+  // True once at least one step was actually shown to the user.
+  const shownRef = useRef(false)
+  const stepsRef = useRef(steps)
+  stepsRef.current = steps
   // Per-step flag: true when the step's target is too tall to fit on screen
   // with a tooltip beside it. Those steps get placement: 'center'.
   const [tallSteps, setTallSteps] = useState({})
 
   const tryStart = useCallback(() => {
     if (activeTourId && activeTourId !== tourId) return false
+    // Already running: don't restart it from step 1 (a re-armed auto-start
+    // used to do this mid-tour).
+    if (runRef.current) return true
     activeTourId = tourId
+    runRef.current = true
+    shownRef.current = false
     setStepIndex(0)
     setRun(true)
     // Separate from the 'start-tour' *trigger* event (fired by the header
@@ -38,24 +70,20 @@ export function useTour(tourId, steps, isReady = true, { isPrimary = true } = {}
 
   const stop = useCallback(async (markSeen, markGlobalSkip = false) => {
     if (activeTourId === tourId) activeTourId = null
+    runRef.current = false
     setRun(false)
     setStepIndex(0)
     if (markSeen) {
       localStorage.setItem(storageKey, 'true')
-      const updates = { toursSeen: { [tourId]: true } }
-      
-      if (markGlobalSkip) {
-        const globalKey = `tour_global_${user?.uid || 'guest'}`
-        localStorage.setItem(globalKey, 'true')
-        updates.hasSeenGlobalTours = true
-      }
-      
+
+      // Save to the backend so the account stays "seen" on every browser.
+      // Per page only: finishing or skipping this tour never hides other pages' tours.
       if (user?.uid) {
         try {
-          const userRef = doc(db, 'users', user.uid)
-          await setDoc(userRef, updates, { merge: true })
-        } catch(e) {
-          console.warn("Failed to save tour status to DB", e)
+          await markTourSeen(tourId, false)
+          rememberSeen(user.uid, tourId, false)
+        } catch (e) {
+          console.warn('Failed to save tour status to backend', e)
         }
       }
     }
@@ -72,39 +100,51 @@ export function useTour(tourId, steps, isReady = true, { isPrimary = true } = {}
   // Auto-start if not seen
   useEffect(() => {
     if (!isReady || !user?.uid) return
-    let cancelled = false;
+    let cancelled = false
+    let timer = null
 
     const checkTour = async () => {
-      const globalKey = `tour_global_${user.uid}`
-      // Fast path: if local storage says global true OR specific tour true, trust it immediately
-      if (localStorage.getItem(globalKey) === 'true' || localStorage.getItem(storageKey) === 'true') {
+      // Fast path: this page's tour was already finished or skipped in this browser.
+      if (localStorage.getItem(storageKey) === 'true') {
         return
       }
 
-      // Slow path: check DB (handles cross-device or cleared cache)
+      // Slow path: ask the backend (new browser, cleared cache, other device).
+      let status
       try {
-        const userRef = doc(db, 'users', user.uid)
-        const docSnap = await getDoc(userRef)
-        if (docSnap.exists()) {
-          const data = docSnap.data()
-          if (data?.hasSeenGlobalTours || data?.toursSeen?.[tourId]) {
-            // Already seen! Cache it locally and abort start.
-            localStorage.setItem(globalKey, 'true')
-            localStorage.setItem(storageKey, 'true')
-            return
-          }
-        }
+        status = await loadTourStatus(user.uid)
       } catch (e) {
-        console.warn('Failed to fetch tour status from DB', e)
+        // Can't tell whether this account has seen it. Don't risk replaying it
+        // for a returning user; the header "?" button still starts it manually.
+        console.warn('Could not check tour status, skipping auto-start', e)
+        return
       }
 
-      if (!cancelled) {
-        setTimeout(() => { tryStart() }, 1000)
+      if (status?.toursSeen?.[tourId]) {
+        localStorage.setItem(storageKey, 'true')
+        return
       }
+
+      if (cancelled) return
+
+      // Start once the lock is free AND the first step's target is on screen.
+      // Before, a single tryStart() ran after 1s: if another tour held the
+      // lock, or the target hadn't rendered yet, it silently gave up and the
+      // tour never auto-started for that user.
+      const attemptStart = (triesLeft) => {
+        if (cancelled || runRef.current) return
+        const list = stepsRef.current || []
+        const first = list[0]?.target
+        const targetReady = list.length > 0 &&
+          (typeof first !== 'string' || !!document.querySelector(first))
+        if (targetReady && tryStart()) return
+        if (triesLeft > 0) timer = setTimeout(() => attemptStart(triesLeft - 1), 600)
+      }
+      timer = setTimeout(() => attemptStart(25), 1000)
     }
 
     checkTour()
-    return () => { cancelled = true }
+    return () => { cancelled = true; clearTimeout(timer) }
   }, [tourId, isReady, tryStart, storageKey, user])
 
   // Listen for the shared header trigger. The event can target a specific
@@ -126,22 +166,34 @@ export function useTour(tourId, steps, isReady = true, { isPrimary = true } = {}
   const handleTourEvent = useCallback((data) => {
     const { status, action, index, type } = data
 
+    // A step the user actually saw. If every target was missing, the tour
+    // must not be saved as "seen" without ever showing.
+    if (type === EVENTS.STEP_AFTER || (EVENTS.TOOLTIP && type === EVENTS.TOOLTIP)) shownRef.current = true
+
+    // Skip and Close are checked FIRST. Joyride also fires STEP_AFTER for
+    // them, and the advance logic below used to swallow the event and just
+    // move to the next step, so Skip never actually skipped or saved.
+    if (action === ACTIONS.SKIP || status === STATUS.SKIPPED) {
+      stop(true, false) // Skip: saved for THIS page only
+      return
+    }
+    if (action === ACTIONS.CLOSE) {
+      stop(false, false)
+      return
+    }
+
     if (type === EVENTS.STEP_AFTER || type === EVENTS.TARGET_NOT_FOUND) {
       const nextIndex = index + (action === ACTIONS.PREV ? -1 : 1)
       if (nextIndex >= steps.length || nextIndex < 0) {
-        stop(true, false) // Natural finish
+        // Done on the last step always counts; running out of steps because
+        // every target was missing does not.
+        const pressedDone = type === EVENTS.STEP_AFTER && action === ACTIONS.NEXT
+        stop(pressedDone || shownRef.current, false)
       } else {
         setStepIndex(nextIndex)
       }
-    } else if (action === ACTIONS.CLOSE) {
-      stop(false, false)
-    } else if (action === ACTIONS.SKIP) {
-      stop(true, true) // Explicit skip
-    } else {
-      const finishedStatuses = [STATUS.FINISHED, STATUS.SKIPPED]
-      if (finishedStatuses.includes(status)) {
-        stop(true, status === STATUS.SKIPPED)
-      }
+    } else if (status === STATUS.FINISHED) {
+      stop(shownRef.current, false)
     }
   }, [steps.length, stop])
 

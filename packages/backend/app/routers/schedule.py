@@ -699,20 +699,12 @@ def load_saved(name: str, user=Depends(any_authenticated)):
         "versionHistory": data.get("versionHistory", []),
     }
 
-def _other_active_queue(queue_id: str):
-    """Only one queue may be active at a time (create_queue enforces the same
-    rule). Returns a DIFFERENT active queue's dict, or None. Unpublish still
-    goes through when one exists -- it just doesn't reopen the origin queue."""
-    for d in db.collection("coordinator_queues").where("status", "==", "active").limit(2).get():
-        if d.id != queue_id:
-            return d.to_dict()
-    return None
-
-def _unfinalize_final_schedule(doc_ref, data: dict, user: dict, reopen_queue: bool = True):
+def _unfinalize_final_schedule(doc_ref, data: dict, user: dict):
     """Shared core of unpublishing a final_schedules doc: flips its own
     finalized flag, unapproves any coordinator submissions for that term,
-    and — if it was generated from a Master Schedule queue — reopens that
-    queue and puts the master schedule back into draft.
+    and — if it was generated from a Master Schedule queue — puts that master
+    schedule back into draft. The queue itself is NEVER reopened; it stays
+    closed after an unpublish.
 
     Used both by the explicit /unfinalize endpoint and by finalize_schedule's
     "un-publish whatever else was published for this term" step, so that
@@ -751,39 +743,26 @@ def _unfinalize_final_schedule(doc_ref, data: dict, user: dict, reopen_queue: bo
     if count:
         batch.commit()
 
-    # Re-open the queue this specific schedule was published from, and
-    # put its master schedule back into draft -- keyed off the queueId
-    # stamped on this exact final_schedules doc (see approval.py's
-    # finalize_master_schedule), not by matching academicYear/semester.
-    # A term match would be wrong here: more than one final schedule can
-    # exist for the same term now (re-finalized versions get "(1)",
-    # "(2)" names), and only one of them -- the one actually generated
-    # from a master schedule -- should reach back and reopen a queue.
+    # Put the master schedule this specific final schedule was published from
+    # back into draft -- keyed off the queueId stamped on this exact
+    # final_schedules doc (see approval.py's finalize_master_schedule), not by
+    # matching academicYear/semester. The queue is left alone and stays closed.
     # Manually admin-saved schedules (source != "queue") never carry a
     # queueId and are correctly left alone.
     origin_queue_id = data.get("queueId") if data.get("source") == "queue" else None
     if origin_queue_id:
-        queue_ref = db.collection("coordinator_queues").document(origin_queue_id)
-        queue_doc = queue_ref.get()
-        if queue_doc.exists and queue_doc.to_dict().get("status") == "completed":
-            # Only reopen when no different queue is active; otherwise the
-            # origin queue stays "completed". The master goes back to draft either way.
-            if reopen_queue:
-                queue_ref.update({"status": "active", "updatedAt": now})
+        master_docs = db.collection("master_schedules").where("queueId", "==", origin_queue_id).get()
+        for m in master_docs:
+            m.reference.update({"status": "draft", "updatedAt": now})
+            event_cache.invalidate(f"master:{m.id}")
 
-            master_docs = db.collection("master_schedules").where("queueId", "==", origin_queue_id).get()
-            for m in master_docs:
-                m.reference.update({"status": "draft", "updatedAt": now})
-                event_cache.invalidate(f"master:{m.id}")
-
-            suffix = "" if reopen_queue else " (queue not reopened: another queue is active)"
-            log_audit_event(origin_queue_id, "MASTER_UNFINALIZED", user, target_program="Master", details=f"Unpublished {sem} {ay} from the schedule list view{suffix}")
+        log_audit_event(origin_queue_id, "MASTER_UNFINALIZED", user, target_program="Master", details=f"Unpublished {sem} {ay} from the schedule list view. Queue stays closed.")
 
 
 @router.get("/active-queue")
 def active_queue(user=Depends(admin_only)):
-    """Which queue is active right now, if any. Used by the list page's
-    unpublish confirm to say whether the origin queue will reopen.
+    """Which queue is active right now, if any. (No longer used by the
+    unpublish flow, since unpublishing never reopens a queue.)
     One equality filter on a single field (no composite index) with limit(1)
     -> at most 1 document read. Only called when that modal opens."""
     for d in db.collection("coordinator_queues").where("status", "==", "active").limit(1).get():
@@ -881,16 +860,9 @@ def unfinalize_schedule(name: str, user=Depends(admin_only)):
         raise HTTPException(404, "Schedule not found")
 
     data = doc.to_dict()
-    # Explicit unpublish only. finalize_schedule also calls the helper for
-    # sibling schedules (default reopen_queue=True, and it closes same-term
-    # queues right after), so the active-queue check lives here.
-    reopen_queue = True
-    if data.get("source") == "queue" and data.get("queueId"):
-        reopen_queue = _other_active_queue(data["queueId"]) is None
+    _unfinalize_final_schedule(doc_ref, data, user)
 
-    _unfinalize_final_schedule(doc_ref, data, user, reopen_queue=reopen_queue)
-
-    return {"unfinalized": name, "queueReopened": reopen_queue}
+    return {"unfinalized": name, "queueReopened": False}
 
 @router.put("/final/{name}/metadata")
 def update_metadata(name: str, data: dict, user=Depends(admin_only)):

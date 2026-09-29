@@ -24,6 +24,7 @@ from app.routers import (
     coordinator,
     queue,
     approval,
+    tours,
 )
 
 app = FastAPI(title="ASSIGNA API", version="1.0.0")
@@ -74,3 +75,4 @@ app.include_router(role_management.router,   tags=["Role Management"])
 app.include_router(coordinator.router,       prefix="/coordinator",   tags=["Coordinator"])
 app.include_router(queue.router,             prefix="/queue",         tags=["Queue"])
 app.include_router(approval.router,          prefix="/approval",      tags=["Approval"])
+app.include_router(tours.router,             prefix="/tours",         tags=["Tours"])

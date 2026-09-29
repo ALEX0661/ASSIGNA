@@ -289,12 +289,10 @@ export default function FacultyProfilePage() {
     return steps
   }, [loading, isPartTime])
 
-  const { TourElement, startTour } = useTour('facultyProfile', tourSteps, !loading)
-
-  useEffect(() => {
-    if (loading || tourSteps.length === 0) return
-    startTour()
-  }, [loading, tourSteps, startTour])
+  // useTour auto-starts the tour only if this account hasn't finished or
+  // skipped it yet. Don't call startTour() here: that ignored the saved
+  // state and replayed the tour on every reload.
+  const { TourElement } = useTour('facultyProfile', tourSteps, !loading)
 
   async function handlePanelColorChange(newColor) {
     if (!facultyId || newColor === panelColor) return
@@ -829,4 +827,4 @@ export default function FacultyProfilePage() {
       )}
     </div>
   )
-}
+}

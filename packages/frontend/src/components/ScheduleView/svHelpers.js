@@ -432,3 +432,9 @@ export function formatPreferenceSummary(pref) {
   else if (pref.end != null)                  time = `until ${minutesToTimeLabel(pref.end)}`
   return `${days} · ${time}`
 }
+
+// ── Department scoping (implemented in src/utils/departments.js) ──────────────
+export {
+  HOME_DEPT, MINOR_ALLOW_HOME, isMinorCode, isHomeFaculty, isOtherDept,
+  eligiblePool, eligiblePoolInfo,
+} from '../../utils/departments'

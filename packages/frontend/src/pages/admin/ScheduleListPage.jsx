@@ -8,7 +8,7 @@ import { exportScheduleToPDF } from '../../utils/exportScheduleToPDF'
 import { Toast, ModalOverlay } from '../../components/ScheduleView/svPrimitives'
 import { DeleteScheduleModal } from '../../components/ScheduleView/FilterModals'
 import { useTour } from '../../hooks/useTour.jsx'
-import PublishModal, { ConfirmModal, usePublishImpact, useActiveQueueLabel, clearPublishImpactCache } from '../../components/ScheduleView/PublishModal'
+import PublishModal, { ConfirmModal, usePublishImpact, clearPublishImpactCache } from '../../components/ScheduleView/PublishModal'
 
 const G = {
   meadow: 'var(--meadow, var(--meadow))', meadowDeep: 'var(--meadow-deep)', meadowMid: 'var(--meadow-mid)', meadowSoft: 'var(--meadow-soft)', meadowBorder: 'var(--meadow-border)',
@@ -363,7 +363,7 @@ export default function ScheduleListPage() {
   // Publishing is a one-way-visible action (it goes live to faculty), so it
   // gets a confirmation step. Moving back to Draft also gets one now: when
   // this schedule came from a Master Schedule queue, unpublishing it reaches
-  // back and unpublishes that master schedule too (and reopens its queue),
+  // back and unpublishes that master schedule too (its queue stays closed),
   // which isn't obvious from this page alone.
   const [scheduleToPublish, setScheduleToPublish] = useState(null)
   const [publishingState, setPublishingState] = useState('idle')
@@ -383,10 +383,6 @@ export default function ScheduleListPage() {
         x.semester === pubSem)
     : null
 
-  // Only queue-sourced schedules can reopen a queue, so only look up the
-  // active queue for those, and only while the unpublish modal is open.
-  const activeQueue = useActiveQueueLabel(!!scheduleToUnpublish && scheduleToUnpublish.source === 'queue')
-
   const handleTogglePublish = (schedule) => {
     if (schedule.finalized) {
       setScheduleToUnpublish(schedule)
@@ -401,12 +397,11 @@ export default function ScheduleListPage() {
     setUnpublishingState('working')
     try {
       // unfinalize_schedule on the backend already unapproves any
-      // coordinator submissions for this term and reopens the queue —
+      // coordinator submissions for this term. It never reopens a queue —
       // one plain call is all that's needed, regardless of source.
-      const res = await unfinalizeSchedule(name)
+      await unfinalizeSchedule(name)
       clearPublishImpactCache()
-      const notReopened = (res?.data ?? res)?.queueReopened === false
-      setToastMsg({ type: 'success', message: `Moved "${scheduleToUnpublish.name}" back to draft${notReopened ? ' (its queue stays closed because another queue is active)' : ''}` })
+      setToastMsg({ type: 'success', message: `Moved "${scheduleToUnpublish.name}" back to draft` })
       handleRefresh()
     } catch (err) {
       console.error(err)
@@ -586,25 +581,15 @@ export default function ScheduleListPage() {
             title={`Move ${scheduleToUnpublish.name} back to Draft?`}
             subtitle="Faculty will no longer see it."
             effects={[
-              ...(scheduleToUnpublish.source === 'queue' ? [
-                activeQueue.label ? {
-                  title: 'The queue stays closed',
-                  tag: 'Stays closed',
-                  detail: `The ${activeQueue.label} queue is active, and only one queue can be open at a time, so this term's queue won't reopen.`,
-                } : {
-                  title: 'The queue reopens',
-                  tag: 'Reopens',
-                  detail: activeQueue.loading || activeQueue.error
-                    ? 'Every program goes back to waiting. If a different queue is already active, this one stays closed instead.'
-                    : 'Every program goes back to waiting, starting again from the first one.',
-                },
-              ] : []),
+              ...(scheduleToUnpublish.source === 'queue' ? [{
+                title: 'The queue stays closed',
+                tag: 'Stays closed',
+                detail: "Unpublishing doesn't reopen the queue, so coordinators can't submit for this term again.",
+              }] : []),
               {
                 title: 'Coordinator schedules reset to draft',
                 tag: 'Reset',
-                detail: activeQueue.label
-                  ? "They can't resubmit until a queue is open for this term again."
-                  : 'Coordinators will need to review and resubmit.',
+                detail: 'Submitted and approved schedules for this term go back to coordinators as drafts.',
               },
             ]}
             busy={unpublishingState === 'working'}

@@ -156,6 +156,14 @@ const SessionCard = memo(function SessionCard({
   const transform = (tx === 0 && ty === 0 && sc === 1) ? 'none' : `translate(${tx}px,${ty}px) scale(${sc})`
   const cardH     = Math.max(height - vOffset, 24)
 
+  // Normal-mode layout tiers. Everything keys off the real rendered height so that
+  // content is dropped or condensed before it can spill past the card edge.
+  const slim       = cardH < 74                         // badges in a row, compact footer
+  const tiny       = cardH < 34                         // course code line only
+  const showFooter = cardH >= 42                        // time (+ faculty)
+  const showTitle  = !!event.title && cardH >= 60
+  const titleLines = cardH >= 84 ? 2 : 1
+
   const handleEnter = () => { setIsHovered(true);  onHoverChange?.(true)  }
   const handleLeave = () => { setIsHovered(false); onHoverChange?.(false) }
 
@@ -368,7 +376,7 @@ const SessionCard = memo(function SessionCard({
         border: `1px solid ${borderColor}`,
         borderLeft: `4px solid ${accentColor}`,
         borderRadius: 7,
-        padding: '5px 8px 4px',
+        padding: cardH < 44 ? '3px 8px' : '5px 8px 4px',
         cursor: locked ? 'default' : isDragging ? 'grabbing' : 'grab',
         overflow: 'visible',
         boxShadow: computeShadow(),
@@ -407,7 +415,7 @@ const SessionCard = memo(function SessionCard({
         </div>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 4, minHeight: 0, overflow: 'hidden', flexShrink: 1 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 0, minWidth: 0, flex: 1 }}>
           <span style={{
             fontSize: 11.5, fontWeight: 800, color: textColor,
@@ -416,7 +424,7 @@ const SessionCard = memo(function SessionCard({
           }}>
             {event.courseCode}
           </span>
-          {sectionStr && (
+          {sectionStr && !tiny && (
             <span style={{
               fontSize: 7.5, fontWeight: 700, color: textColor,
               opacity: 0.6, lineHeight: 1.1, marginTop: 1,
@@ -425,25 +433,25 @@ const SessionCard = memo(function SessionCard({
               {sectionStr}
             </span>
           )}
-          {event.title && height > 50 && (
+          {showTitle && (
             <span style={{
               fontSize: 8.5, fontWeight: 500, color: textColor, opacity: 0.70,
               lineHeight: 1.25, marginTop: 2, overflow: 'hidden',
-              display: '-webkit-box', WebkitLineClamp: height > 72 ? 2 : 1, WebkitBoxOrient: 'vertical',
+              display: '-webkit-box', WebkitLineClamp: titleLines, WebkitBoxOrient: 'vertical',
             }}>
               {event.title}
             </span>
           )}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
+        <div style={{ display: 'flex', flexDirection: slim ? 'row' : 'column', alignItems: slim ? 'center' : 'flex-end', gap: 3, flexShrink: 0 }}>
           {/* Session type badge */}
           <span style={{
             fontSize: 6.5, fontWeight: 800, letterSpacing: '0.7px',
             background: isLab ? TV.deep : badgeBg,
             border: isLab ? 'none' : `1px solid ${borderColor}`,
             color: isLab ? '#fff' : textColor,
-            padding: '1.5px 5px', borderRadius: 4,
+            padding: slim ? '1px 4px' : '1.5px 5px', borderRadius: 4, lineHeight: slim ? 1.3 : undefined,
           }}>
             {sessionType}
           </span>
@@ -453,8 +461,8 @@ const SessionCard = memo(function SessionCard({
               fontSize: 7.5, fontWeight: 900, letterSpacing: '0.3px',
               background: accentColor,
               color: clr.badgeText ?? '#fff',
-              padding: '1px 6px', borderRadius: 4,
-              lineHeight: 1.4, flexShrink: 0,
+              padding: slim ? '1px 5px' : '1px 6px', borderRadius: 4,
+              lineHeight: slim ? 1.3 : 1.4, flexShrink: 0,
             }}>
               {event.block}
             </span>
@@ -502,28 +510,30 @@ const SessionCard = memo(function SessionCard({
 
       {/* ── FOOTER ── */}
       <div style={{
-        marginTop: height > 58 ? 'auto' : 2,
+        marginTop: !slim ? 'auto' : showFooter ? 2 : 0,
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        paddingTop: height > 58 ? 4 : 0,
-        borderTop: height > 58 ? `1px solid ${accentColor}22` : 'none',
-        gap: 6,
+        paddingTop: !slim ? 4 : 0,
+        borderTop: !slim ? `1px solid ${accentColor}22` : 'none',
+        gap: 6, flexShrink: 0,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 3, minWidth: 0 }}>
-          {height > 58 && (
+        {showFooter && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 3, minWidth: 0, overflow: 'hidden' }}>
+          {!slim && (
             <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={textColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: .55, flexShrink: 0 }}>
               <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
             </svg>
           )}
-          <span style={{ fontSize: height > 58 ? 8 : 7.5, fontWeight: 600, color: textColor, opacity: height > 58 ? .7 : .8, whiteSpace: 'nowrap' }}>
-            {height > 58 ? event.period : event.period?.replace(/\s*[AP]M/g, '').trim()}
+          <span style={{ fontSize: !slim ? 8 : 7.5, fontWeight: 600, color: textColor, opacity: !slim ? .7 : .8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {!slim ? event.period : event.period?.replace(/\s*[AP]M/g, '').trim()}
           </span>
         </div>
+        )}
 
-        {height > 45 && (
+        {showFooter && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 3, minWidth: 0, overflow: 'hidden' }}>
             {isUnassigned ? (
               <span style={{
-                fontSize: height > 58 ? 8 : 7.5, fontWeight: 700,
+                fontSize: !slim ? 8 : 7.5, fontWeight: 700,
                 color: '#F59E0B', opacity: 0.9,
                 whiteSpace: 'nowrap',
               }}>
@@ -531,13 +541,13 @@ const SessionCard = memo(function SessionCard({
               </span>
             ) : (
               <>
-                {height > 58 && (
+                {!slim && (
                   <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={textColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: .55, flexShrink: 0 }}>
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
                   </svg>
                 )}
-                <span style={{ fontSize: height > 58 ? 8 : 7.5, fontWeight: 600, color: textColor, opacity: height > 58 ? .65 : .6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {height > 58 ? event.faculty : event.faculty?.split(' ').pop()}
+                <span style={{ fontSize: !slim ? 8 : 7.5, fontWeight: 600, color: textColor, opacity: !slim ? .65 : .6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {!slim ? event.faculty : event.faculty?.split(' ').pop()}
         </span>
               </>
             )}

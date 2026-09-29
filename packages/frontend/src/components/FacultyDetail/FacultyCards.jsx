@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { ACADEMIC_RANKS, DEPARTMENTS, ALL_DAYS, RATING_COLORS, RATING_LABELS, fmtHour, FormField, SectionSaveBtn, StarRating } from './fdShared'
+import { isOtherDept, HOME_DEPT } from '../../utils/departments'
 
 // Add spin animation
 if (!document.getElementById('role-spin-animation')) {
@@ -74,6 +75,7 @@ export function ProfileCard({ form, isNew, isOverloaded, avInitials, avFg, avBg,
           </div>
           {form.AcademicRank && <div style={{ fontSize:12, color:'rgba(255,255,255,0.78)', fontWeight:500 }}>{form.AcademicRank}</div>}
           {form.Department   && <div style={{ fontSize:11, color:'rgba(255,255,255,0.55)', fontWeight:400, marginTop:2 }}>{form.Department}</div>}
+          {isOtherDept(form) && <div title="Never auto-assigned. Assign manually from the session modal." style={{ display:'inline-block', marginTop:6, padding:'2px 9px', borderRadius:99, fontSize:9.5, fontWeight:700, letterSpacing:'.4px', textTransform:'uppercase', background:'rgba(255,255,255,0.2)', color:'#fff' }}>Manual assign only</div>}
         </div>
 
         {/* Status badges */}
@@ -333,7 +335,9 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
               <option value="part-time">Part-time</option>
             </select>
           </FormField>
-          <FormField label="Department">
+          <FormField label="Department" hint={isOtherDept(form)
+            ? `Outside ${HOME_DEPT}: never auto-assigned. Assign manually from a session (minor subjects).`
+            : `${HOME_DEPT} faculty are included in auto-assign. Other departments are manual-assign only. Blank counts as ${HOME_DEPT}.`}>
             <select value={form.Department||''} onChange={e => setForm(f => ({...f, Department:e.target.value}))} style={{ padding:'10px 14px', borderRadius:'8px', border:`1px solid ${T.border}`, fontSize:13, fontFamily:"'Inter',sans-serif", background:T.bg, width:'100%', boxSizing:'border-box', outline:'none', color: T.textMain }}>
               <option value="">Select department...</option>
               {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
@@ -362,7 +366,7 @@ export function BasicInfoCard({ form, setForm, isNew, infoChanged, infoSaving, i
               </div>
               <span style={{ fontSize:13, fontWeight:700, color:T.textMain, flex:1 }}>Role & Permissions</span>
               {!roleLoading && (currentIsAdmin || currentIsFaculty) && (
-                <span style={{ fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background: currentIsAdmin ? 'rgba(217, 119, 6, 0.1)' : T.greenSoft, color: currentIsAdmin ? '#F59E0B' : T.greenDeep, border:`1px solid ${currentIsAdmin?'rgba(245, 158, 11, 0.25)':T.greenBorder}` }}>
+                <span style={{ fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background: currentIsAdmin ? 'rgba(217, 119, 6, 0.1)' : T.greenSoft, color: currentIsAdmin ? '#F59E0B' : T.textMain, border:`1px solid ${currentIsAdmin?'rgba(245, 158, 11, 0.25)':T.greenBorder}` }}>
                   {formatRoleBadge()}
                 </span>
               )}
@@ -629,8 +633,8 @@ export function CredentialsCard({ form, credEmail, setCredEmail, credPassword, s
         sub={form.email ? undefined : 'No account activated yet'}
         right={
           form.email
-            ? <span style={{ fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background:'rgba(134,239,172,0.25)', color:'var(--meadow-border)', border:'1px solid rgba(134,239,172,0.4)' }}>Active</span>
-            : <span style={{ fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background:'rgba(239,68,68,0.2)', color:'#FCA5A5', border:'1px solid rgba(239,68,68,0.3)' }}>Not Activated</span>
+            ? <span style={{ fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background:'var(--meadow-soft)', color:'var(--ink)', border:'1px solid var(--meadow-border)' }}>Active</span>
+            : <span style={{ fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background:'rgba(239,68,68,0.12)', color:'#EF4444', border:'1px solid rgba(239,68,68,0.35)' }}>Not Activated</span>
         }
       />
       {!form.email && (
@@ -826,7 +830,7 @@ export function RoleManagementCard({ facultyId, facultyEmail, onRoleUpdated }) {
   }
 
   const roleBadge = (currentIsAdmin || currentIsFaculty)
-    ? <span style={{ fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background: currentIsAdmin?'rgba(251,191,36,0.25)':'rgba(134,239,172,0.25)', color: currentIsAdmin?'rgba(245, 158, 11, 0.35)':'var(--meadow-border)', border:`1px solid ${currentIsAdmin?'rgba(251,191,36,0.4)':'rgba(134,239,172,0.4)'}` }}>
+    ? <span style={{ fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:'99px', background: currentIsAdmin?'rgba(245,158,11,0.15)':'var(--meadow-soft)', color: currentIsAdmin?'#F59E0B':'var(--ink)', border:`1px solid ${currentIsAdmin?'rgba(245,158,11,0.4)':'var(--meadow-border)'}` }}>
         {formatRoleBadge()}
       </span>
     : undefined

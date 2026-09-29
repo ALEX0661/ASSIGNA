@@ -21,6 +21,7 @@ import {
   getRoomCompliance,
   listSaved,
   loadSaved,
+  getResult,
 } from "../../services/api";
 import { useScheduleStore } from "../../store/scheduleStore";
 
@@ -464,8 +465,49 @@ function FilterChip({ active, color, label, count, onClick }) {
   );
 }
 
+// ── Faculty scope filters (full-time / part-time / department) ───────────────
+const isPartTime = (r) => String(r?.status ?? r?.employment ?? "").toLowerCase().replace(/[\s_]+/g, "-") === "part-time";
+const deptOf     = (r) => String(r?.department ?? r?.dept ?? "").trim();
+
+function useFacultyScope(rows) {
+  const [emp, setEmp]   = useState("all");   // "all" | "ft" | "pt"
+  const [dept, setDept] = useState("all");
+  const depts = useMemo(
+    () => [...new Set(rows.map(deptOf).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [rows]
+  );
+  const activeDept = depts.includes(dept) ? dept : "all";
+  const scoped = useMemo(() => rows.filter(r =>
+    (emp === "all" || (emp === "pt") === isPartTime(r)) &&
+    (activeDept === "all" || deptOf(r) === activeDept)
+  ), [rows, emp, activeDept]);
+  return { emp, setEmp, dept: activeDept, setDept, depts, scoped };
+}
+
+// Inline controls: drop these into an existing filter row, they render no wrapper of their own
+function FacultyScopeControls({ scope, rows }) {
+  const { emp, setEmp, dept, setDept, depts } = scope;
+  const base = dept === "all" ? rows : rows.filter(r => deptOf(r) === dept);
+  const pt   = base.filter(isPartTime).length;
+  return (
+    <>
+      <span style={{ width: 1, height: 18, background: "var(--border)", margin: "0 2px" }} />
+      <FilterChip label="Full-time" count={base.length - pt} color={C.blue} active={emp === "ft"} onClick={() => setEmp(emp === "ft" ? "all" : "ft")} />
+      <FilterChip label="Part-time" count={pt} color={C.purple} active={emp === "pt"} onClick={() => setEmp(emp === "pt" ? "all" : "pt")} />
+      {depts.length > 1 && (
+        <select value={dept} onChange={e => setDept(e.target.value)} style={{ ...ctrlBase, cursor: "pointer", maxWidth: 180 }}>
+          <option value="all">All departments</option>
+          {depts.map(d => <option key={d} value={d}>{d}</option>)}
+        </select>
+      )}
+    </>
+  );
+}
+
 // ── Unit cap card: every faculty member, one shared cap line ─────────────────
-function UnitCapCard({ rows, loading }) {
+function UnitCapCard({ rows: allRows, loading }) {
+  const scope = useFacultyScope(allRows);
+  const rows  = scope.scoped;
   const [filter, setFilter] = useState("all");
   const [sort, setSort]     = useState("load");
   const [q, setQ]           = useState("");
@@ -483,7 +525,7 @@ function UnitCapCard({ rows, loading }) {
   const totalPct      = totalCap ? Math.round((totalAssigned / totalCap) * 100) : 0;
 
   // shared axis: 100% (the cap) sits at the same x-position on every row
-  const scaleMax = Math.max(130, Math.ceil(Math.max(0, ...rows.map(r => r.pctUsed)) / 10) * 10 + 10);
+  const scaleMax = Math.max(130, Math.ceil(Math.max(0, ...allRows.map(r => r.pctUsed)) / 10) * 10 + 10);
   const at = (p) => `${(p / scaleMax) * 100}%`;
 
   const visible = useMemo(() => {
@@ -504,7 +546,9 @@ function UnitCapCard({ rows, loading }) {
 
   const overRows = rows.filter(r => r.state === "over").sort((a, b) => b.pctUsed - a.pctUsed);
   const roomiest = [...rows].sort((a, b) => b.headroom - a.headroom)[0];
-  const insight = overRows.length
+  const insight = !rows.length
+    ? "No faculty match the selected filters."
+    : overRows.length
     ? `${overRows.length} faculty ${overRows.length > 1 ? "are" : "is"} over the unit cap, the worst being ${overRows[0].name} at ${overRows[0].assigned}/${overRows[0].cap}u (+${(overRows[0].assigned - overRows[0].cap).toFixed(1)}u).${roomiest && roomiest.headroom > 0 ? ` ${roomiest.name} has the most room left (${roomiest.headroom.toFixed(1)}u).` : ""}`
     : counts.near
       ? `Nobody is over cap, but ${counts.near} faculty ${counts.near > 1 ? "are" : "is"} at 85% or more. Avoid adding sessions to them.`
@@ -523,7 +567,7 @@ function UnitCapCard({ rows, loading }) {
         )}
       />
       <div style={{ padding: 18 }}>
-        {loading ? <SectionSkel rows={6} /> : rows.length === 0 ? (
+        {loading ? <SectionSkel rows={6} /> : allRows.length === 0 ? (
           <div style={{ textAlign: "center", padding: "36px 0", color: "var(--muted2)", fontSize: 12.5 }}>
             No workload data yet. Run or load a schedule to see unit usage.
           </div>
@@ -561,6 +605,7 @@ function UnitCapCard({ rows, loading }) {
                 <FilterChip key={k} label={STATE[k].label} count={counts[k]} color={STATE[k].color}
                   active={filter === k} onClick={() => setFilter(filter === k ? "all" : k)} />
               ))}
+              <FacultyScopeControls scope={scope} rows={allRows} />
               <div style={{ flex: 1 }} />
               <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search faculty…"
                 style={{ ...ctrlBase, width: 150 }} />
@@ -707,14 +752,34 @@ function ScoreChip({ label, value }) {
   );
 }
 
-function SatisfactionCard({ sat, loading }) {
+function SatisfactionCard({ sat, facultyInfo, loading }) {
   const [view, setView] = useState("attention");
-  const rows = sat?.rows ?? [];
   const sum  = sat?.summary;
+
+  // satisfaction rows may not carry status/department, so borrow them from the workload rows by name
+  const info = useMemo(() => new Map((facultyInfo ?? []).map(r => [r.name, r])), [facultyInfo]);
+  const allRows = useMemo(() => (sat?.rows ?? []).map(r => {
+    const w = info.get(r.name);
+    return { ...r, status: r.status ?? w?.status, department: r.department ?? r.dept ?? w?.department ?? w?.dept };
+  }), [sat, info]);
+  const scope    = useFacultyScope(allRows);
+  const rows     = scope.scoped;
+  const scopedOn = scope.emp !== "all" || scope.dept !== "all";
+  const avg = (k) => {
+    const v = rows.map(r => r[k]).filter(x => x !== null && x !== undefined);
+    return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+  };
+  const stats = scopedOn
+    ? { avgSatisfaction: avg("satisfaction"), avgSpec: avg("specScore"), avgDay: avg("dayScore"), avgTime: avg("timeScore") }
+    : sum;
   const attention = rows.filter(r => r.satisfaction < 60);
   const list = view === "attention" && attention.length ? attention : rows;
 
-  const bandData = BANDS.map(b => ({ name: b.label, count: sum?.bands?.[b.key] ?? 0, fill: b.color }));
+  const inBand = (k, s) => k === "great" ? s >= 80 : k === "good" ? s >= 60 && s < 80 : k === "fair" ? s >= 40 && s < 60 : s < 40;
+  const bandData = BANDS.map(b => ({
+    name: b.label, fill: b.color,
+    count: scopedOn ? rows.filter(r => inBand(b.key, r.satisfaction)).length : (sum?.bands?.[b.key] ?? 0),
+  }));
 
   const issueTotals = rows.reduce((a, r) => ({
     day: a.day + (r.offDaySessions || 0),
@@ -727,10 +792,11 @@ function SatisfactionCard({ sat, loading }) {
     [issueTotals.time, "sessions outside preferred teaching hours"],
   ].sort((a, b) => b[0] - a[0])[0];
 
-  const insight = !rows.length ? null
+  const insight = !allRows.length ? null
+    : !rows.length ? "No faculty match the selected filters."
     : attention.length
       ? `${attention.length} of ${rows.length} faculty are below 60. The biggest driver is ${topIssue[0]} ${topIssue[1]}.`
-      : `Everyone is at 60 or above. Average satisfaction is ${Math.round(sum.avgSatisfaction ?? 0)}.`;
+      : `Everyone is at 60 or above. Average satisfaction is ${Math.round(stats.avgSatisfaction ?? 0)}.`;
 
   return (
     <Card>
@@ -745,7 +811,7 @@ function SatisfactionCard({ sat, loading }) {
         )}
       />
       <div style={{ padding: 18 }}>
-        {loading ? <SectionSkel rows={6} /> : !rows.length ? (
+        {loading ? <SectionSkel rows={6} /> : !allRows.length ? (
           <div style={{ textAlign: "center", padding: "36px 0", color: "var(--muted2)", fontSize: 12.5 }}>
             {sat ? "No faculty have assigned sessions yet." : "Satisfaction data is unavailable. Check that the analytics API is updated."}
           </div>
@@ -754,7 +820,7 @@ function SatisfactionCard({ sat, loading }) {
             {/* Left: score, components, distribution */}
             <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                <Ring value={sum.avgSatisfaction} />
+                <Ring value={stats.avgSatisfaction} />
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 800, color: "var(--ink)" }}>Average satisfaction</div>
                   <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3, lineHeight: 1.5 }}>
@@ -764,9 +830,9 @@ function SatisfactionCard({ sat, loading }) {
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <MetricBar label="Specialization fit" value={sum.avgSpec} note={`${sum.specMatchPct ?? 0}% of sessions taught by a matching specialist`} />
-                <MetricBar label="Preferred days" value={sum.avgDay} note={`${sum.dayPrefFaculty} of ${sum.partTimeFaculty ?? 0} part-time faculty set preferred days`} />
-                <MetricBar label="Preferred hours" value={sum.avgTime} note={`${sum.timePrefFaculty} of ${sum.partTimeFaculty ?? 0} part-time faculty set a time window`} />
+                <MetricBar label="Specialization fit" value={stats.avgSpec} note={scopedOn ? undefined : `${sum.specMatchPct ?? 0}% of sessions taught by a matching specialist`} />
+                <MetricBar label="Preferred days" value={stats.avgDay} note={scopedOn ? undefined : `${sum.dayPrefFaculty} of ${sum.partTimeFaculty ?? 0} part-time faculty set preferred days`} />
+                <MetricBar label="Preferred hours" value={stats.avgTime} note={scopedOn ? undefined : `${sum.timePrefFaculty} of ${sum.partTimeFaculty ?? 0} part-time faculty set a time window`} />
               </div>
 
               <div>
@@ -800,6 +866,7 @@ function SatisfactionCard({ sat, loading }) {
                   active={view === "attention"} onClick={() => setView("attention")} />
                 <FilterChip label="All faculty" count={rows.length}
                   active={view === "all"} onClick={() => setView("all")} />
+                <FacultyScopeControls scope={scope} rows={allRows} />
                 <span style={{ fontSize: 10.5, color: "var(--muted2)", marginLeft: "auto" }}>Lowest satisfaction first</span>
               </div>
 
@@ -917,41 +984,100 @@ function HeatmapCard({ cells, days, loading }) {
 }
 
 // ── Unassigned courses ───────────────────────────────────────────────────────
-function UnassignedCard({ courses, loading }) {
-  const max = Math.max(1, ...(courses || []).map(c => c.sessions));
+// External-department subjects (GEC/MAT/PE/NSTP...) are never auto-assigned, so
+// the default view keeps showing dept (major) courses only, exactly as before.
+// "Incl. external" adds those subjects, computed from the schedule's events.
+const EXT_DEPT_PREFIXES = ["GEC", "MAT", "MATH", "NSTP", "PATHFIT", "PE"];
+const isExtDeptCode = (code = "") => EXT_DEPT_PREFIXES.some(p => String(code).toUpperCase().trim().startsWith(p));
+
+function buildTbaCourses(events) {
+  // sessions = unassigned sessions, total = ALL sessions of that course in the schedule
+  const map = new Map();
+  for (const ev of events || []) {
+    const code = String(ev.courseCode || "").trim();
+    if (!code) continue;
+    if (!map.has(code)) map.set(code, { courseCode: code, title: ev.title || "", sessions: 0, total: 0, programs: new Set(), external: isExtDeptCode(code) });
+    const row = map.get(code);
+    row.total += 1;
+    if (ev.faculty && ev.faculty !== "TBA") continue;
+    row.sessions += 1;
+    if (ev.program) row.programs.add(ev.program);
+  }
+  return [...map.values()]
+    .filter(r => r.sessions > 0)
+    .map(r => ({ ...r, programs: [...r.programs].sort() }))
+    .sort((a, b) => b.sessions - a.sessions || a.courseCode.localeCompare(b.courseCode));
+}
+
+function UnassignedCard({ courses, allEvents, loading }) {
+  const [scope, setScope] = useState("dept");   // "dept" | "all"
+  const canShowAll = Array.isArray(allEvents) && allEvents.length > 0;
+  const allCourses = useMemo(() => (canShowAll ? buildTbaCourses(allEvents) : []), [allEvents, canShowAll]);
+  const showAll    = scope === "all" && canShowAll;
+  const rows       = showAll ? allCourses : courses;
+  const extRows    = allCourses.filter(c => c.external);
+  const extSessions = extRows.reduce((n, c) => n + c.sessions, 0);
   return (
     <Card>
-      <CardHeader title="Unassigned Courses" subtitle="Major courses still missing an instructor (TBA)" />
+      <CardHeader
+        title="Unassigned Courses"
+        subtitle={showAll ? "All sessions still missing an instructor, including external-department subjects" : "Major courses still missing an instructor (TBA)"}
+        right={
+          <div style={{ display: "inline-flex", padding: 2, borderRadius: 8, background: "var(--hover)", border: "1px solid var(--border)" }}>
+            {[["dept", "Dept"], ["all", canShowAll && extSessions > 0 ? `Incl. external (${extSessions})` : "Incl. external"]].map(([k, l]) => (
+              <button key={k} type="button" onClick={() => setScope(k)}
+                title={k === "all" && !canShowAll ? "Open or load a schedule to see external-department subjects" : undefined}
+                style={{ padding: "3px 9px", borderRadius: 6, border: "none", cursor: "pointer", fontFamily: "'Inter',sans-serif", fontSize: 10.5, fontWeight: scope === k ? 700 : 500, background: scope === k ? "var(--surface)" : "transparent", color: scope === k ? "var(--ink)" : "var(--muted2)", boxShadow: scope === k ? "0 1px 3px rgba(0,0,0,0.12)" : "none" }}>
+                {l}
+              </button>
+            ))}
+          </div>
+        }
+      />
       <div style={{ padding: 18, minHeight: 320 }}>
-        {loading ? <SectionSkel rows={5} /> : !courses?.length ? (
+        {loading ? <SectionSkel rows={5} /> : !rows?.length ? (
           <div style={{ textAlign: "center", padding: "48px 0", color: "var(--muted2)", fontSize: 12.5 }}>
             <div style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--meadow-soft)", color: "var(--meadow)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 10px" }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
             </div>
-            Every major session has an instructor.
+            {showAll ? "Every session, including external-department subjects, has an instructor." : "Every major session has an instructor."}
           </div>
         ) : (
           <>
+            {showAll && (
+              <div style={{ fontSize: 10.5, color: "var(--muted2)", marginBottom: 12 }}>
+                Bar = share of each course's sessions that still have no instructor. A full bar means nobody is assigned yet.
+              </div>
+            )}
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {courses.map(c => (
+              {rows.map(c => (
                 <div key={c.courseCode}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
                     <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 700 }}>{c.courseCode}</span>
                       {c.title ? <span style={{ color: "var(--muted2)", fontWeight: 500 }}> · {c.title}</span> : null}
+                      {showAll && c.external ? <span title="External-department subject: never auto-assigned. Assign manually in Schedule View." style={{ marginLeft: 6, padding: "1px 6px", borderRadius: 99, fontSize: 9, fontWeight: 700, letterSpacing: ".3px", textTransform: "uppercase", background: "var(--meadow-soft)", color: "var(--meadow)", border: "1px solid var(--meadow-border)", verticalAlign: "middle" }}>External dept</span> : null}
                     </span>
-                    <span style={{ fontSize: 11.5, fontWeight: 800, color: C.amber, flexShrink: 0 }}>{c.sessions} session{c.sessions === 1 ? "" : "s"}</span>
+                    <span style={{ fontSize: 11.5, fontWeight: 800, color: C.amber, flexShrink: 0 }}>
+                      {showAll && c.total
+                        ? <>{c.sessions} of {c.total} unassigned</>
+                        : <>{c.sessions} session{c.sessions === 1 ? "" : "s"}</>}
+                    </span>
                   </div>
-                  <div style={{ height: 7, borderRadius: 99, background: "var(--hover)", overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${(c.sessions / max) * 100}%`, borderRadius: 99, background: C.amber }} />
-                  </div>
+                  {showAll && c.total > 0 && (
+                    <div title={`${c.sessions} of ${c.total} sessions have no instructor`} style={{ height: 7, borderRadius: 99, background: "var(--hover)", overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${Math.min(100, (c.sessions / c.total) * 100)}%`, borderRadius: 99, background: C.amber }} />
+                    </div>
+                  )}
                   {c.programs?.length > 0 && (
                     <div style={{ fontSize: 10, color: "var(--muted2)", marginTop: 3 }}>{c.programs.join(", ")}</div>
                   )}
                 </div>
               ))}
             </div>
-            <InsightNote type="warn" text="Fix these first. Assign a faculty member manually, or add the specialization and re-run the scheduler." />
+            <InsightNote type="warn" text={showAll && extRows.length > 0
+              ? "External-department subjects are never auto-assigned. Add faculty from that department on the Faculty page, then assign them manually in Schedule View. For dept courses, assign manually or add the specialization and re-run the scheduler."
+              : "Fix these first. Assign a faculty member manually, or add the specialization and re-run the scheduler."} />
           </>
         )}
       </div>
@@ -1184,7 +1310,7 @@ function RoomComplianceCard({ data, loading }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AnalyticsPage() {
-  const { scheduleName, setName, clearSchedule } = useScheduleStore();
+  const { scheduleName, setName, clearSchedule, events: storeEvents } = useScheduleStore();
 
   const { TourElement, startTour } = useTour('adminAnalytics', [
     {
@@ -1239,6 +1365,8 @@ export default function AnalyticsPage() {
   const [loading,        setLoading]        = useState(true);
   const [savedList,      setSavedList]      = useState([]);
   const [scheduleSource, setScheduleSource] = useState(null);
+  const [pinnedEvents,   setPinnedEvents]   = useState(null);   // events of a pinned saved schedule
+  const [resultEvents,   setResultEvents]   = useState(null);   // fallback: server's current schedule
 
   useEffect(() => {
     listSaved().then(res => {
@@ -1272,15 +1400,28 @@ export default function AnalyticsPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Events for the 'Incl. external' view of the Unassigned card. Prefer a pinned saved
+  // schedule, then the in-app store, then the server's current schedule.
+  useEffect(() => {
+    if (loading || pinnedEvents?.length || storeEvents?.length) return;
+    let alive = true;
+    getResult().then(r => { if (alive) setResultEvents(Array.isArray(r?.schedule) ? r.schedule : null); }).catch(() => {});
+    return () => { alive = false; };
+  }, [loading, pinnedEvents, storeEvents, scheduleSource]);
+
+  const unassignedSourceEvents = pinnedEvents?.length ? pinnedEvents : storeEvents?.length ? storeEvents : resultEvents;
+
   const handleScheduleChange = async (value) => {
     const isPinned = value !== "__current__";
     setScheduleSource(isPinned ? value : null);
     setLoading(true);
     try {
       if (isPinned) {
-        await loadSaved(value);
+        const saved = await loadSaved(value);
+        setPinnedEvents(Array.isArray(saved?.schedule) ? saved.schedule : null);
         setName(value);
       } else {
+        setPinnedEvents(null);
         clearSchedule();
       }
       await load();
@@ -1591,7 +1732,7 @@ export default function AnalyticsPage() {
       <UnitCapCard rows={workloadRows} loading={loading} />
 
       {/* ── SECTION 5: Faculty satisfaction ── */}
-      <SatisfactionCard sat={sat} loading={loading} />
+      <SatisfactionCard sat={sat} facultyInfo={workloadRows} loading={loading} />
 
       {/* ── SECTION 6: Assigned room compliance ── */}
       <RoomComplianceCard data={roomComp} loading={loading} />
@@ -1635,7 +1776,7 @@ export default function AnalyticsPage() {
             )}
           </div>
         </Card>
-        <UnassignedCard courses={dist?.tbaCourses ?? []} loading={loading} />
+        <UnassignedCard courses={dist?.tbaCourses ?? []} allEvents={unassignedSourceEvents} loading={loading} />
       </div>
     </div>
   );

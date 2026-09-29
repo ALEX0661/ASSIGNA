@@ -1774,7 +1774,9 @@ def pre_diagnostic(semester: str = None, user=Depends(admin_only)):
             "detail": (
                 f"{len(no_pool)} major course(s) have no faculty with matching specializations "
                 f"({sample}{'…' if len(no_pool) > 4 else ''}). "
-                "These will be placed as TBA — assign faculty manually after scheduling."
+                "The auto-assigner will most likely still fill these with the least-loaded available "
+                "faculty member (specialization is only a hard requirement for GEC/MAT/PE/NSTP), so expect "
+                "mismatched instructors, not TBA. Add specializations so the right people get them."
             ),
             "metric": {"value": len(no_pool), "label": "Unmatched courses", "unit": ""},
         })
@@ -1785,7 +1787,8 @@ def pre_diagnostic(semester: str = None, user=Depends(admin_only)):
             "status": "warn",
             "detail": (
                 f"{len(thin_pool)} course(s) have only 1 eligible faculty member. "
-                "If that person is unavailable or overloaded, those sessions become TBA."
+                "If that person is unavailable or at their cap, the assigner falls back to another "
+                "faculty member without a matching specialization, so quality drops."
             ),
             "metric": {"value": len(thin_pool), "label": "Single-faculty courses", "unit": ""},
         })
@@ -1943,8 +1946,8 @@ def _build_diagnostic_recommendations(checks, courses, faculty, lec_rooms, lab_r
     if check_map.get("faculty_coverage", {}).get("status") == "warn":
         recs.append({
             "priority": 5, "type": "suggestion",
-            "title": "Update faculty specializations before scheduling",
-            "body": "Courses with no matching faculty will always be TBA after auto-assignment. Add specializations now to maximize automatic coverage.",
+            "title": "Add specializations to improve instructor matching",
+            "body": "Major courses with no matching faculty usually still get a fallback instructor (least-loaded available), just a poorly matched one. Add specializations now so the right instructors are picked.",
         })
 
     cap_check = check_map.get("faculty_capacity", {})

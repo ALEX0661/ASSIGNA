@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import G from './tokens'
 import { EmptyState, ICONS } from './primitives'
@@ -13,6 +13,112 @@ function statusCounts(q) {
     approved: v.filter(s => s === 'approved').length,
     submitted: v.filter(s => s === 'submitted').length,
   }
+}
+
+// Compact one-line label: "2nd Semester 2026-2027" -> "2nd Sem 2026-2027"
+const chipLabel = q => `${(q.semester || '').replace('Semester', 'Sem')} ${q.academicYear || ''}`.trim()
+
+function QueueChips({ queues, activeId, onSelect }) {
+  const rowRef = useRef(null)
+  const [edge, setEdge] = useState({ left: false, right: false })
+
+  const measure = () => {
+    const el = rowRef.current
+    if (!el) return
+    setEdge({
+      left: el.scrollLeft > 2,
+      right: el.scrollLeft + el.clientWidth < el.scrollWidth - 2,
+    })
+  }
+
+  // Track overflow so the arrows only show when something is cut off.
+  useEffect(() => {
+    measure()
+    const el = rowRef.current
+    if (!el) return
+    const onWheel = e => {
+      // Mouse wheel scrolls the row sideways.
+      if (el.scrollWidth <= el.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
+      e.preventDefault()
+      el.scrollLeft += e.deltaY
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    el.addEventListener('scroll', measure, { passive: true })
+    window.addEventListener('resize', measure)
+    return () => {
+      el.removeEventListener('wheel', onWheel)
+      el.removeEventListener('scroll', measure)
+      window.removeEventListener('resize', measure)
+    }
+  }, [queues.length])
+
+  // Keep the selected chip in view.
+  useEffect(() => {
+    const el = rowRef.current?.querySelector('[data-selected="true"]')
+    if (el) el.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' })
+  }, [activeId])
+
+  const nudge = dir => rowRef.current?.scrollBy({ left: dir * 240, behavior: 'smooth' })
+  const overflowing = edge.left || edge.right
+
+  const Arrow = ({ dir, enabled }) => (
+    <button
+      onClick={() => nudge(dir)}
+      disabled={!enabled}
+      aria-label={dir < 0 ? 'Scroll left' : 'Scroll right'}
+      style={{
+        flexShrink: 0, width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'var(--surface)', border: `1px solid ${G.border}`, color: G.ink,
+        cursor: enabled ? 'pointer' : 'default', opacity: enabled ? 1 : 0.35, padding: 0,
+      }}
+    >
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8">
+        <polyline points={dir < 0 ? '15 18 9 12 15 6' : '9 18 15 12 9 6'} />
+      </svg>
+    </button>
+  )
+
+  return (
+    <>
+      <style>{`.aq-chips::-webkit-scrollbar{display:none}`}</style>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        {overflowing && <Arrow dir={-1} enabled={edge.left} />}
+        <div
+          ref={rowRef}
+          className="aq-chips"
+          style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', padding: '2px 1px', flex: 1, minWidth: 0 }}
+        >
+          {queues.map(q => {
+            const qId = q.id || q.queueId
+            const selected = qId === activeId
+            const done = q.status === 'completed'
+            return (
+              <button
+                key={qId}
+                data-selected={selected}
+                onClick={() => onSelect(qId)}
+                title={`${q.semester} ${q.academicYear}${done ? ' (done)' : ''}`}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0,
+                  height: 28, padding: '0 11px', borderRadius: 99, fontSize: 12, fontWeight: 600,
+                  whiteSpace: 'nowrap', cursor: 'pointer', fontFamily: 'inherit', transition: 'all .15s',
+                  background: selected ? 'var(--meadow)' : 'var(--surface)',
+                  color: selected ? '#fff' : done ? G.muted2 : G.ink,
+                  border: `1px solid ${selected ? 'var(--meadow)' : G.border}`,
+                }}
+              >
+                {done
+                  ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" style={{ opacity: selected ? 0.9 : 0.7 }}><polyline points="20 6 9 17 4 12"/></svg>
+                  : <span style={{ width: 6, height: 6, borderRadius: '50%', background: selected ? '#fff' : 'var(--meadow)' }} />}
+                {chipLabel(q)}
+              </button>
+            )
+          })}
+        </div>
+        {overflowing && <Arrow dir={1} enabled={edge.right} />}
+      </div>
+    </>
+  )
 }
 
 function QueueTab({ queues, activeQueueId, setActiveQueueId, onAdvance, onFinish, onDelete, showToast, masterFinalized }) {
@@ -44,18 +150,7 @@ function QueueTab({ queues, activeQueueId, setActiveQueueId, onAdvance, onFinish
   return (
     <div className="ap-fadein" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {queues.length > 1 && (
-        <div className="ap-card" style={{ padding: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {queues.map(q => {
-            const qId = q.id || q.queueId
-            const isActive = qId === activeId
-            return (
-              <button key={qId} onClick={() => setActiveQueueId(qId)} className={`r-tab${isActive ? ' active' : ''}`}>
-                {q.semester} {q.academicYear}
-                {q.status === 'completed' && <span style={{ marginLeft: 6, opacity: 0.7 }}>· done</span>}
-              </button>
-            )
-          })}
-        </div>
+        <QueueChips queues={queues} activeId={activeId} onSelect={setActiveQueueId} />
       )}
 
       {active && (

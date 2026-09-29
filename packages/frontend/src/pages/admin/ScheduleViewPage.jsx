@@ -668,6 +668,8 @@ function svIsOtherDept(courseCode = "") {
   const upper = courseCode.toUpperCase().trim()
   return _SV_OTHER_PREFIXES.some(p => upper.startsWith(p))
 }
+// True when a session has no instructor yet (blank or TBA)
+const svIsTBA = ev => !ev.faculty || ev.faculty === 'TBA'
 
 /* ════════════════════════════════════════════════════════════════════════════
    Main page
@@ -780,6 +782,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
   const [openModal,         setOpenModal]     = useState(null)
   const [showPendingModal,  setShowPendingModal] = useState(false)
   const [filterMerged,      setFilterMerged]  = useState(false)
+  const [filterExtUnassigned, setFilterExtUnassigned] = useState(false) // TBA sessions of external-department (minor) courses
   const [filterLec,         setFilterLec]     = useState(false)
   const [filterLab,         setFilterLab]     = useState(false)
   const [showAvailableOnly, setShowAvailableOnly] = useState(false)
@@ -1350,6 +1353,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
       )) return false
       if (filterUnassigned && (ev.faculty && ev.faculty !== 'TBA'))    return false
       if (filterMerged && !mergedIds.has(getEventId(ev)))              return false
+      if (filterExtUnassigned && !(svIsTBA(ev) && svIsOtherDept(ev.courseCode))) return false
       if (filterLec && !filterLab && ev.session?.toUpperCase().includes('LAB'))  return false
       if (filterLab && !filterLec && !ev.session?.toUpperCase().includes('LAB')) return false
       return true
@@ -1369,6 +1373,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
     if (filterMerged)       filterParts.push('Merged-only')
     if (filterConflicts)    filterParts.push('Conflicts-only')
     if (filterUnassigned)   filterParts.push('Unassigned-only')
+    if (filterExtUnassigned) filterParts.push('ExtDept-unassigned-only')
 
     const safePart = filterParts.join('_').replace(/[\\/:*?"<>|]+/g, '').trim()
     const exportName = safePart ? `${activeName}_${safePart}` : activeName
@@ -1496,13 +1501,14 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
   const dayEvents = useMemo(() => {
     let evs = rawDayEvents
     if (filterMerged) evs = evs.filter(e => mergedIds.has(getEventId(e)))
+    if (filterExtUnassigned) evs = evs.filter(e => svIsTBA(e) && svIsOtherDept(e.courseCode))
     if (filterLec && !filterLab) evs = evs.filter(e => !e.session?.toUpperCase().includes('LAB'))
     if (filterLab && !filterLec) evs = evs.filter(e =>  e.session?.toUpperCase().includes('LAB'))
     return evs
-  }, [rawDayEvents, filterMerged, filterLec, filterLab, mergedIds])
+  }, [rawDayEvents, filterMerged, filterExtUnassigned, filterLec, filterLab, mergedIds])
 
-  const localHasFilters = hasFilters || filterMerged || filterLec || filterLab || showAvailableOnly
-  const handleClearAll  = () => { clearFilters(); setFilterMerged(false); setFilterLec(false); setFilterLab(false); setShowAvailableOnly(false) }
+  const localHasFilters = hasFilters || filterMerged || filterExtUnassigned || filterLec || filterLab || showAvailableOnly
+  const handleClearAll  = () => { clearFilters(); setFilterMerged(false); setFilterExtUnassigned(false); setFilterLec(false); setFilterLab(false); setShowAvailableOnly(false) }
 
   const overrideFn = useCallback(async () => {
     // Admin mode doesn't save individual session overrides to the network.
@@ -1637,6 +1643,10 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
 
   // FIX: exclude GEC/MAT/NSTP/PATHFIT/PE — always TBA, managed externally
   const unassignedCount = dayEvents.filter(e => (!e.faculty || e.faculty === 'TBA') && !svIsOtherDept(e.courseCode)).length
+  // External-department (GEC/MAT/PE/NSTP...) sessions still without an instructor.
+  // The auto-assigner never fills these, so they are shown separately from 'Unassigned'.
+  const extUnassignedCount = dayEvents.filter(e => svIsTBA(e) && svIsOtherDept(e.courseCode)).length
+  const extUnassignedTotal = allEvents.filter(e => !e._isOtherProgram && svIsTBA(e) && svIsOtherDept(e.courseCode)).length
   const hasNoSchedule   = allEvents.length === 0 && !loading
 
   const statItems = [
@@ -1644,6 +1654,7 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
     { label:'Total overall', value: allEvents.length,    sub: 'all days', accent: 'var(--mint)' },
     { label:'Conflicts',     value: conflictMap.size,    accent: conflictMap.size  > 0 ? '#ef4444' : TV.deep, sub: 'detected'   },
     { label:'Unassigned',    value: unassignedCount,     accent: unassignedCount   > 0 ? '#f59e0b' : TV.deep, sub: 'dept courses only' },
+    { label:'Ext. dept',     value: extUnassignedCount,  accent: extUnassignedCount > 0 ? '#f59e0b' : TV.deep, sub: `${extUnassignedTotal} unassigned overall` },
     { label:'Faculty',       value: new Set(dayEvents.map(e => e.faculty).filter(f => f && f !== 'TBA')).size, sub: 'teaching' },
     { label:'Rooms',         value: visibleRooms.length, sub: 'in use' },
     // ── New: pending changes count in stats
@@ -2069,6 +2080,22 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
               </svg>
               Unassigned
             </button>
+            <button onClick={() => setFilterExtUnassigned(v => !v)}
+              title="Show only external-department subjects (GEC, MAT, PE, NSTP...) that still have no instructor. The auto-assigner never fills these."
+              style={{
+              display:'inline-flex', alignItems:'center', gap:4,
+              padding:'3px 10px', borderRadius:20, fontSize:11, cursor:'pointer',
+              fontFamily:'Inter,sans-serif', transition:'all .15s',
+              fontWeight: filterExtUnassigned ? 700 : 400,
+              border: `1px solid ${filterExtUnassigned ? 'rgba(245, 158, 11, 0.35)' : TV.border}`,
+              background: filterExtUnassigned ? 'rgba(245, 158, 11, 0.05)' : 'var(--surface)',
+              color: filterExtUnassigned ? '#92400e' : TV.muted,
+            }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              Ext. dept unassigned{extUnassignedTotal > 0 ? ` (${extUnassignedTotal})` : ''}
+            </button>
             <button
               onClick={() => setShowAvailableOnly(v => !v)}
               title="Show only rooms with open time today, and glow their genuinely free slots green — computed from every session, unaffected by other filters"
@@ -2492,6 +2519,13 @@ export default function ScheduleViewPage({ isSubmittedView = false, embeddedId =
                         }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/></svg>
                           Unassigned only
+                        </button>
+                        <button onClick={() => setFilterExtUnassigned(v => !v)} style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'Inter,sans-serif', transition: 'all .15s',
+                          fontWeight: filterExtUnassigned ? 700 : 400, border: `1px solid ${filterExtUnassigned ? 'rgba(245, 158, 11, 0.35)' : TV.border}`, background: filterExtUnassigned ? 'rgba(245, 158, 11, 0.05)' : 'var(--surface)', color: filterExtUnassigned ? '#92400e' : TV.muted,
+                        }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                          Ext. dept unassigned{extUnassignedTotal > 0 ? ` (${extUnassignedTotal})` : ''}
                         </button>
                         <button onClick={() => setShowAvailableOnly(v => !v)} style={{
                           display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'Inter,sans-serif', transition: 'all .15s',

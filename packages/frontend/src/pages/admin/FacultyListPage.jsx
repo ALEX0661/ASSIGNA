@@ -1083,6 +1083,11 @@ export default function FacultyListPage() {
       content: 'Manually add one faculty member — set their department, specialization, unit cap, and availability individually.',
     },
     {
+      target: '#tour-add-faculty-btn',
+      title: 'Faculty from Other Departments',
+      content: 'Set a faculty member to any department other than CCS and they become manual-assign only. Auto-assign uses CCS faculty exclusively, so they never appear in generated schedules. Assign them yourself from a session Assign tab, where they show up for minor subjects like GEC, MAT, PE and NSTP.',
+    },
+    {
       target: '#tour-faculty-search',
       title: 'Search & Filter',
       content: 'Find someone by name, department, or specialization, or open the advanced filters to narrow the list by status, load, or other criteria.',

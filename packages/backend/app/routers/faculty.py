@@ -8,6 +8,7 @@ from app.core.unit_balancing import (
     build_faculty_load_map,
 )
 from app.models.faculty import Faculty, FacultyUpdate
+from app.core.departments import effective_dept
 import pandas as pd
 import io
 import re
@@ -24,6 +25,19 @@ def _require_admin_or_coordinator(user: dict):
     if user.get("coordinatorProgram"):
         return
     raise HTTPException(403, "Dean or Coordinator access required.")
+
+def _guard_department(user: dict, new_dept, existing_dept=None):
+    """Only the Dean may move faculty into/out of another department.
+
+    Blank Department == home department, so blank -> "CCS" (what the edit form
+    sends for legacy records) is NOT a change and must pass.
+    """
+    if user.get("role") == "admin":
+        return
+    if effective_dept(new_dept) == effective_dept(existing_dept):
+        return
+    raise HTTPException(403, "Only the Dean can assign faculty to another department.")
+
 
 def _default_password(name: str) -> str:
     last_name = name.strip().split()[-1] if name.strip() else "Faculty"
@@ -222,6 +236,7 @@ def get_faculty(faculty_id: str, user=Depends(any_authenticated)):
 @router.post("/add")
 def add_faculty(data: dict, user=Depends(any_authenticated)):
     _require_admin_or_coordinator(user)
+    _guard_department(user, data.get("Department"), None)
     email = data.get("email", "").strip()
     name  = data.get("name",  "").strip()
 
@@ -291,6 +306,9 @@ def update_faculty(faculty_id: str, data: FacultyUpdate, user=Depends(any_authen
 
     update_data = data.dict(exclude_unset=True)
     print("DEBUG update_faculty incoming update_data:", update_data)
+
+    if "Department" in update_data:
+        _guard_department(user, update_data["Department"], (doc.to_dict() or {}).get("Department"))
 
     
 
@@ -610,6 +628,13 @@ def commit_faculty_upload(data: dict, user=Depends(any_authenticated)):
         doc = ref.get()
         is_new = not doc.exists
         existing_data = doc.to_dict() if doc.exists else {}
+
+        # Coordinators may not use the Excel import to move faculty across departments.
+        if f.get("Department") and user.get("role") != "admin":
+            if effective_dept(f.get("Department")) != effective_dept(existing_data.get("Department")):
+                failed.append({"faculty": f, "reason": "Only the Dean can assign faculty to another department."})
+                continue
+
         if is_new:
             update_data["units"] = 0.0
             update_data["initial_max_units"] = compute_effective_max_units(status, 0)

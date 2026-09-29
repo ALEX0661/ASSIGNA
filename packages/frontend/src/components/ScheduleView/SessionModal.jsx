@@ -11,6 +11,7 @@ import {
   ModalOverlay, ModalHeader, RoomChip, ConflictTable, TV,
 } from './svPrimitives'
 import { useTour } from '../../hooks/useTour.jsx'
+import FacultyInfoModal, { DeptBadge, FacultyInfoButton } from './FacultyInfoModal'
 
 /* ── Inject styles once (or update on HMR) ─────────────────────────────────── */
 let s = document.getElementById('sm-style')
@@ -104,7 +105,7 @@ s.textContent = `
       border-radius:10px; border:1px solid var(--border); background: var(--surface);
       transition:border-color .14s;
     }
-    .sm-batch-row.has-conflict { border-color:#fca5a5; background:#fff8f8; }
+    .sm-batch-row.has-conflict { border-color:#fca5a5; background:rgba(239, 68, 68, 0.06); }
     .sm-batch-row.success      { border-color:var(--mint); background:var(--hover); }
 
     /* ── Thin custom scrollbars ─────────────────────────────────────────────── */
@@ -296,6 +297,30 @@ const FAC_SORTS = [
 ]
 const FAC_FILTER_DEFAULTS = { status:'all', available:false, withinCap:false, inPref:false, hasSpec:false }
 
+/* ── Theme-aware warning colours ────────────────────────────────────────────── */
+// Text mixes the status hue with the theme's ink colour, so it comes out dark on
+// light surfaces and light on dark ones. Fixed hexes (#92400e / #c2410c) were
+// unreadable in dark mode.
+const SM_AMBER_TEXT   = 'color-mix(in srgb, #F59E0B 55%, var(--ink, #1f2937))'
+const SM_WARN_TEXT    = 'color-mix(in srgb, #EA580C 60%, var(--ink, #1f2937))'
+const SM_WARN_ICON    = '#EA580C'
+const SM_AMBER_BORDER = 'rgba(245, 158, 11, 0.4)'
+const SM_WARN_BORDER  = 'rgba(234, 88, 12, 0.4)'
+
+/* ── Department scoping (mirrors app/core/departments.py) ───────────────────── */
+// Minor subjects (GEC/MAT/PE/NSTP/GE) are taught by other departments -> pick from other-dept faculty.
+// Everything else -> home-department faculty only. A blank Department counts as home.
+const SM_HOME_DEPT      = 'CCS'   // later: derive from the logged-in user's department
+const SM_MINOR_PREFIXES = ['GEC', 'MAT', 'PE', 'NSTP', 'GE']
+const smIsMinorCode = code => SM_MINOR_PREFIXES.some(p => String(code || '').toUpperCase().startsWith(p))
+const smIsHomeFaculty = f => {
+  const d = String(f?.Department || '').replace(/\s+/g, ' ').trim().toUpperCase()
+  return !d || d === SM_HOME_DEPT
+}
+const smEligiblePool = (list, courseCode) =>
+  list.filter(f => smIsMinorCode(courseCode) ? !smIsHomeFaculty(f) : smIsHomeFaculty(f))
+
+
 function FilterToggle({ checked, onChange, label }) {
   return (
     <button type="button" className={`sm-ftoggle${checked ? ' on' : ''}`} onClick={onChange}>
@@ -319,7 +344,7 @@ export function OverrideConfirmDialog({ event, newDay, newPeriod, newRoom, newFa
 
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:16 }}>
           <div style={{ padding:14, background:'rgba(220, 38, 38, 0.05)', border:'1px solid #fecaca', borderRadius:10 }}>
-            <p style={{ fontSize:9.5, fontWeight:700, color:'#c2410c', textTransform:'uppercase', letterSpacing:'.8px', margin:'0 0 8px' }}>Current</p>
+            <p style={{ fontSize:9.5, fontWeight:700, color:SM_WARN_TEXT, textTransform:'uppercase', letterSpacing:'.8px', margin:'0 0 8px' }}>Current</p>
             <p style={{ margin:'0 0 3px', fontWeight:700, fontSize:13, color:TV.text }}>{event.courseCode}</p>
             <p style={{ margin:0, fontSize:11.5, color:TV.muted }}>{event.day} · {event.period}</p>
             <p style={{ margin:'2px 0 0', fontSize:11.5, color:TV.muted }}>Room: {event.room || '—'} · {event.faculty || 'TBA'}</p>
@@ -426,6 +451,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
   const [facSort,       setFacSort]       = useState('best')
   const [facFilters,    setFacFilters]    = useState(FAC_FILTER_DEFAULTS)
   const [facFilterOpen, setFacFilterOpen] = useState(false)
+  const [infoFac,      setInfoFac]      = useState(null)   // faculty doc shown in the info modal
 
   // ── Merge state (read-only; merging is now done via drag-and-drop) ───────
 
@@ -454,7 +480,8 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
 
   /* ── Room + time conflict maps ──────────────────────────────────────────── */
   const timeOptions  = TIME_SLOTS.filter(s => s.startMinutes <= DAY_END_HOUR * 60 - duration)
-  const allFacNames  = [...new Set([...masterFacultyList.map(f => f.name), event.faculty])].filter(n => n && n !== 'TBA').sort()
+  const facPool      = smEligiblePool(masterFacultyList, event.courseCode)
+  const allFacNames  = [...new Set([...facPool.map(f => f.name), event.faculty])].filter(n => n && n !== 'TBA').sort()
   const lectureRooms = masterRooms.lecture ?? []
   const labRooms     = masterRooms.lab     ?? []
   const knownRooms   = new Set([...lectureRooms, ...labRooms])
@@ -770,6 +797,12 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
     return map
   }, [masterFacultyList, event.courseCode])
 
+  /* name -> full faculty document (for the department badge + info modal) */
+  const facultyByName = useMemo(
+    () => new Map(masterFacultyList.map(f => [f.name, f])),
+    [masterFacultyList]
+  )
+
   /* ── Ranked faculty list: best spec match first, conflicts / unit overflow last ── */
   const rankedFaculty = useMemo(() => {
     return allFacNames.slice().sort((a, b) => {
@@ -935,8 +968,9 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
       <ModalOverlay onClose={onClose}>
         {TourElement}
         <div style={{
-          background: 'var(--surface)', borderRadius:16, width:1020, maxWidth:'98vw',
-          maxHeight:'92vh', display:'flex', flexDirection:'column',
+          background: 'var(--surface)', borderRadius:16, width:1240, maxWidth:'98vw',
+          maxHeight:'94vh', minHeight: tab === 'batch' ? 'min(800px, 92vh)' : undefined,
+          display:'flex', flexDirection:'column',
           boxShadow:'0 24px 72px rgba(0,0,0,0.24)', border:`1px solid ${TV.border}`,
           fontFamily:'Inter,sans-serif', animation:'sm-in .22s cubic-bezier(.4,0,.2,1)',
           overflow:'hidden',
@@ -1048,9 +1082,9 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                   <span style={{
                     display:'inline-flex', alignItems:'center', gap:5,
                     fontSize:11, fontWeight:600, padding:'5px 11px', borderRadius:8,
-                    background:'#F3F4F6', color:'#9CA3AF', border:'1px solid #E5E7EB',
+                    background:'var(--hover)', color:TV.muted, border:`1px solid ${TV.border}`,
                   }}>
-                    <Ic.User size={11} color="#9CA3AF" />
+                    <Ic.User size={11} color={TV.muted} />
                     Unassigned
                   </span>
                 )}
@@ -1334,12 +1368,12 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                       {/* ── Real proposed-slot conflicts ── */}
                       {previewReal.length > 0 && (
                         <div>
-                          <p className="sm-field-label" style={{ color:'#c2410c' }}>
-                            <Ic.Warning size={10} color="#c2410c" />
+                          <p className="sm-field-label" style={{ color:SM_WARN_TEXT }}>
+                            <Ic.Warning size={10} color={SM_WARN_ICON} />
                             Proposed Slot Conflicts &nbsp;·&nbsp; {previewReal.length} class{previewReal.length > 1 ? 'es' : ''}
                           </p>
-                          <div style={{ background:'rgba(217, 119, 6, 0.05)', border:'1px solid #fed7aa', borderRadius:10, padding:'10px 14px' }}>
-                            <p style={{ margin:'0 0 8px', fontSize:11.5, color:'#92400e' }}>
+                          <div style={{ background:'rgba(217, 119, 6, 0.05)', border:`1px solid ${SM_AMBER_BORDER}`, borderRadius:10, padding:'10px 14px' }}>
+                            <p style={{ margin:'0 0 8px', fontSize:11.5, color:SM_AMBER_TEXT }}>
                               Your proposed changes conflict with the sessions below. Saving will force-override.
                             </p>
                             <ConflictTable conflicts={previewReal} />
@@ -1354,7 +1388,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
 
             {/* ══════════════ BATCH ASSIGN TAB ══════════════ */}
             {tab === 'batch' && (
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 340px', flex:1, minHeight:0, borderBottom:`1px solid ${TV.border}` }}>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 380px', flex:1, minHeight:0, borderBottom:`1px solid ${TV.border}` }}>
 
                 {/* ── LEFT COLUMN: Faculty picker ── */}
                 <div className="sm-batch-col" style={{ borderRight:`1px solid ${TV.border}` }}>
@@ -1497,6 +1531,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                         const isClean        = conflictCount === 0
                         const isFullConflict = conflictCount === totalSessions && totalSessions > 0
                         const isPartial      = conflictCount > 0 && !isFullConflict
+                        const facObj         = facultyByName.get(fac)
                         const specRating     = facultySpecMap.get(fac)
                         const unitInfo       = facultyUnitMap.get(fac)
                         const hasUnitInfo    = !!unitInfo
@@ -1516,10 +1551,10 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                         else                                                  { bg='var(--surface)';    color=TV.text;    bl='3px solid #fca5a5';    dotColor='#ef4444' }
 
                         // Unit bar — show projected only when this row is selected
-                        const displayUnits   = isSelected ? unitInfo.projectedUnits : unitInfo.usedUnits
+                        const displayUnits   = hasUnitInfo ? (isSelected ? unitInfo.projectedUnits : unitInfo.usedUnits) : 0
                         const unitBarPct     = hasUnitInfo ? Math.min(100, Math.round((displayUnits / unitInfo.maxUnits) * 100)) : 0
                         const unitBarColor   = (wouldExceed && isSelected) ? '#ef4444' : unitBarPct > 80 ? '#f59e0b' : 'var(--meadow)'
-                        const unitLabelColor = (wouldExceed && isSelected) ? '#EF4444' : unitBarPct > 80 ? '#92400e' : TV.muted
+                        const unitLabelColor = (wouldExceed && isSelected) ? '#EF4444' : unitBarPct > 80 ? SM_AMBER_TEXT : TV.muted
 
                         return (
                           <div key={fac}>
@@ -1550,8 +1585,12 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                                   }
                                 </span>
 
-                                <span style={{ flex:1, minWidth:0, fontWeight: isSelected ? 700 : 500, fontSize:12 }}>
-                                  {fac}
+                                <span style={{ flex:1, minWidth:0, display:'flex', alignItems:'center', gap:7 }}>
+                                  <span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontWeight: isSelected ? 700 : 500, fontSize:12 }}>
+                                    {fac}
+                                  </span>
+                                  {facObj && <DeptBadge dept={facObj.Department} />}
+                                  {facObj && <FacultyInfoButton name={fac} onClick={() => setInfoFac(facObj)} />}
                                 </span>
 
                                 {/* Single status pill */}
@@ -1611,8 +1650,8 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
 
                               {/* ── Preference window (selected + off-pref) ── */}
                               {isSelected && hasPref && (
-                                <div style={{ display:'flex', alignItems:'center', gap:5, paddingLeft:22, fontSize:9.5, fontWeight:600, color:'#c2410c' }}>
-                                  <Ic.Clock size={9} color="#c2410c" />
+                                <div style={{ display:'flex', alignItems:'center', gap:5, paddingLeft:22, fontSize:9.5, fontWeight:600, color:SM_WARN_TEXT }}>
+                                  <Ic.Clock size={9} color={SM_WARN_ICON} />
                                   <span>Part-time · prefers {prefInfo.summary}</span>
                                 </div>
                               )}
@@ -1653,27 +1692,27 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                     </p>
 
                     {batchFaculty && batchConflictCount > 0 && !batchResults && (
-                      <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 11px', background:'rgba(217, 119, 6, 0.05)', border:'1px solid #fed7aa', borderRadius:8, fontSize:11.5 }}>
-                        <Ic.Warning size={12} color="#c2410c" />
-                        <span style={{ fontWeight:700, color:'#c2410c' }}>{batchConflictCount} overlap{batchConflictCount > 1 ? 's' : ''}.</span>
-                        <span style={{ color:'#92400e' }}>Will force-override on save.</span>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 11px', background:'rgba(217, 119, 6, 0.05)', border:`1px solid ${SM_AMBER_BORDER}`, borderRadius:8, fontSize:11.5 }}>
+                        <Ic.Warning size={12} color={SM_WARN_ICON} />
+                        <span style={{ fontWeight:700, color:SM_WARN_TEXT }}>{batchConflictCount} overlap{batchConflictCount > 1 ? 's' : ''}.</span>
+                        <span style={{ color:SM_AMBER_TEXT }}>Will force-override on save.</span>
                       </div>
                     )}
                     {batchFaculty && batchConflictCount === 0 && siblingEvents.length > 0 && !batchResults && (
                       <div style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 11px', background:'var(--hover)', border:'1px solid var(--meadow-border)', borderRadius:8, fontSize:11.5 }}>
                         <Ic.CheckCircle size={12} color="var(--meadow)" />
                         <span style={{ fontWeight:700, color: 'var(--meadow-text)' }}>No overlaps.</span>
-                        <span style={{ color:'var(--meadow-mid)' }}>No double-booking across all {siblingEvents.length} sessions.</span>
+                        <span style={{ color:'var(--meadow-text)', opacity:.85 }}>No double-booking across all {siblingEvents.length} sessions.</span>
                       </div>
                     )}
                     {batchFaculty && batchPrefCount > 0 && !batchResults && (
-                      <div style={{ display:'flex', alignItems:'flex-start', gap:8, padding:'8px 11px', background:'rgba(234, 88, 12, 0.06)', border:'1px solid #fdba74', borderRadius:8, fontSize:11.5 }}>
-                        <span style={{ marginTop:1 }}><Ic.Clock size={12} color="#c2410c" /></span>
+                      <div style={{ display:'flex', alignItems:'flex-start', gap:8, padding:'8px 11px', background:'rgba(234, 88, 12, 0.06)', border:`1px solid ${SM_WARN_BORDER}`, borderRadius:8, fontSize:11.5 }}>
+                        <span style={{ marginTop:1 }}><Ic.Clock size={12} color={SM_WARN_ICON} /></span>
                         <div>
-                          <span style={{ fontWeight:700, color:'#c2410c' }}>
+                          <span style={{ fontWeight:700, color:SM_WARN_TEXT }}>
                             Outside preferred availability · {batchPrefCount} of {siblingEvents.length}
                           </span>
-                          <div style={{ color:'#92400e', marginTop:2 }}>
+                          <div style={{ color:SM_AMBER_TEXT, marginTop:2 }}>
                             Part-time · prefers {selectedPref.summary}. You can still assign.
                           </div>
                         </div>
@@ -1702,7 +1741,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                           key={sibId}
                           style={{
                             padding:'11px 14px', borderRadius:10,
-                            border:`1px solid ${result?.ok ? 'var(--mint)' : hasConflict ? '#fca5a5' : prefViolation ? '#fdba74' : TV.border}`,
+                            border:`1px solid ${result?.ok ? 'var(--mint)' : hasConflict ? '#fca5a5' : prefViolation ? SM_WARN_BORDER : TV.border}`,
                             background: result?.ok ? 'var(--hover)' : hasConflict ? 'rgba(220, 38, 38, 0.05)' : prefViolation ? 'rgba(234, 88, 12, 0.06)' : 'var(--surface)',
                             display:'flex', alignItems:'flex-start', gap:12,
                           }}
@@ -1714,7 +1753,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                               : result?.error
                                 ? <Ic.AlertCircle size={15} color='#EF4444' />
                                 : hasConflict
-                                  ? <Ic.Warning size={15} color="#c2410c" />
+                                  ? <Ic.Warning size={15} color={SM_WARN_ICON} />
                                   : prefViolation
                                     ? <Ic.Clock size={15} color="#EA580C" />
                                     : <Ic.Clock size={15} color={TV.muted} />
@@ -1753,7 +1792,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                                 </span>
                               )}
                               {sib.faculty && sib.faculty !== 'TBA' && sib.faculty !== batchFaculty && (
-                                <span style={{ fontSize:9.5, color:'#92400e', background:'rgba(217, 119, 6, 0.05)', border:'1px solid #fed7aa', padding:'1px 7px', borderRadius:4 }}>
+                                <span style={{ fontSize:9.5, fontWeight:600, color:SM_AMBER_TEXT, background:'rgba(245, 158, 11, 0.12)', border:`1px solid ${SM_AMBER_BORDER}`, padding:'1px 7px', borderRadius:4 }}>
                                   Currently: {sib.faculty}
                                 </span>
                               )}
@@ -1763,7 +1802,7 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                             {hasConflict && !result && (
                               <div style={{ marginTop:4 }}>
                                 {conflicts.map((c, i) => (
-                                  <div key={i} style={{ fontSize:10.5, color:'#c2410c', display:'flex', alignItems:'center', gap:5 }}>
+                                  <div key={i} style={{ fontSize:10.5, color:SM_WARN_TEXT, display:'flex', alignItems:'center', gap:5 }}>
                                     <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0,opacity:.7}}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                                     <span>
                                       Overlaps with <strong>{c.courseCode}</strong> {c.program} {c.year}-{c.block} ({c.period}) — will force-override
@@ -1775,8 +1814,8 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
 
                             {/* Off-preference details (part-time faculty) */}
                             {prefViolation && !result && (
-                              <div style={{ marginTop:4, fontSize:10.5, color:'#c2410c', display:'flex', alignItems:'flex-start', gap:5 }}>
-                                <span style={{ marginTop:1 }}><Ic.Clock size={10} color="#c2410c" /></span>
+                              <div style={{ marginTop:4, fontSize:10.5, color:SM_WARN_TEXT, display:'flex', alignItems:'flex-start', gap:5 }}>
+                                <span style={{ marginTop:1 }}><Ic.Clock size={10} color={SM_WARN_ICON} /></span>
                                 <span>
                                   <strong>
                                     Outside preferred {prefViolation.dayOff && prefViolation.timeOff ? 'day & hours' : prefViolation.dayOff ? 'day' : 'hours'}
@@ -1818,18 +1857,18 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
                 )}
 
                 {batchPrefCount > 0 && !batchResults && !batchError && (
-                  <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(234, 88, 12, 0.06)', border:'1px solid #fdba74', borderRadius:8, padding:'6px 10px', fontSize:11.5, flex:1 }}>
-                    <Ic.Clock size={12} color="#c2410c" />
-                    <span style={{ color:'#c2410c', fontWeight:600 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(234, 88, 12, 0.06)', border:`1px solid ${SM_WARN_BORDER}`, borderRadius:8, padding:'6px 10px', fontSize:11.5, flex:1 }}>
+                    <Ic.Clock size={12} color={SM_WARN_ICON} />
+                    <span style={{ color:SM_WARN_TEXT, fontWeight:600 }}>
                       {batchPrefCount} session{batchPrefCount > 1 ? 's' : ''} outside preferred availability
                     </span>
                   </div>
                 )}
 
                 {batchConflictCount > 0 && !batchResults && !batchError && (
-                  <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(217, 119, 6, 0.05)', border:'1px solid #fed7aa', borderRadius:8, padding:'6px 10px', fontSize:11.5, flex:1 }}>
-                    <Ic.Warning size={12} color="#c2410c" />
-                    <span style={{ color:'#c2410c', fontWeight:600 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(217, 119, 6, 0.05)', border:`1px solid ${SM_AMBER_BORDER}`, borderRadius:8, padding:'6px 10px', fontSize:11.5, flex:1 }}>
+                    <Ic.Warning size={12} color={SM_WARN_ICON} />
+                    <span style={{ color:SM_WARN_TEXT, fontWeight:600 }}>
                       {batchConflictCount} overlap{batchConflictCount > 1 ? 's' : ''} — will force-override on save
                     </span>
                   </div>
@@ -1965,6 +2004,21 @@ export default function SessionModal({ event, allEvents, onClose, onSaved, maste
           newRoom={newRoom} newFaculty={newFaculty} conflicts={previewConflicts}
           onConfirm={() => { setShowConfirm(false); doSave(true) }}
           onCancel={() => setShowConfirm(false)}
+        />
+      )}
+
+      {infoFac && (
+        <FacultyInfoModal
+          faculty={infoFac}
+          courseCode={event.courseCode}
+          allEvents={allEvents}
+          unitInfo={facultyUnitMap.get(infoFac.name)}
+          availability={facultyPrefMap.get(infoFac.name)?.summary}
+          isSelected={batchFaculty === infoFac.name}
+          onSelect={readOnly ? undefined : () => {
+            setBatchFaculty(infoFac.name); setBatchResults(null); setBatchError(''); setInfoFac(null)
+          }}
+          onClose={() => setInfoFac(null)}
         />
       )}
     </>

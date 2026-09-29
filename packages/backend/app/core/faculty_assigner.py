@@ -44,6 +44,7 @@ from typing import Any
 
 from app.core.firebase import db
 from app.core.unit_balancing import compute_effective_max_units
+from app.core.departments import DEFAULT_DEPARTMENT, in_department, is_minor_course, norm_dept
 
 logger = logging.getLogger("faculty_assigner")
 
@@ -65,7 +66,10 @@ SLOT_INCREMENT  = 0.5
 class FacultyAssigner:
     # ── Initialisation ────────────────────────────────────────────────────────
 
-    def __init__(self) -> None:
+    def __init__(self, department: str = DEFAULT_DEPARTMENT) -> None:
+        # Only faculty of this department are ever auto-assigned. Faculty from
+        # other departments (added by the Dean) are manual-assign only.
+        self.department = norm_dept(department)
         self.faculty_list: list[dict] = []
 
         # Runtime tracking (reset on each assign() call)
@@ -86,15 +90,29 @@ class FacultyAssigner:
     # ── Data loading ──────────────────────────────────────────────────────────
 
     def load_faculty(self) -> None:
-        """Pull all non-archived faculty from Firestore."""
+        """Pull non-archived faculty of THIS assigner's department from Firestore.
+
+        Faculty from other departments are skipped here on purpose: removing
+        them from faculty_list keeps them out of _find_best, _rarity, the
+        backtracking pass and load_summary at once. A blank/missing Department
+        counts as the home department (legacy / Excel-imported records).
+        """
         docs = db.collection("faculty").where("archived", "==", False).stream()
         self.faculty_list = []
+        skipped = 0
         for d in docs:
             data = d.to_dict()
-            if data:
-                self.faculty_list.append(data)
+            if not data:
+                continue
+            if not in_department(data, self.department):
+                skipped += 1
+                continue
+            self.faculty_list.append(data)
 
-        logger.info("FacultyAssigner: loaded %d active faculty", len(self.faculty_list))
+        logger.info(
+            "FacultyAssigner[%s]: loaded %d active faculty, skipped %d from other departments",
+            self.department, len(self.faculty_list), skipped,
+        )
 
     def _reset_tracking(self) -> None:
         self._assigned_units  = {f["name"]: 0.0 for f in self.faculty_list}
@@ -362,7 +380,7 @@ class FacultyAssigner:
             if self._overlaps(self._faculty_slots[name], start_slot, start_slot + duration):
                 return False
 
-        is_minor = course_code.upper().startswith(("GEC", "MAT", "PE", "NSTP", "GE"))
+        is_minor = is_minor_course(course_code)
         has_spec = self._has_specialization(faculty, course_code)
         
         effective_max = self._current_max(faculty)

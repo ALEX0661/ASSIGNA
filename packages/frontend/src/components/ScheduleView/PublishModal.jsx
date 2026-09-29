@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getPublishImpact, getMasterPublishImpact, getActiveQueue } from '../../services/api'
+import { getPublishImpact, getMasterPublishImpact } from '../../services/api'
 
 /* ── Impact lookups ───────────────────────────────────────────────────────
    Both hooks run ONLY while a confirm modal is open (never on page load,
@@ -60,23 +60,6 @@ export function useMasterPublishImpact(open, queueId) {
       queueCompleted: !!r.queueCompleted,
     })),
     { published: null, otherQueues: 0, queueCompleted: false },
-  )
-}
-
-/* Is some queue currently active? Used by the schedule list's unpublish
-   confirm: a schedule that came from a queue is only reopened when no other
-   queue is active. Runs only while that modal is open (1 indexed read, cached 30s).
-   Returns { loading, error, label } where label is e.g. "2nd Semester 2026-2027"
-   or null. */
-export function useActiveQueueLabel(open) {
-  return useCachedLookup(
-    open,
-    'aq',
-    () => getActiveQueue().then(r => {
-      const a = r?.queue
-      return { label: a ? [a.semester, a.academicYear].filter(Boolean).join(' ') : null }
-    }),
-    { label: null },
   )
 }
 
@@ -224,15 +207,11 @@ export default function PublishModal({
 
 /**
  * Master-schedule unpublish. Everything shown is already known client-side
- * (no extra reads): unpublishing reopens the queue from the first program and
- * resets coordinator schedules for the term to draft.
- *   activeElsewhere: label of a different queue that is currently active (e.g.
- *              "2nd Semester 2026-2027"). Only one queue can be active at a
- *              time, so the unpublish still goes through but this queue is
- *              NOT reopened; the modal says so instead of blocking.
+ * (no extra reads). Unpublishing never reopens the queue: it stays closed and
+ * coordinator schedules for the term are reset to draft.
  */
 export function UnpublishModal({
-  name, academicYear, semester, approvedCount = 0, activeElsewhere = null, busy, onCancel, onConfirm,
+  name, academicYear, semester, approvedCount = 0, busy, onCancel, onConfirm,
   confirmLabel = 'Unpublish', confirmBg = '#6B7280', border = 'var(--border)',
 }) {
   const term = [semester, academicYear].filter(Boolean).join(' ')
@@ -245,22 +224,14 @@ export function UnpublishModal({
       />
 
       <Effects>
-        {activeElsewhere ? (
-          <Effect title="The queue stays closed" tag="Stays closed">
-            The {activeElsewhere} queue is active, and only one queue can be open at a time, so this term's queue won't reopen.
-          </Effect>
-        ) : (
-          <Effect title="The queue reopens" tag="Reopens">
-            Every program goes back to waiting, starting again from the first one. Only one queue can be open at a time.
-          </Effect>
-        )}
+        <Effect title="The queue stays closed" tag="Stays closed">
+          Unpublishing doesn't reopen the queue, so coordinators can't submit for this term again.
+        </Effect>
         <Effect title="Coordinator schedules reset to draft" tag="Reset">
           {approvedCount > 0
             ? `${approvedCount} approved schedule${approvedCount > 1 ? 's are' : ' is'} included. `
             : ''}
-          {activeElsewhere
-            ? "They can't resubmit until a queue is open for this term again."
-            : 'Coordinators will need to review and resubmit.'}
+          They go back to coordinators as drafts.
         </Effect>
       </Effects>
 

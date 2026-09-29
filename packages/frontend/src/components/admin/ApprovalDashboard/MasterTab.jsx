@@ -9,7 +9,7 @@ import { Badge, Skel, EmptyState, ICONS } from './primitives'
 import { getMergedIds } from '../../ScheduleView/svHelpers'
 import PublishModal, { UnpublishModal, useMasterPublishImpact, clearPublishImpactCache } from '../../ScheduleView/PublishModal'
 
-function MasterTab({ queueId, onFinalize, onUnpublish, programs, onMasterSaved, blockedBy = null }) {
+function MasterTab({ queueId, onFinalize, onUnpublish, programs, onMasterSaved }) {
   const [master, setMaster] = useState(null)
   const [loading, setLoading] = useState(false)
   const [expanded, setExpanded] = useState(true)
@@ -223,7 +223,6 @@ function MasterTab({ queueId, onFinalize, onUnpublish, programs, onMasterSaved, 
             academicYear={master?.academicYear}
             semester={master?.semester}
             approvedCount={approved.length}
-            activeElsewhere={blockedBy}
             busy={acting}
             onCancel={() => setShowUnpublishConfirm(false)}
             onConfirm={handleUnpublish}

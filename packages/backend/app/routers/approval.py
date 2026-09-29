@@ -26,17 +26,6 @@ def _get_schedule_or_404(schedule_id: str):
         raise HTTPException(status_code=404, detail="Schedule not found")
     return doc.to_dict()
 
-def _other_active_queue(queue_id: str):
-    """Only one queue may be active at a time (create_queue enforces the same
-    rule). Unpublishing normally reopens the origin queue, so check whether a
-    DIFFERENT queue is already active. Returns that queue's dict, or None.
-    Unpublish is still allowed when one exists -- it just leaves the origin
-    queue closed instead of reopening it."""
-    for d in db.collection("coordinator_queues").where(filter=firestore.FieldFilter("status", "==", "active")).limit(2).get():
-        if d.id != queue_id:
-            return d.to_dict()
-    return None
-
 def _advance_queue(queue_data: dict, queue_id: str):
     """Advance the queue to the next waiting program.
     Uses the same flat programStatus dict as queue.py."""
@@ -460,9 +449,9 @@ def _unfinalize_final_schedule_doc(doc_ref, data: dict, user: dict):
     finalized flag. Duplicated from schedule.py's _unfinalize_final_schedule
     (approval.py doesn't import from schedule.py, same reason as
     _delete_subcollection above) so that a sibling schedule generated from
-    ANOTHER queue doesn't get left with finalized: false while that other
-    queue stays "completed" and its master schedule stays "finalized" --
-    exactly the mismatch the dedicated /unfinalize endpoint always avoids."""
+    ANOTHER queue doesn't get left with finalized: false while its master
+    schedule stays "finalized". Unpublishing NEVER reopens a queue: the
+    origin queue stays "completed" and only its master goes back to draft."""
     doc_ref.update({"finalized": False})
 
     ay = data.get("academicYear")
@@ -497,17 +486,14 @@ def _unfinalize_final_schedule_doc(doc_ref, data: dict, user: dict):
 
     origin_queue_id = data.get("queueId") if data.get("source") == "queue" else None
     if origin_queue_id:
-        queue_ref = db.collection("coordinator_queues").document(origin_queue_id)
-        queue_doc = queue_ref.get()
-        if queue_doc.exists and queue_doc.to_dict().get("status") == "completed":
-            queue_ref.update({"status": "active", "updatedAt": now})
+        # The queue is left exactly as it is (stays closed). Only the master
+        # schedule goes back to draft so it isn't shown as published anymore.
+        master_docs = db.collection("master_schedules").where("queueId", "==", origin_queue_id).get()
+        for m in master_docs:
+            m.reference.update({"status": "draft", "updatedAt": now})
+            event_cache.invalidate(f"master:{m.id}")
 
-            master_docs = db.collection("master_schedules").where("queueId", "==", origin_queue_id).get()
-            for m in master_docs:
-                m.reference.update({"status": "draft", "updatedAt": now})
-                event_cache.invalidate(f"master:{m.id}")
-
-            log_audit_event(origin_queue_id, "MASTER_UNFINALIZED", user, target_program="Master", details=f"Unpublished {sem} {ay} — its slot was taken by another queue's publish")
+        log_audit_event(origin_queue_id, "MASTER_UNFINALIZED", user, target_program="Master", details=f"Unpublished {sem} {ay}. Its slot was taken by another queue's publish. Queue stays closed.")
 
 
 @router.get("/master/{queue_id}/publish-impact")
@@ -664,10 +650,7 @@ def unfinalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
     if not semester or not academic_year:
         raise HTTPException(status_code=400, detail="Missing semester/academicYear")
 
-    # If another queue is active, don't reopen this one (only one may be active).
-    # The unpublish itself still goes through.
-    blocking_queue = _other_active_queue(queue_id)
-    reopen_queue = blocking_queue is None
+    # Unpublishing never reopens the queue. It stays closed ("completed").
 
     now = (datetime.utcnow().isoformat() + "Z")
     
@@ -698,40 +681,13 @@ def unfinalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
                 base_ref.update({"finalized": False})
                 unfinalized_names.append(base_name)
     
-    # 2. Re-open the queue and reset program statuses
-    #    (skipped when a different queue is active -- this queue stays "completed")
-    queue_ref = db.collection("coordinator_queues").document(queue_id)
-    queue_doc = queue_ref.get() if reopen_queue else None
-    if queue_doc is not None and queue_doc.exists:
-        queue_data = queue_doc.to_dict()
-        program_status = queue_data.get("programStatus", {})
-        original_queue = queue_data.get("queue", [])
-        
-        for prog in program_status.keys():
-            if program_status[prog] != "generating":
-                program_status[prog] = "waiting"
-                
-        current_turn_index = -1
-        for i, prog in enumerate(original_queue):
-            if program_status.get(prog) == "waiting":
-                program_status[prog] = "active"
-                current_turn_index = i
-                break
-                
-        queue_ref.update({
-            "status": "active",
-            "currentTurnIndex": current_turn_index,
-            "programStatus": program_status,
-            "updatedAt": now
-        })
-    
-    # 3. Mark master_schedules as draft
+    # 2. Mark master_schedules as draft
     master_doc.reference.update({
         "status": "draft",
         "updatedAt": now
     })
     
-    # 4. Unapprove coordinator schedules and add note
+    # 3. Unapprove coordinator schedules and add note
     schedules = db.collection("coordinator_schedules") \
         .where("academicYear", "==", academic_year) \
         .where("semester", "==", semester) \
@@ -746,7 +702,7 @@ def unfinalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
             "approvedAt": None,
             "approvedBy": None,
             "submittedAt": None,
-            "unfinalizedNote": f"The master schedule for {semester} {academic_year} was unpublished. You may need to review and resubmit.",
+            "unfinalizedNote": f"The master schedule for {semester} {academic_year} was unpublished. The queue stays closed, so it will not reopen for resubmission.",
             "updatedAt": now
         })
         count += 1
@@ -763,13 +719,10 @@ def unfinalize_master_schedule(queue_id: str, user: dict = Depends(admin_only)):
     for n in unfinalized_names:
         event_cache.invalidate(f"final:{n}")
 
-    if reopen_queue:
-        audit_details = f"Unpublished the master schedule for {semester} {academic_year}. Reopened queue for resubmission."
-    else:
-        audit_details = f"Unpublished the master schedule for {semester} {academic_year}. Queue was NOT reopened because the {blocking_queue.get('semester')} {blocking_queue.get('academicYear')} queue is active."
+    audit_details = f"Unpublished the master schedule for {semester} {academic_year}. Queue stays closed."
     log_audit_event(queue_id, "MASTER_UNFINALIZED", user, target_program="Master", details=audit_details)
 
-    return {"message": "Master schedule unpublished", "queueReopened": reopen_queue}
+    return {"message": "Master schedule unpublished", "queueReopened": False}
 
 def _generate_schedule_diff(old_schedule: list, new_schedule: list) -> str:
     def get_id(ev):

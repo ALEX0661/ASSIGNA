@@ -140,7 +140,6 @@ export const unfinalizeSchedule   = async (name) => axios.post(`${BASE}/schedule
 export const updateScheduleMeta   = async (name, d) => axios.put(`${BASE}/schedule/final/${name}/metadata`, d, { headers: await authHeaders() }).then(r => r.data)
 export const getActiveSchedule    = async (academicYear, semester) => axios.get(`${BASE}/schedule/final/active`, { headers: await authHeaders(), params: { academic_year: academicYear, semester } }).then(r => r.data)
 export const getPublishImpact     = async (academicYear, semester) => axios.get(`${BASE}/schedule/publish-impact`, { headers: await authHeaders(), params: { academic_year: academicYear, semester } }).then(r => r.data)
-export const getActiveQueue       = async ()                       => axios.get(`${BASE}/schedule/active-queue`, { headers: await authHeaders() }).then(r => r.data)
 
 export const getSchedules = async (scheduleName = null) => {
   const headers = await authHeaders()
@@ -246,12 +245,16 @@ export const coordRestoreScheduleVersion = async (scheduleId, version) =>
 export const coordGetScheduleVersionDiff = async (scheduleId, version) =>
   axios.get(`${BASE}/coordinator/schedule/${scheduleId}/diff/${version}`, { headers: await authHeaders() }).then(r => r.data)
 export const coordGetRooms        = async ()     => axios.get(`${BASE}/coordinator/rooms`,                { headers: await authHeaders() }).then(r => r.data)
+export const coordGetFaculty      = async (includeArchived = false) => axios.get(`${BASE}/coordinator/faculty`, { headers: await authHeaders(), params: { include_archived: includeArchived } }).then(r => r.data)
 export const coordSelectRooms     = async (d)    => axios.post(`${BASE}/coordinator/rooms/select`, d,     { headers: await authHeaders() }).then(r => r.data)
 export const coordGetSelectedRooms = async ()    => axios.get(`${BASE}/coordinator/rooms/selected`,       { headers: await authHeaders() }).then(r => r.data)
 export const coordGetCourses      = async ()     => axios.get(`${BASE}/coordinator/courses`,              { headers: await authHeaders() }).then(r => r.data)
 export const coordCheckTurn       = async ()     => axios.get(`${BASE}/coordinator/queue/my-turn`,        { headers: await authHeaders() }).then(r => r.data)
 export const coordGetSettings     = async ()     => axios.get(`${BASE}/coordinator/settings`,             { headers: await authHeaders() }).then(r => r.data)
 export const coordGetSubmittedSchedule = async (includeEvents = false) => axios.get(`${BASE}/coordinator/queue/submitted-schedule`, { headers: await authHeaders(), params: includeEvents ? { include_events: true } : {} }).then(r => r.data)
+// Analytics (coordinator-scoped: own program only, read from the saved schedule doc — never the shared in-memory buffer)
+export const coordGetAnalyticsOverview = async ()   => axios.get(`${BASE}/coordinator/analytics/overview`,            { headers: await authHeaders() }).then(r => r.data)
+export const coordGetAnalytics         = async (id) => axios.get(`${BASE}/coordinator/analytics/schedule/${id}`,    { headers: await authHeaders() }).then(r => r.data)
 
 // ── Queue Management (Admin) ──────────────────────────────────────────────────
 export const createQueue     = async (d)       => axios.post(`${BASE}/queue/create`, d,           { headers: await authHeaders() }).then(r => r.data)
@@ -286,3 +289,7 @@ export const postQueueMessage = async (queueId, message, sender) => {
   const headers = await authHeaders()
   return axios.post(`${BASE}/queue/${queueId}/messages`, { message, sender }, { headers }).then(r => r.data)
 }
+
+// ── Tours (seen state lives on the backend so it follows the account, not the browser) ──
+export const getTourStatus = async ()                  => axios.get(`${BASE}/tours/status`, { headers: await authHeaders() }).then(r => r.data)
+export const markTourSeen  = async (tourId, skipAll = false) => axios.post(`${BASE}/tours/seen`, { tourId, skipAll }, { headers: await authHeaders() }).then(r => r.data)

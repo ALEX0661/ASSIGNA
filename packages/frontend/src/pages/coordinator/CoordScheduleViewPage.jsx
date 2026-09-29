@@ -4,10 +4,10 @@ import { useScheduleStore } from '../../store/scheduleStore'
 import { useAuth } from '../../hooks/useAuth'
 import {
   coordLoadSchedule, coordSaveScheduleInPlace, coordOverrideSession,
-  coordSubmitSchedule, coordUnsubmitSchedule, coordDeleteSchedule, coordGetRooms, getFaculty,
+  coordSubmitSchedule, coordUnsubmitSchedule, coordDeleteSchedule, coordGetRooms,
   coordRestoreScheduleVersion, coordGetScheduleVersionDiff,
   coordGetSubmittedSchedule, coordListSchedules, coordCheckTurn,
-  coordRenameSchedule, loadSaved
+  coordRenameSchedule, loadSaved, coordGetFaculty
 } from '../../services/api'
 import { coordGetSettings } from '../../services/api'
 
@@ -27,6 +27,8 @@ import { exportScheduleToExcel } from '../../utils/exportScheduleToExcel'
 import { exportAvailableRoomsToExcel } from '../../utils/exportAvailableRoomsToExcel'
 import { exportScheduleToPDF } from '../../utils/exportScheduleToPDF'
 import { useTour } from '../../hooks/useTour.jsx'
+import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard' // adjust path to match your project structure
+import UnsavedChangesModal from '../../components/UnsavedChangesModal' // adjust path to match your project structure
 import scheduleImage from '../../assets/SCHEDULE.png'
 
 const TOUR_SEEN_KEY = 'coordScheduleView_tourSeen'
@@ -589,6 +591,7 @@ function ExportMenuButton({ onExportSchedule, onExportRooms, onExportSchedulePdf
     padding: '9px 14px', fontSize: 12.5, fontWeight: 600, color: 'var(--ink)',
     background: 'var(--surface)', border: 'none', cursor: 'pointer',
     fontFamily: 'Inter, sans-serif', textAlign: 'left',
+    borderRadius: 0, outline: 'none', boxShadow: 'none', appearance: 'none', WebkitAppearance: 'none',
   }
   return (
     <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -620,7 +623,7 @@ function ExportMenuButton({ onExportSchedule, onExportRooms, onExportSchedulePdf
           }}>
             <button
               onClick={() => { setOpen(false); onExportSchedule() }}
-              style={{ ...itemStyle, borderBottom: '1px solid #EEF3F0' }}
+              style={{ ...itemStyle, borderBottom: '1px solid var(--border)' }}
               onMouseEnter={e => e.currentTarget.style.background = 'var(--meadow-soft)'}
               onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
             >
@@ -631,7 +634,7 @@ function ExportMenuButton({ onExportSchedule, onExportRooms, onExportSchedulePdf
             </button>
             <button
               onClick={() => { setOpen(false); onExportSchedulePdf() }}
-              style={{ ...itemStyle, borderBottom: '1px solid #EEF3F0' }}
+              style={{ ...itemStyle, borderBottom: '1px solid var(--border)' }}
               onMouseEnter={e => e.currentTarget.style.background = 'var(--meadow-soft)'}
               onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
             >
@@ -668,6 +671,8 @@ function svIsOtherDept(courseCode = "") {
   const upper = courseCode.toUpperCase().trim()
   return _SV_OTHER_PREFIXES.some(p => upper.startsWith(p))
 }
+// True when a session has no instructor yet (blank or TBA)
+const svIsTBA = ev => !ev.faculty || ev.faculty === 'TBA'
 
 /* ════════════════════════════════════════════════════════════════════════════
    Main page
@@ -709,6 +714,7 @@ export default function CoordScheduleViewPage() {
   const [openModal,         setOpenModal]     = useState(null)
   const [showPendingModal,  setShowPendingModal] = useState(false)
   const [filterMerged,      setFilterMerged]  = useState(false)
+  const [filterExtUnassigned, setFilterExtUnassigned] = useState(false) // TBA sessions of external-department (minor) courses
   const [filterLec,         setFilterLec]     = useState(false)
   const [filterLab,         setFilterLab]     = useState(false)
   const [showAvailableOnly, setShowAvailableOnly] = useState(false)
@@ -730,7 +736,7 @@ export default function CoordScheduleViewPage() {
     {
       target: '#tour-sv-filters',
       title: 'Search & Filters',
-      content: 'Filter the schedule by specific programs, faculty members, or rooms. This is the fastest way to hunt down conflicts or check a specific professor\'s workload.',
+      content: 'Search by course, block, or faculty, or narrow the view by program, year, block, session type, faculty, or room. Use the found counter to jump between matches, and the Conflicts, Unassigned and Ext. dept toggles to isolate sessions that need attention.',
       disableBeacon: true,
       placement: 'bottom',
     },
@@ -751,6 +757,13 @@ export default function CoordScheduleViewPage() {
       title: 'Interactive Grid',
       content: 'Drag and drop sessions to assign faculty, change rooms, or move timeslots. The system will warn you if you create a conflict, and you can click any card for its full details.',
       placement: 'left',
+    },
+    {
+      target: '#tour-sv-conflicts',
+      title: 'Conflict Detection',
+      content: 'This summarizes every Room, Section, and Faculty conflict on the active day. Conflicts are detected automatically whenever two sessions overlap in time — a shared room, a section double-booked in two places at once, or a faculty member assigned to two sessions simultaneously.',
+      disableBeacon: true,
+      placement: 'bottom',
     },
     {
       target: '#tour-sv-master-overlay',
@@ -792,7 +805,7 @@ export default function CoordScheduleViewPage() {
 
   /* ── Bootstrap ──────────────────────────────────────────────────────────── */
   useEffect(() => {
-    Promise.all([coordGetRooms(), getFaculty(), coordGetSettings().catch(() => null)])
+    Promise.all([coordGetRooms(), coordGetFaculty(), coordGetSettings().catch(() => null)])
       .then(([r, f, t]) => { 
         setMasterRooms(r); 
         setMasterFaculty(f);
@@ -1103,6 +1116,7 @@ export default function CoordScheduleViewPage() {
         ev.schedule_id ?? `${ev.courseCode}-${ev.block}-${ev.session}-${ev.day}`
       )) return false
       if (filterUnassigned && (ev.faculty && ev.faculty !== 'TBA'))    return false
+      if (filterExtUnassigned && !(svIsTBA(ev) && svIsOtherDept(ev.courseCode))) return false
       if (filterMerged && !mergedIds.has(getEventId(ev)))              return false
       if (filterLec && !filterLab && ev.session?.toUpperCase().includes('LAB'))  return false
       if (filterLab && !filterLec && !ev.session?.toUpperCase().includes('LAB')) return false
@@ -1123,6 +1137,7 @@ export default function CoordScheduleViewPage() {
     if (filterMerged)       filterParts.push('Merged-only')
     if (filterConflicts)    filterParts.push('Conflicts-only')
     if (filterUnassigned)   filterParts.push('Unassigned-only')
+    if (filterExtUnassigned) filterParts.push('ExtDept-unassigned-only')
 
     const safePart = filterParts.join('_').replace(/[\\/:*?"<>|]+/g, '').trim()
     const exportName = safePart ? `${activeName}_${safePart}` : activeName
@@ -1245,61 +1260,23 @@ export default function CoordScheduleViewPage() {
   const dayEvents = useMemo(() => {
     let evs = rawDayEvents
     if (filterMerged) evs = evs.filter(e => mergedIds.has(getEventId(e)))
+    if (filterExtUnassigned) evs = evs.filter(e => svIsTBA(e) && svIsOtherDept(e.courseCode))
     if (filterLec && !filterLab) evs = evs.filter(e => !e.session?.toUpperCase().includes('LAB'))
     if (filterLab && !filterLec) evs = evs.filter(e =>  e.session?.toUpperCase().includes('LAB'))
     return evs
-  }, [rawDayEvents, filterMerged, filterLec, filterLab, mergedIds])
+  }, [rawDayEvents, filterMerged, filterExtUnassigned, filterLec, filterLab, mergedIds])
 
-  const localHasFilters = hasFilters || filterMerged || filterLec || filterLab || showAvailableOnly
-  const handleClearAll  = () => { clearFilters(); setFilterMerged(false); setFilterLec(false); setFilterLab(false); setShowAvailableOnly(false) }
+  const localHasFilters = hasFilters || filterMerged || filterExtUnassigned || filterLec || filterLab || showAvailableOnly
+  const handleClearAll  = () => { clearFilters(); setFilterMerged(false); setFilterExtUnassigned(false); setFilterLec(false); setFilterLab(false); setShowAvailableOnly(false) }
 
   /* ── Drag & drop — now with pending overrides + conflict ids ──────────── */
   const dd = useDragDrop(allEvents, activeDay, syncLocalEvents, setEvents, storeEvents, locked, overrideFn)
   ddRef.current = dd
 
-  // New: Prevent accidental exit (reload, back button, and links)
-  useEffect(() => {
-    if (!hasUnsavedChanges && (!dd || dd.pendingOverrides.size === 0)) return
-
-    // 1. Tab close / reload
-    const handleBeforeUnload = (e) => {
-      e.preventDefault()
-      e.returnValue = 'You have unsaved changes. Are you sure you want to leave?'
-    }
-    window.addEventListener('beforeunload', handleBeforeUnload)
-
-    // 2. Browser back button (popstate trap)
-    // Push a dummy state so the back button doesn't instantly leave
-    window.history.pushState('sv-trap', null, window.location.href)
-    const handlePopState = (e) => {
-      if (!window.confirm('You have unsaved changes. Are you sure you want to discard them?')) {
-        // User canceled: restore the trap
-        window.history.pushState('sv-trap', null, window.location.href)
-      } else {
-        // User accepted: actually go back
-        window.history.back()
-      }
-    }
-    window.addEventListener('popstate', handlePopState)
-
-    // 3. In-app navigation links (Sidebar, etc.)
-    const handleLinkClick = (e) => {
-      const target = e.target.closest('a')
-      if (target && target.href && !target.hasAttribute('download') && target.origin === window.location.origin && target.pathname !== window.location.pathname) {
-        if (!window.confirm('You have unsaved changes. Are you sure you want to discard them?')) {
-          e.preventDefault()
-          e.stopPropagation()
-        }
-      }
-    }
-    document.addEventListener('click', handleLinkClick, { capture: true })
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload)
-      window.removeEventListener('popstate', handlePopState)
-      document.removeEventListener('click', handleLinkClick, { capture: true })
-    }
-  }, [hasUnsavedChanges, dd])
+  // Prevent accidental exit (reload, back button, and links) — shared
+  // across pages instead of a hand-rolled copy of the same logic.
+  const { pendingLeaveAction, confirmLeave, cancelLeave, guardedNavigate } =
+    useUnsavedChangesGuard(hasUnsavedChanges || (dd && dd.pendingOverrides.size > 0), 'scheduleView')
 
   const allDayRooms = useMemo(() => {
     const occupied = new Set(dayEvents.map(e => e.room).filter(Boolean))
@@ -1379,8 +1356,50 @@ export default function CoordScheduleViewPage() {
     return m
   }, [allEvents])
 
+  const [currentFindIndex, setCurrentFindIndex] = useState(0)
+
+  const findMatches = useMemo(() => {
+    if (!localHasFilters) return []
+    return activeDayEvents.map(e => getEventId(e))
+  }, [localHasFilters, activeDayEvents])
+
+  useEffect(() => {
+    if (findMatches.length === 0) setCurrentFindIndex(0)
+    else if (currentFindIndex >= findMatches.length) setCurrentFindIndex(0)
+  }, [findMatches, currentFindIndex])
+
+  const scrollToMatch = useCallback((index) => {
+    if (!findMatches[index]) return
+    const id = findMatches[index]
+    const el = document.getElementById(`card-${id}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
+      el.style.transition = 'box-shadow 0.2s'
+      el.style.boxShadow = '0 0 0 4px var(--mint)'
+      setTimeout(() => { el.style.boxShadow = '' }, 1500)
+    }
+  }, [findMatches])
+
+  const nextFind = useCallback(() => {
+    if (!findMatches.length) return
+    const nextIdx = (currentFindIndex + 1) % findMatches.length
+    setCurrentFindIndex(nextIdx)
+    scrollToMatch(nextIdx)
+  }, [findMatches, currentFindIndex, scrollToMatch])
+
+  const prevFind = useCallback(() => {
+    if (!findMatches.length) return
+    const prevIdx = (currentFindIndex - 1 + findMatches.length) % findMatches.length
+    setCurrentFindIndex(prevIdx)
+    scrollToMatch(prevIdx)
+  }, [findMatches, currentFindIndex, scrollToMatch])
+
   // FIX: exclude GEC/MAT/NSTP/PATHFIT/PE — always TBA, managed externally
   const unassignedCount = dayEvents.filter(e => (!e.faculty || e.faculty === 'TBA') && !svIsOtherDept(e.courseCode)).length
+  // External-department (GEC/MAT/PE/NSTP...) sessions still without an instructor.
+  // The auto-assigner never fills these, so they are shown separately from 'Unassigned'.
+  const extUnassignedCount = dayEvents.filter(e => svIsTBA(e) && svIsOtherDept(e.courseCode)).length
+  const extUnassignedTotal = allEvents.filter(e => !e._isOtherProgram && svIsTBA(e) && svIsOtherDept(e.courseCode)).length
   const hasNoSchedule   = allEvents.length === 0 && !loading
 
   const statItems = [
@@ -1388,6 +1407,7 @@ export default function CoordScheduleViewPage() {
     { label:'Total overall', value: allEvents.length,    sub: 'all days', accent: 'var(--mint)' },
     { label:'Conflicts',     value: conflictMap.size,    accent: conflictMap.size  > 0 ? '#ef4444' : TV.deep, sub: 'detected'   },
     { label:'Unassigned',    value: unassignedCount,     accent: unassignedCount   > 0 ? '#f59e0b' : TV.deep, sub: 'dept courses only' },
+    { label:'Ext. dept',     value: extUnassignedCount,  accent: extUnassignedCount > 0 ? '#f59e0b' : TV.deep, sub: `${extUnassignedTotal} unassigned overall` },
     { label:'Faculty',       value: new Set(dayEvents.map(e => e.faculty).filter(f => f && f !== 'TBA')).size, sub: 'teaching' },
     { label:'Rooms',         value: visibleRooms.length, sub: 'in use' },
     // ── New: pending changes count in stats
@@ -1413,12 +1433,7 @@ export default function CoordScheduleViewPage() {
       <div className="sv-header-row">
         <div className="sv-header-cluster">
           <button
-            onClick={() => {
-              if (hasUnsavedChanges || dd.pendingOverrides.size > 0) {
-                if (!window.confirm('You have unsaved changes. Are you sure you want to discard them?')) return;
-              }
-              navigate('/coordinator/schedules')
-            }}
+            onClick={() => guardedNavigate('/coordinator/schedules')}
             className="sv-icon-btn"
             title="Back to My Schedules"
           >
@@ -1640,6 +1655,26 @@ export default function CoordScheduleViewPage() {
                 onChange={e => setSearchQuery(e.target.value)}
               />
             </div>
+
+            {localHasFilters && (
+              <div style={{ display:'flex', alignItems:'center', background: 'var(--surface)', border:`1px solid ${TV.border}`, borderRadius:20, overflow: 'hidden', height: 31, padding: '0 4px 0 12px' }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: TV.deep, marginRight: 8 }}>
+                  {activeDayEvents.length} found
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <span style={{ fontSize: 11, color: TV.muted, minWidth: 28, textAlign: 'center', opacity: 0.8 }}>
+                     {activeDayEvents.length > 0 ? `${currentFindIndex + 1}/${activeDayEvents.length}` : '0/0'}
+                  </span>
+                  <button onClick={prevFind} disabled={!activeDayEvents.length} style={{ border: 'none', background: 'transparent', cursor: activeDayEvents.length ? 'pointer' : 'default', opacity: activeDayEvents.length ? 1 : 0.4, padding: 2, display: 'flex', color: TV.deep }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                  </button>
+                  <button onClick={nextFind} disabled={!activeDayEvents.length} style={{ border: 'none', background: 'transparent', cursor: activeDayEvents.length ? 'pointer' : 'default', opacity: activeDayEvents.length ? 1 : 0.4, padding: 2, display: 'flex', color: TV.deep }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                </div>
+              </div>
+            )}
+
             <Sep />
             <FilterRow label="Program">
               <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
@@ -1722,6 +1757,22 @@ export default function CoordScheduleViewPage() {
                 <circle cx="12" cy="12" r="10"/>
               </svg>
               Unassigned
+            </button>
+            <button onClick={() => setFilterExtUnassigned(v => !v)}
+              title="Show only external-department subjects (GEC, MAT, PE, NSTP...) that still have no instructor. The auto-assigner never fills these."
+              style={{
+              display:'inline-flex', alignItems:'center', gap:4,
+              padding:'3px 10px', borderRadius:20, fontSize:11, cursor:'pointer',
+              fontFamily:'Inter,sans-serif', transition:'all .15s',
+              fontWeight: filterExtUnassigned ? 700 : 400,
+              border: `1px solid ${filterExtUnassigned ? 'rgba(245, 158, 11, 0.35)' : TV.border}`,
+              background: filterExtUnassigned ? 'rgba(245, 158, 11, 0.05)' : 'var(--surface)',
+              color: filterExtUnassigned ? '#92400e' : TV.muted,
+            }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              Ext. dept unassigned{extUnassignedTotal > 0 ? ` (${extUnassignedTotal})` : ''}
             </button>
             <button
               onClick={() => setShowAvailableOnly(v => !v)}
@@ -2001,6 +2052,25 @@ export default function CoordScheduleViewPage() {
                 ))}
               </div>
 
+              {localHasFilters && (
+                <div style={{ transform: 'scale(0.85)', transformOrigin: 'right center', display:'flex', alignItems:'center', background: 'var(--surface)', border:`1px solid ${TV.border}`, borderRadius:20, overflow: 'hidden', height: 31, padding: '0 4px 0 12px' }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: TV.deep, marginRight: 8, whiteSpace: 'nowrap' }}>
+                    {activeDayEvents.length} found
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <span style={{ fontSize: 11, color: TV.muted, minWidth: 28, textAlign: 'center', opacity: 0.8 }}>
+                       {activeDayEvents.length > 0 ? `${currentFindIndex + 1}/${activeDayEvents.length}` : '0/0'}
+                    </span>
+                    <button onClick={prevFind} disabled={!activeDayEvents.length} style={{ border: 'none', background: 'transparent', cursor: activeDayEvents.length ? 'pointer' : 'default', opacity: activeDayEvents.length ? 1 : 0.4, padding: 2, display: 'flex', color: TV.deep }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                    <button onClick={nextFind} disabled={!activeDayEvents.length} style={{ border: 'none', background: 'transparent', cursor: activeDayEvents.length ? 'pointer' : 'default', opacity: activeDayEvents.length ? 1 : 0.4, padding: 2, display: 'flex', color: TV.deep }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <button onClick={() => setMaximizeFilterOpen(true)} style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   padding: '5px 12px', borderRadius: 8,
@@ -2123,6 +2193,13 @@ export default function CoordScheduleViewPage() {
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/></svg>
                           Unassigned only
                         </button>
+                        <button onClick={() => setFilterExtUnassigned(v => !v)} style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'Inter,sans-serif', transition: 'all .15s',
+                          fontWeight: filterExtUnassigned ? 700 : 400, border: `1px solid ${filterExtUnassigned ? 'rgba(245, 158, 11, 0.35)' : TV.border}`, background: filterExtUnassigned ? 'rgba(245, 158, 11, 0.05)' : 'var(--surface)', color: filterExtUnassigned ? '#92400e' : TV.muted,
+                        }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                          Ext. dept unassigned{extUnassignedTotal > 0 ? ` (${extUnassignedTotal})` : ''}
+                        </button>
                         <button onClick={() => setShowAvailableOnly(v => !v)} style={{
                           display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontFamily: 'Inter,sans-serif', transition: 'all .15s',
                           fontWeight: showAvailableOnly ? 700 : 400, border: `1px solid ${showAvailableOnly ? 'var(--meadow-border)' : TV.border}`, background: showAvailableOnly ? 'var(--meadow-soft)' : 'var(--surface)', color: showAvailableOnly ? 'var(--meadow)' : TV.muted,
@@ -2219,7 +2296,7 @@ export default function CoordScheduleViewPage() {
           display:'flex', flexDirection:'column', width:'100%', minWidth:0,
           padding:'12px 14px 0',
         }}>
-          <ConflictSummaryBar conflictMap={conflictMap} />
+          <div id="tour-sv-conflicts"><ConflictSummaryBar conflictMap={conflictMap} /></div>
           {visibleRooms.length === 0
             ? <EmptyState hasFilters={localHasFilters} onClear={handleClearAll} />
             : (
@@ -2357,6 +2434,11 @@ export default function CoordScheduleViewPage() {
           }}
         />
       )}
+
+      {/* ── Unsaved changes — confirm before leaving the page ─────────────── */}
+      {pendingLeaveAction && (
+        <UnsavedChangesModal subject={activeName} onConfirm={confirmLeave} onCancel={cancelLeave} />
+      )}
     </div>
   )
 }
@@ -2387,6 +2469,7 @@ function ListView({ dayEvents, conflictMap, hasFilters, clearFilters, onCardClic
             const sessionType = isLab ? 'LAB' : 'LEC'
             return (
               <tr key={evId}
+                id={`card-${evId}`}
                 onClick={() => onCardClick(ev)}
                 style={{ borderBottom:`1px solid ${TV.border}`, cursor:'pointer', background:i%2===0? 'var(--surface)':'var(--bg)', transition:'background .12s' }}
                 onMouseEnter={e => e.currentTarget.style.background = TV.pale}
