@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import icon1Img from '../../assets/ASSIGNAV1.png'
 import UnsavedChangesModal from '../UnsavedChangesModal' // adjust path to match your project structure
 import { getUnsavedFlag } from '../../utils/unsavedChangesRegistry' // adjust path to match your project structure
+import { maskEmail } from '../../utils/demoMode'
 
 const NAV_SECTIONS = [
   {
@@ -122,7 +123,7 @@ export default function AdminLayout() {
 
   async function handleLogout() { await logout(); navigate('/login') }
 
-  const initials = user?.email ? user.email.slice(0, 2).toUpperCase() : 'AD'
+  const initials = user?.email ? maskEmail(user.email).slice(0, 2).toUpperCase() : 'AD'
   const sidebarWidth = collapsed ? 58 : 220
 
   return (
@@ -199,7 +200,7 @@ export default function AdminLayout() {
             {!collapsed && (
               <>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div className="sidebar-user-email">{user?.email ?? 'Dean'}</div>
+                  <div className="sidebar-user-email">{maskEmail(user?.email) ?? 'Dean'}</div>
                   <div className="sidebar-user-role">Dean</div>
                 </div>
                 <button className="sidebar-logout-btn" onClick={requestLogout} title="Log out">

@@ -10,6 +10,7 @@ import JSZip from 'jszip'
 import { exportScheduleToExcel, buildScheduleExcelBlob } from '../../utils/exportScheduleToExcel'
 import { exportScheduleToICS, buildScheduleICSBlob } from '../../utils/exportScheduleToICS'
 import { exportFacultyLoadToPDF, buildFacultyLoadPDFBlob, mergeAndSortEvents } from '../../utils/exportFacultyLoadToPDF'
+import { maskFacultyList, maskEvents } from '../../utils/demoMode'
 
 /* ── Design tokens ── */
 const G = {
@@ -901,7 +902,7 @@ function BatchScheduleExportModal({ facultyList, preselectedIds, wasManuallySele
         meta = { name: scheduleName || 'current', academicYear: storeAcademicYear || '', semester: storeSemester || '' }
       } else {
         const data = await loadSaved(selectedSchedule)
-        events = Array.isArray(data.schedule) ? data.schedule : (Array.isArray(data.events) ? data.events : [])
+        events = maskEvents(Array.isArray(data.schedule) ? data.schedule : (Array.isArray(data.events) ? data.events : []))
         meta = { name: selectedSchedule, academicYear: data.academicYear || data.academic_year || '', semester: data.semester || '' }
       }
 
@@ -1142,13 +1143,13 @@ export default function FacultyListPage() {
       .then(data => {
         if (cancelled) return
         const raw = Array.isArray(data.schedule) ? data.schedule : (Array.isArray(data.events) ? data.events : [])
-        setExternalScheduleEvents(raw)
+        setExternalScheduleEvents(maskEvents(raw))
       })
       .catch(() => { if (!cancelled) setExternalScheduleEvents([]) })
     return () => { cancelled = true }
   }, [globalSelectedSchedule])
 
-  const activeScheduleEvents = globalSelectedSchedule === '__current__' ? (storeEvents || []) : (externalScheduleEvents || [])
+  const activeScheduleEvents = globalSelectedSchedule === '__current__' ? maskEvents(storeEvents || []) : (externalScheduleEvents || [])
   const facultyLoadMap = useMemo(() => buildFacultyLoadMap(activeScheduleEvents), [activeScheduleEvents])
   const unitsFor = useCallback(
     f => facultyLoadMap.get((f.name || '').trim().toLowerCase())?.units ?? facultyUnits(f),
@@ -1172,8 +1173,8 @@ export default function FacultyListPage() {
         getArchivedFaculty(),
         getCourses().catch(() => []),
       ])
-      setActiveFaculty(active)
-      setArchivedFaculty(archived.filter(f => f.archived))
+      setActiveFaculty(maskFacultyList(active))
+      setArchivedFaculty(maskFacultyList(archived.filter(f => f.archived)))
       const titleMap = {}
       ;(Array.isArray(courseList) ? courseList : []).forEach(c => {
         const code  = (c.courseCode || '').trim()

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://gcassigna.web.app/sitemap.xml

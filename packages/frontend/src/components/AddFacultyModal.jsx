@@ -48,11 +48,13 @@ export default function AddFacultyModal({ onClose, onSuccess }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!form.firstName || !form.lastName || !form.email) return
+    if (!form.firstName || !form.lastName || !form.Department) return
     setSaving(true)
     setError('')
     try {
-      const finalEmail = form.email.includes('@') ? form.email.trim() : form.email.trim() + '@gordoncollege.edu.ph'
+      const finalEmail = form.email
+        ? (form.email.includes('@') ? form.email.trim() : form.email.trim() + '@gordoncollege.edu.ph')
+        : ''
       const payload = {
         ...form,
         email: finalEmail,
@@ -68,6 +70,37 @@ export default function AddFacultyModal({ onClose, onSuccess }) {
   }
 
   if (successData) {
+    const isAuth = successData.auth_created !== false;
+    const tempPassword = successData.tempPassword || successData.temp_password;
+
+    if (!isAuth) {
+      return (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', padding: 20 }}>
+          <div style={{ background: T.surface, borderRadius: 18, border: `1px solid ${T.border}`, overflow: 'hidden', boxShadow: '0 10px 40px rgba(0,0,0,0.2)', width: '100%', maxWidth: 460, animation: 'fadeIn 0.2s ease-out' }}>
+            <div style={{ padding: '24px 28px', borderBottom: `1px solid ${T.borderLight}`, display: 'flex', gap: 14, alignItems: 'center' }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: T.meadowSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.meadow} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: T.textMain }}>Profile Created</div>
+                <div style={{ fontSize: 13, color: T.textMuted, marginTop: 2 }}>Faculty profile added successfully.</div>
+              </div>
+            </div>
+            <div style={{ padding: '24px 28px' }}>
+              <div style={{ fontSize: 12.5, color: T.textMuted, background: T.bg, borderRadius: 8, padding: '12px 16px', border: `1px solid ${T.border}`, marginBottom: 24, lineHeight: 1.5 }}>
+                No Firebase login was created because the email address was left blank.
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button onClick={() => { if(onSuccess) onSuccess(); onClose(); }} style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg,${T.meadow},${T.meadowDeep})`, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
     const copyBg = pwCopied ? T.meadowSoft : T.surface
     const copyCl = pwCopied ? T.meadow : T.meadowDeep
     return (
@@ -85,8 +118,8 @@ export default function AddFacultyModal({ onClose, onSuccess }) {
           <div style={{ padding: '24px 28px' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 10 }}>Auto-generated Password</div>
             <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-              <code style={{ flex: 1, padding: '12px 16px', background: T.bg, borderRadius: 10, border: `1.5px solid ${T.border}`, fontSize: 16, fontFamily: 'monospace', letterSpacing: 2, color: T.textMain }}>{successData.tempPassword}</code>
-              <button type="button" onClick={() => { navigator.clipboard.writeText(successData.tempPassword); setPwCopied(true); setTimeout(() => setPwCopied(false), 2000) }} style={{ padding: '12px 16px', borderRadius: 10, border: `1.5px solid ${T.border}`, background: copyBg, color: copyCl, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", whiteSpace: 'nowrap' }}>
+              <code style={{ flex: 1, padding: '12px 16px', background: T.bg, borderRadius: 10, border: `1.5px solid ${T.border}`, fontSize: 16, fontFamily: 'monospace', letterSpacing: 2, color: T.textMain }}>{tempPassword}</code>
+              <button type="button" onClick={() => { navigator.clipboard.writeText(tempPassword); setPwCopied(true); setTimeout(() => setPwCopied(false), 2000) }} style={{ padding: '12px 16px', borderRadius: 10, border: `1.5px solid ${T.border}`, background: copyBg, color: copyCl, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter',sans-serif", whiteSpace: 'nowrap' }}>
                 {pwCopied ? 'Copied!' : 'Copy'}
               </button>
             </div>
@@ -140,10 +173,10 @@ export default function AddFacultyModal({ onClose, onSuccess }) {
             </div>
             
             <div style={{ gridColumn: '1 / -1' }}>
-              <label style={labelStyle}>Email Address <span style={{color: '#EF4444'}}>*</span></label>
+              <label style={labelStyle}>Email Address</label>
               <div style={{ position: 'relative' }}>
                 <input type="text" value={form.email} onChange={e => setForm({...form, email: e.target.value})}
-                  required style={{...inputStyle, paddingRight: !form.email.includes('@') && form.email.length > 0 ? 170 : 14}}
+                  style={{...inputStyle, paddingRight: !form.email.includes('@') && form.email.length > 0 ? 170 : 14}}
                   placeholder="juan.delacruz" autoComplete="email" />
                 {!form.email.includes('@') && form.email.length > 0 && (
                   <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: T.textMuted, fontSize: 13, pointerEvents: 'none' }}>
@@ -171,8 +204,8 @@ export default function AddFacultyModal({ onClose, onSuccess }) {
             </div>
 
             <div>
-              <label style={labelStyle}>Department</label>
-              <select value={form.Department} onChange={e => setForm({...form, Department: e.target.value})} style={inputStyle}>
+              <label style={labelStyle}>Department <span style={{color: '#EF4444'}}>*</span></label>
+              <select value={form.Department} onChange={e => setForm({...form, Department: e.target.value})} required style={inputStyle}>
                 <option value="">Select department...</option>
                 {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
               </select>

@@ -240,9 +240,6 @@ def add_faculty(data: dict, user=Depends(any_authenticated)):
     email = data.get("email", "").strip()
     name  = data.get("name",  "").strip()
 
-    if not email:
-        raise HTTPException(400, "Email is required to create a faculty account.")
-        
     # Check for duplicate names (use in-memory cache — 0 reads)
     norm_name = re.sub(r"[^A-Z0-9]", "", name.upper())
     for d_dict in get_faculty_cache():
@@ -252,23 +249,26 @@ def add_faculty(data: dict, user=Depends(any_authenticated)):
 
     temp_password = data.get("initial_password", "").strip() or _default_password(name)
 
-    try:
-        auth_user = firebase_auth.create_user(
-            email=email,
-            password=temp_password,
-            display_name=name,
-        )
-        uid = auth_user.uid
-    except firebase_auth.EmailAlreadyExistsError:
-        raise HTTPException(400, f"A Firebase Auth account already exists for {email}.")
-    except Exception as exc:
-        raise HTTPException(400, f"Could not create auth user: {exc}")
+    if email:
+        try:
+            auth_user = firebase_auth.create_user(
+                email=email,
+                password=temp_password,
+                display_name=name,
+            )
+            uid = auth_user.uid
+        except firebase_auth.EmailAlreadyExistsError:
+            raise HTTPException(400, f"A Firebase Auth account already exists for {email}.")
+        except Exception as exc:
+            raise HTTPException(400, f"Could not create auth user: {exc}")
 
-    try:
-        firebase_auth.set_custom_user_claims(uid, {"role": "faculty"})
-    except Exception as exc:
-        firebase_auth.delete_user(uid)
-        raise HTTPException(500, f"Could not set role claim: {exc}")
+        try:
+            firebase_auth.set_custom_user_claims(uid, {"role": "faculty"})
+        except Exception as exc:
+            firebase_auth.delete_user(uid)
+            raise HTTPException(500, f"Could not set role claim: {exc}")
+    else:
+        uid = db.collection("faculty").document().id
 
     status      = data.get("status", "full-time")
     initial_max = compute_effective_max_units(status, 0)
@@ -282,8 +282,9 @@ def add_faculty(data: dict, user=Depends(any_authenticated)):
 
     return {
         "id":            uid,
-        "message":       "Faculty added and Firebase Auth account created.",
-        "temp_password": temp_password,
+        "message":       "Faculty added" + (" and Firebase Auth account created." if email else "."),
+        "temp_password": temp_password if email else None,
+        "auth_created":  bool(email),
         "note":          "The faculty member must log out and back in if they already have a session.",
         "max_units":     initial_max,
     }

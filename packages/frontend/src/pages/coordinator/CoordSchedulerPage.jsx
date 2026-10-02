@@ -1153,9 +1153,9 @@ function CoordinatorCheckPanel({ semester, masterEvents }) {
   }
 
   useEffect(() => {
-    if (semester) runDiagnostic()
+    if (semester && coordinatorProgram) runDiagnostic()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [semester, masterEvents])
+  }, [semester, masterEvents, coordinatorProgram])
 
   if (!semester) {
     return (
